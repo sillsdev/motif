@@ -530,6 +530,7 @@ public static class CliVerbCatalog
             new[]
             {
                 "lexicon find --project <fwdata> [--query <text> | --exact <form>] [--form-regex <regex>] [--suffix <text>] [--class <name|id>] " +
+                "[--environment <text>] [--stem-name <name|id>] [--used-by <slot|template>] [--detail] " +
                 "[--morph-type <name>[,<name>]] [--affix [true|false]] [--category <name|id>] [--headword <prefix>] [--headword-contains <text>] " +
                 "[--has-gloss [true|false]] [--id-format canonical|guid] [--at baseline|<proposalId>] [--limit <1-200>] " +
                 "[--offset <n> | --page <N> | --all] [--json]",

@@ -27,7 +27,8 @@ public static class LexiconReader
     /// <param name="offset">How many matching entries to skip.</param>
     /// <param name="detailed">Whether entries carry every sense, allomorph, environment and grammatical-info record.</param>
     /// <param name="withForms">Whether concise entries also carry the lexeme form, alternate forms and inflection classes.</param>
-    public static JsonObject Read(LcmCache cache, LexiconFilter filter, int limit, int offset, bool detailed, bool withForms = false)
+    /// <param name="withAllomorphs">Whether concise entries also carry every allomorph with its environments and stem name, and the slots and templates that use them.</param>
+    public static JsonObject Read(LcmCache cache, LexiconFilter filter, int limit, int offset, bool detailed, bool withForms = false, bool withAllomorphs = false)
     {
         offset = Math.Max(0, offset);
         var all = cache.ServiceLocator.GetInstance<ILexEntryRepository>().AllInstances().ToList();
@@ -47,7 +48,7 @@ public static class LexiconReader
         var headwords = all.ToDictionary(entry => entry, entry => entry.HeadWord?.Text);
         var matches = all.Where(entry => filter.Matches(cache, entry, headwords[entry], CategoryName))
             .OrderBy(entry => headwords[entry], StringComparer.Ordinal).ToList();
-        var page = matches.Skip(offset).Take(limit).Select(entry => detailed ? Entry(cache, entry, true) : Line(cache, entry, CategoryName, MorphName, withForms)).ToArray();
+        var page = matches.Skip(offset).Take(limit).Select(entry => detailed ? Entry(cache, entry, true) : Line(cache, entry, CategoryName, MorphName, withForms, withAllomorphs, filter)).ToArray();
         var result = new JsonObject
         {
             ["matched"] = matches.Count,
@@ -92,7 +93,7 @@ public static class LexiconReader
 
     private const int LineSenseCap = 5;
 
-    private static JsonObject Line(LcmCache cache, ILexEntry entry, Func<IPartOfSpeech, string?> categoryName, Func<IMoForm?, string?> morphName, bool withForms)
+    private static JsonObject Line(LcmCache cache, ILexEntry entry, Func<IPartOfSpeech, string?> categoryName, Func<IMoForm?, string?> morphName, bool withForms, bool withAllomorphs, LexiconFilter filter)
     {
         var senses = entry.AllSenses.ToList();
         var line = new JsonObject
@@ -116,7 +117,28 @@ public static class LexiconReader
             line["inflectionClasses"] = new JsonArray(LexiconFilter.InflectionClasses(entry).Distinct()
                 .Select(inflectionClass => (JsonNode?)new JsonObject { ["id"] = Id(inflectionClass), ["name"] = Text(cache, inflectionClass.Name) }).ToArray());
         }
+        if (withAllomorphs)
+        {
+            var allomorphs = entry.LexemeFormOA is { } head ? entry.AlternateFormsOS.Prepend(head) : entry.AlternateFormsOS;
+            line["allomorphs"] = new JsonArray(allomorphs.Select(form => (JsonNode)AllomorphObject(cache, form)).ToArray());
+            line["usedBy"] = filter.UsesOf(cache, entry, name => Text(cache, name));
+        }
         return line;
+    }
+
+    // Every writing system's text of a form, its stem name and the environments that condition it.
+    private static JsonObject AllomorphObject(LcmCache cache, IMoForm form)
+    {
+        var result = new JsonObject
+        {
+            ["id"] = Id(form),
+            ["kind"] = form.ClassName,
+            ["morphType"] = MorphTypeName(cache, form),
+            ["forms"] = Alternatives(cache, form.Form),
+            ["stemName"] = form is IMoStemAllomorph { StemNameRA: { } stemName } ? Text(cache, stemName.Name) : null,
+        };
+        result["environments"] = new JsonArray(LexiconFilter.EnvironmentsOf(form).Select(env => (JsonNode?)env.StringRepresentation?.Text).ToArray());
+        return result;
     }
 
     private static JsonObject Entry(LcmCache cache, ILexEntry entry, bool detailed)
@@ -227,9 +249,13 @@ public static class LexiconReader
 /// <param name="FormRegex">A regular expression some form (headword, lexeme form or alternate form) matches, searched in NFC text.</param>
 /// <param name="Suffix">Text some form or the headword ends with, ignoring case and Unicode normalization form.</param>
 /// <param name="InflectionClass">Name, abbreviation, canonical id or guid of an inflection class an analysis of the entry (or an ancestor class) names.</param>
+/// <param name="Environment">Text the string form of an environment of some allomorph contains.</param>
+/// <param name="StemName">Name or canonical id of the stem name some allomorph carries.</param>
+/// <param name="UsedBy">Name or canonical id of an affix slot or template that an inflectional analysis of the entry reaches.</param>
 public sealed record LexiconFilter(string? Query = null, IReadOnlyList<string>? MorphTypesOrNull = null, bool? Affix = null,
     string? Category = null, string? Headword = null, string? HeadwordContains = null, bool? HasGloss = null,
-    string? Exact = null, string? FormRegex = null, string? Suffix = null, string? InflectionClass = null)
+    string? Exact = null, string? FormRegex = null, string? Suffix = null, string? InflectionClass = null,
+    string? Environment = null, string? StemName = null, string? UsedBy = null)
 {
     /// <summary>The longest one regular-expression match may take, so a pathological pattern is refused rather than hanging a lane.</summary>
     public static readonly TimeSpan RegexTimeout = TimeSpan.FromSeconds(2);
@@ -273,8 +299,66 @@ public sealed record LexiconFilter(string? Query = null, IReadOnlyList<string>? 
         }
         if (InflectionClass is { } wanted && !InflectionClasses(entry).Any(inflectionClass => ClassMatches(cache, wanted, inflectionClass)))
             return false;
+        if (Environment is { } environment && !AllAllomorphs(entry).SelectMany(EnvironmentsOf)
+                .Any(env => Fold(env.StringRepresentation?.Text).Contains(Fold(environment), StringComparison.Ordinal)))
+            return false;
+        if (StemName is { } stemName && !AllAllomorphs(entry).OfType<IMoStemAllomorph>().Any(allomorph =>
+                allomorph.StemNameRA is { } name && (Same(stemName, LexiconReader.Text(cache, name.Name)) ||
+                string.Equals(stemName, LexiconReader.Id(name), StringComparison.Ordinal))))
+            return false;
+        if (UsedBy is { } user && !UsedByMatches(cache, entry, user)) return false;
         if (Query is { } text) return Folded(text, headword, cache, entry);
         return true;
+    }
+
+    private static IEnumerable<IMoForm> AllAllomorphs(ILexEntry entry) =>
+        entry.LexemeFormOA is { } lexeme ? entry.AlternateFormsOS.Prepend(lexeme) : entry.AlternateFormsOS;
+
+    /// <summary>The environments that condition <paramref name="form"/>; only stem and affix allomorphs have any.</summary>
+    public static IEnumerable<IPhEnvironment> EnvironmentsOf(IMoForm form) => form switch
+    {
+        IMoStemAllomorph stem => stem.PhoneEnvRC,
+        IMoAffixAllomorph affix => affix.PhoneEnvRC,
+        _ => [],
+    };
+
+    private IReadOnlyDictionary<Guid, List<IMoInflAffixTemplate>>? _templatesBySlot;
+
+    // Each affix slot with the templates that list it, built once per filter.
+    private IReadOnlyDictionary<Guid, List<IMoInflAffixTemplate>> TemplatesBySlot(LcmCache cache)
+    {
+        if (_templatesBySlot is not null) return _templatesBySlot;
+        var index = new Dictionary<Guid, List<IMoInflAffixTemplate>>();
+        foreach (var template in cache.ServiceLocator.GetInstance<IMoInflAffixTemplateRepository>().AllInstances())
+            foreach (var slot in template.PrefixSlotsRS.Concat(template.SuffixSlotsRS).Concat(template.SlotsRS))
+            {
+                if (!index.TryGetValue(slot.Guid, out var list)) index[slot.Guid] = list = [];
+                if (!list.Contains(template)) list.Add(template);
+            }
+        return _templatesBySlot = index;
+    }
+
+    private bool UsedByMatches(LcmCache cache, ILexEntry entry, string wanted)
+    {
+        var uses = UsesOf(cache, entry, name => LexiconReader.Text(cache, name));
+        return uses["slots"]!.AsArray().Concat(uses["templates"]!.AsArray()).Any(item =>
+            Same(wanted, item!["name"]?.GetValue<string>()) || string.Equals(wanted, item["id"]!.GetValue<string>(), StringComparison.Ordinal));
+    }
+
+    /// <summary>The affix slots the inflectional analyses of <paramref name="entry"/> fill, and the templates that list those slots.</summary>
+    public JsonObject UsesOf(LcmCache cache, ILexEntry entry, Func<IMultiAccessorBase, string?> nameOf)
+    {
+        var slots = entry.MorphoSyntaxAnalysesOC.OfType<IMoInflAffMsa>().SelectMany(msa => msa.SlotsRC)
+            .DistinctBy(slot => slot.Guid).ToList();
+        var templates = slots.SelectMany(slot => TemplatesBySlot(cache).GetValueOrDefault(slot.Guid) ?? [])
+            .DistinctBy(template => template.Guid).ToList();
+        return new JsonObject
+        {
+            ["slots"] = new JsonArray(slots.Select(slot => (JsonNode)new JsonObject
+                { ["id"] = LexiconReader.Id(slot), ["name"] = nameOf(slot.Name) }).ToArray()),
+            ["templates"] = new JsonArray(templates.Select(template => (JsonNode)new JsonObject
+                { ["id"] = LexiconReader.Id(template), ["name"] = nameOf(template.Name) }).ToArray()),
+        };
     }
 
     private static IEnumerable<string> AllForms(LcmCache cache, ILexEntry entry, string? headword)

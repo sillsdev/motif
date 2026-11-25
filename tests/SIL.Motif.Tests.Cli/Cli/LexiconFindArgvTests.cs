@@ -76,6 +76,25 @@ public sealed class LexiconFindArgvTests(PristineProjectFixture pristine) : IDis
     }
 
     [Fact]
+    public void DetailAddsAllomorphsAndUsedByAndTheNewFiltersAreAcceptedInABatch()
+    {
+        using var project = new WalkthroughProject(pristine, _root);
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project.FwDataPath), _root).Succeeded);
+        using var detailed = Find(project, "--exact", SeededProject.FirstForm, "--detail");
+        var entry = detailed.RootElement.GetProperty("entries")[0];
+        Assert.Equal(JsonValueKind.Array, entry.GetProperty("allomorphs").ValueKind);
+        Assert.Equal(0, entry.GetProperty("usedBy").GetProperty("slots").GetArrayLength());
+        using var none = Find(project, "--environment", "/ _ zzz", "--stem-name", "nothing", "--used-by", "nothing");
+        Assert.Equal(0, none.RootElement.GetProperty("matched").GetInt32());
+        var file = Path.Combine(_root, "new.jsonl");
+        File.WriteAllText(file, "{\"used-by\":\"nothing\",\"detail\":true}\n");
+        var result = CliInProcess.Run(_root, null, developerCommands: true,
+            "lexicon", "find", "--project", project.FwDataPath, "--batch", file);
+        Assert.True(result.ExitCode == 0, result.Output + result.Error);
+        Assert.Equal(0, JsonDocument.Parse(result.Output.Trim()).RootElement.GetProperty("result").GetProperty("matched").GetInt32());
+    }
+
+    [Fact]
     public void RefusesABadRegexAnOutOfRangePageAndAnUnknownIdFormat()
     {
         using var project = new WalkthroughProject(pristine, _root);

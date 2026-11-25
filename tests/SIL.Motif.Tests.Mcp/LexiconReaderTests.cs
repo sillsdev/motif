@@ -1,5 +1,6 @@
 using System.Text.Json.Nodes;
 using SIL.LCModel;
+using SIL.LCModel.Core.Text;
 using SIL.LCModel.DomainServices;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Commands.Queries;
@@ -398,6 +399,58 @@ public sealed class LexiconReaderTests(PristineProjectFixture pristine) : IDispo
         Assert.False(outcome.Succeeded);
         Assert.Equal("lexicon-find.invalid-request", outcome.Refusal!.Code);
         Assert.Contains("seconds", outcome.Refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void EnvironmentStemNameAndUsedByFilterAndDetailListsAllomorphsAndTemplates()
+    {
+        Fill();
+        var services = _cache.ServiceLocator;
+        var anal = _cache.DefaultAnalWs;
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            var noun = services.GetInstance<IPartOfSpeechRepository>().GetObject(_categories["Noun"]);
+            var stemName = services.GetInstance<IMoStemNameFactory>().Create();
+            noun.StemNamesOC.Add(stemName);
+            stemName.Name.set_String(anal, "plural stem");
+            var environment = services.GetInstance<IPhEnvironmentFactory>().Create();
+            _cache.LangProject.PhonologicalDataOA.EnvironmentsOS.Add(environment);
+            environment.StringRepresentation = TsStringUtils.MakeString("/ _ a", _cache.DefaultVernWs);
+            var slot = services.GetInstance<IMoInflAffixSlotFactory>().Create();
+            noun.AffixSlotsOC.Add(slot);
+            slot.Name.set_String(anal, "Case");
+            var template = services.GetInstance<IMoInflAffixTemplateFactory>().Create();
+            noun.AffixTemplatesOS.Add(template);
+            template.Name.set_String(anal, "Noun template");
+            template.SuffixSlotsRS.Add(slot);
+            foreach (var entry in services.GetInstance<ILexEntryRepository>().AllInstances())
+            {
+                if (entry.HeadWord.Text == "balay")
+                {
+                    var alternate = services.GetInstance<IMoStemAllomorphFactory>().Create();
+                    entry.AlternateFormsOS.Add(alternate);
+                    alternate.Form.set_String(_cache.DefaultVernWs, "balaw");
+                    alternate.StemNameRA = stemName;
+                    alternate.PhoneEnvRC.Add(environment);
+                }
+                if (entry.HeadWord.Text.Trim('-') == "an") ((IMoInflAffMsa)entry.MorphoSyntaxAnalysesOC.Single()).SlotsRC.Add(slot);
+            }
+        });
+        Assert.Equal(["balay"], Headwords(Read(new LexiconFilter(Environment: "_ A"))));
+        Assert.Equal(["balay"], Headwords(Read(new LexiconFilter(StemName: "Plural Stem"))));
+        Assert.Empty(Headwords(Read(new LexiconFilter(StemName: "other"))));
+        Assert.Equal(["an"], Headwords(Read(new LexiconFilter(UsedBy: "noun template"))));
+        Assert.Equal(["an"], Headwords(Read(new LexiconFilter(UsedBy: "Case"))));
+        Assert.Empty(Headwords(Read(new LexiconFilter(UsedBy: "Tense"))));
+
+        var page = LexiconReader.Read(_cache, new LexiconFilter(Exact: "balay"), 10, 0, detailed: false, withForms: true, withAllomorphs: true);
+        var alternateLine = page["entries"]![0]!["allomorphs"]!.AsArray()[1]!;
+        Assert.Equal("plural stem", alternateLine["stemName"]!.GetValue<string>());
+        Assert.Equal("/ _ a", alternateLine["environments"]![0]!.GetValue<string>());
+        Assert.Equal("balaw", alternateLine["forms"]![_cache.WritingSystemFactory.GetStrFromWs(_cache.DefaultVernWs)]!.GetValue<string>());
+        var affix = LexiconReader.Read(_cache, new LexiconFilter(UsedBy: "Case"), 10, 0, detailed: false, withForms: true, withAllomorphs: true)["entries"]![0]!["usedBy"]!;
+        Assert.Equal("Case", affix["slots"]![0]!["name"]!.GetValue<string>());
+        Assert.Equal("Noun template", affix["templates"]![0]!["name"]!.GetValue<string>());
     }
 
     [Fact]

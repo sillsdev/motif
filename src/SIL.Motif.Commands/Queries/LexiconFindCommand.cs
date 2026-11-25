@@ -53,8 +53,9 @@ public static class LexiconFindCommand
     {
         if (Validate(request) is { } refusal) return CommandOutcome<JsonObject>.Refused(refusal);
         var filter = new LexiconFilter(request.Query, request.MorphTypes, request.Affix, request.Category, request.Headword,
-            request.HeadwordContains, request.HasGloss, request.Exact, request.FormRegex, request.Suffix, request.InflectionClass);
-        return ReadPage(cache, filter, request.Limit, request.Offset, detailed: false, withForms: true, request.IdFormat);
+            request.HeadwordContains, request.HasGloss, request.Exact, request.FormRegex, request.Suffix, request.InflectionClass,
+            request.Environment, request.StemName, request.UsedBy);
+        return ReadPage(cache, filter, request.Limit, request.Offset, detailed: false, withForms: true, request.IdFormat, withAllomorphs: request.Detail);
     }
 
     /// <summary>The refusal for a request whose page, pattern or text is unusable, or null when it can run.</summary>
@@ -110,7 +111,7 @@ public static class LexiconFindCommand
     /// takes too long. This is the one implementation the MCP tool and the CLI verb share.
     /// </summary>
     public static CommandOutcome<JsonObject> ReadPage(LcmCache cache, LexiconFilter filter, int limit, int offset,
-        bool detailed, bool withForms = false, LexiconIdFormat idFormat = LexiconIdFormat.Canonical)
+        bool detailed, bool withForms = false, LexiconIdFormat idFormat = LexiconIdFormat.Canonical, bool withAllomorphs = false)
     {
         if (filter.MorphTypesOrNull is { Count: > 0 } types &&
             GrammarReadProjectionBuilder.UnknownMorphTypes(cache, string.Join(",", types)) is { Count: > 0 } unknown)
@@ -118,7 +119,7 @@ public static class LexiconFindCommand
                 $"Unknown morph type {string.Join(", ", unknown.Select(name => $"'{name}'"))}. " +
                 $"Morph types are: {string.Join(", ", GrammarReadProjectionBuilder.MorphTypeNames(cache))}.");
         JsonObject page;
-        try { page = LexiconReader.Read(cache, filter, limit, offset, detailed, withForms); }
+        try { page = LexiconReader.Read(cache, filter, limit, offset, detailed, withForms, withAllomorphs); }
         catch (RegexMatchTimeoutException)
         {
             return Invalid($"--form-regex took longer than {LexiconFilter.RegexTimeout.TotalSeconds.ToString(CultureInfo.InvariantCulture)} seconds on one form; simplify the pattern.");
