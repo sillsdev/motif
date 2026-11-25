@@ -1,0 +1,9 @@
+{
+  "kind": "ui",
+  "code": "shortcut-open-menu",
+  "slug": "shortcut-open-menu",
+  "title": "Open a Menu",
+  "description": "Open the File, Edit, View, Tools or Help menu by the underlined letter in its name.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/controls/shortcut-open-menu/"
+}

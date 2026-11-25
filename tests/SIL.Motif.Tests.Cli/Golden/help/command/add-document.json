@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "add-document",
+  "slug": "add-document",
+  "title": "Add a Corpus Document",
+  "description": "Reads one source file or URL into a named Corpus Document and records its origin and licence details. Use it to preserve where an individual Document came from.",
+  "helpPage": "# Add a Corpus Document\n\n\u0060add-document\u0060 reads one source file or URL and stores its text as a Document in a named Corpus. It records the source, title, and licence without treating the Document as a FieldWorks Text.\n\n## When to use it\n\nUse this after creating a Corpus when you need to preserve where one article or file came from. Provide a stable Document id and the source location; include licence details for this item when they differ from the Corpus.\n\n## Example\n\n\u0060\u0060\u0060powershell\nmotif add-document --project \u0022C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\u0022 --corpus \u0022stories\u0022 --doc \u0022story-12\u0022 --source \u0022https://example.org/story-12\u0022 --title \u0022The River Path\u0022\n\u0060\u0060\u0060\n\n## What it prints\n\nHuman output confirms the Corpus and Document ids and shows the title, source, character count, content hash, and licence when supplied.\n\n## Related commands\n\n- [Describe a Corpus](cmd:add-corpus) records the shared provenance and tokeniser.\n- [Show a Corpus](cmd:show-corpus) reads its provenance and licence capabilities.\n",
+  "usage": [
+    "Usage: motif add-document --project \u003Cfwdata\u003E --corpus \u003Cid\u003E --doc \u003Cid\u003E --source \u003Cfile-or-url\u003E [--title \u003Ctext\u003E] [--licence \u003Ctext\u003E] [--may-derive true|false] [--licence-basis \u003Ctext\u003E]"
+  ],
+  "surface": "Released",
+  "url": "https://motif-docs.pages.dev/reference/commands/add-document/"
+}

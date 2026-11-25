@@ -1,0 +1,9 @@
+{
+  "kind": "ui",
+  "code": "shortcut-scope-diagnostic-tree",
+  "slug": "shortcut-scope-diagnostic-tree",
+  "title": "Diagnostic Tree",
+  "description": "Available when the diagnostic tree has keyboard focus.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/controls/shortcut-scope-diagnostic-tree/"
+}

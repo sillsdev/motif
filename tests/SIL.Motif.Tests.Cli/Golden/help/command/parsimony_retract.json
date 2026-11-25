@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "parsimony retract",
+  "slug": "parsimony-retract",
+  "title": "Retract a ruling",
+  "description": "Stages a withdrawal of a saved Parsimony ruling using its exact current Notebook heads and digests. The history stays in FieldWorks, and the finding returns to Active after a person Applies the current retraction.",
+  "helpPage": "# Retract a ruling\n\n\u0060\u0060\u0060sh\nmotif parsimony retract \u003CrecordId\u003E --project language.fwdata --draft \u003Cname\u003E \\\n  --expected-heads \u0027[{\u0022revisionId\u0022:\u0022\u003CportableId\u003E\u0022,\u0022contentDigest\u0022:\u0022sha256:\u003C64 lowercase hex\u003E\u0022}]\u0027 [--json]\n\u0060\u0060\u0060\n\nUse the \u0060recordId\u0060 of a current ruling record. \u0060--expected-heads\u0060 must name every current head and its exact digest; include both heads to resolve a conflict. Motif refuses a stale digest, a superseded record, or a record from another project.\n\nRetraction appends a new Notebook record and retains the earlier judgment history. It stages an agent-attributed Draft Proposal; a person must Apply it. After the retraction is applied and current, refresh the project evidence to see the finding return to Active.\n",
+  "usage": [
+    "Usage: motif parsimony retract \u003CrecordId\u003E --project \u003Cfwdata\u003E --draft \u003Cname\u003E --expected-heads \u0027\u003CrevisionId and contentDigest JSON array\u003E\u0027 [--json]"
+  ],
+  "surface": "AdvancedAi",
+  "url": "https://motif-docs.pages.dev/reference/commands/parsimony-retract/"
+}

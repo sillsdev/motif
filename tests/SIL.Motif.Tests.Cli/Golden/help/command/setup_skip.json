@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "setup skip",
+  "slug": "setup-skip",
+  "title": "Skip project setup",
+  "description": "Marks first-time Selection setup as skipped for this project. Use it when the project can be opened but a Default Selection should not be chosen yet.",
+  "helpPage": "# Skip project setup\n\n\u0060setup skip\u0060 records that first-time Selection setup has been skipped for this project.\n\n## When to use it\n\nUse it when a project is ready to open but nobody should choose a Default Selection yet. This records the choice without creating a Selection or measuring any words.\n\n## Example\n\n\u0060\u0060\u0060powershell\nmotif setup skip --project \u0022C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\u0022 --json\n\u0060\u0060\u0060\n\n## What it prints\n\nThe command confirms the setup choice, or returns it as structured JSON. Later, a Default Selection can still be set explicitly.\n\n## Related commands\n\n- [Choose a Default Selection](cmd:selection%20set-default) records the words to measure.\n- [Read the project Overview](cmd:overview) reads the latest stored project evidence.\n",
+  "usage": [
+    "Usage: motif setup skip --project \u003Cfwdata\u003E [--json]"
+  ],
+  "surface": "Released",
+  "url": "https://motif-docs.pages.dev/reference/commands/setup-skip/"
+}

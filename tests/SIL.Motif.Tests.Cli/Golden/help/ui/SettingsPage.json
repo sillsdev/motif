@@ -1,0 +1,9 @@
+{
+  "kind": "ui",
+  "code": "SettingsPage",
+  "slug": "settingspage",
+  "title": "Settings",
+  "description": "Open Settings from the bottom of the left navigation rail to change how Motif looks.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/controls/settingspage/"
+}

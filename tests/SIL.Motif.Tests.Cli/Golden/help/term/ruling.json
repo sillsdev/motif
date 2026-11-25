@@ -1,0 +1,9 @@
+{
+  "kind": "term",
+  "code": "ruling",
+  "slug": "ruling",
+  "title": "A durable choice about a recommendation",
+  "description": "A Ruling records fix, keep, ask, or defer for one Parsimony recommendation and its relevant evidence. It belongs to durable FieldWorks project data; its storage shape is defined separately.",
+  "helpPage": "# Ruling\n\nA Ruling records what a person wants to do with one [Parsimony recommendation](term:parsimony-recommendation): fix it, keep it (with an optional reason), ask a question, or defer it. An applied keep or defer moves the recommendation to the Suppressed set, where you can list it again with its reason and history. It stays tied to the exact evidence considered; relevant new evidence returns it to Active with the previous decision and reason. Fix and ask remain Active. A pending choice stays Active until Apply.\n",
+  "url": "https://motif-docs.pages.dev/reference/terms/ruling/"
+}

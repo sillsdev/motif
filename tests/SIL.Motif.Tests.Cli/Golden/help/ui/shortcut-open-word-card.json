@@ -1,0 +1,9 @@
+{
+  "kind": "ui",
+  "code": "shortcut-open-word-card",
+  "slug": "shortcut-open-word-card",
+  "title": "Open the Word Card",
+  "description": "Open the focused word\u0027s card.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/controls/shortcut-open-word-card/"
+}

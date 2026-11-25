@@ -1,0 +1,9 @@
+{
+  "kind": "ui",
+  "code": "shortcut-scope-analyze-texts",
+  "slug": "shortcut-scope-analyze-texts",
+  "title": "Texts",
+  "description": "Available in the Texts reader.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/controls/shortcut-scope-analyze-texts/"
+}

@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "compose-author-environment",
+  "slug": "compose-author-environment",
+  "title": "Author an environment",
+  "description": "Stages an environment with explicitly declared left and right contexts in a Draft. Contexts use project phonemes, natural classes or boundaries. Only a person can Apply.",
+  "helpPage": "# Author an environment\n\nStages an environment with explicitly declared left and right contexts in a Draft. Contexts use project phonemes and natural classes, plus the word boundary \u0060#\u0060 at the outer edge. An environment cannot hold a morpheme boundary or any other boundary marker, because the parser ignores such an environment and the form would be unconstrained. To condition a change on a morpheme boundary, use a phonological rule ([author a phonological rule](cmd:compose-author-phonological-rule)). Only a person can Apply.\n\nAdd \u0060--cite-source \u003Ctext\u003E\u0060 and optionally \u0060--cite-locator \u003Ctext\u003E\u0060 (at most 300 characters) to record the source on every operation this command produces.\n",
+  "usage": [
+    "Usage: motif compose-author-environment --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+  ],
+  "surface": "AdvancedAi",
+  "url": "https://motif-docs.pages.dev/reference/commands/compose-author-environment/"
+}

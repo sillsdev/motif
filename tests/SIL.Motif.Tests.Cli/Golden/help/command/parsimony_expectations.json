@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "parsimony expectations",
+  "slug": "parsimony-expectations",
+  "title": "Read Parsimony expectations",
+  "description": "Reads human-confirmed negatives and native Approved and Disapproved readings from the saved FieldWorks project. The versioned projection keeps surface negatives, exact reading negatives, and native Opinions separate for later Parsimony measures and paired verification.",
+  "helpPage": "# Read Parsimony expectations\n\n\u0060\u0060\u0060sh\nmotif parsimony expectations --project language.fwdata [--json]\n\u0060\u0060\u0060\n\nReads the saved project\u0027s \u0060parsimony-expectations/v1\u0060 projection. It lists human-confirmed [reviewed negatives](term:reviewed-negative) by case and revision, then reports FieldWorks\u0027 default-human Approved and Disapproved readings in separate sections. Native Disapproved Opinions reject one exact reading and do not become whole-word negatives.\n\nConflicts and unavailable identities are included in \u0060issues\u0060; callers must not count them as qualified evidence. This command reads the FieldWorks project and does not run PanGloss or change it.\n",
+  "usage": [
+    "Usage: motif parsimony expectations --project \u003Cfwdata\u003E [--json]"
+  ],
+  "surface": "AdvancedAi",
+  "url": "https://motif-docs.pages.dev/reference/commands/parsimony-expectations/"
+}

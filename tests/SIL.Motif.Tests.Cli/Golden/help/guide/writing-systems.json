@@ -1,0 +1,9 @@
+{
+  "kind": "guide",
+  "code": "writing-systems",
+  "slug": "writing-systems",
+  "title": "Writing systems in the window",
+  "description": "Motif uses the writing-system settings saved in the Baseline when it displays project language text. Text keeps its FieldWorks direction and style size in the window.",
+  "helpPage": "# Writing systems in the window\n\nMotif uses the writing-system settings saved in the Baseline when it displays project language text. Text keeps its FieldWorks direction and style size in the window.\n\nMost word forms, glosses and interlinear fields use the **Normal** style. A line in **Texts** uses the source paragraph\u0027s style. Motif includes Andika, Charis SIL, Doulos SIL and Gentium Plus, and prefers an installed copy of those fonts when it is available. It treats **Charis** and **Charis SIL** as names for the same family. If another requested font is missing, Motif uses an available fallback and shows one quiet notice the first time it draws text in that writing system.\n\nIn FieldWorks, change a writing system\u0027s font, font features or direction under **Format \u203A Set up Vernacular Writing Systems\u2026** or **Format \u203A Set up Analysis Writing Systems\u2026**. Choose the **Font** or **General** tab. Change style-specific fonts and sizes under **Format \u203A Styles\u2026**.\n\nCapture a new [Baseline](term:baseline) after changing these settings so Motif reads the saved values. [Show writing systems](cmd:writing-systems) lists the values Motif recorded.\n",
+  "url": "https://motif-docs.pages.dev/guide/writing-systems/"
+}

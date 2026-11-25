@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "compose-add-source",
+  "slug": "compose-add-source",
+  "title": "Add a Source",
+  "description": "Stages a new Source in the project\u0027s Motif Sources list, which the first one creates. Nothing is written until a person applies the pending changes.",
+  "helpPage": "# Add a Source\n\nStage a new Source in the project\u0027s Motif Sources list. The first one creates the list. The intent gives the id, name, versification, Context and kind; nothing is written until a person applies the pending changes.\n\n\u0060\u0060\u0060sh\nmotif compose-add-source --project language.fwdata --draft pending --intent \u0027{\u0022id\u0022:\u0022WEB\u0022,\u0022name\u0022:\u0022World English Bible\u0022,\u0022versification\u0022:\u0022English\u0022,\u0022context\u0022:\u0022MAT-JHN\u0022,\u0022kind\u0022:\u0022Paratext\u0022}\u0027\n\u0060\u0060\u0060\n\nThe command refuses an id that is empty, has spaces, is in use or was removed (a removed Source is restored, never re-added), a versification Motif does not know, and a Context that does not read in it. To stage a Source and apply it in one step use \u0060motif source add --apply\u0060.\n",
+  "usage": [
+    "Usage: motif compose-add-source --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+  ],
+  "surface": "AdvancedAi",
+  "url": "https://motif-docs.pages.dev/reference/commands/compose-add-source/"
+}

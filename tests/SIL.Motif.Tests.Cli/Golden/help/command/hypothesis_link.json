@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "hypothesis link",
+  "slug": "hypothesis-link",
+  "title": "Link a hypothesis",
+  "description": "Links a hypothesis to the Proposals that carry its rule change and to the Guide section it changed, or states why no Guide section changed.",
+  "helpPage": "# Link a hypothesis\n\n\u0060hypothesis link\u0060 links a hypothesis to the Proposals that carry its rule change and to the Guide section it changed, or states why no Guide section changed.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif hypothesis link H-12 --project \u003Cfwdata\u003E --proposal \u003CproposalId\u003E --guide GDR-8 --guide-section Examples\n\u0060\u0060\u0060\n\n\u0060--proposal\u0060 takes one or more Proposal ids separated by commas. \u0060--guide\u0060 and \u0060--guide-section\u0060 go together; \u0060--guide-none\u0060 gives the reason no Guide section changed and excludes them. A Proposal is not looked up, because Proposals can be archived.\n\n## Related commands\n\n- [Check a change\u0027s neighbours](cmd:hypothesis%20neighbours) is the check that runs before any new object.\n",
+  "usage": [
+    "Usage: motif hypothesis link \u003CH-n\u003E --project \u003Cfwdata\u003E [--proposal \u003Cid,...\u003E] [--guide \u003CGDR-n\u003E --guide-section \u003Ctext\u003E | --guide-none \u003Creason\u003E] [--json]"
+  ],
+  "surface": "Released",
+  "url": "https://motif-docs.pages.dev/reference/commands/hypothesis-link/"
+}

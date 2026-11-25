@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "source show",
+  "slug": "source-show",
+  "title": "Show one Source",
+  "description": "Reads one Source: its Context as book and chapter ranges, how many chapters that is, its folder on this machine and its status.",
+  "helpPage": "# Show one Source\n\n\u0060source show \u003Cid\u003E\u0060 reads one Source from the current Baseline: its Context as book and chapter ranges, how many chapters that is, its status, and the folder recorded for it on this machine (or none). The id is matched ignoring case. A Removed Source can still be shown.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif source show --project Koro.fwdata WEB --json\n\u0060\u0060\u0060\n\nThe folder lives in a per-user local file and is never part of the project.\n\n## Related commands\n\n- [List Sources](cmd:source%20list) lists every Source.\n- [Place a chapter](cmd:source%20where) says where a chapter sits.\n",
+  "usage": [
+    "Usage: motif source show --project \u003Cfwdata\u003E \u003Cid\u003E [--json]"
+  ],
+  "surface": "AdvancedAi",
+  "url": "https://motif-docs.pages.dev/reference/commands/source-show/"
+}

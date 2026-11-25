@@ -1,0 +1,9 @@
+{
+  "kind": "term",
+  "code": "overview",
+  "slug": "overview",
+  "title": "The latest stored evidence",
+  "description": "The Overview presents project counts and measurements already recorded by Motif. Reading it does not start a Refresh or a parse.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/terms/overview/"
+}

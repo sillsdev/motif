@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "compose-edit-lexical-note",
+  "slug": "compose-edit-lexical-note",
+  "title": "Edit lexical notes",
+  "description": "Stages an entry Note or a named sense note, checking the current text separately in each writing system. Record example words for an affix and its allomorphs in the entry Note; only a person can Apply.",
+  "helpPage": "Stages an entry Note or one of the named sense notes shown in FieldWorks Lexicon Edit.\n\n\u0060\u0060\u0060\nmotif compose-edit-lexical-note --project language.fwdata --draft \u003Cname\u003E \\\n  --intent \u0027{\u0022target\u0022:\u0022\u003CentryId\u003E\u0022,\u0022field\u0022:\u0022note\u0022,\u0022alternatives\u0022:[{\u0022writingSystem\u0022:\u0022en\u0022,\u0022expectedText\u0022:\u0022\u0022,\u0022text\u0022:\u0022\u003Cexample word and explanation\u003E\u0022}]}\u0027\n\u0060\u0060\u0060\n\n\u0060field\u0060 chooses a FieldWorks field:\n\n| Value | FieldWorks name | Target |\n| --- | --- | --- |\n| \u0060note\u0060 | Note | Entry |\n| \u0060anthropology-note\u0060 | Anthropology Note | Sense |\n| \u0060discourse-note\u0060 | Discourse Note | Sense |\n| \u0060general-note\u0060 | General Note | Sense |\n| \u0060grammar-note\u0060 | Grammar Note | Sense |\n| \u0060phonology-note\u0060 | Phonology Note | Sense |\n| \u0060semantics-note\u0060 | Semantics Note | Sense |\n| \u0060sociolinguistics-note\u0060 | Sociolinguistics Note | Sense |\n\nEach writing-system alternative must give \u0060writingSystem\u0060, \u0060expectedText\u0060 and \u0060text\u0060. The current plain text must match the expectation; canonically equivalent Unicode spellings compare equal. An empty expectation means no current text. Empty replacement text clears that alternative. A stale alternative refuses the entire edit, and unmentioned writing systems stay as they are.\n\nRecord example words for affix entries in Note. FieldWorks has no built-in Note on stem allomorphs, affix allomorphs or affix processes: record an allomorph\u0027s spelling and example in its owning entry\u0027s Note. No artificial allomorph field is created. Project custom fields and the separate Extended Notes collection are different fields.\n\nDry Run and Trial the Draft, then Finalize for review. Staging changes no saved FieldWorks data. Only a person can Apply.\n",
+  "usage": [
+    "Usage: motif compose-edit-lexical-note --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+  ],
+  "surface": "AdvancedAi",
+  "url": "https://motif-docs.pages.dev/reference/commands/compose-edit-lexical-note/"
+}
