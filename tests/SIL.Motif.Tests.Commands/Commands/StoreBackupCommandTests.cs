@@ -9,6 +9,7 @@ using SIL.Motif.Host;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Store;
 using Xunit;
+using SIL.Motif.Tests.TestFixtures;
 
 namespace SIL.Motif.Tests.Commands;
 
@@ -284,9 +285,7 @@ public sealed class StoreBackupCommandTests : IDisposable
     {
         AddMarker(Store, "kept");
         var backup = StoreBackupCommand.Backup(new StoreBackupRequest(Project, Folder("b1"))).Value!;
-        AddMarker(Store, "later");
-        File.WriteAllText(Store + "-wal", "wal-bytes");
-        File.WriteAllText(Store + "-shm", "shm-bytes");
+        CommitOnlyToTheWal("later");
 
         var result = StoreBackupCommand.Restore(new StoreRestoreRequest(Project, backup.BackupDirectory));
 
@@ -312,7 +311,7 @@ public sealed class StoreBackupCommandTests : IDisposable
         Assert.Equal(["kept"], Markers(Store));
     }
 
-    [Fact]
+    [RequiresSymbolicLinkFact]
     public void ABackupToAFolderReachedThroughASymlinkIntoAnOwnedFolderIsRefusedAndWritesNothing()
     {
         Directory.CreateDirectory(TrialRoot);
@@ -339,7 +338,7 @@ public sealed class StoreBackupCommandTests : IDisposable
         Assert.Empty(Directory.GetFileSystemEntries(backups));
     }
 
-    [Fact]
+    [RequiresSymbolicLinkFact]
     public void ABackupToAFolderBesideTheOwnedOnesThroughASymlinkIsStillAllowed()
     {
         var outside = Made("outside");
@@ -512,9 +511,28 @@ public sealed class StoreBackupCommandTests : IDisposable
     private sealed class SimulatedCrash : Exception;
 
     private static readonly string[] RestoreSteps =
-        ["staged", "owned-quarantined", "owned-swapped", "sidecars-moved", "old-store-moved", "store-swapped"];
+        ["staged", "checkpointed", "owned-quarantined", "owned-swapped", "sidecars-moved", "old-store-moved", "store-swapped"];
 
     public static TheoryData<string> Steps() => new(RestoreSteps);
+
+    private SqliteConnection? _walHolder;
+
+    /// <summary>Commits a row held only in the WAL: auto-checkpoint off, connection kept open.</summary>
+    private void CommitOnlyToTheWal(string marker)
+    {
+        _walHolder = Open(Store, SqliteOpenMode.ReadWrite);
+        using (var pragma = _walHolder.CreateCommand())
+        {
+            pragma.CommandText = "PRAGMA journal_mode = WAL; PRAGMA wal_autocheckpoint = 0;";
+            pragma.ExecuteNonQuery();
+        }
+        using var command = _walHolder.CreateCommand();
+        command.CommandText = "INSERT INTO StoreRelocations (OldFwDataPath, NewFwDataPath, RelocatedUtc, Basis) " +
+            "VALUES ($marker, 'x', 't', 'name');";
+        command.Parameters.AddWithValue("$marker", marker);
+        command.ExecuteNonQuery();
+        Assert.True(new FileInfo(Store + "-wal").Length > 0, "the committed row must be only in the WAL");
+    }
 
     private StoreBackupResponse BackupThenDiverge()
     {
@@ -522,12 +540,10 @@ public sealed class StoreBackupCommandTests : IDisposable
         File.WriteAllText(Config, "old-config");
         WriteTrial("a.json", "A1");
         var backup = StoreBackupCommand.Backup(new StoreBackupRequest(Project, Folder("b1"))).Value!;
-        AddMarker(Store, "later");
         File.WriteAllText(Config, "new-config");
         WriteTrial("a.json", "A2");
         WriteTrial("c.json", "C");
-        File.WriteAllText(Store + "-wal", "");
-        File.WriteAllText(Store + "-shm", "");
+        CommitOnlyToTheWal("later");
         return backup;
     }
 
@@ -557,9 +573,10 @@ public sealed class StoreBackupCommandTests : IDisposable
         switch (step)
         {
             case "sidecars-moved":
-                // The old store is live without its WAL, which is already in the pre-restore folder.
+                // The WAL is aside and its committed row is in the live store: the checkpoint ran first.
                 Assert.False(File.Exists(Store + "-wal"));
                 Assert.True(File.Exists(Path.Combine(moved.Single(), "moved", "store.sqlite-wal")));
+                Assert.Equal(["kept", "later"], Markers(Store));
                 Assert.Equal(["ok"], Scalars(Store, "PRAGMA integrity_check;"));
                 break;
             case "old-store-moved":
@@ -580,6 +597,11 @@ public sealed class StoreBackupCommandTests : IDisposable
         var rerun = StoreBackupCommand.Restore(new StoreRestoreRequest(Project, backup.BackupDirectory));
 
         Assert.True(rerun.Succeeded, rerun.Refusal?.Message);
+        // One pre-restore folder holds the whole old set, and nothing marks it unfinished.
+        var folders = Directory.GetDirectories(backups, "pre-restore-*");
+        Assert.Single(folders);
+        Assert.False(File.Exists(Path.Combine(folders[0], "restore-incomplete")));
+        Assert.Equal(folders[0], rerun.Value!.PreRestoreDirectory);
         Assert.Equal(["kept"], Markers(Store));
         Assert.Equal("old-config", File.ReadAllText(Config));
         Assert.Equal("A1", File.ReadAllText(Path.Combine(TrialRoot, "a.json")));
@@ -607,7 +629,7 @@ public sealed class StoreBackupCommandTests : IDisposable
         Assert.Equal("C", File.ReadAllText(Path.Combine(TrialRoot, "c.json")));
         Assert.True(File.Exists(Store + "-wal"));
         Assert.Empty(Directory.GetFiles(_root, "*.restore-*"));
-        if (step != "staged") Assert.Contains("pre-restore-", result.Refusal!.Message, StringComparison.Ordinal);
+        if (step is not ("staged" or "checkpointed")) Assert.Contains("pre-restore-", result.Refusal!.Message, StringComparison.Ordinal);
         Assert.True(ProjectStoreCommand.Run(Project, MotifProductVersion.CurrentText,
             (_, _) => CommandOutcome<string>.Success("opened")).Succeeded);
     }
@@ -672,6 +694,7 @@ public sealed class StoreBackupCommandTests : IDisposable
 
     public void Dispose()
     {
+        _walHolder?.Dispose();
         SqliteConnection.ClearAllPools();
         try { Directory.Delete(_root, recursive: true); } catch (IOException) { }
     }
