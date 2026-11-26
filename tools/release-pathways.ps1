@@ -190,6 +190,9 @@ foreach ($fixture in $fixtureMap.Keys) {
         TextId = [string] $text[0].guid
     }
     $cliProjectPaths[$fixture] = $cliProjects[$fixture].ProjectPath
+    # The synthetic projects share a language, so the default tag collides with the App twin's.
+    [void] (Invoke-Cli @('project', 'tag', '--set', ('cli' + @($fixtureMap.Keys).IndexOf($fixture)),
+        '--project', $cliProjects[$fixture].ProjectPath))
 }
 
 if ([OperatingSystem]::IsWindows()) {
@@ -198,6 +201,7 @@ if ([OperatingSystem]::IsWindows()) {
     if ($lockedText.Count -ne 1) { throw 'The Windows lock sample has no unique Text.' }
     $lockedProject = [System.IO.Path]::GetFullPath([string] $locked.projectPath)
     $extraProjectPaths['windows-apply-lock'] = $lockedProject
+    [void] (Invoke-Cli @('project', 'tag', '--set', 'lock', '--project', $lockedProject))
     Seed-Selection $lockedProject ([string] $lockedText[0].guid)
     Seed-IncorrectSpelling $lockedProject
 }
