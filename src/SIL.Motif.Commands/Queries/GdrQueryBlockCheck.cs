@@ -71,6 +71,8 @@ public static class GdrQueryBlockCheck
         // A run line the block parser already refused has a code; running it would only say the same again.
         if (source.Diagnostics.FirstOrDefault(d => d.Kind == GuideBlockDiagnosticKind.InvalidRun) is { } invalid)
             return Made(GdrQueryBlockStatus.Refused, invalid.RefusalCode ?? RefusalCodes.GuideQueryRunInvalid, invalid.Message);
+        // Answer a line the parser turns down before starting the timed task, so load cannot turn it into a timeout.
+        if (RefusedBeforeRunning(query) is { } early) return Made(early.Status, early.Code, early.Message);
         var clock = System.Diagnostics.Stopwatch.StartNew();
         using var cancellation = new CancellationTokenSource();
         var work = Task.Run(() => Evaluate(query, projectPath, parserPath, cancellation.Token, seams), CancellationToken.None);
@@ -98,6 +100,19 @@ public static class GdrQueryBlockCheck
         Func<FormsQueryRequest, CommandOutcome<FormsQueryResponse>>? Forms = null);
 
     private sealed record Outcome(string Status, string? Code, string Message, long? Rows = null, bool? Complete = null, string? Build = null);
+
+    private static Outcome? RefusedBeforeRunning(GuideQueryDefinition query)
+    {
+        if (!QueryRunLine.TryParseRun(query.Run, out var line, out var refusal))
+            return new Outcome(GdrQueryBlockStatus.Refused, refusal.Code, refusal.Message);
+        if (line.Corpus is not null) return null;
+        if (line.Verb != QueryRunLine.QueryVerb || line.Query is null)
+            return new Outcome(GdrQueryBlockStatus.Refused, RefusalCodes.GuideQueryRunInvalid,
+                "a motif group line is not run by the check; use a motif query line.");
+        return line.AsOf is not null
+            ? new Outcome(GdrQueryBlockStatus.Refused, RefusalCodes.GuideQueryRunInvalid, "a Guide query reads the Baseline and takes no --as-of of its own.")
+            : null;
+    }
 
     private static Outcome Evaluate(GuideQueryDefinition query, string projectPath, string? parserPath, CancellationToken cancellationToken,
         Seams? seams)
