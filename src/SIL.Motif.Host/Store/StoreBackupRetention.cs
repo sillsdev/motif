@@ -27,6 +27,9 @@ public sealed record StoreBackupRetentionPolicy(int MaxCount, long MaxBytes)
 /// </remarks>
 public static class StoreBackupRetention
 {
+    /// <summary>The suffix of the marker written beside a <c>.bak</c> kept because its backup did not verify; it is never evicted.</summary>
+    public const string UnverifiedMarker = ".unverified";
+
     private static readonly Regex Name = new(
         @"^(?<reason>[a-z]+(?:-[a-z]+)*)-schema(?<schema>[0-9]+)-(?<stamp>[0-9]{8}T[0-9]{9}Z)(?:-(?<n>[0-9]+))?\z",
         RegexOptions.CultureInvariant | RegexOptions.Compiled);
@@ -90,7 +93,7 @@ public static class StoreBackupRetention
             var match = pattern.Match(Path.GetFileName(file));
             if (!match.Success || !int.TryParse(match.Groups["schema"].Value, NumberStyles.None, CultureInfo.InvariantCulture, out var schema))
                 continue;
-            if (schema > currentSchema) continue;
+            if (schema > currentSchema || File.Exists(file + UnverifiedMarker)) continue;
             long bytes = 0;
             DateTime written;
             try

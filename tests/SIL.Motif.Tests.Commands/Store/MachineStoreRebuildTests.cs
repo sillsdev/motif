@@ -120,6 +120,52 @@ public sealed class MachineStoreRebuildTests : IDisposable
     }
 
     [Fact]
+    public void AFailureAfterTheCarryLeavesTheOldStoreWithItsTagsAndTheNextOpenSucceeds()
+    {
+        MakeStoreAt(MachineSchema.CurrentSchema - 1);
+        using (var raw = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = Db, Pooling = false }.ToString()))
+        {
+            raw.Open();
+            using var command = raw.CreateCommand();
+            command.CommandText = "INSERT INTO KnownProjects (WorkspaceKey, FullFwDataPath, LastSeenUtc) VALUES ('k', '/p/a.fwdata', '2026-01-01T00:00:00Z');";
+            command.ExecuteNonQuery();
+        }
+        var before = File.ReadAllBytes(Db);
+        MotifSqliteStore.StepHook = step => { if (step == "carried") throw new IOException("injected"); };
+        try { Assert.Throws<MotifStoreUpgradeFailedException>(() => MachineDatabase.Open(_root)); }
+        finally { MotifSqliteStore.StepHook = null; }
+
+        Assert.Equal(before, File.ReadAllBytes(Db));
+        Assert.False(File.Exists(Db + ".rebuilding"));
+
+        using var machine = MachineDatabase.Open(_root);
+        using var connection = machine.OpenConnection();
+        Assert.Equal(MachineSchema.CurrentSchema, Scalar(connection, "PRAGMA user_version;"));
+        Assert.Equal(1, Scalar(connection, "SELECT COUNT(*) FROM KnownProjects;"));
+    }
+
+    [Fact]
+    public void ACrashAfterTheOldStoreWasRemovedIsFinishedByTheNextOpenWithItsCarriedRows()
+    {
+        MakeStoreAt(MachineSchema.CurrentSchema - 1);
+        using (var raw = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = Db, Pooling = false }.ToString()))
+        {
+            raw.Open();
+            using var command = raw.CreateCommand();
+            command.CommandText = "INSERT INTO KnownProjects (WorkspaceKey, FullFwDataPath, LastSeenUtc) VALUES ('k', '/p/a.fwdata', '2026-01-01T00:00:00Z');";
+            command.ExecuteNonQuery();
+        }
+        MotifSqliteStore.StepHook = step => { if (step == "old-removed") throw new InvalidOperationException("crash"); };
+        try { Assert.Throws<InvalidOperationException>(() => MachineDatabase.Open(_root)); }
+        finally { MotifSqliteStore.StepHook = null; }
+        Assert.False(File.Exists(Db));
+
+        using var machine = MachineDatabase.Open(_root);
+        using var connection = machine.OpenConnection();
+        Assert.Equal(1, Scalar(connection, "SELECT COUNT(*) FROM KnownProjects;"));
+    }
+
+    [Fact]
     public void ACurrentMachineStoreTakesNoBackup()
     {
         using (MachineDatabase.Open(_root)) { }

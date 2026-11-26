@@ -773,6 +773,31 @@ public sealed class MotifStoreUpgradeTests : IDisposable
     }
 
     [Fact]
+    public void AnUnverifiedBackupsOriginalSurvivesRetentionEvenWhenTheCapIsExceededAndItIsTheOldest()
+    {
+        CreateSchema49();
+        File.SetLastWriteTimeUtc(Source, new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+        var backups = Path.Combine(_root, "project.motif-backups");
+        foreach (var n in new[] { 1, 2, 3 })
+        {
+            var older = Path.Combine(backups, $"pre-upgrade-schema48-2026010{n}T000000000Z");
+            Directory.CreateDirectory(older);
+            File.WriteAllText(Path.Combine(older, "motif-backup.json"), "{\"schemaVersion\":48}");
+        }
+        MotifSqliteStore.StepHook = step =>
+        {
+            if (step != "store-swapped") return;
+            var store = PreUpgradeBackups.StoreOf(Source);
+            using var stream = new FileStream(store, FileMode.Open);
+            stream.SetLength(stream.Length / 2);
+        };
+        try { using var db = MotifDatabase.OpenOwned(Source, Project, MotifSchema.CurrentSchema, new Version(1, 0)); }
+        finally { MotifSqliteStore.StepHook = null; }
+        Assert.True(File.Exists(Source + ".schema49.bak"));
+        Assert.True(File.Exists(PreUpgradeBackups.StoreOf(Source)));
+    }
+
+    [Fact]
     public void ExistingBackupIsNeverOverwritten()
     {
         CreateSchema49();

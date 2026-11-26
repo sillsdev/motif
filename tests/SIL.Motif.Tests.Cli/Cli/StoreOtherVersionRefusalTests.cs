@@ -31,6 +31,15 @@ public sealed class StoreOtherVersionRefusalTests : IDisposable
         Assert.True(result.Succeeded);
         Assert.Equal(MotifSchema.CurrentSchema - 1,
             MotifDatabase.ReadStoreFileFacts(SIL.Motif.Tests.TestFixtures.PreUpgradeBackups.StoreOf(storePath)).SchemaVersion);
+        using var backup = new Microsoft.Data.Sqlite.SqliteConnection(new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder
+        {
+            DataSource = SIL.Motif.Tests.TestFixtures.PreUpgradeBackups.StoreOf(storePath),
+            Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadOnly, Pooling = false,
+        }.ToString());
+        backup.Open();
+        using var check = backup.CreateCommand();
+        check.CommandText = "PRAGMA integrity_check;";
+        Assert.Equal("ok", check.ExecuteScalar());
     }
 
     [Fact]
