@@ -2291,8 +2291,8 @@ try
                 flags.ContainsKey("as-of") && positionals[0] != "show")
                 return Usage(UsageLineFor("guide list") + " OR " + UsageLineFor("guide show") + " OR " + UsageLineFor("guide check") +
                     " OR " + UsageLineFor("guide edit") + " OR " + UsageLineFor("guide add") + " OR " + UsageLineFor("guide decide"), asJson);
-            if (positionals[0] == "check" && (flags.Keys.Any(key => key is not ("project" or "json" or "autonomous" or "no-run" or "timeout" or "format")) ||
-                    flags.GetValueOrDefault("no-run", "true") != "true" || flags.TryGetValue("timeout", out var gdrTimeoutText) &&
+            if (positionals[0] == "check" && (flags.Keys.Any(key => key is not ("project" or "json" or "autonomous" or "no-run" or "timeout" or "format" or "build")) ||
+                    flags.GetValueOrDefault("no-run", "true") != "true" || flags.ContainsKey("no-run") && flags.ContainsKey("build") || flags.TryGetValue("timeout", out var gdrTimeoutText) &&
                     (!int.TryParse(gdrTimeoutText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var gdrTimeout) || gdrTimeout < 1)))
                 return Usage(UsageLineFor("guide check"), asJson);
             var gdrAsOf = flags.GetValueOrDefault("as-of");
@@ -2311,7 +2311,8 @@ try
             {
                 "list" => RenderCommand(GdrQuery.List(new GdrListRequest(gdrProject))),
                 "check" => RenderCommand(GdrQuery.Check(new GdrCheckRequest(gdrProject, RunBlocks: !flags.ContainsKey("no-run"),
-                    BlockTimeoutSeconds: flags.TryGetValue("timeout", out var gdrBlockTimeout) ? int.Parse(gdrBlockTimeout, CultureInfo.InvariantCulture) : 60),
+                    BlockTimeoutSeconds: flags.TryGetValue("timeout", out var gdrBlockTimeout) ? int.Parse(gdrBlockTimeout, CultureInfo.InvariantCulture) : 60,
+                    BuildIndex: flags.ContainsKey("build")),
                     JobRunnerLaunchOptions.ResolveParserPath())),
                 _ => RenderCommand(GdrQuery.Show(new GdrShowRequest(gdrProject, positionals[1], AsOf: gdrAsOf))),
             };
@@ -4255,7 +4256,7 @@ static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyLis
         if (token.StartsWith("--", StringComparison.Ordinal))
         {
             var name = token[2..];
-            if (name is "latest" or "wait-terminal" or "word-results" or "refresh-report" or "trace" or "md" or "apply" or "bulk" or "effects" or "no-background" or "no-base-sample" or "touched" or "siblings" or "no-siblings" or "verbose" or "replace" or "skip-refused" or "current" or "tokens" or "strict" or "fold-case" or "split-hyphens" or "thorough" or "with-counts" or "no-run")
+            if (name is "latest" or "wait-terminal" or "word-results" or "refresh-report" or "trace" or "md" or "apply" or "bulk" or "effects" or "no-background" or "no-base-sample" or "touched" or "siblings" or "no-siblings" or "verbose" or "replace" or "skip-refused" or "current" or "tokens" or "strict" or "fold-case" or "split-hyphens" or "thorough" or "with-counts" or "no-run" or "build")
             {
                 flags[name] = "true";
                 continue;

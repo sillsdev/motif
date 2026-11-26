@@ -1741,12 +1741,16 @@ public static class CommandTextRenderer
             {
                 var place = block.Section is { Length: > 0 } ? $"{block.Gdr}, {block.Section}" : block.Gdr;
                 var count = block.Rows is { } rows ? $"{(block.Complete == false ? "at least " : "")}{rows.ToString("N0", CultureInfo.InvariantCulture)} row(s)" : "no count";
+                // A group-by block's rows are groups: the words and tokens beneath them say how much evidence there is.
+                if (block.Words is { } words) count += $", {words.ToString("N0", CultureInfo.InvariantCulture)} word(s)";
+                if (block.Tokens is { } tokens) count += $", {tokens.ToString("N0", CultureInfo.InvariantCulture)} token(s)";
+                if (block.IndexBuilt) count += " (built the parse index)";
                 var detail = block.Status switch
                 {
                     GdrQueryBlockStatus.Ok => count,
                     GdrQueryBlockStatus.Skipped => "not run",
                     GdrQueryBlockStatus.Refused => block.Code ?? "refused",
-                    GdrQueryBlockStatus.NotBuilt => "not built",
+                    GdrQueryBlockStatus.NotBuilt => "not built; run motif guide check --build",
                     _ => "failed",
                 };
                 text.AppendLine($"  {block.Id}  {place}  {block.Status}  {detail}  {block.Milliseconds.ToString("0.#", CultureInfo.InvariantCulture)} ms");
