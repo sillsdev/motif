@@ -2,7 +2,6 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Text.RegularExpressions;
 using SIL.LCModel;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
@@ -19,6 +18,12 @@ internal sealed class RecordImportBatchTooLargeException(int files, int operatio
 {
     public int Files { get; } = files;
     public int Operations { get; } = operations;
+}
+
+/// <summary>Files the scratch pass showed must be refused with a file already refused; the folder is planned again on a clean copy without them.</summary>
+internal sealed class RecordImportCascadeException(IReadOnlyDictionary<string, (string Code, string Reason)> refused) : Exception("The folder needs another pass.")
+{
+    public IReadOnlyDictionary<string, (string Code, string Reason)> Refused { get; } = refused;
 }
 
 public static partial class RecordImportCommand
@@ -49,6 +54,8 @@ public static partial class RecordImportCommand
         public string? Reason { get; set; }
         public int Changes { get; set; }
         public int RefusedChanges { get; set; }
+        /// <summary>The batch objects this file's new records and owned objects are.</summary>
+        public IReadOnlyCollection<Guid> Owns { get; set; } = [];
         public int Operations => Status is CreatedStatus or UpdatedStatus ? Lowering?.Operations.Count ?? 0 : 0;
 
         public void Refuse(Refusal refusal) => Refuse(refusal.Code, refusal.Message);
@@ -100,11 +107,13 @@ public static partial class RecordImportCommand
                 ("file", Path.GetFileName(report)));
 
         var inputs = listed.Value!.Files.Select(item => ReadInput(item.Relative, item.Full)).ToList();
-        var excluded = new Dictionary<string, string>(StringComparer.Ordinal);
+        var excluded = new Dictionary<string, (string Code, string Reason)>(StringComparer.Ordinal);
         CommandOutcome<BatchPlan> read;
+        RecordImportCascadeException? cascade;
         // A file whose operations fail unexpectedly is left out and the folder is planned again on a clean copy.
         while (true)
         {
+            cascade = null;
             read = ProjectStoreCommand.RunOperation(request.ProjectPath, () =>
             ProjectReadCache.ReadSaved(located.Value!, (_, cache) =>
             {
@@ -126,9 +135,21 @@ public static partial class RecordImportCommand
                 {
                     return CommandOutcome<BatchPlan>.Refused(TooLarge(exception.Files, exception.Operations));
                 }
+                catch (RecordImportCascadeException exception)
+                {
+                    cascade = exception;
+                    return CommandOutcome<BatchPlan>.Refused(new Refusal(RefusalCodes.RecordImportPlanRefused, FailureReason.Refused,
+                        "The folder needs another pass."));
+                }
             }));
+            if (cascade is not null)
+            {
+                foreach (var (path, why) in cascade.Refused) excluded.TryAdd(path, why);
+                continue;
+            }
             if (!read.Succeeded && read.Refusal!.Facts.TryGetValue("file", out var culprit) &&
-                excluded.TryAdd(culprit, "The operations of this file failed unexpectedly on a scratch copy, so it was left out and the rest of the folder went on."))
+                excluded.TryAdd(culprit, (RefusalCodes.RecordImportPlanRefused,
+                    "The operations of this file failed unexpectedly on a scratch copy, so it was left out and the rest of the folder went on.")))
                 continue;
             break;
         }
@@ -269,15 +290,40 @@ public static partial class RecordImportCommand
     // ------------------------------------------------------------------ planning
 
     private static BatchPlan PlanBatch(LcmCache cache, IReadOnlyList<DirInput> inputs, bool validate,
-        IReadOnlyDictionary<string, string>? excluded = null)
+        IReadOnlyDictionary<string, (string Code, string Reason)>? excluded = null)
     {
         var schemas = new SchemaSet(cache);
         var files = new List<DirFile>(inputs.Count);
         var digest = new StringBuilder();
         var operations = 0;
-        foreach (var input in inputs)
+
+        // What each file creates is read first, so a reference in any file can name it.
+        var classes = new Dictionary<Guid, string>();
+        var creators = new Dictionary<Guid, string>();
+        var owned = new Dictionary<string, IReadOnlyDictionary<Guid, string>>(StringComparer.Ordinal);
+        foreach (var input in inputs.Where(item => item.Text is not null))
         {
-            var file = new DirFile(input);
+            if (KindName(input.Text!) is not { } kind || schemas.For(kind) is not { } tools) continue;
+            var made = tools.Importer.NewObjects(input.Text!);
+            owned[input.Path] = made;
+            foreach (var (guid, cls) in made)
+                if (classes.TryAdd(guid, cls)) creators[guid] = input.Path;
+        }
+
+        var batch = new RecordBatch(classes, new Dictionary<Guid, string>());
+        var planned = PlanFiles(cache, inputs, schemas, batch, classes);
+        var removed = planned.SelectMany((item, index) => (item?.Plan.Removed ?? []).Select(guid => (guid, inputs[index].Path)))
+            .GroupBy(item => item.guid).ToDictionary(group => group.Key, group => group.First().Path);
+        if (removed.Count > 0)
+        {
+            batch = new RecordBatch(classes, removed);
+            planned = PlanFiles(cache, inputs, schemas, batch, classes);
+        }
+
+        for (var index = 0; index < inputs.Count; index++)
+        {
+            var input = inputs[index];
+            var file = new DirFile(input) { Owns = owned.TryGetValue(input.Path, out var mine) ? mine.Keys.ToList() : [] };
             files.Add(file);
             digest.Append(input.Path).Append('|').Append(input.Sha).Append('|');
             if (input.Text is null)
@@ -286,7 +332,7 @@ public static partial class RecordImportCommand
                 digest.Append("unreadable\n");
                 continue;
             }
-            file.Planned = Plan(cache, input.Text, validate: false, schemas);
+            file.Planned = planned[index];
             file.Lowering = file.Planned?.Lowering;
             digest.Append(file.Planned?.Digest).Append('\n');
             operations += file.Planned?.Lowering.Operations.Count ?? 0;
@@ -298,13 +344,15 @@ public static partial class RecordImportCommand
 
         foreach (var file in files.Where(file => file.Input.Text is not null))
         {
-            if (excluded is not null && excluded.TryGetValue(file.Input.Path, out var why)) file.Refuse(RefusalCodes.RecordImportPlanRefused, why);
+            if (excluded is not null && excluded.TryGetValue(file.Input.Path, out var why)) file.Refuse(why.Code, why.Reason);
             else Classify(file);
         }
         RefuseRecordTwice(files);
         RefuseDuplicateGuids(files);
-        RefuseReferencesToNewRecords(files);
+        RefuseBatchCycles(files, creators);
+        RefuseReferencesToRefused(files, creators);
         var units = result.Staged.Where(file => file.Lowering!.Operations.Count > 0).ToList();
+        DependAcrossFiles(units);
         RecordLowering[] validated;
         try { validated = ValidateOnScratch(cache, units.Select(file => (file.Planned!.Plan, file.Lowering!)).ToList()); }
         catch (RecordImportScratchException exception) when (exception.Unit >= 0)
@@ -323,8 +371,110 @@ public static partial class RecordImportCommand
             file.RefusedChanges = Refusals(file.Planned!, file.Lowering).Count;
             if (file.Lowering.Operations.Count == 0 && file.RefusedChanges > 0) RefuseWithFirst(file);
         }
-        RefuseReferencesToNewRecords(files);
+        var more = new Dictionary<string, (string Code, string Reason)>(StringComparer.Ordinal);
+        foreach (var file in files.Where(item => item.Status == RefusedStatus && item.Owns.Count > 0 && item.Code != RefusalCodes.RecordImportBatchCycle))
+            foreach (var other in DependentsOf(file, files, creators).Where(item => item.Status is CreatedStatus or UpdatedStatus))
+                more.TryAdd(other.Input.Path, (RefusalCodes.RecordImportReferenceToRefused, RefusedBecause(file, other)));
+        if (more.Count > 0) throw new RecordImportCascadeException(more);
         return result;
+    }
+
+    private static Planned?[] PlanFiles(LcmCache cache, IReadOnlyList<DirInput> inputs, SchemaSet schemas, RecordBatch batch,
+        IReadOnlyDictionary<Guid, string> classes) =>
+        inputs.Select(input => input.Text is null ? null : Plan(cache, input.Text, validate: false, schemas, batch.For(input.Path), classes)).ToArray();
+
+    /// <summary>Each other file that names an object this file creates.</summary>
+    private static IEnumerable<DirFile> DependentsOf(DirFile creator, IReadOnlyList<DirFile> files, IReadOnlyDictionary<Guid, string> creators) =>
+        files.Where(file => file != creator && NamedByFile(file, creators).Any(target => creator.Owns.Contains(target)));
+
+    /// <summary>The new objects of other files that a file's plan refers to.</summary>
+    private static IEnumerable<Guid> NamedByFile(DirFile file, IReadOnlyDictionary<Guid, string> creators) =>
+        (file.Planned?.Plan.BatchTargets ?? []).Where(guid => creators.TryGetValue(guid, out var by) && by != file.Input.Path);
+
+    private static string RefusedBecause(DirFile cause, DirFile file) => "This file refers to a new record of " + cause.Input.Path +
+        ", which was refused (" + (cause.Code ?? "refused") + "), so a link to it would dangle. Fix " + cause.Input.Path + " and import again.";
+
+    private static void RefuseReferencesToRefused(IReadOnlyList<DirFile> files, IReadOnlyDictionary<Guid, string> creators)
+    {
+        var changed = true;
+        while (changed)
+        {
+            changed = false;
+            foreach (var cause in files.Where(file => file.Status == RefusedStatus && file.Owns.Count > 0 && file.Code != RefusalCodes.RecordImportBatchCycle).ToList())
+                foreach (var file in DependentsOf(cause, files, creators).Where(item => item.Status is CreatedStatus or UpdatedStatus))
+                {
+                    file.Refuse(RefusalCodes.RecordImportReferenceToRefused, RefusedBecause(cause, file));
+                    changed = true;
+                }
+        }
+    }
+
+    /// <summary>
+    /// Refuses every file of a loop of variant or complex-form links between new records: FieldWorks does not hold an entry that
+    /// is its own variant or component (ILexEntryRef component-lexemes checked by LexEntryRef.CheckForCircularRefs).
+    /// </summary>
+    private static void RefuseBatchCycles(IReadOnlyList<DirFile> files, IReadOnlyDictionary<Guid, string> creators)
+    {
+        var byPath = files.Where(file => file.Status is CreatedStatus or UpdatedStatus).ToDictionary(file => file.Input.Path, StringComparer.Ordinal);
+        var edges = byPath.ToDictionary(pair => pair.Key, pair => ComponentTargets(pair.Value, creators).Where(byPath.ContainsKey).Distinct().ToList(),
+            StringComparer.Ordinal);
+        foreach (var group in StronglyConnected(edges).Where(group => group.Count > 1 || edges[group[0]].Contains(group[0])))
+            foreach (var path in group)
+                byPath[path].Refuse(RefusalCodes.RecordImportBatchCycle, "These files are variants or complex forms of each other in a loop (" +
+                    ListOf(group.Order(StringComparer.Ordinal)) + "), which FieldWorks does not allow. Break the loop in one of them.");
+    }
+
+    /// <summary>The files whose new records a file's variant or complex-form links name as components.</summary>
+    private static IEnumerable<string> ComponentTargets(DirFile file, IReadOnlyDictionary<Guid, string> creators)
+    {
+        foreach (var operation in file.Lowering!.Operations)
+        {
+            if (operation.After is not { ValueKind: JsonValueKind.Object } after) continue;
+            var named = new List<string?>();
+            if (after.TryGetProperty("component", out var one) && one.ValueKind == JsonValueKind.String) named.Add(one.GetString());
+            if (after.TryGetProperty("components", out var many) && many.ValueKind == JsonValueKind.Array)
+                named.AddRange(many.EnumerateArray().Select(item => item.GetString()));
+            foreach (var text in named)
+                if (CanonicalId.TryParse(text, out var id) && creators.TryGetValue(id.ToGuid(), out var path) && path != file.Input.Path)
+                    yield return path;
+        }
+    }
+
+    private static List<List<string>> StronglyConnected(IReadOnlyDictionary<string, List<string>> edges)
+    {
+        var index = 0;
+        var numbers = new Dictionary<string, int>(StringComparer.Ordinal);
+        var low = new Dictionary<string, int>(StringComparer.Ordinal);
+        var stack = new Stack<string>();
+        var onStack = new HashSet<string>(StringComparer.Ordinal);
+        var result = new List<List<string>>();
+        void Visit(string node)
+        {
+            numbers[node] = low[node] = index++;
+            stack.Push(node);
+            onStack.Add(node);
+            foreach (var next in edges[node])
+            {
+                if (!numbers.ContainsKey(next)) { Visit(next); low[node] = Math.Min(low[node], low[next]); }
+                else if (onStack.Contains(next)) low[node] = Math.Min(low[node], numbers[next]);
+            }
+            if (low[node] != numbers[node]) return;
+            var group = new List<string>();
+            string top;
+            do { top = stack.Pop(); onStack.Remove(top); group.Add(top); } while (top != node);
+            result.Add(group);
+        }
+        foreach (var node in edges.Keys.Order(StringComparer.Ordinal))
+            if (!numbers.ContainsKey(node)) Visit(node);
+        return result;
+    }
+
+    /// <summary>Makes each operation wait for the create of an object another file of the folder makes.</summary>
+    private static void DependAcrossFiles(IReadOnlyList<DirFile> units)
+    {
+        var creators = RecordChangeSetLowerer.Creators(units.SelectMany(file => file.Lowering!.Operations));
+        foreach (var file in units)
+            file.Lowering = file.Lowering! with { Operations = RecordChangeSetLowerer.AddDependencies(file.Lowering.Operations, creators) };
     }
 
     private static void Classify(DirFile file)
@@ -414,41 +564,6 @@ public static partial class RecordImportCommand
                 file.Refuse(new Refusal(RefusalCodes.RecordImportGuidDuplicateInBatch, FailureReason.Refused,
                     "GUID " + guid.ToString("D") + " is used by more than one new object (" + ListOf(list.Select(item => item.Input.Path)) +
                     "). Every new object needs its own GUID."));
-    }
-
-    private static readonly Regex OwnedGuid = new("guid:\\s*\"([0-9a-fA-F-]{36})\"", RegexOptions.Compiled);
-    private static readonly Regex LinkedGuid = new("/objects/([0-9a-fA-F-]{36})", RegexOptions.Compiled);
-
-    private static void RefuseReferencesToNewRecords(IReadOnlyList<DirFile> files)
-    {
-        var creators = files.Where(file => file.Status == CreatedStatus && file.Input.Text is not null).ToList();
-        if (creators.Count == 0) return;
-        var owners = new Dictionary<string, DirFile>(StringComparer.Ordinal);
-        var owned = new Dictionary<DirFile, HashSet<string>>();
-        foreach (var creator in creators)
-        {
-            var set = OwnedGuid.Matches(creator.Input.Text!).Select(m => m.Groups[1].Value.ToLowerInvariant()).ToHashSet(StringComparer.Ordinal);
-            owned[creator] = set;
-            foreach (var guid in set) owners.TryAdd(guid, creator);
-        }
-        foreach (var file in files.Where(file => file.Planned is not null && file.Input.Text is not null))
-        {
-            var mine = owned.TryGetValue(file, out var set) ? set : [];
-            var linked = LinkedGuid.Matches(file.Input.Text!).Select(m => m.Groups[1].Value.ToLowerInvariant()).Distinct();
-            var hit = linked.Where(guid => !mine.Contains(guid) && owners.TryGetValue(guid, out var other) && other != file)
-                .Select(guid => (Guid: guid, Creator: owners[guid])).FirstOrDefault();
-            if (hit.Creator is null) continue;
-            var reason = "This file refers to " + hit.Guid + ", which " + hit.Creator.Input.Path +
-                " creates in this folder. References between new records are not imported yet: apply " + hit.Creator.Input.Path + " first, then import this file.";
-            var lowering = file.Lowering ?? file.Planned!.Lowering;
-            if (file.Status == RefusedStatus || lowering.Operations.Count == 0)
-            {
-                file.Refuse(new Refusal(RefusalCodes.RecordImportReferenceToNewInBatch, FailureReason.Refused, reason));
-                continue;
-            }
-            file.Code = RefusalCodes.RecordImportReferenceToNewInBatch;
-            file.Reason = Clip(reason, 300);
-        }
     }
 
     // ------------------------------------------------------------------ the folder

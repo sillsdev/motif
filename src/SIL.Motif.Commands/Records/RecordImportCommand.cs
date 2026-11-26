@@ -145,11 +145,14 @@ public static partial class RecordImportCommand
     /// <summary>A planned file, what would be staged, and a digest taken before any refusal.</summary>
     private sealed record Planned(ProjectRecordSchemaResult Schema, ProjectRecordPlan Plan, RecordLowering Lowering, string Digest);
 
-    private static Planned? Plan(LcmCache cache, string text, bool validate, SchemaSet? schemas = null)
+    private static Planned? Plan(LcmCache cache, string text, bool validate, SchemaSet? schemas = null, RecordBatch? batch = null,
+        IReadOnlyDictionary<Guid, string>? batchClasses = null)
     {
         var name = KindName(text);
         if (name is null) return null;
         if ((schemas ?? new SchemaSet(cache)).For(name) is not { } resolved) return null;
+        resolved.Importer.Batch = batch;
+        resolved.Lowerer.BatchClasses = batchClasses;
         var plan = resolved.Importer.Plan(text, resolved.Catalog);
         var full = resolved.Lowerer.Lower(cache, plan);
         return new(resolved.Schema, plan, validate ? ValidateOnScratch(cache, plan, full) : full, Digest(full.Operations));
@@ -266,6 +269,7 @@ public static partial class RecordImportCommand
             RecordRefusalKind.GuidInvalid => new Refusal(RefusalCodes.RecordImportGuidInvalid, FailureReason.Refused, message, facts),
             RecordRefusalKind.GuidRetired => new Refusal(RefusalCodes.RecordImportGuidRetired, FailureReason.Refused, message, facts),
             RecordRefusalKind.CreateComputedField => new Refusal(RefusalCodes.RecordImportCreateComputedField, FailureReason.Refused, message, facts),
+            RecordRefusalKind.ReferenceToDeleted => new Refusal(RefusalCodes.RecordImportReferenceToDeleted, FailureReason.Refused, message, facts),
             _ => new Refusal(RefusalCodes.RecordImportPlanRefused, FailureReason.Refused, message, facts),
         };
     }
@@ -274,7 +278,7 @@ public static partial class RecordImportCommand
     {
         var rows = new List<RecordImportRefusal>();
         foreach (var refusal in found.Plan.ChangeSet.Refusals)
-            rows.Add(new(RefusalCodes.RecordImportChangeRefused, null, Clip(refusal.Field),
+            rows.Add(new(refusal.Kind == RecordRefusalKind.ReferenceToDeleted ? RefusalCodes.RecordImportReferenceToDeleted : RefusalCodes.RecordImportChangeRefused, null, Clip(refusal.Field),
                 refusal.ObjectGuid is { } guid ? CanonicalId.FromGuid(guid).Value : null,
                 Clip(refusal.Kind + ": " + refusal.Reason)));
         foreach (var refusal in lowering.Refusals)

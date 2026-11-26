@@ -31,8 +31,11 @@ namespace SIL.TextEditing.Project
     /// project as it is. It changes nothing in the project.</summary>
     public sealed class ProjectRecordPlan
     {
-        internal ProjectRecordPlan(RecordChangeSet changeSet, ProjectRecordBaseVerdict verdict, string? kind, Guid? recordGuid, ProjectRecordExport? export, IReadOnlyList<MarkdownDiagnostic> diagnostics)
+        internal ProjectRecordPlan(RecordChangeSet changeSet, ProjectRecordBaseVerdict verdict, string? kind, Guid? recordGuid, ProjectRecordExport? export, IReadOnlyList<MarkdownDiagnostic> diagnostics,
+            IReadOnlyCollection<Guid>? batchTargets = null, IReadOnlyCollection<Guid>? removed = null)
         {
+            BatchTargets = batchTargets ?? Array.Empty<Guid>();
+            Removed = removed ?? Array.Empty<Guid>();
             ChangeSet = changeSet;
             BaseVerdict = verdict;
             Kind = kind;
@@ -63,6 +66,12 @@ namespace SIL.TextEditing.Project
 
         /// <summary>True when there is nothing to change and nothing refused.</summary>
         public bool IsEmpty => ChangeSet.IsEmpty;
+
+        /// <summary>The objects of the batch's other files that an accepted change refers to. Empty when the plan was made with no batch.</summary>
+        public IReadOnlyCollection<Guid> BatchTargets { get; }
+
+        /// <summary>The objects an accepted change removes, with every object they own.</summary>
+        public IReadOnlyCollection<Guid> Removed { get; }
     }
 
     /// <summary>Plans the import of an edited record file, read-only (ADR 0031 Q63, R1d). It exports the file's record again, refuses the file whole when the file's
@@ -95,6 +104,15 @@ namespace SIL.TextEditing.Project
         /// <param name="writable">What the host can write; null skips that check.</param>
         public static ProjectRecordPlan Plan(LcmCache cache, ProjectRecordSchemaResult schemaResult, string fileText, WritableFields? writable = null)
             => new ProjectRecordImporter(new ProjectRecordExporter(cache, schemaResult)).Plan(fileText, writable);
+
+        RecordBatch? _batch;
+
+        /// <summary>The objects the other files of a batch create and remove, which references and links may name. Set it before planning each file of the batch.</summary>
+        public RecordBatch? Batch
+        {
+            get => _batch;
+            set { _batch = value; _exporter.Batch = value; }
+        }
 
         /// <summary>Tests replace the fresh export to reach paths a healthy project cannot.</summary>
         internal Func<string, Guid, ProjectRecordExport>? ExportOverride { get; set; }
@@ -191,7 +209,7 @@ namespace SIL.TextEditing.Project
                     if (change.Anchor != null && change.Anchor.Kind == RecordAnchorKind.Added)
                         change.Anchor = RecordAnchor.AddedBy(accepted.IndexOf(diff.Changes[change.Anchor.ChangeIndex]));
             }
-            return new ProjectRecordPlan(new RecordChangeSet(accepted.AsReadOnly(), refusals.AsReadOnly(), diff.IsPartial), verdict, kindName, record, export, diagnostics);
+            return new ProjectRecordPlan(new RecordChangeSet(accepted.AsReadOnly(), refusals.AsReadOnly(), diff.IsPartial), verdict, kindName, record, export, diagnostics, run.BatchTargets, run.Removed);
         }
 
         // ------------------------------------------------------------------ creating a record
@@ -237,6 +255,21 @@ namespace SIL.TextEditing.Project
                     && r.Field.IndexOfAny(new[] { '.', '/', '[' }) < 0 && file.Data[r.Field] == null);
             }
             catch (ArgumentException) { return false; }
+        }
+
+        /// <summary>The objects <paramref name="fileText"/> would create, by GUID with their classes: for a file that plans a new record, the record and every object it owns; empty for any other file.
+        /// A host collects these from every file of a batch before planning any, so one file may refer to another's new objects.</summary>
+        public IReadOnlyDictionary<Guid, string> NewObjects(string fileText)
+        {
+            if (fileText == null) throw new ArgumentNullException(nameof(fileText));
+            var found = new Dictionary<Guid, string>();
+            var read = RecordFileReader.Read(fileText, Schema, _exporter.CreateReadOptions());
+            var file = read.Document;
+            if (file == null || Schema.Kind(file.Kind) is not { } kind || file.Base != null || file.Data.Guid is not { } guid) return found;
+            if (!IsWholeFile(kind, file) || !IsCreatableKind(kind.Name) || Exists(guid) || GuidProblem(guid) != null) return found;
+            var root = kind.Roots.FirstOrDefault(r => r.Name == file.Data.Class) ?? kind.Root;
+            CheckRun.CollectClasses(file.Data, root, found);
+            return found;
         }
 
         /// <summary>Plans a file for a record the project does not have, and which has no <c>base:</c>: every field is a change against an empty record of the same GUID and class.
@@ -395,6 +428,10 @@ namespace SIL.TextEditing.Project
             readonly WritableFields? _writable;
             readonly HashSet<Guid> _newGuids = new HashSet<Guid>();
             readonly Dictionary<Guid, string> _newClasses = new Dictionary<Guid, string>();
+            readonly HashSet<Guid> _batchTargets = new HashSet<Guid>();
+            readonly List<Guid> _passing = new List<Guid>();
+            readonly HashSet<Guid> _removed = new HashSet<Guid>();
+            readonly List<Guid> _removing = new List<Guid>();
             readonly bool _creating;
             readonly HashSet<Guid> _documentGuids = new HashSet<Guid>();
             readonly HashSet<string> _locked = new HashSet<string>(StringComparer.Ordinal);
@@ -424,18 +461,26 @@ namespace SIL.TextEditing.Project
                 if (export != null) foreach (var u in export.Unexported) Lock(u);
             }
 
+            /// <summary>The objects of the batch's other files that accepted changes refer to.</summary>
+            public IReadOnlyCollection<Guid> BatchTargets => _batchTargets;
+
+            /// <summary>The objects accepted changes remove, with the objects they own.</summary>
+            public IReadOnlyCollection<Guid> Removed => _removed;
+
+            void CollectClasses(RecordObject o, RecordObjectType? type) => CollectClasses(o, type, _newClasses);
+
             /// <summary>The class of every new object: its <c>class:</c>, or the one type its field allows.</summary>
-            void CollectClasses(RecordObject o, RecordObjectType? type)
+            internal static void CollectClasses(RecordObject o, RecordObjectType? type, Dictionary<Guid, string> into)
             {
-                if (o.Guid != null && (o.Class ?? type?.Name) is { } name) _newClasses[o.Guid.Value] = name;
+                if (o.Guid != null && (o.Class ?? type?.Name) is { } name) into[o.Guid.Value] = name;
                 if (type == null) return;
                 foreach (var pair in o.Fields)
                 {
                     var field = type.Field(pair.Key);
                     if (field == null) continue;
-                    if (pair.Value is RecordObject child && field.Kind == RecordFieldKind.Object) CollectClasses(child, TypeOf(child, field));
+                    if (pair.Value is RecordObject child && field.Kind == RecordFieldKind.Object) CollectClasses(child, TypeOf(child, field), into);
                     else if (pair.Value is RecordList list && field.Item != null && field.Item.Kind == RecordFieldKind.Object)
-                        foreach (var item in list.Items) if (item is RecordObject c) CollectClasses(c, TypeOf(c, field.Item));
+                        foreach (var item in list.Items) if (item is RecordObject c) CollectClasses(c, TypeOf(c, field.Item), into);
                 }
             }
 
@@ -487,6 +532,17 @@ namespace SIL.TextEditing.Project
             }
 
             public RecordRefusal? Check(RecordChange c)
+            {
+                _passing.Clear();
+                _removing.Clear();
+                var refusal = CheckOne(c);
+                if (refusal != null) return refusal;
+                _batchTargets.UnionWith(_passing);
+                _removed.UnionWith(_removing);
+                return null;
+            }
+
+            RecordRefusal? CheckOne(RecordChange c)
             {
                 Guid owner = c.ObjectGuid ?? _record;
                 string top = c.Field.Split('/')[0];
@@ -566,13 +622,13 @@ namespace SIL.TextEditing.Project
 
             RecordRefusal? CheckTarget(RecordChange c, Guid? target, Leaf? leaf)
             {
-                string? problem = TargetProblem(target, leaf?.Flid ?? 0, out bool wrongClass);
-                return problem == null ? null : ForChange(wrongClass ? RecordRefusalKind.WrongReferenceClass : RecordRefusalKind.UnknownReference, problem, c);
+                string? problem = TargetProblem(target, leaf?.Flid ?? 0, out var kind);
+                return problem == null ? null : ForChange(kind, problem, c);
             }
 
-            string? TargetProblem(Guid? target, int flid, out bool wrongClass)
+            string? TargetProblem(Guid? target, int flid, out RecordRefusalKind kind)
             {
-                wrongClass = false;
+                kind = RecordRefusalKind.UnknownReference;
                 if (flid < 0) return "The class of a new object holding this reference could not be determined, so the reference cannot be checked.";
                 if (target == null) return "The reference names no object of the project (its link has no guid).";
                 // A new record's own objects are not in the project yet, so their class is the one the file gives them.
@@ -582,12 +638,23 @@ namespace SIL.TextEditing.Project
                     if (flid == 0 || !_newClasses.TryGetValue(target.Value, out var newClass)) return null;
                     className = newClass;
                 }
-                else
+                else if (_cache.ServiceLocator.ObjectRepository.TryGetObject(target.Value, out var obj))
                 {
-                    if (!_cache.ServiceLocator.ObjectRepository.TryGetObject(target.Value, out var obj)) return "The project has no object " + target.Value.ToString("D") + ".";
                     if (flid == 0) return "The field that holds the reference could not be resolved, so its class cannot be checked.";
+                    if (_in._batch?.DeletedBy(target.Value) is { } remover)
+                    {
+                        kind = RecordRefusalKind.ReferenceToDeleted;
+                        return "Another file of the batch (" + remover + ") removes the " + obj.ClassName + " " + target.Value.ToString("D") + ", so a reference to it would dangle.";
+                    }
                     className = obj.ClassName;
                 }
+                else if (_in._batch != null && _in._batch.NewObjects.TryGetValue(target.Value, out var batchClass))
+                {
+                    if (flid == 0) return "The field that holds the reference could not be resolved, so its class cannot be checked.";
+                    className = batchClass;
+                    _passing.Add(target.Value);
+                }
+                else return "The project has no object " + target.Value.ToString("D") + ".";
                 int wanted = _metadata.GetDstClsId(flid);
                 int have = _metadata.GetClassId(className);
                 for (int at = have; ; at = _metadata.GetBaseClsId(at))
@@ -595,7 +662,7 @@ namespace SIL.TextEditing.Project
                     if (at == wanted) return null;
                     if (at == 0) break;
                 }
-                wrongClass = true;
+                kind = RecordRefusalKind.WrongReferenceClass;
                 return className + " " + target.Value.ToString("D") + " is not a " + _metadata.GetClassName(wanted) + ", which " + _metadata.GetFieldName(flid) + " holds.";
             }
 
@@ -617,8 +684,8 @@ namespace SIL.TextEditing.Project
                     return ForChange(RecordRefusalKind.UnknownField, "The class of the new object could not be determined, so its fields cannot be checked.", c);
                 foreach (var (target, flid) in References(subtree, type))
                 {
-                    string? problem = TargetProblem(target, flid, out bool wrongClass);
-                    if (problem != null) return ForChange(wrongClass ? RecordRefusalKind.WrongReferenceClass : RecordRefusalKind.UnknownReference, problem, c);
+                    string? problem = TargetProblem(target, flid, out var problemKind);
+                    if (problem != null) return ForChange(problemKind, problem, c);
                 }
                 return null;
             }
@@ -699,6 +766,7 @@ namespace SIL.TextEditing.Project
                         foreach (var linker in linkers)
                             if (!owned.Contains(linker))
                                 return ForChange(RecordRefusalKind.DeleteHasIncomingReferences, "A link in the text of another object (" + linker.ToString("D") + ") points at the " + obj.ClassName + " " + obj.Guid.ToString("D") + " (or an object it owns), so deleting it would leave that link dangling.", c);
+                _removing.AddRange(owned);
                 return null;
             }
 

@@ -37,11 +37,16 @@ namespace SIL.TextEditing.Project
 
         public ProjectPathResolver(LcmCache cache) => _cache = cache ?? throw new ArgumentNullException(nameof(cache));
 
+        /// <summary>The objects other files of the same batch create. A link to one is a link to an object that will exist, so it is never taken for a missing one; it has the <c>/objects</c> path.</summary>
+        public RecordBatch? Batch { get; set; }
+
+        bool InBatch(Guid guid) => Batch != null && Batch.NewObjects.ContainsKey(guid);
+
         public Guid? Resolve(ProjectPath path, out IReadOnlyList<Guid> candidates)
         {
             if (path == null) throw new ArgumentNullException(nameof(path));
             candidates = Array.Empty<Guid>();
-            if (path.ObjectGuid is Guid known) return Exists(known) ? known : (Guid?)null;
+            if (path.ObjectGuid is Guid known) return Exists(known) || InBatch(known) ? known : (Guid?)null;
             var matches = Matches(path);
             if (matches.Count == 1) return matches[0];
             candidates = matches;
@@ -50,7 +55,7 @@ namespace SIL.TextEditing.Project
 
         public ProjectPath? PathOf(Guid guid)
         {
-            if (!_cache.ServiceLocator.ObjectRepository.TryGetObject(guid, out var item)) return null;
+            if (!_cache.ServiceLocator.ObjectRepository.TryGetObject(guid, out var item)) return InBatch(guid) ? ProjectPath.ForObject(guid) : null;
             switch (item)
             {
                 case ILexEntry entry:

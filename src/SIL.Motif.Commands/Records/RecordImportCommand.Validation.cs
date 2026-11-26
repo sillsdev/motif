@@ -84,10 +84,14 @@ public static partial class RecordImportCommand
         if (byId.Count == 0) return results;
         var failed = new Dictionary<(int Unit, int Change), string>();
         var failedOperations = new HashSet<CanonicalId>();
-        var contained = byId.Values.Select(operation => new OperationEnvelope(operation.OperationId, operation.Kind,
+        var within = byId.Values.Select(operation => new OperationEnvelope(operation.OperationId, operation.Kind,
             operation.EntityId, operation.Target, operation.After, operation.Placement,
             operation.DependsOn.Where(dependency => owner.TryGetValue(dependency.OperationId, out var own) &&
                 own.Unit == owner[operation.OperationId].Unit).ToArray(),
+            rationale: operation.Rationale)).ToArray();
+        var contained = byId.Values.Select(operation => new OperationEnvelope(operation.OperationId, operation.Kind,
+            operation.EntityId, operation.Target, operation.After, operation.Placement,
+            operation.DependsOn.Where(dependency => owner.ContainsKey(dependency.OperationId)).ToArray(),
             rationale: operation.Rationale)).ToArray();
         var handler = cache.ServiceLocator.GetInstance<IActionHandler>();
         using var unitOfWork = new NonUndoableUnitOfWorkHelper(handler);
@@ -98,7 +102,7 @@ public static partial class RecordImportCommand
         {
             for (var unit = 0; unit < units.Count; unit++)
             {
-                try { OperationExecutionOrder.Sort(contained.Where(operation => owner[operation.OperationId].Unit == unit).ToArray()); }
+                try { OperationExecutionOrder.Sort(within.Where(operation => owner[operation.OperationId].Unit == unit).ToArray()); }
                 catch (Exception exception) when (IsRefusalOfOneChange(exception)) { throw new RecordImportScratchException(exception, unit); }
             }
             order = OperationExecutionOrder.Sort(contained);

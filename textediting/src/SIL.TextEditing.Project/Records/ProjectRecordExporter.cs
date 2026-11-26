@@ -119,6 +119,9 @@ namespace SIL.TextEditing.Project
             _objects = new LinkMapper(_paths);
         }
 
+        /// <summary>The objects other files of a batch create, so the links a file reads resolve to them.</summary>
+        internal RecordBatch? Batch { get => _paths.Batch; set => _paths.Batch = value; }
+
         /// <summary>Runs before each record of <see cref="ExportAll"/>, so a test can make one record fail.</summary>
         internal Action<ICmObject>? BeforeRecord { get; set; }
 

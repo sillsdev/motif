@@ -58,6 +58,9 @@ public sealed partial class RecordChangeSetLowerer(ProjectRecordSchemaResult sch
 {
     private const string RichKind = TextRichStringOperationKinds.Set;
 
+    /// <summary>The class of each object the other files of a batch create, so a reference to one lowers as a reference to an object that will exist. Null for a single file.</summary>
+    public IReadOnlyDictionary<Guid, string>? BatchClasses { get; set; }
+
     /// <summary>Lowers <paramref name="plan"/> against the project in <paramref name="cache"/>, which the caller owns and serializes.</summary>
     public RecordLowering Lower(LcmCache cache, ProjectRecordPlan plan)
     {
@@ -97,7 +100,7 @@ public sealed partial class RecordChangeSetLowerer(ProjectRecordSchemaResult sch
     {
         ArgumentNullException.ThrowIfNull(cache);
         ArgumentNullException.ThrowIfNull(changes);
-        var run = new Run(schema, catalog, cache, seed, new ProjectRecordExporter(cache, schema).CreateReadOptions().Markdown) { Changes = changes };
+        var run = new Run(schema, catalog, cache, seed, new ProjectRecordExporter(cache, schema).CreateReadOptions().Markdown) { Changes = changes, BatchClasses = BatchClasses };
         for (var index = 0; index < changes.Count; index++)
             run.Lower(index, changes[index]);
         return new(run.Operations, run.Refusals, [], run.OperationChanges, run.RefusedCodes);
@@ -593,8 +596,11 @@ public sealed partial class RecordChangeSetLowerer(ProjectRecordSchemaResult sch
             }
         }
 
+        internal IReadOnlyDictionary<Guid, string>? BatchClasses { get; init; }
+
         private string? ClassOf(Guid item) => _classes.TryGetValue(item, out var made) ? made
-            : cache.ServiceLocator.GetInstance<ICmObjectRepository>().TryGetObject(item, out var found) ? found.ClassName : null;
+            : cache.ServiceLocator.GetInstance<ICmObjectRepository>().TryGetObject(item, out var found) ? found.ClassName
+            : BatchClasses is not null && BatchClasses.TryGetValue(item, out var batch) ? batch : null;
 
         private string? ChildOf(string type, string key)
         {

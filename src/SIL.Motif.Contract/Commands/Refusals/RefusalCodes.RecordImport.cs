@@ -57,6 +57,10 @@ public static partial class RefusalCodes
     public const string RecordImportRecordTwice = "record-import.record-twice";
     /// <summary>The same GUID names a new object in more than one file of the folder.</summary>
     public const string RecordImportGuidDuplicateInBatch = "record-import.guid-duplicate-in-batch";
-    /// <summary>A file refers to a record that another file of the folder creates, which a folder import does not yet link.</summary>
-    public const string RecordImportReferenceToNewInBatch = "record-import.reference-to-new-in-batch";
+    /// <summary>Files of the folder refer to each other's new records in a loop FieldWorks cannot hold: each is a variant or complex form of the next.</summary>
+    public const string RecordImportBatchCycle = "record-import.batch-cycle";
+    /// <summary>A file refers to a new record of another file of the folder, and that file was refused, so the link would dangle.</summary>
+    public const string RecordImportReferenceToRefused = "record-import.reference-to-refused";
+    /// <summary>A change refers to an object that the project no longer holds because another file of the folder deletes it.</summary>
+    public const string RecordImportReferenceToDeleted = "record-import.reference-to-deleted";
 }

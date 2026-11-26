@@ -41,6 +41,8 @@ public enum FieldWriteShape
     Unspecified,
     /// <summary>A variant LexEntryRef with exactly one component and one variant type, without complex-form links.</summary>
     VariantReference,
+    /// <summary>A complex-form LexEntryRef with at least one component, optional primary lexemes and complex form types.</summary>
+    ComplexFormReference,
 }
 
 /// <summary>The <c>after</c> shape of an owning create that a record-file lowerer may author without a hand-written composer.</summary>
