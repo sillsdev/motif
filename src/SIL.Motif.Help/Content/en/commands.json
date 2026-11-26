@@ -9,11 +9,6 @@
     "description": "Lists the sections of the project's Grammar Guide from the current Baseline, each with its GDR-n number. Reads nothing until a Baseline is captured. An Autonomous command.",
     "source": "Hand-written from the Grammar Guide read command."
   },
-  "guide check": {
-    "title": "Check the Grammar Guide",
-    "description": "Checks the Grammar Guide in the current Baseline and reports problems, such as morphemes the lexicon lacks, interlinear lines whose tokens do not pair up, and a list still named Grammar Design Records. An Autonomous command.",
-    "source": "Hand-written from the Grammar Guide check command."
-  },
   "guide show": {
     "title": "Read a Grammar Guide section",
     "description": "Reads one Grammar Guide section from the current Baseline. Use format fw-md for the whole record as FieldWorks Markdown, or json for its rich text runs. asOf names a Draft or Proposal whose edits of the section are shown as if applied.",
@@ -21,7 +16,7 @@
   },
   "guide check": {
     "title": "Check the Grammar Guide against the grammar",
-    "description": "Reports where the Grammar Guide of the current Baseline is out of step with the grammar, and runs each motif-query block read-only: ok with a row count, refused with its code, not built with the command that builds the index, or failed. All findings are advisory. no-run skips the blocks; timeout bounds one block.",
+    "description": "Checks the Grammar Guide in the current Baseline: morphemes the lexicon lacks, interlinear lines whose tokens do not pair up, and where the Guide is out of step with the grammar. It runs each motif-query block read-only: ok with a row count, refused with its code, not built with the command that builds the index, or failed. All findings are advisory. no-run skips the blocks; timeout bounds one block. An Autonomous command.",
     "source": "Hand-written from the Guide check (ADR 0005) and the shared Guide query evaluator."
   },
   "guide edit": {
