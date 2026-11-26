@@ -78,7 +78,7 @@ public sealed class StoreUpgradeDryRunArgvTests : IDisposable
         var run = Run($"store upgrade --project \"{Project}\" --dry-run --source x.db --json");
 
         Assert.NotEqual(0, run.ExitCode);
-        Assert.Contains("Usage", run.Output + run.Error);
+        Assert.Contains("InvalidArgument", run.Output + run.Error);
         Assert.Equal(MotifSchema.CurrentSchema - 1L, Version());
         Assert.Empty(Directory.EnumerateFileSystemEntries(_root, "*.motif-backups"));
     }
