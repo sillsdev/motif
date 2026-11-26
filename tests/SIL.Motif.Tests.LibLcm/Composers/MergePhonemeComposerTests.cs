@@ -160,6 +160,7 @@ public sealed class MergePhonemeComposerTests(PristineProjectFixture pristine)
         var message = Refusal(() => MergePhonemeComposer.Build(cache, new(o, u)));
 
         Assert.StartsWith(MergePhonemeComposer.Referenced, message);
+        Assert.Contains("compose-edit-environment", message, StringComparison.Ordinal);
         Assert.Contains("after o", message);
         Assert.Contains(MergePhonemeComposer.ReadAffectedUsers(cache, new(o, u)),
             user => user.Kind == "environment" && user.Name == "after o");

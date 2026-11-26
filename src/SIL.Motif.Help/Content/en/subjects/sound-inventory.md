@@ -8,6 +8,7 @@ The sound inventory is the set of consonants, vowels and other sounds the langua
 - Where a project parses spelling rather than sound (English, for example), the letters and digraphs are its phonemes. A word containing a character that isn't defined can't be parsed (Black §6.2.1).
 - Give each phoneme a name and the written representations the language uses for it, in the right writing systems.
 - Add phonemes before anything that refers to them: natural classes, environments, then rules. A composer in a later step can name a phoneme created earlier in the same Draft through a declared dependency.
+- To correct one environment later without re-pointing its allomorphs, use `compose-edit-environment`.
 
 ## Digits and other characters a word contains
 

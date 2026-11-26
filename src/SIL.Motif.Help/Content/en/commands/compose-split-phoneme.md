@@ -15,6 +15,6 @@ Refusal messages begin with a stable name:
 - `phoneme-representation-not-found`: the phoneme has no such spelling.
 - `phoneme-split-last-representation`: the spelling is the only way the phoneme is written, so nothing would stay behind.
 - `phoneme-split-name-missing`: the new phoneme has no name.
-- `phoneme-representation-referenced`: an environment writes the spelling; change that environment first.
+- `phoneme-representation-referenced`: an environment writes the spelling; change that environment first with `compose-edit-environment`.
 
 The command stages operations in a Draft and does not change the saved FieldWorks project. Dry Run and Trial the Proposal, then Finalize it for a person to review and Apply.

@@ -129,7 +129,7 @@ public static class MergePhonemeComposer
             if (EditPhonemeComposer.ReadEnvironmentsWriting(cache, spelling).FirstOrDefault() is { } environment)
                 throw new InvalidOperationException(
                     $"{Referenced}: environment '{environment.Name}' writes '{spelling}'. After the merge it would also " +
-                    "match the other phoneme's words, so it cannot be kept as it is; change that environment first.");
+                    "match the other phoneme's words, so it cannot be kept as it is; change that environment first with compose-edit-environment.");
         foreach (var user in source.ReferringObjects.Where(user => user is not IPhNCSegments))
             throw new InvalidOperationException(
                 $"{Referenced}: the phoneme is still used by {Describe(user)}. Merging would change what it means, " +

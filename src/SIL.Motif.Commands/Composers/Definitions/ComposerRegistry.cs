@@ -80,6 +80,7 @@ internal static class ComposerDefinitions
         new MergeBoundaryMarkersDefinition(),
         new RetireAffixSlotDefinition(),
         new DeleteExceptionFeatureDefinition(),
+        new EditEnvironmentDefinition(),
         new DeleteEnvironmentDefinition(),
         new DeleteNaturalClassDefinition(),
         new DeleteTextSegmentNoteDefinition(),

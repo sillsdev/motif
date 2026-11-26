@@ -180,6 +180,7 @@ public sealed class ToolSurfaceTests
             "compose-delete-sense",
             "compose-delete-text-segment-note",
             "compose-edit-affix-inflection-classes",
+            "compose-edit-environment",
             "compose-edit-part-of-speech-inflection-class-default",
             "compose-edit-stem-allomorph-stem-name",
             "compose-edit-stem-inflection-class",
@@ -233,10 +234,10 @@ public sealed class ToolSurfaceTests
                 "compose-set-stem-part-of-speech" or "compose-record-source-validated-decision" or
                 "compose-retire-boundary-marker" or "compose-retire-affix-slot" or "compose-add-exception-features" or
                 "compose-merge-boundary-markers" or "compose-edit-text-notes" or
-                "compose-delete-environment" or "compose-delete-exception-feature" or
+                "compose-delete-environment" or "compose-edit-environment" or "compose-delete-exception-feature" or
                 "compose-delete-natural-class" or "compose-delete-text-segment-note" or
                 "compose-tag-stems-by-query" or "compose-remove-exception-feature").ToArray();
-        Assert.Equal(23, numeralEditors.Length);
+        Assert.Equal(24, numeralEditors.Length);
         Assert.All(numeralEditors, command =>
         {
             Assert.Equal(CommandSurface.AdvancedAi, command.Surface);
