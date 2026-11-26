@@ -85,7 +85,7 @@ public static class HelpCommand
             for (var length = codeParts.Length - 1; length >= 1; length--)
             {
                 var prefix = string.Join(' ', codeParts.Take(length));
-                if (!IsKnownCommand(catalog, prefix) && !IsVerbGroup(prefix)) continue;
+                if (!IsKnownCommand(catalog, prefix) && !IsVerbGroup(prefix, policy)) continue;
                 code = prefix;
                 break;
             }
@@ -107,11 +107,14 @@ public static class HelpCommand
             return 0;
         }
 
-        if (!code.StartsWith("guide:", StringComparison.Ordinal) && IsVerbGroup(code) && !IsKnownEntry(catalog, code))
+        if (!code.StartsWith("guide:", StringComparison.Ordinal) && IsVerbGroup(code, policy) && !IsKnownEntry(catalog, code))
         {
             if (json)
-                return Usage(error);
-            PrintVerbGroup(code, catalog, output);
+            {
+                output.WriteLine(JsonSerializer.Serialize(BuildGroup(code, catalog, policy), JsonOptions));
+                return 0;
+            }
+            PrintVerbGroup(code, catalog, policy, output);
             return 0;
         }
 
@@ -137,8 +140,8 @@ public static class HelpCommand
             foreach (var usage in UsageLines(command.Name))
                 output.WriteLine(NormalizeUsage(usage));
             output.WriteLine(EnablementText(command));
-            if (IsVerbGroup(code))
-                PrintVerbsSection(code, catalog, output);
+            if (IsVerbGroup(code, policy))
+                PrintVerbsSection(code, catalog, policy, output);
             return 0;
         }
         if (entry is null)
@@ -158,8 +161,8 @@ public static class HelpCommand
         }
 
         PrintEntry(entry, entryKind, catalog, output);
-        if (entryKind != HelpEntryKind.Guide && IsVerbGroup(entry.Code))
-            PrintVerbsSection(entry.Code, catalog, output);
+        if (entryKind != HelpEntryKind.Guide && IsVerbGroup(entry.Code, policy))
+            PrintVerbsSection(entry.Code, catalog, policy, output);
         if (unavailable)
         {
             output.WriteLine();
@@ -189,43 +192,72 @@ public static class HelpCommand
         .ToDictionary(group => group.Key, group => (IReadOnlyList<string>)group.Order(StringComparer.Ordinal).ToArray(),
             StringComparer.Ordinal);
 
-    private static bool IsVerbGroup(string code) => VerbGroups.ContainsKey(code);
+    // A group is a topic only while it has a verb this call may list: Developer verbs stay hidden unless enabled.
+    private static IReadOnlyList<string> VisibleVerbs(string group, CommandSurfacePolicy policy) =>
+        VerbGroups.TryGetValue(group, out var names)
+            ? names.Where(name => CommandCatalog.All.FirstOrDefault(item => item.Name == name) is { } command
+                && (command.Surface != CommandSurface.Developer || policy.DeveloperCommandsEnabled)).ToArray()
+            : Array.Empty<string>();
 
-    private static void PrintVerbGroup(string group, HelpCatalog catalog, TextWriter output)
+    private static bool IsVerbGroup(string code, CommandSurfacePolicy policy) => VisibleVerbs(code, policy).Count > 0;
+
+    private static string GateName(CommandSurface? surface) => surface switch
+    {
+        CommandSurface.Released => "Released",
+        CommandSurface.AdvancedAi => "Advanced AI",
+        CommandSurface.Autonomous => "Autonomous",
+        CommandSurface.Developer => "Developer",
+        _ => "Unlisted",
+    };
+
+    private static object BuildGroup(string group, HelpCatalog catalog, CommandSurfacePolicy policy) => new
+    {
+        group,
+        verbs = VisibleVerbs(group, policy).Select(name => new
+        {
+            name,
+            summary = Summary(catalog, name),
+            gate = GateName(CommandCatalog.All.First(item => item.Name == name).Surface),
+            helpTopic = "motif help " + name,
+        }).ToArray(),
+    };
+
+    private static void PrintVerbGroup(string group, HelpCatalog catalog, CommandSurfacePolicy policy, TextWriter output)
     {
         output.WriteLine($"{group} commands");
         output.WriteLine($"The verbs of 'motif {group}', each with its gate.");
-        PrintVerbsSection(group, catalog, output, leadingBlank: false);
+        PrintVerbsSection(group, catalog, policy, output, leadingBlank: false);
     }
 
-    private static void PrintVerbsSection(string group, HelpCatalog catalog, TextWriter output, bool leadingBlank = true)
+    private static void PrintVerbsSection(
+        string group, HelpCatalog catalog, CommandSurfacePolicy policy, TextWriter output, bool leadingBlank = true)
     {
+        var verbs = VisibleVerbs(group, policy);
         if (leadingBlank)
             output.WriteLine();
         output.WriteLine("Verbs:");
-        foreach (var name in VerbGroups[group])
+        foreach (var name in verbs)
         {
-            var surface = CommandCatalog.All.FirstOrDefault(item => item.Name == name)?.Surface;
-            var gate = surface switch
-            {
-                CommandSurface.Released => "Released",
-                CommandSurface.AdvancedAi => "Advanced AI",
-                CommandSurface.Autonomous => "Autonomous",
-                CommandSurface.Developer => "Developer",
-                _ => "Unlisted",
-            };
-            output.WriteLine($"  {name,-34} [{gate}] {Summary(catalog, name)}");
+            var surface = CommandCatalog.All.First(item => item.Name == name).Surface;
+            output.WriteLine($"  {name,-34} [{GateName(surface)}] {Summary(catalog, name)}");
         }
-        output.WriteLine($"Use 'motif help {group} <verb>' for one verb, for example 'motif help {VerbGroups[group][0]}'.");
+        output.WriteLine($"Use 'motif help {group} <verb>' for one verb, for example 'motif help {verbs[0]}'.");
     }
 
     private static string Summary(HelpCatalog catalog, string name)
     {
-        var description = catalog.Find(HelpEntryKind.Command, name)?.Description;
-        if (string.IsNullOrWhiteSpace(description))
-            return "No summary yet.";
-        var end = description.IndexOf(". ", StringComparison.Ordinal);
-        return end < 0 ? description.Trim() : description[..(end + 1)].Trim();
+        var entry = catalog.Find(HelpEntryKind.Command, name);
+        var text = entry?.Description;
+        if (string.IsNullOrWhiteSpace(text)) text = entry?.Title;
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            var usage = CliVerbCatalog.All.Where(verb => verb.CommandName == name)
+                .SelectMany(verb => verb.UsageLines).FirstOrDefault();
+            text = usage is null ? name : "Usage: " + usage.Split(" OR ", StringSplitOptions.TrimEntries)[0];
+        }
+        var end = text.IndexOf(". ", StringComparison.Ordinal);
+        text = (end < 0 ? text : text[..(end + 1)]).Trim();
+        return text.Length <= 100 ? text : text[..97].TrimEnd() + "...";
     }
 
     // A Command-kind Help page can be a topic with no command behind it, such as lexicon-import.
@@ -242,6 +274,9 @@ public static class HelpCommand
     {
         locale = catalog.Locale,
         siteRoot = HelpCatalog.SiteRoot,
+        verbGroups = VerbGroups.Keys.Order(StringComparer.Ordinal)
+            .Where(group => IsVerbGroup(group, policy))
+            .Select(group => BuildGroup(group, catalog, policy)),
         entries = catalog.Entries
             .Where(entry => IsAvailableHelpEntry(entry, policy))
             .Select(entry => BuildEntry(entry, entry.Kind == HelpEntryKind.Command)),

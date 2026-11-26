@@ -4,6 +4,16 @@
     "description": "Validates a hand-analysis JSON file and resolves its saved FieldWorks identities without changing project records. Reports matching wordforms and allomorphs, marker defaults and type-mismatch consequences; Home and external Source guards remain unverified.",
     "source": "Hand-written from the hand-analysis contract and read-only project resolver."
   },
+  "guide list": {
+    "title": "List Grammar Guide sections",
+    "description": "Lists the sections of the project's Grammar Guide from the current Baseline, each with its GDR-n number. Reads nothing until a Baseline is captured. An Autonomous command.",
+    "source": "Hand-written from the Grammar Guide read command."
+  },
+  "guide check": {
+    "title": "Check the Grammar Guide",
+    "description": "Checks the Grammar Guide in the current Baseline and reports problems, such as morphemes the lexicon lacks, interlinear lines whose tokens do not pair up, and a list still named Grammar Design Records. An Autonomous command.",
+    "source": "Hand-written from the Grammar Guide check command."
+  },
   "guide show": {
     "title": "Read a Grammar Guide section",
     "description": "Reads one Grammar Guide section from the current Baseline. Use format fw-md for the whole record as FieldWorks Markdown, or json for its rich text runs. asOf names a Draft or Proposal whose edits of the section are shown as if applied.",
