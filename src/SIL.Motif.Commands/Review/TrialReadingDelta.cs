@@ -211,7 +211,11 @@ public static class TrialReadingDelta
             var block = new TrialSiblings(input.Pattern, input.Seed, input.Max, input.TouchedForms, input.CorpusTypesSha256,
                 input.Candidates, input.ParsedCandidates, sampled.Count, mine.Length,
                 Count(mine, ReadingDeltaClasses.Lost), Sample(ReadingDeltaClasses.Lost),
-                Count(mine, ReadingDeltaClasses.Doubled), Sample(ReadingDeltaClasses.Doubled), input.Warning);
+                Count(mine, ReadingDeltaClasses.Doubled), Sample(ReadingDeltaClasses.Doubled), input.Warning)
+            {
+                ReferrerForms = input.ReferrerForms,
+                Referrers = input.Referrers,
+            };
             return (block, mine.Length < sampled.Count
                 ? $"{sampled.Count - mine.Length} of {sampled.Count} sampled siblings were not measured on both sides, so the delta cannot be held to the expectations."
                 : null);

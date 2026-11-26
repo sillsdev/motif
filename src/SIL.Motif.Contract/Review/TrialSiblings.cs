@@ -24,4 +24,19 @@ namespace SIL.Motif.Contract.Review;
 public sealed record TrialSiblings(string Pattern, long Seed, int Max, IReadOnlyList<string> TouchedForms,
     string CorpusTypesSha256, int Candidates, int ParsedCandidates, int Sampled, long Measured, long Lost,
     IReadOnlyList<string> LostSample, long Doubled, IReadOnlyList<string> DoubledSample,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Warning = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Warning = null)
+{
+    /// <summary>How many forms of referring entries were drawn on; absent when none.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? ReferrerForms { get; init; }
+
+    /// <summary>The edited grammar objects that entries use; absent when none.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<TrialReferrer>? Referrers { get; init; }
+}
+
+/// <summary>A grammar object a Proposal edits and the entries that use it, whose forms the siblings are drawn from.</summary>
+/// <param name="Target">The object's canonical id.</param>
+/// <param name="Class">The object's LCM class, such as <c>MoInflClass</c>.</param>
+/// <param name="Entries">How many lexical entries use it (an inflection class counts its subclasses; a template, its slots).</param>
+public sealed record TrialReferrer(string Target, string Class, int Entries);

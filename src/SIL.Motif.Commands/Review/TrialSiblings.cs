@@ -39,9 +39,17 @@ internal sealed record TrialSiblingSample(IReadOnlyList<string> Words, string Pa
     /// <summary>What the sample could not use; null when nothing was dropped.</summary>
     public string? Warning { get; init; }
 
+    /// <summary>How many forms of the entries that use an edited grammar object were drawn on; null when none.</summary>
+    public int? ReferrerForms { get; init; }
+
+    /// <summary>The edited grammar objects that entries use; null when none.</summary>
+    public IReadOnlyList<TrialReferrer>? Referrers { get; init; }
+
     /// <summary>The line the CLI prints on standard error.</summary>
     public string Describe() => $"siblings: added {Words.Count} word(s) of {Candidates} corpus candidate(s) " +
-        $"({ParsedCandidates} parsed) sharing {Forms.Count} touched form(s); seed {Seed}, cap {Max}" +
+        $"({ParsedCandidates} parsed) sharing {Forms.Count} touched form(s)" +
+        (ReferrerForms is > 0 ? $" and {ReferrerForms} form(s) of the entries that use {Referrers!.Count} edited grammar object(s)" : "") +
+        $"; seed {Seed}, cap {Max}" +
         (Warning is null ? "" : "; warning: " + Warning);
 }
 
@@ -108,14 +116,18 @@ internal static class TrialSiblingSampler
         }
         else
         {
-            var lines = text.Split('\n').Select(line => line.TrimEnd('\r')).Where(line => line.Length > 0 && !line.StartsWith('#')).ToArray();
-            var header = lines.Length == 0 ? [] : lines[0].Split('\t').Select(name => name.Trim().ToLowerInvariant()).ToArray();
+            var table = ReadTable(text);
+            if (table is null)
+                return Invalid<CorpusTypes>($"The corpus-types file '{path}' has a quoted cell that never closes.");
+            var header = table.Count == 0 ? [] : table[0].Select(name => name.Trim().ToLowerInvariant()).ToArray();
             var stateColumn = Array.IndexOf(header, "state");
             var wordColumn = Math.Max(0, Array.IndexOf(header, "word"));
-            foreach (var line in lines.Skip(stateColumn >= 0 || header.Contains("word") ? 1 : 0))
+            foreach (var cells in table.Skip(stateColumn >= 0 || header.Contains("word") ? 1 : 0))
             {
-                var cells = line.Split('\t');
-                if (wordColumn >= cells.Length || string.IsNullOrWhiteSpace(cells[wordColumn])) continue;
+                // A type is one token: a cell that holds a tab or a line break is whole in its row but is no corpus type.
+                if (wordColumn >= cells.Length || string.IsNullOrWhiteSpace(cells[wordColumn]) ||
+                    cells[wordColumn].Any(char.IsControl))
+                    continue;
                 rows.Add(new CorpusType(Key(cells[wordColumn]),
                     stateColumn >= 0 && stateColumn < cells.Length &&
                     !UnparsedStates.Contains(cells[stateColumn].Trim().ToLowerInvariant())));
@@ -127,15 +139,61 @@ internal static class TrialSiblingSampler
     }
 
     /// <summary>
+    /// The rows of a ledger or word list. A list whose first line names <c>word</c>, <c>state</c> or <c>grammar_revision</c> is a
+    /// ledger and is read as quoted TSV, so a quoted cell may hold tabs, line breaks and doubled quotes; any other list is read
+    /// without quoting. Blank rows and rows that start with <c>#</c> are dropped. Null when a quoted cell never closes.
+    /// </summary>
+    internal static List<string[]>? ReadTable(string text)
+    {
+        var firstLine = text.Split('\n').Select(line => line.TrimEnd('\r'))
+            .FirstOrDefault(line => line.Trim().Length > 0 && !line.StartsWith('#')) ?? "";
+        var names = firstLine.Split('\t').Select(name => name.Trim().ToLowerInvariant()).ToArray();
+        var quoted = names.Intersect(["word", "state", "grammar_revision"]).Any();
+        var rows = new List<string[]>();
+        var cells = new List<string>();
+        var cell = new StringBuilder();
+        var inQuotes = false;
+        void EndCell() { cells.Add(cell.ToString()); cell.Clear(); }
+        void EndRow()
+        {
+            EndCell();
+            if (cells.Any(value => value.Trim().Length > 0) && !cells[0].StartsWith('#')) rows.Add([.. cells]);
+            cells.Clear();
+        }
+        for (var index = 0; index < text.Length; index++)
+        {
+            var ch = text[index];
+            if (inQuotes)
+            {
+                if (ch != '"') cell.Append(ch);
+                else if (index + 1 < text.Length && text[index + 1] == '"') { cell.Append('"'); index++; }
+                else inQuotes = false;
+            }
+            else if (ch == '"' && quoted && cell.Length == 0) inQuotes = true;
+            else if (ch == '\t') EndCell();
+            else if (ch == '\n') EndRow();
+            else if (ch == '\r' && index + 1 < text.Length && text[index + 1] == '\n') { }
+            else cell.Append(ch);
+        }
+        if (inQuotes) return null;
+        if (cell.Length > 0 || cells.Count > 0) EndRow();
+        return rows;
+    }
+
+    /// <summary>
     /// Takes at most <paramref name="max"/> corpus types that share a touched form and are not in <paramref name="already"/>:
     /// parsed types first, shuffled by a seed from <paramref name="revision"/> and the forms, one group per form taken in turn so a
-    /// rare form is not starved. A <paramref name="pattern"/> replaces the per-form groups with one.
+    /// rare form is not starved. The forms of the entries that use an edited grammar object (<paramref name="referrerForms"/>) draw one
+    /// further group, taken in turn beside the touched forms. A <paramref name="pattern"/> replaces all the groups with one.
     /// </summary>
     public static CommandOutcome<TrialSiblingSample> Sample(IReadOnlyList<CorpusType> corpus, string corpusSha256,
-        IReadOnlyList<string> forms, string? pattern, int max, string revision, IReadOnlySet<string> already)
+        IReadOnlyList<string> forms, string? pattern, int max, string revision, IReadOnlySet<string> already,
+        IReadOnlyList<string>? referrerForms = null)
     {
         var keys = forms.Select(Key).Where(form => form.Length > 0).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
         var seed = Seed(revision, keys);
+        var referrers = (referrerForms ?? []).Select(Key).Where(form => form.Length > 0).Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal).ToArray();
         var types = corpus.GroupBy(type => Key(type.Word), StringComparer.Ordinal)
             .Select(group => new CorpusType(group.Key, group.Any(type => type.Parsed)))
             .Where(type => !already.Contains(type.Word)).ToArray();
@@ -164,6 +222,7 @@ internal static class TrialSiblingSampler
         else
         {
             groups = [.. keys.Select(form => types.Where(type => type.Word.Contains(form, StringComparison.OrdinalIgnoreCase)).ToList())];
+            if (referrers.Length > 0) groups = [.. groups, ContainingAny(types, referrers)];
             label = PerForm;
         }
         var candidates = groups.SelectMany(group => group).Select(type => type.Word).Distinct(StringComparer.Ordinal).Count();
@@ -196,7 +255,29 @@ internal static class TrialSiblingSampler
                     : "Every corpus type that shares a touched form is already in the word list") +
                 ", so there is no sibling to measure. Next: pass --siblings-pattern <regex> to name the forms, or leave --siblings out."))
             : CommandOutcome<TrialSiblingSample>.Success(new TrialSiblingSample(picked, label, seed, max, keys, corpusSha256,
-                candidates, parsedCandidates));
+                candidates, parsedCandidates) { ReferrerForms = pattern is null && referrers.Length > 0 ? referrers.Length : null });
+    }
+
+    // The types that contain any form, by substring lookup, so the cost is independent of the form count.
+    private static List<CorpusType> ContainingAny(IEnumerable<CorpusType> types, string[] forms)
+    {
+        var set = new HashSet<string>(forms, StringComparer.Ordinal);
+        var lookup = set.GetAlternateLookup<ReadOnlySpan<char>>();
+        var lengths = forms.Select(form => form.Length).Distinct().Order().ToArray();
+        var found = new List<CorpusType>();
+        foreach (var type in types)
+        {
+            var word = type.Word.AsSpan();
+            var hit = false;
+            foreach (var length in lengths)
+            {
+                for (var start = 0; start + length <= word.Length && !hit; start++)
+                    hit = lookup.Contains(word.Slice(start, length));
+                if (hit) break;
+            }
+            if (hit) found.Add(type);
+        }
+        return found;
     }
 
     /// <summary>The form as the corpus keys it: NFC, lower case, with the affix and clitic marks a lexicon writes removed from its ends.</summary>
@@ -257,6 +338,7 @@ internal static class TrialSiblingResolver
                 return CommandOutcome<TrialSiblingSample>.Refused(ProposalCommands.ProposalLoadRefusal(exception));
             }
             var forms = new List<string>(NewForms(proposal));
+            ReferrerForms? referrers = null;
             var current = CurrentEvidenceQuery.ReadCurrentEvidence(database, project, includeDefaultSelection: false,
                 includeResolvedReadings: false, includeWordContext: false);
             if (!current.Succeeded) return CommandOutcome<TrialSiblingSample>.Refused(current.Refusal!);
@@ -265,12 +347,21 @@ internal static class TrialSiblingResolver
             {
                 using var reader = BaselineReadCache.Open(baseline.FwDataPath);
                 foreach (var id in TrialTouchedWords.TouchedIds(proposal)) forms.AddRange(ExistingForms(reader.Cache, id));
+                // A pattern names the forms itself, so the entries that use an edited grammar object are not looked up.
+                if (options.Pattern is null && TrialReferrers.Seeds(proposal) is { Count: > 0 } seeds)
+                    referrers = TrialReferrers.Find(reader.Cache, seeds);
             }
-            else if (TrialTouchedWords.TouchedIds(proposal).Count > 0)
-                warning = "no Baseline, so the forms of the existing entries the Proposal edits were not used";
+            else if (TrialTouchedWords.TouchedIds(proposal).Count > 0 || (options.Pattern is null && TrialReferrers.Seeds(proposal).Count > 0))
+                warning = "no Baseline, so the forms of the existing entries the Proposal edits, or whose grammar objects it edits, were not used";
             var sampled = TrialSiblingSampler.Sample(corpus.Value!.Types, corpus.Value.Sha256, forms, options.Pattern, options.Max,
-                IntentDigest.Compute(proposal), already);
-            return sampled.Succeeded ? CommandOutcome<TrialSiblingSample>.Success(sampled.Value! with { Warning = warning }) : sampled;
+                IntentDigest.Compute(proposal), already, referrers?.Forms);
+            return sampled.Succeeded
+                ? CommandOutcome<TrialSiblingSample>.Success(sampled.Value! with
+                {
+                    Warning = warning,
+                    Referrers = referrers is { Referrers.Count: > 0 } ? referrers.Referrers : null,
+                })
+                : sampled;
         });
     }
 
@@ -295,6 +386,12 @@ internal static class TrialSiblingResolver
         var owner = found;
         while (owner is not null and not SIL.LCModel.ILexEntry) owner = owner.Owner;
         if (owner is not SIL.LCModel.ILexEntry entry) yield break;
+        foreach (var text in EntryForms(entry)) yield return text;
+    }
+
+    /// <summary>The lexeme form and the alternate forms of the entry, in every writing system.</summary>
+    internal static IEnumerable<string> EntryForms(SIL.LCModel.ILexEntry entry)
+    {
         var forms = new List<SIL.LCModel.IMoForm>();
         if (entry.LexemeFormOA is { } lexeme) forms.Add(lexeme);
         forms.AddRange(entry.AlternateFormsOS);
@@ -303,14 +400,20 @@ internal static class TrialSiblingResolver
                 if (form.Form.GetStringFromIndex(slot, out _)?.Text is { Length: > 0 } text) yield return text;
     }
 
-    /// <summary>The text a lexical entry's <c>create…Form(s)</c> or <c>set…Form</c> operation writes; a wordform is not a form.</summary>
+    /// <summary>
+    /// The text an operation writes as a form: a <c>create…</c> or <c>set…</c> operation of any kind whose name holds Form or
+    /// Allomorph, such as an entry's <c>createAlternateForms</c> or an allomorph's <c>grammar/moForm/setForm</c>. A wordform is not
+    /// a form, nor is a pronunciation or an etymology, and neither is what a removal names.
+    /// </summary>
     internal static IEnumerable<string> NewForms(Proposal proposal)
     {
         foreach (var operation in proposal.Operations)
         {
             var name = operation.Kind[(operation.Kind.LastIndexOf('/') + 1)..];
-            if (!operation.Kind.StartsWith("lexical/lexEntry/", StringComparison.Ordinal) ||
-                !Regex.IsMatch(name, "^(create|set)[A-Za-z]*Forms?$") || operation.After is not { } after)
+            if (operation.Kind.Contains("wordform", StringComparison.OrdinalIgnoreCase) ||
+                operation.Kind.Contains("/lexPronunciation/", StringComparison.Ordinal) ||
+                operation.Kind.Contains("/lexEtymology/", StringComparison.Ordinal) ||
+                !Regex.IsMatch(name, "^(create|set).*(Form|Allomorph)", RegexOptions.IgnoreCase) || operation.After is not { } after)
                 continue;
             foreach (var text in FormStrings(after)) yield return text;
         }

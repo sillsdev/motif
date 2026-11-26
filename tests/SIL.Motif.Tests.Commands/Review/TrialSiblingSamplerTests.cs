@@ -156,4 +156,48 @@ public sealed class TrialSiblingSamplerTests : IDisposable
         Assert.Equal(RefusalCodes.TrialSiblingsNone,
             TrialSiblingSampler.Sample(corpus, "sha", ["abc"], null, 5, "rev", new HashSet<string> { "abc" }).Refusal!.Code);
     }
+
+    [Fact]
+    public void AQuotedLedgerCellMayHoldTabsAndLineBreaksWithoutSplittingTheRow()
+    {
+        var path = Write("word\tstate\tnote\r\n\"abc\"\tApproved\t\"a\tb\r\nc \"\"q\"\"\"\r\nabd\tOpen\tplain\r\n" +
+            "\"a\tb\"\tApproved\tx\r\nabe\tApproved\t\"two\nlines\"\n");
+
+        var types = TrialSiblingSampler.ReadCorpus(path).Value!.Types;
+
+        Assert.Equal([new CorpusType("abc", true), new CorpusType("abd", false), new CorpusType("abe", true)], types);
+    }
+
+    [Fact]
+    public void AQuoteInAPlainWordListIsPartOfTheWordAndAnUnclosedQuoteInALedgerIsRefused()
+    {
+        Assert.Equal(["\"ab", "cd"], TrialSiblingSampler.ReadCorpus(Write("\"ab\ncd\n")).Value!.Types.Select(type => type.Word));
+        Assert.Equal(RefusalCodes.TrialSiblingsInvalid,
+            TrialSiblingSampler.ReadCorpus(Write(string.Join('\n', "word\tstate", "\"abc\tOpen", "abd\tOpen"))).Refusal!.Code);
+    }
+
+    [Fact]
+    public void ReferrerFormsDrawOneGroupBesideTheTouchedFormsAndNameAWordTheTouchedFormsMiss()
+    {
+        var corpus = Types(("kuishax", true), ("kwaa", true), ("kwab", true), ("kwac", true), ("zzz", true));
+
+        var sample = TrialSiblingSampler.Sample(corpus, "sha", ["ish"], null, 2, "rev", None, ["kwa", "-KWB-", ""]).Value!;
+
+        Assert.Equal(2, sample.ReferrerForms);
+        Assert.Equal(2, sample.Words.Count);
+        Assert.Contains("kuishax", sample.Words);
+        Assert.StartsWith("kwa", sample.Words.Single(word => word != "kuishax"));
+        Assert.Equal(["ish"], sample.Forms);
+        Assert.Equal(4, sample.Candidates);
+    }
+
+    [Fact]
+    public void ReferrerFormsAloneAreEnoughAndAPatternIgnoresThem()
+    {
+        var corpus = Types(("akwab", true), ("zzz", true));
+
+        Assert.Equal(["akwab"], TrialSiblingSampler.Sample(corpus, "sha", [], null, 5, "rev", None, ["kwa"]).Value!.Words);
+        Assert.Equal(["zzz"], TrialSiblingSampler.Sample(corpus, "sha", [], "z+", 5, "rev", None, ["kwa"]).Value!.Words);
+        Assert.Null(TrialSiblingSampler.Sample(corpus, "sha", [], "z+", 5, "rev", None, ["kwa"]).Value!.ReferrerForms);
+    }
 }

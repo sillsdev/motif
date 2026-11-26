@@ -79,7 +79,12 @@ public sealed class TrialSiblingWorkflowTests
     {
         var input = new TrialJobInput("{}", null)
         {
-            Siblings = new TrialSiblingsInput(new JobWordList("abc", 2), "per-form", 99, 50, ["ish"], "sha", 7, 3) { Warning = "careful" },
+            Siblings = new TrialSiblingsInput(new JobWordList("abc", 2), "per-form", 99, 50, ["ish"], "sha", 7, 3)
+            {
+                Warning = "careful",
+                ReferrerForms = 12,
+                Referrers = [new SIL.Motif.Contract.Review.TrialReferrer("grammar/id", "MoInflClass", 4)],
+            },
         };
 
         var parsed = TrialJobInput.Parse(JsonSerializer.Serialize(input, SIL.Motif.Contract.MotifJson.CreateOptions())).Siblings!;
@@ -87,6 +92,8 @@ public sealed class TrialSiblingWorkflowTests
         Assert.Equal(input.Siblings.Words, parsed.Words);
         Assert.Equal(["ish"], parsed.TouchedForms);
         Assert.Equal(("per-form", 99L, 50, "careful"), (parsed.Pattern, parsed.Seed, parsed.Max, parsed.Warning));
+        Assert.Equal(12, parsed.ReferrerForms);
+        Assert.Equal(new SIL.Motif.Contract.Review.TrialReferrer("grammar/id", "MoInflClass", 4), Assert.Single(parsed.Referrers!));
         Assert.DoesNotContain("siblings", JsonSerializer.Serialize(new TrialJobInput("{}", null), SIL.Motif.Contract.MotifJson.CreateOptions()));
     }
 }
