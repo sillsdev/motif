@@ -17,17 +17,24 @@ public static class GdrQueryBlockCheck
     /// <summary>Runs (or lists as skipped) <paramref name="sources"/>; the runs come in Guide order and the findings follow them.</summary>
     public static (IReadOnlyList<GdrQueryBlockRun> Runs, IReadOnlyList<GdrSyncFinding> Findings) Check(
         IReadOnlyList<GdrQueryBlockSource> sources, string projectPath, bool run, TimeSpan timeout, string? parserPath) =>
-        Check(sources, projectPath, run, timeout, parserPath, null);
+        Check(sources, projectPath, run, timeout, parserPath, (Seams?)null);
 
-    /// <summary>As the public overload; <paramref name="corpusEvaluator"/> (run line, base folder, token) stands in for the app's corpus evaluator in tests.</summary>
+    /// <summary>As the public overload, with only the corpus evaluator stood in.</summary>
     internal static (IReadOnlyList<GdrQueryBlockRun> Runs, IReadOnlyList<GdrSyncFinding> Findings) Check(
         IReadOnlyList<GdrQueryBlockSource> sources, string projectPath, bool run, TimeSpan timeout, string? parserPath,
-        Func<string, string, CancellationToken, GuideEvidenceResult>? corpusEvaluator)
+        Func<string, string, CancellationToken, GuideEvidenceResult> corpusEvaluator) =>
+        Check(sources, projectPath, run, timeout, parserPath, new Seams(corpusEvaluator));
+
+    /// <summary>As the public overload; <paramref name="seams"/> stand in for the evaluators in tests.</summary>
+    internal static (IReadOnlyList<GdrQueryBlockRun> Runs, IReadOnlyList<GdrSyncFinding> Findings) Check(
+        IReadOnlyList<GdrQueryBlockSource> sources, string projectPath, bool run, TimeSpan timeout, string? parserPath,
+        Seams? seams)
     {
         ArgumentNullException.ThrowIfNull(sources);
         ArgumentNullException.ThrowIfNull(projectPath);
         var runs = new List<GdrQueryBlockRun>();
         var findings = new List<GdrSyncFinding>();
+        var abandoned = new List<Task>();
         foreach (var source in sources)
         {
             foreach (var diagnostic in source.Diagnostics.Where(d => d.Kind != GuideBlockDiagnosticKind.InvalidRun || source.Query is null))
@@ -35,7 +42,7 @@ public static class GdrQueryBlockCheck
                     $"{Place(source.Gdr, source.Section)}: {diagnostic.Message} (line {diagnostic.Line}). Fix the block; it is advisory and nothing was blocked.",
                     source.Gdr, source.Section, null, 1, [source.Query?.Id ?? "(no id)"]));
             if (source.Query is not { } query) continue;
-            var result = Describe(source, query, run, timeout, parserPath, projectPath, corpusEvaluator);
+            var result = Describe(source, query, run, timeout, parserPath, projectPath, seams, abandoned);
             runs.Add(result);
             if (result.Status is GdrQueryBlockStatus.Ok or GdrQueryBlockStatus.Skipped) continue;
             var code = result.Status switch
@@ -48,11 +55,15 @@ public static class GdrQueryBlockCheck
                 $"{Place(source.Gdr, source.Section)}, query {query.Id}: {(result.Code is { } c && result.Status == GdrQueryBlockStatus.Refused ? c + ": " : "")}{result.Message}",
                 source.Gdr, source.Section, null, 1, [query.Id]));
         }
+        // A v1 query takes no token, so an abandoned block runs on; waiting briefly lets it release its Baseline copy before the process ends.
+        if (abandoned.Count > 0) Task.WaitAll([.. abandoned.Select(task => task.ContinueWith(_ => { }, TaskScheduler.Default))], AbandonedGrace);
         return (runs, findings);
     }
 
+    private static readonly TimeSpan AbandonedGrace = TimeSpan.FromSeconds(5);
+
     private static GdrQueryBlockRun Describe(GdrQueryBlockSource source, GuideQueryDefinition query, bool run, TimeSpan timeout, string? parserPath, string projectPath,
-        Func<string, string, CancellationToken, GuideEvidenceResult>? corpusEvaluator)
+        Seams? seams, List<Task> abandoned)
     {
         GdrQueryBlockRun Made(string status, string? code, string message, long? rows = null, bool? complete = null, double ms = 0, string? build = null) =>
             new(query.Id, source.Gdr, source.Section, status, code, message, rows, complete, ms, build);
@@ -62,7 +73,7 @@ public static class GdrQueryBlockCheck
             return Made(GdrQueryBlockStatus.Refused, invalid.RefusalCode ?? RefusalCodes.GuideQueryRunInvalid, invalid.Message);
         var clock = System.Diagnostics.Stopwatch.StartNew();
         using var cancellation = new CancellationTokenSource();
-        var work = Task.Run(() => Evaluate(query, projectPath, parserPath, cancellation.Token, corpusEvaluator), CancellationToken.None);
+        var work = Task.Run(() => Evaluate(query, projectPath, parserPath, cancellation.Token, seams), CancellationToken.None);
         bool finished;
         try { finished = work.Wait(timeout); }
         catch (AggregateException exception)
@@ -75,22 +86,27 @@ public static class GdrQueryBlockCheck
         {
             // The evaluator watches the token between phases; a phase already running is left to end on its own.
             cancellation.Cancel();
+            abandoned.Add(work);
             return Made(GdrQueryBlockStatus.Failed, null, $"timed out after {timeout.TotalSeconds:0.#} s (--timeout)", ms: elapsed);
         }
         var outcome = work.Result;
         return Made(outcome.Status, outcome.Code, outcome.Message, outcome.Rows, outcome.Complete, elapsed, outcome.Build);
     }
 
+    /// <summary>Test stand-ins: the corpus evaluator (run line, base folder, token) and the v1 forms runner.</summary>
+    internal sealed record Seams(Func<string, string, CancellationToken, GuideEvidenceResult>? Corpus = null,
+        Func<FormsQueryRequest, CommandOutcome<FormsQueryResponse>>? Forms = null);
+
     private sealed record Outcome(string Status, string? Code, string Message, long? Rows = null, bool? Complete = null, string? Build = null);
 
     private static Outcome Evaluate(GuideQueryDefinition query, string projectPath, string? parserPath, CancellationToken cancellationToken,
-        Func<string, string, CancellationToken, GuideEvidenceResult>? corpusEvaluator)
+        Seams? seams)
     {
         if (!QueryRunLine.TryParseRun(query.Run, out var line, out var refusal))
             return new Outcome(GdrQueryBlockStatus.Refused, refusal.Code, refusal.Message);
         if (line.Corpus is not null)
         {
-            var evidence = (corpusEvaluator?.Invoke(query.Run, BaseDirectory(projectPath), cancellationToken) ??
+            var evidence = (seams?.Corpus?.Invoke(query.Run, BaseDirectory(projectPath), cancellationToken) ??
                     GuideEvidenceRunner.Evaluate(query.Run, BaseDirectory(projectPath), parserPath, cancellationToken, projectPath))
                 .Shaped(query.Columns, query.Sort, null);
             return evidence.Status switch
@@ -107,7 +123,8 @@ public static class GdrQueryBlockCheck
             return new Outcome(GdrQueryBlockStatus.Refused, RefusalCodes.GuideQueryRunInvalid, "a Guide query reads the Baseline and takes no --as-of of its own.");
         if (!QueryRunLine.TryParseRun(query.Run.Trim() + " --as-of baseline", out var based, out var baseRefusal) || based.Query is null)
             return new Outcome(GdrQueryBlockStatus.Refused, baseRefusal?.Code ?? RefusalCodes.GuideQueryRunInvalid, baseRefusal?.Message ?? "the line cannot be read as of the Baseline.");
-        var outcome = FormsQueryCommand.Run(new FormsQueryRequest(projectPath, MotifProductVersion.CurrentText, based.Query.Record), parserPath: parserPath);
+        var formsRequest = new FormsQueryRequest(projectPath, MotifProductVersion.CurrentText, based.Query.Record);
+        var outcome = seams?.Forms is { } forms ? forms(formsRequest) : FormsQueryCommand.Run(formsRequest, parserPath: parserPath);
         if (!outcome.Succeeded || outcome.Value is not { } response)
             return new Outcome(GdrQueryBlockStatus.Refused, outcome.Refusal?.Code, outcome.Refusal?.Message ?? "the query gave no answer.");
         var rows = response.Sides?.Rows.Count ?? (response.Result.Groups.Count > 0 ? response.Result.Groups.Count : response.Result.Rows.Count);

@@ -2,6 +2,7 @@ using SIL.Motif.Commands;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.Requests;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Gdr;
 using SIL.Motif.Contract.Query;
 using SIL.Motif.Contract.Requests;
@@ -141,6 +142,34 @@ public sealed class GdrQueryBlockCheckTests(PristineProjectFixture pristine)
         Assert.Equal([GdrQueryBlockStatus.Failed, GdrQueryBlockStatus.Refused], result.Runs.Select(block => block.Status));
         Assert.Contains("timed out", result.Runs[0].Message, StringComparison.Ordinal);
         Assert.Equal([GdrSyncCodes.QueryFailed, GdrSyncCodes.QueryRefused], result.Findings.Select(finding => finding.Code));
+    }
+
+    [Fact]
+    public void AV1BlockThatRunsPastTheTimeoutIsFailedAndTheCheckStillReturns()
+    {
+        var release = new ManualResetEventSlim();
+        var finished = false;
+        var seams = new GdrQueryBlockCheck.Seams(Forms: _ =>
+        {
+            release.Wait(TimeSpan.FromSeconds(20));
+            finished = true;
+            return CommandOutcome<FormsQueryResponse>.Refused(new Refusal("query.no-trial-rows", FailureReason.NotFound, "none"));
+        });
+        var result = GdrQueryBlockCheck.Check([Source("slow", "motif query forms"), Source("g", "motif group suffix s")], "p.fwdata", true,
+            TimeSpan.FromMilliseconds(200), null, seams);
+        Assert.Equal([GdrQueryBlockStatus.Failed, GdrQueryBlockStatus.Refused], result.Runs.Select(block => block.Status));
+        Assert.Contains("timed out", result.Runs[0].Message, StringComparison.Ordinal);
+        Assert.False(finished);
+        release.Set();
+    }
+
+    [Fact]
+    public void TheTrialAdvisoryJsonCarriesNoQueryBlocksAndTheCheckJsonDoes()
+    {
+        var advisory = new GdrCheckResponse(true, true, [], [], new GdrSyncCounts(0, 0, 0, 0, 0, []));
+        Assert.DoesNotContain("queryBlocks", System.Text.Json.JsonSerializer.Serialize(advisory), StringComparison.OrdinalIgnoreCase);
+        var withBlocks = advisory with { QueryBlocks = [new GdrQueryBlockRun("q", "GDR-1", null, GdrQueryBlockStatus.Ok, null, "", 1, true, 1)] };
+        Assert.Contains("queryBlocks", System.Text.Json.JsonSerializer.Serialize(withBlocks, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)), StringComparison.Ordinal);
     }
 
     [Fact]
