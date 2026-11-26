@@ -25,8 +25,8 @@ public sealed record ComplexFormRefIntent(
 /// <summary>
 /// Stages the complex-form link of an entry as FieldWorks makes it: a LexEntryRef with RefType krtComplexForm and its complex form
 /// types (InsertEntryDlg.CreateNewEntryInternal, its m_fComplexForm branch), then each component added to ComponentLexemes with
-/// the primary lexemes and ShowComplexFormsIn that the lexicon editor's component coupling gives it
-/// (EntrySequenceReferenceLauncher.AddNewObjectsToProperty, DetailComposer.ApplyComponentLexemesAddCoupling).
+/// the primary lexemes and ShowComplexFormsIn the payload names; ShowComplexFormsIn defaults to the components in their order, and no primary is
+/// chosen unless named, where the lexicon editor's coupling (EntrySequenceReferenceLauncher.AddNewObjectsToProperty) makes the first component primary.
 /// </summary>
 public static class ComplexFormRefComposer
 {

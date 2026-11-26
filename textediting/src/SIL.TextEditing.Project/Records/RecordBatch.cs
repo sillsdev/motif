@@ -7,7 +7,7 @@ namespace SIL.TextEditing.Project
     /// and is built by the host before any file is planned; a new object is known by its GUID and the class its file gives it.</summary>
     public sealed class RecordBatch
     {
-        /// <param name="newObjects">Every object the batch's files create (a new record and the objects it owns, or an object an update adds), by GUID, with its class.</param>
+        /// <param name="newObjects">Every object the batch's files create (a new record and the objects it owns; an update file adds none), by GUID, with its class.</param>
         /// <param name="deleted">Every object the batch's files remove, by GUID, with the label of the file that removes it.</param>
         /// <param name="self">The label of the file being planned: what it removes does not count against its own references.</param>
         public RecordBatch(IReadOnlyDictionary<Guid, string> newObjects, IReadOnlyDictionary<Guid, string> deleted, string? self = null)

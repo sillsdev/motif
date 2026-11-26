@@ -23,7 +23,7 @@ public sealed partial class RecordChangeSetLowerer
     private RecordLowering LowerCreatedEntry(LcmCache cache, ProjectRecordPlan plan)
     {
         var run = new Run(schema, catalog, cache, plan.RecordGuid!.Value.ToString("D"),
-            new ProjectRecordExporter(cache, schema).CreateReadOptions().Markdown) { Changes = plan.ChangeSet.Changes, BatchClasses = BatchClasses };
+            ReadOptions(cache)) { Changes = plan.ChangeSet.Changes, BatchClasses = BatchClasses };
         return run.LowerEntry(plan);
     }
 

@@ -23,9 +23,9 @@ internal sealed class RecordImportBatchTooLargeException(int files, int operatio
 }
 
 /// <summary>Files the scratch pass showed must be refused with a file already refused; the folder is planned again on a clean copy without them.</summary>
-internal sealed class RecordImportCascadeException(IReadOnlyDictionary<string, (string Code, string Reason)> refused) : Exception("The folder needs another pass.")
+internal sealed class RecordImportCascadeException(IReadOnlyDictionary<string, Refusal> refused) : Exception("The folder needs another pass.")
 {
-    public IReadOnlyDictionary<string, (string Code, string Reason)> Refused { get; } = refused;
+    public IReadOnlyDictionary<string, Refusal> Refused { get; } = refused;
 }
 
 public static partial class RecordImportCommand
@@ -109,7 +109,7 @@ public static partial class RecordImportCommand
                 ("file", Path.GetFileName(report)));
 
         var inputs = listed.Value!.Files.Select(item => ReadInput(item.Relative, item.Full)).ToList();
-        var excluded = new Dictionary<string, (string Code, string Reason)>(StringComparer.Ordinal);
+        var excluded = new Dictionary<string, Refusal>(StringComparer.Ordinal);
         CommandOutcome<BatchPlan> read;
         RecordImportCascadeException? cascade;
         // A file whose operations fail unexpectedly is left out and the folder is planned again on a clean copy.
@@ -150,7 +150,7 @@ public static partial class RecordImportCommand
                 continue;
             }
             if (!read.Succeeded && read.Refusal!.Facts.TryGetValue("file", out var culprit) &&
-                excluded.TryAdd(culprit, (RefusalCodes.RecordImportPlanRefused,
+                excluded.TryAdd(culprit, new Refusal(RefusalCodes.RecordImportPlanRefused, FailureReason.Refused,
                     "The operations of this file failed unexpectedly on a scratch copy, so it was left out and the rest of the folder went on.")))
                 continue;
             break;
@@ -292,7 +292,7 @@ public static partial class RecordImportCommand
     // ------------------------------------------------------------------ planning
 
     private static BatchPlan PlanBatch(LcmCache cache, IReadOnlyList<DirInput> inputs, bool validate,
-        IReadOnlyDictionary<string, (string Code, string Reason)>? excluded = null)
+        IReadOnlyDictionary<string, Refusal>? excluded = null)
     {
         var schemas = new SchemaSet(cache);
         var files = new List<DirFile>(inputs.Count);
@@ -346,7 +346,7 @@ public static partial class RecordImportCommand
 
         foreach (var file in files.Where(file => file.Input.Text is not null))
         {
-            if (excluded is not null && excluded.TryGetValue(file.Input.Path, out var why)) file.Refuse(why.Code, why.Reason);
+            if (excluded is not null && excluded.TryGetValue(file.Input.Path, out var why)) file.Refuse(why);
             else Classify(file);
         }
         RefuseRecordTwice(files);
@@ -373,10 +373,10 @@ public static partial class RecordImportCommand
             file.RefusedChanges = Refusals(file.Planned!, file.Lowering).Count;
             if (file.Lowering.Operations.Count == 0 && file.RefusedChanges > 0) RefuseWithFirst(file);
         }
-        var more = new Dictionary<string, (string Code, string Reason)>(StringComparer.Ordinal);
-        foreach (var file in files.Where(item => item.Status == RefusedStatus && item.Owns.Count > 0 && item.Code != RefusalCodes.RecordImportBatchCycle))
+        var more = new Dictionary<string, Refusal>(StringComparer.Ordinal);
+        foreach (var file in files.Where(item => item.Status == RefusedStatus && item.Owns.Count > 0))
             foreach (var other in DependentsOf(file, files, creators).Where(item => item.Status is CreatedStatus or UpdatedStatus))
-                more.TryAdd(other.Input.Path, (RefusalCodes.RecordImportReferenceToRefused, RefusedBecause(file, other)));
+                more.TryAdd(other.Input.Path, RefusedBecause(file, other));
         if (more.Count > 0) throw new RecordImportCascadeException(more);
         return result;
     }
@@ -393,8 +393,9 @@ public static partial class RecordImportCommand
     private static IEnumerable<Guid> NamedByFile(DirFile file, IReadOnlyDictionary<Guid, string> creators) =>
         (file.Planned?.Plan.BatchTargets ?? []).Where(guid => creators.TryGetValue(guid, out var by) && by != file.Input.Path);
 
-    private static string RefusedBecause(DirFile cause, DirFile file) => "This file refers to a new record of " + cause.Input.Path +
-        ", which was refused (" + (cause.Code ?? "refused") + "), so a link to it would dangle. Fix " + cause.Input.Path + " and import again.";
+    private static Refusal RefusedBecause(DirFile cause, DirFile file) => new(RefusalCodes.RecordImportReferenceToRefused, FailureReason.Refused,
+        "This file refers to a new record of " + cause.Input.Path + ", which was refused (" + (cause.Code ?? "refused") +
+        "), so a link to it would dangle. Fix " + cause.Input.Path + " and import again.");
 
     private static void RefuseReferencesToRefused(IReadOnlyList<DirFile> files, IReadOnlyDictionary<Guid, string> creators)
     {
@@ -402,16 +403,16 @@ public static partial class RecordImportCommand
         while (changed)
         {
             changed = false;
-            foreach (var cause in files.Where(file => file.Status == RefusedStatus && file.Owns.Count > 0 && file.Code != RefusalCodes.RecordImportBatchCycle).ToList())
+            foreach (var cause in files.Where(file => file.Status == RefusedStatus && file.Owns.Count > 0).ToList())
                 foreach (var file in DependentsOf(cause, files, creators).Where(item => item.Status is CreatedStatus or UpdatedStatus))
                 {
-                    file.Refuse(RefusalCodes.RecordImportReferenceToRefused, RefusedBecause(cause, file));
+                    file.Refuse(RefusedBecause(cause, file));
                     changed = true;
                 }
         }
     }
 
-    // FieldWorks follows both kinds of component link as one graph, so one loop marks all its files.
+    // One graph over both component kinds, as liblcm walks them (LexEntry.AllComponents).
     private static void RefuseBatchCycles(IReadOnlyList<DirFile> files, IReadOnlyDictionary<Guid, string> creators)
     {
         var byPath = files.Where(file => file.Status is CreatedStatus or UpdatedStatus).ToDictionary(file => file.Input.Path, StringComparer.Ordinal);
@@ -421,8 +422,9 @@ public static partial class RecordImportCommand
             StringComparer.Ordinal);
         foreach (var group in StronglyConnected(edges).Where(group => group.Count > 1 || edges[group[0]].Contains(group[0])))
             foreach (var path in group)
-                byPath[path].Refuse(RefusalCodes.RecordImportBatchCycle, "These files are variants or complex forms of each other in a loop (" +
-                    ListOf(group.Order(StringComparer.Ordinal)) + "), which FieldWorks does not allow. Break the loop in one of them.");
+                byPath[path].Refuse(new Refusal(RefusalCodes.RecordImportBatchCycle, FailureReason.Refused,
+                    "These files are variants or complex forms of each other in a loop (" + ListOf(group.Order(StringComparer.Ordinal)) +
+                    "), which FieldWorks does not allow. Break the loop in one of them."));
     }
 
     /// <summary>The files whose new records a file's variant or complex-form links name as components.</summary>

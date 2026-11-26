@@ -120,7 +120,12 @@ namespace SIL.TextEditing.Project
         }
 
         /// <summary>The objects other files of a batch create, so the links a file reads resolve to them.</summary>
-        internal RecordBatch? Batch { get => _paths.Batch; set => _paths.Batch = value; }
+        public RecordBatch? Batch { get => _paths.Batch; set => _paths.Batch = value; }
+
+        /// <summary>The batch objects the links read since <see cref="ClearLinked"/> named.</summary>
+        internal IReadOnlyCollection<Guid> LinkedBatchObjects => _paths.LinkedBatchObjects;
+
+        internal void ClearLinked() => _paths.ClearLinked();
 
         /// <summary>Runs before each record of <see cref="ExportAll"/>, so a test can make one record fail.</summary>
         internal Action<ICmObject>? BeforeRecord { get; set; }

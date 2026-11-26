@@ -95,12 +95,20 @@ public sealed partial class RecordChangeSetLowerer(ProjectRecordSchemaResult sch
         return new([], rows, set.Refusals, [], refused);
     }
 
+    // A link to an object another file of the batch creates reads as a link, with its tool.
+    private MarkdownOptions ReadOptions(LcmCache cache)
+    {
+        var exporter = new ProjectRecordExporter(cache, schema);
+        if (BatchClasses is { Count: > 0 }) exporter.Batch = new RecordBatch(BatchClasses, new Dictionary<Guid, string>());
+        return exporter.CreateReadOptions().Markdown;
+    }
+
     /// <summary>Lowers individual changes; <paramref name="seed"/> makes the operation ids, so one seed and one list give one intent digest.</summary>
     public RecordLowering LowerChanges(LcmCache cache, string seed, IReadOnlyList<RecordChange> changes)
     {
         ArgumentNullException.ThrowIfNull(cache);
         ArgumentNullException.ThrowIfNull(changes);
-        var run = new Run(schema, catalog, cache, seed, new ProjectRecordExporter(cache, schema).CreateReadOptions().Markdown) { Changes = changes, BatchClasses = BatchClasses };
+        var run = new Run(schema, catalog, cache, seed, ReadOptions(cache)) { Changes = changes, BatchClasses = BatchClasses };
         for (var index = 0; index < changes.Count; index++)
             run.Lower(index, changes[index]);
         return new(run.Operations, run.Refusals, [], run.OperationChanges, run.RefusedCodes);

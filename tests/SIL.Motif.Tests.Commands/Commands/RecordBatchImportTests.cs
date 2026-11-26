@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using SIL.LCModel;
+using SIL.LCModel.Core.KernelInterfaces;
 using SIL.LCModel.Core.Text;
 using SIL.LCModel.DomainServices;
 using SIL.LCModel.Infrastructure;
@@ -57,6 +58,7 @@ public sealed class RecordBatchImportTests(PristineProjectFixture pristine) : ID
             entry.SensesOS.Add(sense);
             sense.MorphoSyntaxAnalysisRA = msa;
             sense.Gloss.set_String(cache.DefaultAnalWs, "zzgloss");
+            sense.Definition.set_String(cache.DefaultAnalWs, "zzdefinition");
             var lexDb = cache.LangProject.LexDbOA;
             lexDb.VariantEntryTypesOA ??= services.GetInstance<ICmPossibilityListFactory>().Create();
             var kind = services.GetInstance<ILexEntryTypeFactory>().Create();
@@ -214,6 +216,7 @@ public sealed class RecordBatchImportTests(PristineProjectFixture pristine) : ID
         RoundTrips(seed, ("a-complex.fw.md", complex), ("b-variant.fw.md", variant), ("c-main.fw.md", main));
     }
 
+    // liblcm throws on the second add: LexEntryRef.ValidateAddObjectInternal.
     [Fact]
     public void AVariantAndAComplexFormThatNameEachOtherAreRefusedAsOneLoop()
     {
@@ -264,6 +267,66 @@ public sealed class RecordBatchImportTests(PristineProjectFixture pristine) : ID
         var staged = RecordImportCommand.Run(Dry(seed, DraftName));
         Assert.True(staged.Succeeded, staged.Refusal?.Message);
         Assert.Equal(1, staged.Value!.Dir!.Created);
+    }
+
+    private static RecordAlternatives LinkTo(Guid target) => new RecordAlternatives().Add("en", new RecordScalar("see [zzlink](/objects/" + target.ToString("D") + "){.nostyle guid=" + target.ToString("D") + "}"));
+
+    [Fact]
+    public void ARichTextLinkToANewEntryOfARefusedFileRefusesTheReferrerAndStagesNoDanglingLink()
+    {
+        var seed = Seeded();
+        var broken = Write(seed, "b-broken.fw.md", seed.Main, edit: document => Sense(document)["gloss"] = null);
+        Write(seed, "a-linker.fw.md", seed.Main, edit: document => Sense(document)["definition"] = LinkTo(broken));
+        Write(seed, "c-free.fw.md", seed.Main);
+
+        var rows = Rows(seed);
+
+        Assert.Equal(RefusalCodes.RecordImportCreateShape, rows["b-broken.fw.md"].Code);
+        Assert.Equal(("refused", RefusalCodes.RecordImportReferenceToRefused), (rows["a-linker.fw.md"].Status, rows["a-linker.fw.md"].Code));
+        Assert.Contains("b-broken.fw.md", rows["a-linker.fw.md"].Reason, StringComparison.Ordinal);
+        Assert.Equal("created", rows["c-free.fw.md"].Status);
+        var staged = RecordImportCommand.Run(Dry(seed, DraftName));
+        Assert.True(staged.Succeeded, staged.Refusal?.Message);
+        Assert.Equal(1, staged.Value!.Dir!.Created);
+    }
+
+    [Fact]
+    public void TwoNewEntriesWhoseDefinitionsLinkToEachOtherApplyAndReadBackAsTheFilesWithTheEntryTool()
+    {
+        var seed = Seeded();
+        var first = Guid.NewGuid();
+        var second = Guid.NewGuid();
+        Write(seed, "a-first.fw.md", seed.Main, edit: document => Sense(document)["definition"] = LinkTo(second), root: first);
+        Write(seed, "b-second.fw.md", seed.Main, edit: document => Sense(document)["definition"] = LinkTo(first), root: second);
+
+        RoundTrips(seed, ("a-first.fw.md", first), ("b-second.fw.md", second));
+
+        using var reopened = new FwDataProjectLoader().LoadCache(seed.Project);
+        var entry = reopened.ServiceLocator.GetInstance<ILexEntryRepository>().GetObject(first);
+        var definition = entry.SensesOS[0].Definition.get_String(reopened.DefaultAnalWs);
+        var data = Enumerable.Range(0, definition.RunCount).Select(run => definition.get_Properties(run).GetStrPropValue((int)FwTextPropType.ktptObjData)).Single(text => text != null);
+        Assert.Contains("lexiconEdit", data, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AFileThatDependsOnAFileOfARefusedCycleIsRefusedNamingTheCauseAndNotCreated()
+    {
+        var seed = Seeded();
+        var first = Guid.NewGuid();
+        var second = Write(seed, "b-two.fw.md", seed.Variant, text => Replace(text, seed.Main, first));
+        Write(seed, "a-one.fw.md", seed.Variant, text => Replace(text, seed.Main, second), root: first);
+        Write(seed, "c-on-cycle.fw.md", seed.Variant, text => Replace(text, seed.Main, first));
+        Write(seed, "d-links-cycle.fw.md", seed.Main, edit: document => Sense(document)["definition"] = LinkTo(second));
+        Write(seed, "e-free.fw.md", seed.Main);
+
+        var rows = Rows(seed);
+
+        Assert.Equal(RefusalCodes.RecordImportBatchCycle, rows["a-one.fw.md"].Code);
+        foreach (var name in new[] { "c-on-cycle.fw.md", "d-links-cycle.fw.md" })
+            Assert.Equal(("refused", RefusalCodes.RecordImportReferenceToRefused), (rows[name].Status, rows[name].Code));
+        Assert.Contains("a-one.fw.md", rows["c-on-cycle.fw.md"].Reason, StringComparison.Ordinal);
+        Assert.Contains("b-two.fw.md", rows["d-links-cycle.fw.md"].Reason, StringComparison.Ordinal);
+        Assert.Equal("created", rows["e-free.fw.md"].Status);
     }
 
     private Guid RootOf(Seed seed, string name)

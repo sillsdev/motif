@@ -124,6 +124,7 @@ namespace SIL.TextEditing.Project
         public ProjectRecordPlan Plan(string fileText, WritableFields? writable = null)
         {
             if (fileText == null) throw new ArgumentNullException(nameof(fileText));
+            _exporter.ClearLinked();
             var read = RecordFileReader.Read(fileText, Schema, _exporter.CreateReadOptions());
             var file = read.Document;
             if (file == null || Schema.Kind(file.Kind) == null)
@@ -209,7 +210,7 @@ namespace SIL.TextEditing.Project
                     if (change.Anchor != null && change.Anchor.Kind == RecordAnchorKind.Added)
                         change.Anchor = RecordAnchor.AddedBy(accepted.IndexOf(diff.Changes[change.Anchor.ChangeIndex]));
             }
-            return new ProjectRecordPlan(new RecordChangeSet(accepted.AsReadOnly(), refusals.AsReadOnly(), diff.IsPartial), verdict, kindName, record, export, diagnostics, run.BatchTargets, run.Removed);
+            return new ProjectRecordPlan(new RecordChangeSet(accepted.AsReadOnly(), refusals.AsReadOnly(), diff.IsPartial), verdict, kindName, record, export, diagnostics, run.BatchTargets.Union(_exporter.LinkedBatchObjects).ToList(), run.Removed);
         }
 
         // ------------------------------------------------------------------ creating a record
