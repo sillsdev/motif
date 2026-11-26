@@ -83,7 +83,7 @@ public sealed class TrialSiblingSamplerTests : IDisposable
     [Fact]
     public void TheSampleIsTheSameForTheSameSeedAndDiffersWithTheRevision()
     {
-        var corpus = Types([.. Enumerable.Range(0, 200).Select(index => ("w" + index + "ish", false))]);
+        var corpus = Types([.. Enumerable.Range(0, 200).Select(index => ("w" + index + "ish", false)), .. Filler(4000)]);
 
         var first = TrialSiblingSampler.Sample(corpus, "sha", ["ish"], null, 20, "rev-a", None).Value!;
         var again = TrialSiblingSampler.Sample(corpus, "sha", ["ish"], null, 20, "rev-a", None).Value!;
@@ -250,5 +250,44 @@ public sealed class TrialSiblingSamplerTests : IDisposable
         Assert.Equal(["akwab"], TrialSiblingSampler.Sample(corpus, "sha", [], null, 5, "rev", None, ["kwa"]).Value!.Words);
         Assert.Equal(["zzz"], TrialSiblingSampler.Sample(corpus, "sha", [], "z+", 5, "rev", None, ["kwa"]).Value!.Words);
         Assert.Null(TrialSiblingSampler.Sample(corpus, "sha", [], "z+", 5, "rev", None, ["kwa"]).Value!.ReferrerForms);
+    }
+
+    [Fact]
+    public void ATouchedFormKeepsItsAffixMarkAndIsSkippedWhenShortOrCommonAndTheSkipSaysTouched()
+    {
+        var common = Enumerable.Range(0, 20).Select(index => ("kwaz" + index, true));
+        var corpus = Types([("kuish", true), ("ishku", true), ("uverb", true), .. common, .. Filler(100)]);
+
+        var sample = TrialSiblingSampler.Sample(corpus, "sha", ["-ish", "a", "kwa", "verb-"], null, 50, "rev", None).Value!;
+
+        Assert.Equal(["kuish"], sample.Words);
+        Assert.Equal([("a", "shorter than 2 characters", "touched"), ("kwa", "matches 20 of 123 corpus types (over 5%)", "touched")],
+            sample.SkippedReferrerForms!.Select(form => (form.Form, form.Reason, form.Kind)));
+    }
+
+    [Fact]
+    public void ACommonTouchedFormThatIsTheOnlyFormOfAnObjectIsKeptOnAQuarterOfTheCap()
+    {
+        var common = Enumerable.Range(0, 120).Select(index => ("kwa" + (char)('a' + index % 26) + index, true));
+        var other = Enumerable.Range(0, 40).Select(index => ("ish" + (char)('a' + index % 26) + index, true));
+        var corpus = Types([.. common, .. other, .. Filler(1000)]);
+
+        var sample = TrialSiblingSampler.Sample(corpus, "sha", ["kwa", "ish"], null, 20, "rev", None, null,
+            new HashSet<string> { "kwa" }).Value!;
+
+        Assert.Equal(5, sample.Words.Count(word => word.StartsWith("kwa")));
+        Assert.Equal(15, sample.Words.Count(word => word.StartsWith("ish")));
+        Assert.Equal([("kwa", "kept: only form", "touched")], sample.SkippedReferrerForms!.Select(form => (form.Form, form.Reason, form.Kind)));
+    }
+
+    [Fact]
+    public void AShortTouchedFormThatIsTheOnlyFormOfAnObjectIsKept()
+    {
+        var corpus = Types([("qx", true), ("aq", true), .. Filler(100)]);
+
+        var sample = TrialSiblingSampler.Sample(corpus, "sha", ["q"], null, 10, "rev", None, null, new HashSet<string> { "q" }).Value!;
+
+        Assert.Equal(["aq", "qx"], sample.Words.Order(StringComparer.Ordinal));
+        Assert.Equal([("q", "kept: only form", "touched")], sample.SkippedReferrerForms!.Select(form => (form.Form, form.Reason, form.Kind)));
     }
 }

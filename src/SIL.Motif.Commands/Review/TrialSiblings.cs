@@ -7,6 +7,7 @@ using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Canonicalization;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Review;
 using SIL.Motif.Host.Baselines;
@@ -52,7 +53,7 @@ internal sealed record TrialSiblingSample(IReadOnlyList<string> Words, string Pa
     public string Describe() => $"siblings: added {Words.Count} word(s) of {Candidates} corpus candidate(s) " +
         $"({ParsedCandidates} parsed) sharing {Forms.Count} touched form(s)" +
         (ReferrerForms is > 0 ? $" and {ReferrerForms} form(s) of the entries that use {Referrers!.Count} edited grammar object(s)" : "") +
-        (SkippedReferrerForms is { Count: > 0 } ? $" ({SkippedReferrerForms.Count} referrer form(s) skipped as too short or too common)" : "") +
+        (SkippedReferrerForms is { Count: > 0 } ? $" ({SkippedReferrerForms.Count} form(s) skipped as too short or too common, or kept as an only form; see skippedReferrerForms)" : "") +
         $"; seed {Seed}, cap {Max}" +
         (Warning is null ? "" : "; warning: " + Warning);
 }
@@ -198,16 +199,18 @@ internal static class TrialSiblingSampler
     /// </summary>
     public static CommandOutcome<TrialSiblingSample> Sample(IReadOnlyList<CorpusType> corpus, string corpusSha256,
         IReadOnlyList<string> forms, string? pattern, int max, string revision, IReadOnlySet<string> already,
-        IReadOnlyList<string>? referrerForms = null)
+        IReadOnlyList<string>? referrerForms = null, IReadOnlySet<string>? onlyKeys = null)
     {
         var keys = forms.Select(Key).Where(form => form.Length > 0).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
         var seed = Seed(revision, keys);
         var types = corpus.GroupBy(type => Key(type.Word), StringComparer.Ordinal)
             .Select(group => new CorpusType(group.Key, group.Any(type => type.Parsed)))
             .Where(type => !already.Contains(type.Word)).ToArray();
-        var matcher = pattern is null && referrerForms is { Count: > 0 }
-            ? ReferrerFormMatcher.Create(referrerForms, [.. types.Select(type => type.Word)])
-            : null;
+        var typeWords = pattern is null ? types.Select(type => type.Word).ToArray() : [];
+        var matcher = pattern is null && referrerForms is { Count: > 0 } ? ReferrerFormMatcher.Create(referrerForms, typeWords) : null;
+        var touched = pattern is null ? ReferrerFormMatcher.Create(forms, typeWords, "touched", onlyKeys) : null;
+        var skipped = (touched?.Skipped ?? []).Concat(matcher?.Skipped ?? []).OrderBy(form => form.Form, StringComparer.Ordinal)
+            .ThenBy(form => form.Kind, StringComparer.Ordinal).ToArray();
         List<CorpusType>[] groups;
         string label;
         if (pattern is not null)
@@ -232,7 +235,7 @@ internal static class TrialSiblingSampler
         }
         else
         {
-            groups = [.. keys.Select(form => types.Where(type => type.Word.Contains(form, StringComparison.OrdinalIgnoreCase)).ToList())];
+            groups = [.. Enumerable.Range(0, touched!.Count).Select(index => types.Where(type => touched.Fits(type.Word, index)).ToList())];
             if (matcher is { Count: > 0 }) groups = [.. groups, types.Where(type => matcher.Matches(type.Word)).ToList()];
             label = PerForm;
         }
@@ -247,6 +250,9 @@ internal static class TrialSiblingSampler
         // A quarter of the cap at most, so referring entries cannot crowd out the touched forms.
         var limits = Enumerable.Repeat(int.MaxValue, ordered.Length).ToArray();
         var drawn = new int[ordered.Length];
+        if (touched is not null)
+            for (var index = 0; index < touched.Count; index++)
+                if (touched.Capped[index]) limits[index] = Math.Max(1, max / ReferrerShareDivisor);
         if (matcher is { Count: > 0 }) limits[^1] = Math.Max(1, max / ReferrerShareDivisor);
         while (picked.Count < max)
         {
@@ -267,13 +273,14 @@ internal static class TrialSiblingSampler
         }
         return picked.Count == 0
             ? CommandOutcome<TrialSiblingSample>.Refused(new Refusal(RefusalCodes.TrialSiblingsNone, FailureReason.NotFound,
-                (candidates == 0 ? "No corpus type shares " + (keys.Length == 0 ? "a touched form; the Proposal names none" : "a touched form (" + string.Join(", ", keys.Take(5)) + ")")
+                (candidates == 0 ? "No corpus type shares " + (keys.Length == 0 ? "a touched form; the Proposal names none" : "a touched form (" + string.Join(", ", keys.Take(5)) + ")" +
+                    (skipped.Length > 0 ? ", and " + skipped.Count(form => form.Reason != ReferrerFormMatcher.KeptOnlyForm) + " form(s) were skipped as too short or too common" : ""))
                     : "Every corpus type that shares a touched form is already in the word list") +
                 ", so there is no sibling to measure. Next: pass --siblings-pattern <regex> to name the forms, or leave --siblings out."))
             : CommandOutcome<TrialSiblingSample>.Success(new TrialSiblingSample(picked, label, seed, max, keys, corpusSha256,
                 candidates, parsedCandidates) {
                     ReferrerForms = matcher is { Count: > 0 } ? matcher.Count : null,
-                    SkippedReferrerForms = matcher is { Skipped.Count: > 0 } ? matcher.Skipped.Take(MaxSkippedShown).ToArray() : null,
+                    SkippedReferrerForms = skipped.Length > 0 ? skipped.Take(MaxSkippedShown).ToArray() : null,
                 });
     }
 
@@ -334,7 +341,14 @@ internal static class TrialSiblingResolver
             {
                 return CommandOutcome<TrialSiblingSample>.Refused(ProposalCommands.ProposalLoadRefusal(exception));
             }
-            var forms = new List<string>(NewForms(proposal));
+            var forms = new List<string>();
+            var objects = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+            void Put(string owner, string form)
+            {
+                forms.Add(form);
+                if (!objects.TryGetValue(owner, out var set)) objects[owner] = set = new HashSet<string>(StringComparer.Ordinal);
+                set.Add(TrialSiblingSampler.Key(form));
+            }
             ReferrerForms? referrers = null;
             var current = CurrentEvidenceQuery.ReadCurrentEvidence(database, project, includeDefaultSelection: false,
                 includeResolvedReadings: false, includeWordContext: false);
@@ -343,15 +357,20 @@ internal static class TrialSiblingResolver
             if (current.Value!.Baseline is { } baseline)
             {
                 using var reader = BaselineReadCache.Open(baseline.FwDataPath);
-                foreach (var id in TrialTouchedWords.TouchedIds(proposal)) forms.AddRange(ExistingForms(reader.Cache, id));
+                foreach (var id in TrialTouchedWords.TouchedIds(proposal))
+                    foreach (var form in ExistingForms(reader.Cache, id)) Put(OwnerKey(reader.Cache, id.ToString()), form);
+                foreach (var (operation, text) in NewFormWrites(proposal)) Put(OwnerKey(reader.Cache, WriterOf(operation)), text);
                 // A pattern names the forms itself, so the entries that use an edited grammar object are not looked up.
                 if (options.Pattern is null && TrialReferrers.Seeds(proposal) is { Count: > 0 } seeds)
                     referrers = TrialReferrers.Find(reader.Cache, seeds);
             }
             else if (TrialTouchedWords.TouchedIds(proposal).Count > 0 || (options.Pattern is null && TrialReferrers.Seeds(proposal).Count > 0))
                 warning = "no Baseline, so the forms of the existing entries the Proposal edits, or whose grammar objects it edits, were not used";
+            if (current.Value.Baseline is null) foreach (var (operation, text) in NewFormWrites(proposal)) Put(WriterOf(operation), text);
+            // Sole forms of an edited object stay in the sample.
+            var onlyKeys = objects.Values.Where(set => set.Count == 1).Select(set => set.Single()).ToHashSet(StringComparer.Ordinal);
             var sampled = TrialSiblingSampler.Sample(corpus.Value!.Types, corpus.Value.Sha256, forms, options.Pattern, options.Max,
-                IntentDigest.Compute(proposal), already, referrers?.Forms);
+                IntentDigest.Compute(proposal), already, referrers?.Forms, onlyKeys);
             return sampled.Succeeded
                 ? CommandOutcome<TrialSiblingSample>.Success(sampled.Value! with
                 {
@@ -402,7 +421,10 @@ internal static class TrialSiblingResolver
     /// Allomorph, such as an entry's <c>createAlternateForms</c> or an allomorph's <c>grammar/moForm/setForm</c>. A wordform is not
     /// a form, nor is a pronunciation or an etymology, and neither is what a removal names.
     /// </summary>
-    internal static IEnumerable<string> NewForms(Proposal proposal)
+    internal static IEnumerable<string> NewForms(Proposal proposal) => NewFormWrites(proposal).Select(write => write.Text);
+
+    /// <summary>Each form text an operation writes, with the operation.</summary>
+    internal static IEnumerable<(OperationEnvelope Operation, string Text)> NewFormWrites(Proposal proposal)
     {
         foreach (var operation in proposal.Operations)
         {
@@ -412,8 +434,28 @@ internal static class TrialSiblingResolver
                 operation.Kind.Contains("/lexEtymology/", StringComparison.Ordinal) ||
                 !Regex.IsMatch(name, "^(create|set)[A-Za-z]*(Form|Allomorph)[A-Za-z]*$") || operation.After is not { } after)
                 continue;
-            foreach (var text in FormStrings(after)) yield return text;
+            foreach (var text in FormStrings(after)) yield return (operation, text);
         }
+    }
+
+    // The object a form write edits: its target, else the owner a create adds to, else the object it creates.
+    private static string WriterOf(OperationEnvelope operation) =>
+        operation.Target?.Value ??
+        (operation.After is { ValueKind: JsonValueKind.Object } after && after.TryGetProperty("owner", out var owner) &&
+            owner.ValueKind == JsonValueKind.String ? owner.GetString() : null) ??
+        operation.EntityId?.Value ?? operation.OperationId.Value;
+
+    // The entry that owns the object when the Baseline has it, so an entry's forms count as one object's forms.
+    private static string OwnerKey(LcmCache cache, string id)
+    {
+        var guid = CanonicalId.TryParse(id, out var canonical) ? canonical.ToGuid() : Guid.TryParse(id, out var parsed) ? parsed : Guid.Empty;
+        if (guid != Guid.Empty && cache.ServiceLocator.ObjectRepository.TryGetObject(guid, out var found))
+        {
+            var cursor = found;
+            while (cursor is not null and not SIL.LCModel.ILexEntry) cursor = cursor.Owner;
+            if (cursor is not null) return cursor.Guid.ToString();
+        }
+        return id;
     }
 
     private static IEnumerable<string> FormStrings(JsonElement element)

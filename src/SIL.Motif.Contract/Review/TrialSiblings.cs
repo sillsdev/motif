@@ -34,15 +34,16 @@ public sealed record TrialSiblings(string Pattern, long Seed, int Max, IReadOnly
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyList<TrialReferrer>? Referrers { get; init; }
 
-    /// <summary>The referring entries' forms left out because they would select the corpus at large, with why; absent when none were.</summary>
+    /// <summary>The forms left out because they would select the corpus at large, or kept only as the sole form of an object, with why; absent when none.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyList<TrialSkippedForm>? SkippedReferrerForms { get; init; }
 }
 
-/// <summary>A form of a referring entry that was not used to select siblings.</summary>
-/// <param name="Form">The form as the entry writes it, with its affix mark.</param>
-/// <param name="Reason">Why: shorter than two characters, or matching over 5% of the corpus types.</param>
-public sealed record TrialSkippedForm(string Form, string Reason);
+/// <summary>A form that was not used, or was kept only on a cap, when selecting siblings.</summary>
+/// <param name="Form">The form as written, with its affix mark.</param>
+/// <param name="Reason">Why: shorter than two characters, or matching over 5% of the corpus types; or <c>kept: only form</c> when it is the only form of an edited object and was used anyway, on a quarter of the cap when over 5%.</param>
+/// <param name="Kind"><c>touched</c> for a form the Proposal writes or an edited entry holds, <c>referrer</c> for a form of an entry that uses an edited grammar object.</param>
+public sealed record TrialSkippedForm(string Form, string Reason, string Kind = "referrer");
 
 /// <summary>A grammar object a Proposal edits and the entries that use it, whose forms the siblings are drawn from.</summary>
 /// <param name="Target">The object's canonical id.</param>

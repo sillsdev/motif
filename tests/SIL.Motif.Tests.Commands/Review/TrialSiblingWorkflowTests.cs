@@ -47,7 +47,7 @@ public sealed class TrialSiblingWorkflowTests
         using var fixture = new ReviewAcceptanceFixture();
         var proposal = SaveProposal(fixture,
         [
-            Operation("lexical/lexEntry/createAlternateForms", Guid.NewGuid(), new { morphType = "m", ws = "x", text = "-ish" }),
+            Operation("lexical/lexEntry/createAlternateForms", Guid.NewGuid(), new { morphType = "m", ws = "x", text = "ish" }),
         ]);
         var request = new EnqueueTrialRequest(fixture.Project, MotifProductVersion.CurrentText, proposal, Words: ["kuisha"])
             { Siblings = new TrialSiblingsRequest(CorpusFile(fixture)) };
