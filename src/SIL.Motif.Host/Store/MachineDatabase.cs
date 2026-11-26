@@ -38,8 +38,7 @@ public sealed class MachineDatabase : IDisposable
             CurrentSchema = MachineSchema.CurrentSchema,
             ValidateSchema = MachineSchema.ValidateSchema,
             Create = MachineSchema.Create,
-            // An older store is rebuilt after a backup (ADR 0023). Usage is recomputable and dropped; KnownProjects holds
-            // what a person authored (ProjectTag, set by `project tag`), so its shared columns are carried across.
+            // Rebuilt after a backup; KnownProjects.ProjectTag is authored and carried, Usage is recomputed.
             RebuildOlder = true,
             CarryAfterRebuild = CarryKnownProjects,
             CarriedTables = ["KnownProjects"],
@@ -109,7 +108,7 @@ public sealed class MachineDatabase : IDisposable
         }
     }
 
-    // Copies every KnownProjects row, column by column for the columns both schemas have; a bump that adds a required column must default it.
+    // Copies every KnownProjects row for the columns both schemas have.
     private static void CarryKnownProjects(SqliteConnection target, string backupStore)
     {
         using var source = new SqliteConnection(new SqliteConnectionStringBuilder

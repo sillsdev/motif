@@ -77,9 +77,7 @@ public sealed class StoreUpgradeFixtureTests : IDisposable
         Assert.Equal(StoreUpgradeSteps.PlanFor(schema).Crossed.Select(step => $"{step.To}: {step.Summary}"), real.Steps);
 
         // The backup exists, verifies and opens.
-        var legacy = Source + $".schema{schema}.bak";
-        Assert.True(File.Exists(legacy));
-        Assert.Equal(original, File.ReadAllBytes(legacy));
+        Assert.False(File.Exists(Source + $".schema{schema}.bak"));
         Assert.StartsWith(Path.Combine(_root, "real", "project.motif-backups", $"pre-upgrade-schema{schema}-"), real.BackupDirectory, StringComparison.Ordinal);
         var receipt = JsonSerializer.Deserialize<StoreBackupResponse>(File.ReadAllText(real.BackupReceiptPath!), StoreBackups.ReceiptOptions)!;
         Assert.Equal(schema, receipt.SchemaVersion);

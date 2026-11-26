@@ -95,7 +95,7 @@ public sealed class TextCoverageSelectionParityTests(PristineProjectFixture pris
         var second = Assess(path);
 
         Assert.True(second.Succeeded, second.Refusal?.Message);
-        Assert.True(File.Exists(storePath + ".schema56.bak"));
+        Assert.True(File.Exists(SIL.Motif.Tests.TestFixtures.PreUpgradeBackups.StoreOf(storePath)));
         Assert.False(second.Value!.Baseline.ReusedExistingBytes);
         var overview = OverviewCommand.Overview(new OverviewRequest(path));
         Assert.True(overview.Succeeded, overview.Refusal?.Message);
@@ -133,7 +133,7 @@ public sealed class TextCoverageSelectionParityTests(PristineProjectFixture pris
         var second = Assess(path);
 
         Assert.True(second.Succeeded, second.Refusal?.Message);
-        Assert.True(File.Exists(storePath + ".schema58.bak"));
+        Assert.True(File.Exists(SIL.Motif.Tests.TestFixtures.PreUpgradeBackups.StoreOf(storePath)));
         Assert.False(second.Value!.Baseline.ReusedExistingBytes);
         var overview = OverviewCommand.Overview(new OverviewRequest(path));
         Assert.True(overview.Succeeded, overview.Refusal?.Message);

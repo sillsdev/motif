@@ -144,6 +144,7 @@ public sealed class StoreBackupRetentionTests : IDisposable
         var store = Path.Combine(_root, "project.motif.db");
         var bak1 = store + ".schema60.bak";
         var bak2 = store + ".schema70.bak2";
+        Directory.CreateDirectory(_root);
         File.WriteAllBytes(bak1, new byte[10]);
         File.WriteAllBytes(bak2, new byte[10]);
         File.WriteAllBytes(bak2 + "-wal", new byte[10]);

@@ -618,7 +618,7 @@ public sealed class GrammarCoverageStoreTests : IDisposable
         }
 
         using var upgraded = Open();
-        Assert.True(File.Exists(CoveragePath + ".schema76.bak"));
+        Assert.True(File.Exists(SIL.Motif.Tests.TestFixtures.PreUpgradeBackups.StoreOf(CoveragePath)));
         Assert.Equal((long)MotifSchema.CurrentSchema, Pragma(upgraded, "PRAGMA user_version;"));
         Assert.Equal(0L, Pragma(upgraded, "SELECT COUNT(*) FROM GrammarCoverageSegmentations;"));
         Assert.Equal(0L, Pragma(upgraded, "SELECT COUNT(*) FROM IndexedCorpusGenerations;"));
@@ -661,7 +661,7 @@ public sealed class GrammarCoverageStoreTests : IDisposable
         }
 
         using var upgraded = Open();
-        Assert.True(File.Exists(CoveragePath + ".schema77.bak"));
+        Assert.True(File.Exists(SIL.Motif.Tests.TestFixtures.PreUpgradeBackups.StoreOf(CoveragePath)));
         Assert.Equal((long)MotifSchema.CurrentSchema, Pragma(upgraded, "PRAGMA user_version;"));
         Assert.Equal(0L, Pragma(upgraded, "SELECT COUNT(*) FROM IndexedCorpusGenerations;"));
         foreach (var table in new[] { "GrammarCoverageMeasurements", "GrammarCoverageSegmentations", "SourceIndexState", "Assessments" })

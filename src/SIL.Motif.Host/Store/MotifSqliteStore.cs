@@ -289,6 +289,7 @@ internal sealed class MotifSqliteStore : IDisposable
             MoveSidecars(path, report.BackupPath);
             File.Move(pending, path);
             File.Move(reportFile, path + ".upgrade.json", true);
+            DropSwapCopyIfBackedUp(report);
             Announce(path, report);
             return;
         }
@@ -304,6 +305,7 @@ internal sealed class MotifSqliteStore : IDisposable
                 if (report?.BackupPath is not null && File.Exists(report.BackupPath))
                 {
                     File.Move(pending + ".upgrade.json", path + ".upgrade.json", true);
+                    DropSwapCopyIfBackedUp(report);
                     Announce(path, report);
                 }
             }
@@ -358,6 +360,12 @@ internal sealed class MotifSqliteStore : IDisposable
         DropSwapCopy(backup);
         Announce(path, built);
         Retain(descriptor, safety);
+    }
+
+    private static void DropSwapCopyIfBackedUp(MotifStoreUpgrade.Report report)
+    {
+        if (report.BackupPath is not null && report.BackupReceiptPath is not null && File.Exists(report.BackupReceiptPath))
+            DropSwapCopy(report.BackupPath);
     }
 
     private static void DropSwapCopy(string backup)

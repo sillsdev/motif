@@ -666,9 +666,8 @@ public sealed class MotifStoreUpgradeTests : IDisposable
         using (var db = MotifDatabase.OpenOwned(Source, Project, MotifSchema.CurrentSchema, new Version(1, 0)))
         using (var connection = db.OpenConnection())
             Assert.Equal(1, Count(connection, "ProposalRevisions"));
-        var backup = Source + ".schema49.bak";
-        Assert.True(File.Exists(backup));
-        using var original = Connect(backup);
+        Assert.False(File.Exists(Source + ".schema49.bak"));
+        using var original = Connect(PreUpgradeBackups.StoreOf(Source));
         Assert.Equal(49L, Scalar(original, "PRAGMA user_version;"));
         Assert.Equal(1, Count(original, "ProposalRevisions"));
         Assert.True(File.Exists(Source + ".upgrade.json"));
@@ -687,7 +686,8 @@ public sealed class MotifStoreUpgradeTests : IDisposable
             Assert.Equal(2, Count(connection, "Proposals"));
             Assert.Equal((long)MotifSchema.CurrentSchema, Scalar(connection, "PRAGMA user_version;"));
         }
-        Assert.True(File.Exists(Source + ".schema59.bak"));
+        Assert.False(File.Exists(Source + ".schema59.bak"));
+        Assert.True(File.Exists(PreUpgradeBackups.StoreOf(Source)));
     }
 
     [Fact]
@@ -744,7 +744,7 @@ public sealed class MotifStoreUpgradeTests : IDisposable
         using var connection = db.OpenConnection();
         Assert.Equal(1, Count(connection, "ProposalRevisions"));
         Assert.False(File.Exists(Source + ".upgrading-journal"));
-        Assert.True(File.Exists(Source + ".schema49.bak"));
+        Assert.True(File.Exists(PreUpgradeBackups.StoreOf(Source)));
     }
 
     [Fact]
@@ -757,7 +757,7 @@ public sealed class MotifStoreUpgradeTests : IDisposable
         using (var connection = db.OpenConnection())
             Assert.Equal(1, Count(connection, "ProposalRevisions"));
         Assert.Equal("previous backup", File.ReadAllText(backup));
-        using var kept = Connect(Source + ".schema49.bak2");
+        using var kept = Connect(PreUpgradeBackups.StoreOf(Source));
         Assert.Equal(49L, Scalar(kept, "PRAGMA user_version;"));
     }
 
@@ -829,7 +829,8 @@ public sealed class MotifStoreUpgradeTests : IDisposable
             Assert.Equal((long)MotifSchema.CurrentSchema, Scalar(connection, "PRAGMA user_version;"));
         }
         Assert.False(File.Exists(Source + ".upgrading"));
-        using var original = Connect(Source + ".schema49.bak");
+        Assert.False(File.Exists(Source + ".schema49.bak"));
+        using var original = Connect(PreUpgradeBackups.StoreOf(Source));
         Assert.Equal(49L, Scalar(original, "PRAGMA user_version;"));
         var report = JsonSerializer.Deserialize<MotifStoreUpgrade.Report>(File.ReadAllText(Source + ".upgrade.json"))!;
         Assert.True(File.Exists(report.BackupReceiptPath));
@@ -927,7 +928,7 @@ public sealed class MotifStoreUpgradeTests : IDisposable
 
         Assert.All(versions, version => Assert.Equal((long)MotifSchema.CurrentSchema, version));
         Assert.Single(Directory.GetDirectories(Path.Combine(_root, "project.motif-backups")));
-        Assert.True(File.Exists(Source + ".schema49.bak"));
+        Assert.True(File.Exists(PreUpgradeBackups.StoreOf(Source)));
     }
 
     private sealed class SimulatedCrash : Exception;

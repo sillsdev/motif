@@ -25,13 +25,12 @@ public sealed class StoreOtherVersionRefusalTests : IDisposable
         var storePath = Path.ChangeExtension(project, ".motif.db");
         Open(project);
         Execute(storePath, $"PRAGMA user_version = {MotifSchema.CurrentSchema - 1};");
-        var before = File.ReadAllBytes(storePath);
-
         var result = ProjectStoreCommand.Run<string>(
             project, "1.0", (_, _) => CommandOutcome<string>.Success(string.Empty));
 
         Assert.True(result.Succeeded);
-        Assert.Equal(before, File.ReadAllBytes(storePath + $".schema{MotifSchema.CurrentSchema - 1}.bak"));
+        Assert.Equal(MotifSchema.CurrentSchema - 1,
+            MotifDatabase.ReadStoreFileFacts(SIL.Motif.Tests.TestFixtures.PreUpgradeBackups.StoreOf(storePath)).SchemaVersion);
     }
 
     [Fact]
