@@ -178,6 +178,10 @@ public sealed class MachinePanGlossQueue : IDisposable
             JobAdmitted?.Invoke(cpuJob);
             await job.ExecuteAsync(cpuJob, linked.Token).ConfigureAwait(false);
         }
+        catch (OperationCanceledException) when (linked.Token.IsCancellationRequested)
+        {
+            job.Cancel(linked.Token);
+        }
         catch (Exception exception)
         {
             // The caller still awaits this job, so any failure after admission must reach it.
