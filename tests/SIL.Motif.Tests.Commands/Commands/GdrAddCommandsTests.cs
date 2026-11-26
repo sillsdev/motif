@@ -108,10 +108,7 @@ public sealed class GdrAddCommandsTests(PristineProjectFixture pristine)
     public void TheListDescriptionMarkAloneKeepsANumberFromBeingReusedOnAFreshStore() =>
         Assert.Equal("GDR-4", AddDeleteThenAdd(path => _ = ProjectStoreCommand.Run(path, MotifProductVersion.CurrentText, (database, _) =>
         {
-            using var connection = database.OpenConnection();
-            using var clear = connection.CreateCommand();
-            clear.CommandText = "DELETE FROM GuideNumberMark;";
-            clear.ExecuteNonQuery();
+            File.Delete(new GuideNumberMarkRepository(database).MarkPath);
             return CommandOutcome<string>.Success("cleared");
         }), clearDescription: false));
 
