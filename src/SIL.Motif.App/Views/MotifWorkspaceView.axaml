@@ -90,20 +90,33 @@
         <Grid RowDefinitions="Auto,Auto,*">
           <ScrollViewer x:Name="TechDemoNoticeViewport" HorizontalScrollBarVisibility="Disabled"
                         VerticalScrollBarVisibility="Auto">
-            <Border x:Name="TechDemoNotice" IsVisible="{Binding ShowsTechDemoNotice}" Classes="notice techDemoNotice">
-              <Grid x:Name="TechDemoNoticeLayout" ColumnDefinitions="*,Auto"
-                    ColumnSpacing="{DynamicResource Component.Notice.ActionGap}">
-                <views:CopyableTextBlock Classes="techDemoNoticeText" Text="{x:Static vm:TechDemoNoticeViewModel.NoticeText}"
-                                         AutomationProperties.Name="{x:Static vm:TechDemoNoticeViewModel.NoticeText}"
-                                         VerticalAlignment="Center" TextWrapping="Wrap" />
-                <StackPanel x:Name="TechDemoNoticeActions" Grid.Column="1" Orientation="Horizontal"
-                            Spacing="{DynamicResource Intent.Space.Section}" VerticalAlignment="Center">
-                  <Button Content="{x:Static app:MotifAppStrings.TechDemoNoticeGotIt}" Command="{Binding TechDemoNotice.GotItCommand}"
-                          AutomationProperties.Name="{x:Static app:MotifAppStrings.TechDemoNoticeGotItAccessibleName}"
-                          AutomationProperties.AutomationId="{x:Static app:AutomationIds.TechDemoGotIt}" />
-                </StackPanel>
-              </Grid>
-            </Border>
+            <StackPanel>
+              <Border x:Name="TechDemoNotice" IsVisible="{Binding ShowsTechDemoNotice}" Classes="notice techDemoNotice">
+                <Grid x:Name="TechDemoNoticeLayout" ColumnDefinitions="*,Auto"
+                      ColumnSpacing="{DynamicResource Component.Notice.ActionGap}">
+                  <views:CopyableTextBlock Classes="techDemoNoticeText" Text="{x:Static vm:TechDemoNoticeViewModel.NoticeText}"
+                                           AutomationProperties.Name="{x:Static vm:TechDemoNoticeViewModel.NoticeText}"
+                                           VerticalAlignment="Center" TextWrapping="Wrap" />
+                  <StackPanel x:Name="TechDemoNoticeActions" Grid.Column="1" Orientation="Horizontal"
+                              Spacing="{DynamicResource Intent.Space.Section}" VerticalAlignment="Center">
+                    <Button Content="{x:Static app:MotifAppStrings.TechDemoNoticeGotIt}" Command="{Binding TechDemoNotice.GotItCommand}"
+                            AutomationProperties.Name="{x:Static app:MotifAppStrings.TechDemoNoticeGotItAccessibleName}"
+                            AutomationProperties.AutomationId="{x:Static app:AutomationIds.TechDemoGotIt}" />
+                  </StackPanel>
+                </Grid>
+              </Border>
+              <Border x:Name="StoreUpgradeNotice" IsVisible="{Binding HasStoreUpgradeNotice}" Classes="notice techDemoNotice">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Component.Notice.ActionGap}">
+                  <views:CopyableTextBlock Classes="techDemoNoticeText" Text="{Binding StoreUpgradeMessage}"
+                                           AutomationProperties.Name="{Binding StoreUpgradeMessage}"
+                                           VerticalAlignment="Center" TextWrapping="Wrap" />
+                  <Button Grid.Column="1" Content="{x:Static app:MotifAppStrings.StoreUpgradeNoticeDismiss}"
+                          Command="{Binding DismissStoreUpgradeNoticeCommand}"
+                          AutomationProperties.Name="{x:Static app:MotifAppStrings.StoreUpgradeNoticeDismissAccessibleName}"
+                          AutomationProperties.AutomationId="{x:Static app:AutomationIds.StoreUpgradeDismiss}" />
+                </Grid>
+              </Border>
+            </StackPanel>
           </ScrollViewer>
           <Border x:Name="NoticeBand" Grid.Row="1" Classes="workspaceNoticeBand" IsVisible="False">
             <DockPanel>

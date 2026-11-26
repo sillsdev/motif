@@ -4,6 +4,7 @@ using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Services;
+using SIL.Motif.Host.Store;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.Preferences;
@@ -88,6 +89,8 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
                     OnPropertyChanged(nameof(ShowsTechDemoNotice));
             };
         }
+        DismissStoreUpgradeNoticeCommand = new RelayCommand(() => StoreUpgradeMessage = null);
+        StoreUpgradeNotices.Upgraded += OnStoreUpgraded;
         OpenRecentProjectFolderCommand = new AsyncRelayCommand<string>(OpenRecentProjectFolderAsync,
             CanOpenRecentProjectFolder);
         Context = new WorkspaceContext(selection, assess, new ChangesViewModel(commandClient), commandClient, folderPicker,
@@ -203,6 +206,23 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
 
         RefreshPages();
         _ = RefreshKnownProjectsAsync();
+    }
+
+    /// <summary>What the last automatic store upgrade did: schemas, backup and dropped results.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasStoreUpgradeNotice))]
+    private string? _storeUpgradeMessage;
+
+    /// <summary>Whether an automatic store upgrade has a notice waiting to be dismissed.</summary>
+    public bool HasStoreUpgradeNotice => StoreUpgradeMessage is not null;
+
+    /// <summary>Hides the store upgrade notice.</summary>
+    public IRelayCommand DismissStoreUpgradeNoticeCommand { get; }
+
+    private void OnStoreUpgraded(StoreUpgradeNotice notice)
+    {
+        if (Avalonia.Threading.Dispatcher.UIThread.CheckAccess()) StoreUpgradeMessage = notice.Message;
+        else Avalonia.Threading.Dispatcher.UIThread.Post(() => StoreUpgradeMessage = notice.Message);
     }
 
     /// <summary>The tech demo notice shown until the person acknowledges it, or <see langword="null"/> when disabled.</summary>
@@ -985,6 +1005,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     public async ValueTask DisposeAsync()
     {
         _isDisposed = true;
+        StoreUpgradeNotices.Upgraded -= OnStoreUpgraded;
         Interlocked.Increment(ref _projectOpenGeneration);
         await Context.StopProjectWorkAsync().ConfigureAwait(true);
         if (_knownProjectsRefreshTask is { } refresh) await refresh.ConfigureAwait(true);

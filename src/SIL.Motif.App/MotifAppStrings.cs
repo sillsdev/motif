@@ -3024,6 +3024,10 @@ public static class MotifAppStrings
 
     public static string TechDemoNoticeText => Text("MotifApp.TechDemoNoticeText");
 
+    public static string StoreUpgradeNoticeDismiss => Text("MotifApp.StoreUpgradeNoticeDismiss");
+
+    public static string StoreUpgradeNoticeDismissAccessibleName => Text("MotifApp.StoreUpgradeNoticeDismissAccessibleName");
+
     public static string TechDemoNoticeGotIt => Text("MotifApp.TechDemoNoticeGotIt");
 
     public static string TechDemoNoticeGotItAccessibleName => Text("MotifApp.TechDemoNoticeGotItAccessibleName");

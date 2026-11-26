@@ -5137,6 +5137,14 @@ Never included unless you tick it in the preview: local details, which may conta
     <value>Tech demo: only Apply writes; back up FieldWorks.</value>
     <comment>First-run notice about applying changes and backing up the FieldWorks project.</comment>
   </data>
+  <data name="MotifApp.StoreUpgradeNoticeDismiss" xml:space="preserve">
+    <value>_Dismiss</value>
+    <comment>Button that hides the notice saying the project store was upgraded after a backup.</comment>
+  </data>
+  <data name="MotifApp.StoreUpgradeNoticeDismissAccessibleName" xml:space="preserve">
+    <value>Dismiss the store upgrade notice</value>
+    <comment>Accessible name of the Dismiss button on the store upgrade notice.</comment>
+  </data>
   <data name="MotifApp.TechDemoNoticeGotIt" xml:space="preserve">
     <value>_Got It</value>
     <comment>Button that acknowledges the first-run tech demo notice.</comment>
