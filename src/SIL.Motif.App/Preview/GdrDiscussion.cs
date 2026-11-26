@@ -1,4 +1,5 @@
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.Gdr;
 using SIL.Motif.Host.RichText;
 using SIL.Motif.Runner.Operations;
 using SIL.TextEditing;
@@ -123,7 +124,7 @@ public sealed class GdrDiscussion
     public static TextProps ParagraphProps(Paragraph paragraph)
     {
         var props = paragraph.Props.Clone();
-        if (paragraph.Rtl || props.IntProps.ContainsKey(RightToLeft)) props.IntProps[RightToLeft] = new IntPropValue(0, paragraph.Rtl ? 1 : 0);
+        if (paragraph.Rtl || props.IntProps.ContainsKey(RightToLeft)) props.IntProps[RightToLeft] = new IntPropValue(GdrMarkdownView.StoredDirectionVariation, paragraph.Rtl ? 1 : 0);
         return Props(props);
     }
 
