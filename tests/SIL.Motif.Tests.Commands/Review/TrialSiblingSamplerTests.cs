@@ -291,4 +291,28 @@ public sealed class TrialSiblingSamplerTests : IDisposable
         Assert.Equal(["aq", "qx"], sample.Words.Order(StringComparer.Ordinal));
         Assert.Equal([("q", "kept: only form", "touched")], sample.SkippedReferrerForms!.Select(form => (form.Form, form.Reason, form.Kind)));
     }
+
+    [Fact]
+    public void ATamilFormOfTwoCodePointsAndOneGraphemeIsSkippedAndATwoGraphemeFormIsKept()
+    {
+        var corpus = Types([("கும்பல்", true), ("அகுது", true), .. Filler(100)]);
+
+        var sample = TrialSiblingSampler.Sample(corpus, "sha", ["கு", "கும்"], null, 10, "rev", None).Value!;
+
+        Assert.Equal(["கும்பல்"], sample.Words);
+        Assert.Equal([("கு", "shorter than 2 characters", "touched")], sample.SkippedReferrerForms!.Select(form => (form.Form, form.Reason, form.Kind)));
+    }
+
+    [Theory]
+    [InlineData(99, true)]
+    [InlineData(100, false)]
+    public void TheShareLimitAppliesFromOneHundredCorpusTypes(int total, bool kept)
+    {
+        var common = Enumerable.Range(0, 6).Select(index => ("kwa" + (char)('a' + index), true));
+        var corpus = Types([.. common, .. Filler(total - 6)]);
+
+        var sample = TrialSiblingSampler.Sample(corpus, "sha", ["kwa", "xyzzy"], null, 50, "rev", None);
+
+        Assert.Equal(kept, sample.Succeeded && sample.Value!.Words.Any(word => word.StartsWith("kwa")));
+    }
 }

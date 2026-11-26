@@ -349,6 +349,7 @@ internal static class TrialSiblingResolver
                 if (!objects.TryGetValue(owner, out var set)) objects[owner] = set = new HashSet<string>(StringComparer.Ordinal);
                 set.Add(TrialSiblingSampler.Key(form));
             }
+            var writerOf = WriterOf(proposal);
             ReferrerForms? referrers = null;
             var current = CurrentEvidenceQuery.ReadCurrentEvidence(database, project, includeDefaultSelection: false,
                 includeResolvedReadings: false, includeWordContext: false);
@@ -359,14 +360,14 @@ internal static class TrialSiblingResolver
                 using var reader = BaselineReadCache.Open(baseline.FwDataPath);
                 foreach (var id in TrialTouchedWords.TouchedIds(proposal))
                     foreach (var form in ExistingForms(reader.Cache, id)) Put(OwnerKey(reader.Cache, id.ToString()), form);
-                foreach (var (operation, text) in NewFormWrites(proposal)) Put(OwnerKey(reader.Cache, WriterOf(operation)), text);
+                foreach (var (operation, text) in NewFormWrites(proposal)) Put(OwnerKey(reader.Cache, writerOf(operation)), text);
                 // A pattern names the forms itself, so the entries that use an edited grammar object are not looked up.
                 if (options.Pattern is null && TrialReferrers.Seeds(proposal) is { Count: > 0 } seeds)
                     referrers = TrialReferrers.Find(reader.Cache, seeds);
             }
             else if (TrialTouchedWords.TouchedIds(proposal).Count > 0 || (options.Pattern is null && TrialReferrers.Seeds(proposal).Count > 0))
                 warning = "no Baseline, so the forms of the existing entries the Proposal edits, or whose grammar objects it edits, were not used";
-            if (current.Value.Baseline is null) foreach (var (operation, text) in NewFormWrites(proposal)) Put(WriterOf(operation), text);
+            if (current.Value.Baseline is null) foreach (var (operation, text) in NewFormWrites(proposal)) Put(writerOf(operation), text);
             // Sole forms of an edited object stay in the sample.
             var onlyKeys = objects.Values.Where(set => set.Count == 1).Select(set => set.Single()).ToHashSet(StringComparer.Ordinal);
             var sampled = TrialSiblingSampler.Sample(corpus.Value!.Types, corpus.Value.Sha256, forms, options.Pattern, options.Max,
@@ -454,12 +455,25 @@ internal static class TrialSiblingResolver
         }
     }
 
-    // The object a form write edits: its target, else the owner a create adds to, else the object it creates.
-    private static string WriterOf(OperationEnvelope operation) =>
+    // The object a form write edits; a form the Proposal creates resolves to its creator.
+    private static Func<OperationEnvelope, string> WriterOf(Proposal proposal)
+    {
+        var createdBy = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var operation in proposal.Operations)
+            if (operation.EntityId is { } created && Direct(operation) is { } owner && owner != created.Value)
+                createdBy.TryAdd(created.Value, owner);
+        return operation =>
+        {
+            var key = Direct(operation) ?? operation.EntityId?.Value ?? operation.OperationId.Value;
+            for (var hops = 0; hops < 8 && createdBy.TryGetValue(key, out var parent); hops++) key = parent;
+            return key;
+        };
+    }
+
+    private static string? Direct(OperationEnvelope operation) =>
         operation.Target?.Value ??
         (operation.After is { ValueKind: JsonValueKind.Object } after && after.TryGetProperty("owner", out var owner) &&
-            owner.ValueKind == JsonValueKind.String ? owner.GetString() : null) ??
-        operation.EntityId?.Value ?? operation.OperationId.Value;
+            owner.ValueKind == JsonValueKind.String ? owner.GetString() : null);
 
     // The entry that owns the object when the Baseline has it, so an entry's forms count as one object's forms.
     private static string OwnerKey(LcmCache cache, string id)

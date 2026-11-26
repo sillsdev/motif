@@ -28,7 +28,7 @@ public sealed class TrialSiblingWorkflowTests
         {
             ProposalCompareExports.SaveProposal(database, id, JsonSerializer.Serialize(new
             {
-                contractVersions = new Dictionary<string, string> { ["lexical"] = "1.0" }, proposalId = id, operations,
+                contractVersions = new Dictionary<string, string> { ["lexical"] = "1.0" }.Concat(operations.Any(op => op.ToString()!.Contains("kind = grammar/")) ? new[] { KeyValuePair.Create("grammar", "1.0") } : []).ToDictionary(), proposalId = id, operations,
             }));
             return CommandOutcome<string>.Success("");
         });
@@ -59,6 +59,36 @@ public sealed class TrialSiblingWorkflowTests
         Assert.Equal(["ish"], sample.Value.Forms);
         Assert.Contains("no Baseline", sample.Value.Warning);
         Assert.Contains("warning: no Baseline", sample.Value.Describe());
+    }
+
+    [Fact]
+    public void TheFormsOfACreatedEntryWrittenByAScatteredOperationsAreOneObjectsFormsSoNoneIsAnOnlyForm()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var entry = Guid.NewGuid();
+        var form = CanonicalId.Mint("form/").Value;
+        var proposal = SaveProposal(fixture,
+        [
+            new
+            {
+                operationId = CanonicalId.Mint("operation/").Value, kind = "lexical/lexEntry/createLexemeForm", entityId = form,
+                target = CanonicalId.FromGuid(entry).Value, after = new { morphType = "m", ws = "x", text = "k" },
+            },
+            new
+            {
+                operationId = CanonicalId.Mint("operation/").Value, kind = "grammar/moForm/setForm", target = form,
+                after = new { ws = "x", text = "u" },
+            },
+            Operation("lexical/lexEntry/createAlternateForms", entry, new { morphType = "m", ws = "x", text = "ish" }),
+        ]);
+        var request = new EnqueueTrialRequest(fixture.Project, MotifProductVersion.CurrentText, proposal, Words: ["kuisha"])
+            { Siblings = new TrialSiblingsRequest(CorpusFile(fixture)) };
+
+        var sample = TrialSiblingResolver.Resolve(request, new HashSet<string> { "kuisha" });
+
+        Assert.True(sample.Succeeded, sample.Refusal?.Message);
+        Assert.Equal(["k", "u"], sample.Value!.SkippedReferrerForms!.Select(skipped => skipped.Form).Order());
+        Assert.All(sample.Value.SkippedReferrerForms!, skipped => Assert.Equal("shorter than 2 characters", skipped.Reason));
     }
 
     [Fact]
