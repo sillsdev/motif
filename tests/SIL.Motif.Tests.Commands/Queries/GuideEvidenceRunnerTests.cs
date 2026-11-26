@@ -119,8 +119,10 @@ public sealed class GuideEvidenceRunnerTests : IDisposable
         Assert.Equal(0, builder.Builds);
         Assert.Null(result.Table);
         Assert.StartsWith("parse index not built: run cd '", result.Message);
-        Assert.EndsWith(RunLine, result.BuildCommand);
+        Assert.EndsWith("'--corpus' 'words.tsv' '--grammar' 'grammar.json' 'forms' 'where' 'readings > 0'", result.BuildCommand);
+        Assert.StartsWith("cd '" + _folder + "' && motif 'query'", result.BuildCommand);
         Assert.Equal(RefusalCodes.QueryParseIndexCold, result.RefusalCode);
+        Assert.Equal("query.parse-index-cold", result.RefusalCode);
         Assert.False(Directory.Exists(CacheRoot) && Directory.EnumerateFileSystemEntries(CacheRoot).Any());
     }
 
@@ -197,5 +199,59 @@ public sealed class GuideEvidenceRunnerTests : IDisposable
         var shaped = Evaluate(blocks.Queries[0].Run, builder).Shaped(blocks.Queries[0].Columns, blocks.Queries[0].Sort, blocks.Shows[0].Limit);
         Assert.Equal(["solo"], shaped.Table!.Rows.Select(row => row[0]));
         Assert.Equal((1, 2), (shaped.Table.Truncated, shaped.Table.Types));
+    }
+
+    [Theory]
+    [InlineData("motif query corpus forms --corpus words.tsv forms where \"form ~ $(curl evil)\"")]
+    [InlineData("motif query corpus forms --corpus words.tsv forms where \"form ~ `id`\"")]
+    [InlineData("motif query corpus forms --corpus words.tsv forms where \"a\nb\"")]
+    public void HostileTextInsideDoubleQuotesIsRefusedNotShownAsACommand(string line)
+    {
+        Seed();
+        var result = Evaluate(line, new Recorded(Complete));
+        Assert.Equal(GuideEvidenceStatus.Refused, result.Status);
+        Assert.Equal(RefusalCodes.GuideQueryRunNotReadOnly, result.RefusalCode);
+        Assert.Null(result.BuildCommand);
+    }
+
+    [Fact]
+    public void TheBuildCommandSingleQuotesEveryTokenAndEscapesQuotes()
+    {
+        var command = GuideEvidenceRunner.BuildCommand("motif query corpus forms --corpus words.tsv forms where 'it'\"'\"'s $(x)'", "/p'q");
+        Assert.Equal("cd '/p'\\''q' && motif 'query' 'corpus' 'forms' '--corpus' 'words.tsv' 'forms' 'where' 'it'\\''s $(x)'", command);
+    }
+
+    [Theory]
+    [InlineData("--corpus /etc/passwd", "corpus")]
+    [InlineData("--corpus ../words.tsv", "corpus")]
+    [InlineData("--corpus words.tsv --grammar /tmp/g.json", "grammar")]
+    [InlineData("--corpus words.tsv --grammar sub/../../g.json", "grammar")]
+    [InlineData("--corpus words.tsv --project /home/x/p.fwdata", "project")]
+    public void APathOutsideTheProjectFolderIsRefusedBeforeAnythingIsRead(string flags, string flag)
+    {
+        Seed();
+        var builder = new Recorded(Complete);
+        var result = Evaluate("motif query corpus forms " + flags + " forms where 'readings > 0'", builder);
+        Assert.Equal(GuideEvidenceStatus.Refused, result.Status);
+        Assert.Equal(RefusalCodes.GuideQueryRunPathOutsideProject, result.RefusalCode);
+        Assert.Equal(0, builder.Builds);
+        Assert.Contains("--" + flag, result.Message);
+    }
+
+    [Fact]
+    public void AnUnexpectedExceptionBecomesARefusalNamingItsType()
+    {
+        Seed();
+        var result = GuideEvidenceRunner.Evaluate(RunLine, _folder, null, default, new Throwing(), CacheRoot);
+        Assert.Equal(GuideEvidenceStatus.Refused, result.Status);
+        Assert.Equal(RefusalCodes.GuideQueryRunInvalid, result.RefusalCode);
+        Assert.Contains("FormatException", result.Message);
+    }
+
+    private sealed class Throwing : IRealizesIndexBuilder
+    {
+        public string Identity => throw new FormatException("boom");
+
+        public string Build(string grammarPath, IReadOnlyList<string> words, CancellationToken cancellationToken) => throw new FormatException("boom");
     }
 }

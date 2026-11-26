@@ -96,7 +96,7 @@ public static class GuideEvidenceRunner
         if (!QueryRunLine.TryParseRun(runLine, out var line, out var refusal)) return Done(GuideEvidenceStatus.Refused, null, Describe(refusal), refusal.Code, null);
         if (line.Corpus is not { } parsed)
             return Done(GuideEvidenceStatus.Refused, null, RefusalCodes.GuideQueryRunInvalid + ": this evidence runner reads motif query corpus forms lines.", RefusalCodes.GuideQueryRunInvalid, null);
-        var request = CorpusRunLine.Resolve(parsed, baseDirectory);
+        if (!CorpusRunLine.TryResolve(parsed, baseDirectory, out var request, out var outside)) return Done(GuideEvidenceStatus.Refused, null, Describe(outside), outside.Code, null);
         if (request.GroupBy is null && request.Sum is null) request = request with { Sum = "tokens" };
         CommandOutcome<CorpusFormsResponse> outcome;
         try
@@ -104,9 +104,9 @@ public static class GuideEvidenceRunner
             outcome = CorpusQueryCommand.Forms(request, parserPath, cancellationToken, indexBuilder, cacheRoot, allowIndexBuild: false, phases: phases);
         }
         catch (OperationCanceledException) { throw; }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException)
+        catch (Exception exception)
         {
-            return Done(GuideEvidenceStatus.Refused, null, RefusalCodes.GuideQueryRunInvalid + ": " + exception.Message, RefusalCodes.GuideQueryRunInvalid, null);
+            return Done(GuideEvidenceStatus.Refused, null, RefusalCodes.GuideQueryRunInvalid + ": " + exception.GetType().Name + ": " + exception.Message, RefusalCodes.GuideQueryRunInvalid, null);
         }
         if (!outcome.Succeeded || outcome.Value is not { } response)
         {
@@ -122,9 +122,17 @@ public static class GuideEvidenceRunner
         return (Done(GuideEvidenceStatus.Ready, null, "", null, null) with { Request = request, Response = response }).Shaped(null, null, null);
     }
 
-    /// <summary>The line that builds the parse index: the run line itself, run from the project's folder (the CLI builds and keeps the index).</summary>
-    public static string BuildCommand(string runLine, string baseDirectory) =>
-        "cd '" + baseDirectory.Replace("'", "'\\''", StringComparison.Ordinal) + "' && " + runLine.Trim();
+    /// <summary>
+    /// The line that builds the parse index: the parsed run line with every token single-quoted, run from the project's folder, so
+    /// pasting it into a shell cannot run anything the Guide's text hid in a value.
+    /// </summary>
+    public static string BuildCommand(string runLine, string baseDirectory)
+    {
+        if (!QueryRunLine.TryTokenize(runLine, out var tokens, out _)) tokens = [];
+        return "cd " + Quote(baseDirectory) + (tokens.Count == 0 ? "" : " && " + string.Join(" ", tokens.Select((token, at) => at == 0 ? token : Quote(token))));
+    }
+
+    private static string Quote(string value) => "'" + value.Replace("'", "'\\''", StringComparison.Ordinal) + "'";
 
     private static string Describe(Refusal refusal) => refusal.Code + ": " + refusal.Message;
 }
