@@ -59,10 +59,44 @@ public static class GdrEditCommands
     {
         string[] parts = [request.Choosing, request.Over, request.Because];
         if (parts.Any(part => string.IsNullOrWhiteSpace(part) || part.Contains('\n') || part.Contains('\r'))) return null;
-        var chosen = request.Choosing.Trim();
+        var (chosen, over, because) = Pieces(request);
+        return $"- {chosen} or {over}, I am choosing {chosen}, because {because}";
+    }
+
+    private static (string Chosen, string Over, string Because) Pieces(GdrDecideRequest request)
+    {
         var because = request.Because.Trim();
         if (!because.EndsWith('.') && !because.EndsWith('!') && !because.EndsWith('?')) because += ".";
-        return $"- {chosen} or {request.Over.Trim()}, I am choosing {chosen}, because {because}";
+        return (request.Choosing.Trim(), request.Over.Trim(), because);
+    }
+
+    /// <summary>Names the parts whose markers pair across the joined line, else null.</summary>
+    private static string? CrossPartPairing(FieldWorksMarkdownSourceForm form, GdrDecideRequest request)
+    {
+        var (chosen, over, because) = Pieces(request);
+        if (Agrees(form, chosen, over, because)) return null;
+        // Probe with plain words for the others to name a part that pairs with its own repeat.
+        var alone = new List<string>();
+        if (!Agrees(form, chosen, "x", "x")) alone.Add("--choosing");
+        if (!Agrees(form, "x", over, "x")) alone.Add("--over");
+        if (!Agrees(form, "x", "x", because)) alone.Add("--because");
+        var named = alone.Count > 0 ? alone : ["--choosing", "--over", "--because"];
+        return $"{string.Join(" and ", named)} has an unbalanced marker (* _ ` [ < or a span) that would pair with another part of the Decisions line.";
+    }
+
+    private static bool Agrees(FieldWorksMarkdownSourceForm form, string chosen, string over, string because)
+    {
+        var read = form.Read($"{chosen} or {over}, I am choosing {chosen}, because {because}", true);
+        if (read.Diagnostics.Any(item => item.Severity == DiagnosticSeverity.Error)) return false;
+        var joined = read.Paragraphs[0];
+        var literal = form.Read("x", true).Paragraphs[0].Runs[0];
+        var expected = new Paragraph { DefaultWs = joined.DefaultWs };
+        foreach (var (fragment, isPart) in new[] { (chosen, true), (" or ", false), (over, true), (", I am choosing ", false), (chosen, true), (", because ", false), (because, true) })
+        {
+            if (isPart) foreach (var run in form.Read(fragment, true).Paragraphs[0].Runs) expected.Runs.Add(run);
+            else expected.Runs.Add(literal.CloneWithText(fragment));
+        }
+        return MarkdownConverter.AreEquivalent(expected, joined);
     }
 
     /// <summary>Why the first part is not inline Markdown (it would be a block), else null.</summary>
@@ -76,7 +110,7 @@ public static class GdrEditCommands
             if (error is not null) return $"{name} is not inline Markdown: {error.Message}";
             if (read.Paragraphs.Count != 1) return $"{name} must be inline Markdown with no block (heading, list, quote or fence).";
         }
-        return null;
+        return CrossPartPairing(form, request);
     }
 
     /// <summary>

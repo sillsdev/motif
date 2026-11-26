@@ -433,6 +433,51 @@ public sealed class GdrEditCommandsTests(PristineProjectFixture pristine)
     }
 
     [Theory]
+    [InlineData("*a", "c", "d*")]
+    [InlineData("a [b", "c", "d](http://x) e")]
+    [InlineData("a", "_c", "d_")]
+    [InlineData("`a", "b", "c`")]
+    public void AnUnbalancedMarkerThatWouldPairAcrossPartsIsRefusedNamingThePart(string chosen, string over, string because)
+    {
+        var path = ProjectWithGdrs(HeadingStyles);
+
+        var refused = GdrEditCommands.Decide(new GdrDecideRequest(path, "GDR-2", chosen, over, because));
+
+        Assert.Equal(RefusalCodes.GdrDecisionInvalid, refused.Refusal!.Code);
+        Assert.Contains("--", refused.Refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("a\\*b", "c", "d")]
+    [InlineData("a \\_ b", "c \\` d", "e \\< f \\[ g \\\\ h")]
+    [InlineData("*a*", "_b_", "**c**")]
+    [InlineData("[x]{.v}", "[y]{.v}", "[z]{.v}")]
+    [InlineData("accept [alila]{ws=en}", "reject", "x")]
+    [InlineData("plain words", "other words", "it fits.")]
+    public void BalancedPartsAreStagedAndReadPartByPart(string chosen, string over, string because)
+    {
+        var path = ProjectWithGdrs(HeadingStyles);
+
+        var decided = GdrEditCommands.Decide(new GdrDecideRequest(path, "GDR-2", chosen, over, because));
+
+        Assert.True(decided.Succeeded, decided.Refusal?.Message);
+    }
+
+    [Fact]
+    public void ALoneMarkerInOnePartMakesNoEmphasisWithAnother()
+    {
+        var path = ProjectWithGdrs(HeadingStyles);
+
+        Assert.False(GdrEditCommands.Decide(new GdrDecideRequest(path, "GDR-2", "*a", "c", "d*")).Succeeded);
+        var escaped = GdrEditCommands.Decide(new GdrDecideRequest(path, "GDR-2", "a \\* b", "c", "d \\* e"));
+        Assert.True(escaped.Succeeded, escaped.Refusal?.Message);
+        var runs = GdrQuery.Show(new GdrShowRequest(path, "GDR-2", AsOf: escaped.Value!.DraftName)).Value!
+            .Discussion.SelectMany(paragraph => paragraph.Runs).ToArray();
+        Assert.Contains("a * b or c, I am choosing a * b, because d * e.", string.Concat(runs.Select(run => run.Text)), StringComparison.Ordinal);
+        Assert.All(runs.Where(run => run.Text.Contains("b or c", StringComparison.Ordinal)), run => Assert.Equal(runs[^1].Properties, run.Properties));
+    }
+
+    [Theory]
     [InlineData("# heading", "b", "c")]
     [InlineData("a", "- item", "c")]
     [InlineData("a", "b", "> quote")]
