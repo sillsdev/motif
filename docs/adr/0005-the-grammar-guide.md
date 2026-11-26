@@ -192,6 +192,8 @@ included, each run in its own writing system. FieldWorks shows plain lines and n
 paragraphs labelled `word`, `morphemes`, `gloss` (and `translation`) back into the div when it writes Markdown, and
 unfolds the div when it reads it, so `guide show`, `guide edit` and `guide show` again return the same block. A div
 whose lines are not those labels in that order is left as written, and the reader refuses it as an unknown attribute.
+A line that reuses an existing paragraph carrying a property is written inside a styling div, so that run is not folded and
+shows as plain labelled lines; no text is lost.
 
 Alignment is by white-space-separated tokens: the nth token of `word`, of `morphemes` and of `gloss` are one column.
 Within a column, hyphens and equals signs join morphemes and glosses, so `ni-li-som-a` and `1SG-PST-read-FV` pair
