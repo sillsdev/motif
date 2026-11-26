@@ -154,9 +154,10 @@ Standing orders from the owner (2026-11-26). The landing lead acts on these with
   is `git ls-remote origin 'refs/heads/gh-readonly-queue/*'`). Dequeue and requeue an entry that is
   UNMERGEABLE or was dropped. Rebase your own pull-request branches and push with `--force-with-lease`;
   never force-push another team's branch, tell its owner instead.
-- **A Windows-only failure does not stop merging.** If only the Windows job failed, and in a test outside the
-  pull request's diff, requeue the entry and fix the Windows failure separately, in its own issue and pull
-  request. The same holds for a known flake on any platform.
+- **A Windows-only failure does not stop merging.** The Windows job runs on every pull request and queue group,
+  but it is not a required check: only the Linux and macOS jobs are (owner, 2026-11-26). A red Windows job is
+  still read. Fix it separately, in its own issue and pull request, but don't hold the queue for it. A known flake
+  on any platform, in a test outside the diff, is requeued and fixed the same way.
 - **A failure in a file the pull request touches is that pull request's to fix.** Don't requeue it.
 - **Flakes get an issue and a root-cause fix**, not a retry in the test. Give each eviction's run id in the
   issue so the fix can be checked against it.
