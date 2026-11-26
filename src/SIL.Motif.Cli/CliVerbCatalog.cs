@@ -48,7 +48,7 @@ public static class CliVerbCatalog
         new CliVerbDescriptor("Project", "guide", "guide decide",
             new[] { "guide decide --project <fwdata> <GDR-n> --choosing <A> --over <B> --because <reason> [--draft <name>] [--json]" }),
         new CliVerbDescriptor("Project", "guide", "guide check",
-            new[] { "guide check --project <fwdata> [--json]" }),
+            new[] { "guide check --project <fwdata> [--no-run] [--timeout <seconds>] [--json]" }),
         new CliVerbDescriptor("Project", "source", "source list",
             new[] { "source list --project <fwdata> [--all] [--json]" }),
         new CliVerbDescriptor("Project", "source", "source show",

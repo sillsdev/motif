@@ -70,9 +70,12 @@ A Proposal's before and after run each query with `--as-of <base revision>` and 
 verb used in a query must accept `--as-of`. `--as-of` names a project revision and is distinct from `query stems --at`. Reading the Guide never executes a query; the renderer and
 `guide check` do. Export carries the definitions and directives only: it never runs a query and never writes a result.
 
-`guide check` (a later slice) reports a query that does not parse, uses a verb that is not read-only, or does not
-execute, and a directive whose `query` names no defined id. As the rest of the check does (D9), these findings
-are advisory and do not block Finalize, Apply or Trial success.
+`guide check` runs each `motif-query` block read-only, through the evaluator the window uses, and reports a query that does
+not parse, uses a verb that is not read-only, is refused (with its code), needs a parse index that is not built (it names
+the command that builds it and builds nothing), or fails or times out, and a directive whose `query` names no defined id.
+It accepts `--no-run` (list and validate the blocks without running them) and `--timeout <seconds>` (the per-block
+limit, default 60). As the rest of the check does (D9), these findings are advisory and do not block Finalize, Apply or
+Trial success. Nothing is stored.
 
 ### D3. One outline and a human-editable export
 
@@ -122,8 +125,10 @@ Uncertainty is never silently promoted to a settled decision.
 
 ### D7. The Guide check is a read of the captured project
 
-The CLI uses `guide …` throughout, with no `gdr` aliases. `guide check --project <fwdata> [--json]` is a
-Developer read on the current Baseline's project copy and paired store: no unit of work and no parse. Only
+The CLI uses `guide …` throughout, with no `gdr` aliases. `guide check --project <fwdata> [--no-run] [--timeout <seconds>] [--json]` is a
+Developer read on the current Baseline's project copy and paired store: no unit of work and no parse of its own. Unless
+`--no-run` is given it also runs the Guide's `motif-query` blocks read-only (D2), one report line per block (id, section,
+status, rows, milliseconds) and an advisory finding for each block that is refused, not built or failed. Only
 link runs cite a grammar object; writing a rule's name in prose
 does not. Links identify objects by GUID. A missing local object is reported with its section and heading;
 links to another project are not looked up.

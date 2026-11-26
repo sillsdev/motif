@@ -19,7 +19,7 @@ public sealed class GuideEvidenceRunnerTests : IDisposable
 
     private const string Root = "00000000-0000-0000-0000-0000000000a1";
 
-    private static string Line(string word, bool capped, params string[] texts)
+    internal static string Line(string word, bool capped, params string[] texts)
     {
         var analyses = new JsonArray();
         var morphs = new JsonArray();
@@ -49,7 +49,7 @@ public sealed class GuideEvidenceRunnerTests : IDisposable
         }.ToJsonString();
     }
 
-    private sealed class Recorded(string recording) : IRealizesIndexBuilder
+    internal sealed class Recorded(string recording) : IRealizesIndexBuilder
     {
         public int Builds { get; private set; }
 
@@ -64,8 +64,8 @@ public sealed class GuideEvidenceRunnerTests : IDisposable
         }
     }
 
-    private static readonly string Complete = string.Join("\n", Line("solo", false, "so", "lo"), Line("pair", false, "pa", "ir"), Line("none", false)) + "\n";
-    private static readonly string Capped = string.Join("\n", Line("solo", false, "so", "lo"), Line("pair", true, "pa", "ir"), Line("none", false)) + "\n";
+    internal static readonly string Complete = string.Join("\n", Line("solo", false, "so", "lo"), Line("pair", false, "pa", "ir"), Line("none", false)) + "\n";
+    internal static readonly string Capped = string.Join("\n", Line("solo", false, "so", "lo"), Line("pair", true, "pa", "ir"), Line("none", false)) + "\n";
 
     private const string RunLine = "motif query corpus forms --corpus words.tsv --grammar grammar.json forms where 'readings > 0'";
 
