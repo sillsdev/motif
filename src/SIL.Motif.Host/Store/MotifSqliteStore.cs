@@ -306,7 +306,8 @@ internal sealed class MotifSqliteStore : IDisposable
                 if (File.Exists(pending + suffix)) File.Delete(pending + suffix);
             built = descriptor.Upgrade!(pending, schema, backup, safety);
         }
-        catch (Exception exception) when (IsUpgradeFailure(exception))
+        catch (Exception exception) when (IsUpgradeFailure(exception) ||
+            exception is System.Text.Json.JsonException or InvalidOperationException or NotSupportedException)
         {
             throw new MotifStoreUpgradeFailedException(path, MotifStoreUpgradeFailedException.BuildStep, schema, next, safety, exception);
         }
