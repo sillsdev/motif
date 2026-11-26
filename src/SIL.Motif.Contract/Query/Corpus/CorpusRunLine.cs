@@ -118,6 +118,37 @@ public static class CorpusRunLine
         };
     }
 
+    /// <summary>
+    /// <see cref="Resolve"/> for a Guide, which is shared text: a path that is absolute or resolves outside <paramref name="baseDirectory"/>
+    /// is refused, so a block can only read files inside the project's folder.
+    /// </summary>
+    public static bool TryResolve(CorpusFormsRequest request, string baseDirectory, [NotNullWhen(true)] out CorpusFormsRequest? resolved,
+        [NotNullWhen(false)] out Refusal? refusal)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        resolved = null;
+        var root = Path.GetFullPath(baseDirectory);
+        var named = new List<(string Flag, string? Path)>();
+        named.AddRange(request.CorpusPath.Split(['\n', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(path => ("corpus", (string?)path)));
+        named.Add(("grammar", request.GrammarPath));
+        named.Add(("segments", request.SegmentsPath));
+        named.Add(("project", request.ProjectPath));
+        named.Add(("baseline-grammar", request.BaselineGrammarPath));
+        foreach (var (flag, path) in named)
+        {
+            if (string.IsNullOrWhiteSpace(path)) continue;
+            var relative = Path.IsPathRooted(path) ? null : Path.GetRelativePath(root, Path.GetFullPath(path, root));
+            if (relative is not null && relative != ".." && !relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal) &&
+                !relative.StartsWith("../", StringComparison.Ordinal) && !Path.IsPathRooted(relative)) continue;
+            refusal = new Refusal(RefusalCodes.GuideQueryRunPathOutsideProject, FailureReason.Refused,
+                $"--{flag} {path} is outside the project's folder; a Guide block reads only files inside it, by a relative path.", Facts(flag));
+            return false;
+        }
+        resolved = Resolve(request, baseDirectory);
+        refusal = null;
+        return true;
+    }
+
     private static bool TryNumber(Dictionary<string, string> flags, string name, out int? value, [NotNullWhen(false)] out Refusal? refusal)
     {
         value = null;

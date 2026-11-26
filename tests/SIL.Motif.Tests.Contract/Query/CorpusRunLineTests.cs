@@ -154,4 +154,39 @@ public sealed class CorpusRunLineTests
         Assert.Equal(1, table.Truncated);
         Assert.Equal(3, table.Types);
     }
+
+    [Theory]
+    [InlineData("forms where \"form ~ $(curl evil)\"")]
+    [InlineData("forms where \"form ~ `id`\"")]
+    [InlineData("forms where \"form ~ a\nb\"")]
+    public void ShellSyntaxInsideDoubleQuotesIsRefused(string tail)
+    {
+        Assert.False(QueryRunLine.TryParseRun(Base + tail, out _, out var refusal));
+        Assert.Equal(RefusalCodes.GuideQueryRunNotReadOnly, refusal!.Code);
+    }
+
+    [Fact]
+    public void SingleQuotesStillHoldADollarAnchor() => Assert.NotNull(Parse(Base + "forms where 'form ~ \"x$\"'"));
+
+    [Theory]
+    [InlineData("--corpus /etc/passwd --grammar g", "corpus")]
+    [InlineData("--corpus a.tsv --grammar ../g", "grammar")]
+    [InlineData("--corpus a.tsv --project /p/q.fwdata", "project")]
+    [InlineData("--corpus a.tsv --baseline-grammar x/../../b", "baseline-grammar")]
+    public void PathsThatLeaveTheProjectFolderAreRefused(string flags, string flag)
+    {
+        var request = Parse("motif query corpus forms " + flags + " forms");
+        var root = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "proj"));
+        Assert.False(CorpusRunLine.TryResolve(request, root, out _, out var refusal));
+        Assert.Equal(RefusalCodes.GuideQueryRunPathOutsideProject, refusal!.Code);
+        Assert.Equal(flag, refusal.Facts["flag"]);
+    }
+
+    [Fact]
+    public void PathsInsideTheProjectFolderResolve()
+    {
+        var root = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "proj"));
+        Assert.True(CorpusRunLine.TryResolve(Parse(Base.Replace("words.tsv", "sub/../words.tsv") + "forms"), root, out var resolved, out _));
+        Assert.Equal(Path.Combine(root, "words.tsv"), resolved!.CorpusPath);
+    }
 }

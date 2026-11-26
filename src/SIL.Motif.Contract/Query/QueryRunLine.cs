@@ -287,6 +287,13 @@ public static class QueryRunLine
                     }
                     var q = run[end];
                     if (q == c) break;
+                    if (c == '"' && (q is '$' or '`' || char.IsControl(q)))
+                    {
+                        refusal = new Refusal(RefusalCodes.GuideQueryRunNotReadOnly, FailureReason.Refused,
+                            "Inside double quotes a run line has no $, backtick or control character; use single quotes for a value that contains $.",
+                            Facts(("character", q.ToString())));
+                        return false;
+                    }
                     if (c == '"' && q == '\\' && end + 1 < run.Length && run[end + 1] is '"' or '\\') q = run[++end];
                     word.Append(q);
                     end++;
