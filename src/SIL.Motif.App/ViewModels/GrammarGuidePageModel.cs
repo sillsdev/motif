@@ -33,7 +33,10 @@ public sealed partial class GrammarGuidePageModel : PageModel
         OpenInFieldWorksCommand = new AsyncRelayCommand<Uri>(OpenInFieldWorksAsync,
             uri => uri is not null && Context.UriLauncher is not null);
         Queries = new GuideQueryTablesViewModel(GuideQueryContext.Baseline, () => Context.ProjectPath,
-            (request, token) => Context.Commands.RunGuideQueryAsync(request, token), word => Context.OpenWord(word));
+            (request, token) => Context.Commands.RunGuideQueryAsync(request, token), word => Context.OpenWord(word))
+        {
+            EvidenceRun = (project, line, token) => Context.Commands.RunGuideEvidenceAsync(project, line, token),
+        };
     }
 
     /// <summary>The query tables of the selected section, read from the Baseline: its <c>motif-query</c> blocks run as it is shown.</summary>
