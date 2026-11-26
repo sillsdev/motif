@@ -173,6 +173,9 @@ public sealed class CorpusRunLineTests
     [InlineData("--corpus a.tsv --grammar ../g", "grammar")]
     [InlineData("--corpus a.tsv --project /p/q.fwdata", "project")]
     [InlineData("--corpus a.tsv --baseline-grammar x/../../b", "baseline-grammar")]
+    [InlineData(@"--corpus C:\data\a.tsv", "corpus")]
+    [InlineData(@"--corpus \\server\share\a.tsv", "corpus")]
+    [InlineData(@"--corpus a.tsv --grammar ..\g", "grammar")]
     public void PathsThatLeaveTheProjectFolderAreRefused(string flags, string flag)
     {
         var request = Parse("motif query corpus forms " + flags + " forms");
@@ -188,5 +191,47 @@ public sealed class CorpusRunLineTests
         var root = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "proj"));
         Assert.True(CorpusRunLine.TryResolve(Parse(Base.Replace("words.tsv", "sub/../words.tsv") + "forms"), root, out var resolved, out _));
         Assert.Equal(Path.Combine(root, "words.tsv"), resolved!.CorpusPath);
+    }
+
+    [Fact]
+    public void TheRefusalNamesThePathAndSaysOnlyProjectFilesAreRead()
+    {
+        var root = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "proj"));
+        Assert.False(CorpusRunLine.TryResolve(Parse("motif query corpus forms --corpus /etc/passwd forms"), root, out _, out var refusal));
+        Assert.Contains("/etc/passwd", refusal!.Message);
+        Assert.Contains("only files inside the project folder", refusal.Message);
+    }
+
+    [Fact]
+    public void ABackslashRelativePathInsideTheFolderIsAccepted()
+    {
+        var root = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "proj"));
+        Assert.True(CorpusRunLine.TryResolve(Parse(@"motif query corpus forms --corpus sub\words.tsv forms"), root, out _, out _));
+    }
+
+    [Fact]
+    public void ASymlinkInsideTheFolderThatPointsOutsideIsRefused()
+    {
+        var parent = Path.Combine(Path.GetTempPath(), "motif487-" + Guid.NewGuid().ToString("N"));
+        var root = Path.Combine(parent, "proj");
+        var outside = Path.Combine(parent, "outside");
+        Directory.CreateDirectory(root);
+        Directory.CreateDirectory(outside);
+        File.WriteAllText(Path.Combine(outside, "secret.tsv"), "x");
+        try
+        {
+            try
+            {
+                Directory.CreateSymbolicLink(Path.Combine(root, "link"), outside);
+                File.CreateSymbolicLink(Path.Combine(root, "file.tsv"), Path.Combine(outside, "secret.tsv"));
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException) { return; }
+            foreach (var flags in new[] { "--corpus link/secret.tsv", "--corpus file.tsv" })
+            {
+                Assert.False(CorpusRunLine.TryResolve(Parse("motif query corpus forms " + flags + " forms"), root, out _, out var refusal));
+                Assert.Equal(RefusalCodes.GuideQueryRunPathOutsideProject, refusal!.Code);
+            }
+        }
+        finally { Directory.Delete(parent, true); }
     }
 }

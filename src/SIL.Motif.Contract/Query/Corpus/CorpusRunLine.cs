@@ -127,7 +127,7 @@ public static class CorpusRunLine
     {
         ArgumentNullException.ThrowIfNull(request);
         resolved = null;
-        var root = Path.GetFullPath(baseDirectory);
+        var root = Canonical(Path.GetFullPath(baseDirectory));
         var named = new List<(string Flag, string? Path)>();
         named.AddRange(request.CorpusPath.Split(['\n', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(path => ("corpus", (string?)path)));
         named.Add(("grammar", request.GrammarPath));
@@ -137,16 +137,46 @@ public static class CorpusRunLine
         foreach (var (flag, path) in named)
         {
             if (string.IsNullOrWhiteSpace(path)) continue;
-            var relative = Path.IsPathRooted(path) ? null : Path.GetRelativePath(root, Path.GetFullPath(path, root));
-            if (relative is not null && relative != ".." && !relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal) &&
-                !relative.StartsWith("../", StringComparison.Ordinal) && !Path.IsPathRooted(relative)) continue;
+            if (IsInsideFolder(path, root)) continue;
             refusal = new Refusal(RefusalCodes.GuideQueryRunPathOutsideProject, FailureReason.Refused,
-                $"--{flag} {path} is outside the project's folder; a Guide block reads only files inside it, by a relative path.", Facts(flag));
+                $"--{flag} {path} is outside the project's folder. A Guide query reads only files inside the project folder, by a relative path.", Facts(flag));
             return false;
         }
         resolved = Resolve(request, baseDirectory);
         refusal = null;
         return true;
+    }
+
+    private static bool IsInsideFolder(string path, string canonicalRoot)
+    {
+        if (path.Length >= 2 && char.IsAsciiLetter(path[0]) && path[1] == ':') return false;
+        if (path[0] is '/' or '\\' || Path.IsPathRooted(path)) return false;
+        var portable = path.Replace('\\', '/');
+        var full = Canonical(Path.GetFullPath(portable, canonicalRoot));
+        var relative = Path.GetRelativePath(canonicalRoot, full);
+        return relative != ".." && !relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal) &&
+            !relative.StartsWith("../", StringComparison.Ordinal) && !Path.IsPathRooted(relative);
+    }
+
+    /// <summary>The full path with symbolic links followed.</summary>
+    private static string Canonical(string fullPath)
+    {
+        var root = Path.GetPathRoot(fullPath) ?? "";
+        var parts = fullPath[root.Length..].Split([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar], StringSplitOptions.RemoveEmptyEntries);
+        var current = root;
+        for (var hop = 0; hop < parts.Length; hop++)
+        {
+            current = Path.Combine(current, parts[hop]);
+            for (var guard = 0; guard < 40; guard++)
+            {
+                FileSystemInfo info = Directory.Exists(current) ? new DirectoryInfo(current) : new FileInfo(current);
+                if (info.LinkTarget is null) break;
+                var target = info.ResolveLinkTarget(false);
+                if (target is null) break;
+                current = Path.GetFullPath(target.FullName);
+            }
+        }
+        return current;
     }
 
     private static bool TryNumber(Dictionary<string, string> flags, string name, out int? value, [NotNullWhen(false)] out Refusal? refusal)
