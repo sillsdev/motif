@@ -97,7 +97,33 @@ public sealed class GdrAddCommandsTests(PristineProjectFixture pristine)
     }
 
     [Fact]
-    public void ANumberIsNeverReusedAfterTheHighestItemIsDeleted()
+    public void ANumberIsNeverReusedAfterTheHighestItemIsDeleted() => Assert.Equal("GDR-4", AddDeleteThenAdd(_ => { }, clearDescription: false));
+
+    [Fact]
+    public void AClearedListDescriptionStillNeverReusesANumberWhileTheStoreHoldsTheMark() =>
+        Assert.Equal("GDR-4", AddDeleteThenAdd(_ => { }, clearDescription: true));
+
+    [Fact]
+    public void TheListDescriptionMarkAloneKeepsANumberFromBeingReusedOnAFreshStore() =>
+        Assert.Equal("GDR-4", AddDeleteThenAdd(path => _ = ProjectStoreCommand.Run(path, MotifProductVersion.CurrentText, (database, _) =>
+        {
+            using var connection = database.OpenConnection();
+            using var clear = connection.CreateCommand();
+            clear.CommandText = "DELETE FROM GuideNumberMark;";
+            clear.ExecuteNonQuery();
+            return CommandOutcome<string>.Success("cleared");
+        }), clearDescription: false));
+
+    [Fact]
+    public void ANumberInAnOpenDraftIsNotTakenAgain()
+    {
+        var path = ProjectWithGdrs();
+        var first = GdrAddCommands.Add(new GdrAddRequest(path, "one", Draft: null));
+        var second = GdrAddCommands.Add(new GdrAddRequest(path, "two"));
+        Assert.Equal(["GDR-3", "GDR-4"], [first.Value!.Abbreviation, second.Value!.Abbreviation]);
+    }
+
+    private string AddDeleteThenAdd(Action<string> beforeSecondAdd, bool clearDescription)
     {
         var path = ProjectWithGdrs();
         var first = GdrAddCommands.Add(new GdrAddRequest(path, "added"));
@@ -109,15 +135,23 @@ public sealed class GdrAddCommandsTests(PristineProjectFixture pristine)
         {
             var added = cache.ServiceLocator.GetInstance<ICmPossibilityRepository>().AllInstances()
                 .Single(item => item.Abbreviation.get_String(cache.DefaultAnalWs).Text == "GDR-3");
-            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () => added.Delete());
+            var list = cache.ServiceLocator.GetInstance<ICmPossibilityListRepository>().AllInstances()
+                .Single(item => item.Name.get_String(cache.DefaultAnalWs).Text == "Grammar Guide");
+            Assert.Contains("GDR-3", list.Description.get_String(cache.DefaultAnalWs).Text, StringComparison.Ordinal);
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                added.Delete();
+                if (clearDescription) list.Description.set_String(cache.DefaultAnalWs, TsStringUtils.MakeString("", cache.DefaultAnalWs));
+            });
             new FwDataProjectLoader().Save(cache);
         }
         Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), RootFor(path)).Succeeded);
         Assert.DoesNotContain(GdrQuery.List(new GdrListRequest(path)).Value!.Records, record => record.Abbreviation == "GDR-3");
+        beforeSecondAdd(path);
 
         var second = GdrAddCommands.Add(new GdrAddRequest(path, "after the delete"));
         Assert.True(second.Succeeded, second.Refusal?.Message);
-        Assert.Equal("GDR-4", second.Value!.Abbreviation);
+        return second.Value!.Abbreviation;
     }
 
     [Fact]
@@ -156,7 +190,7 @@ public sealed class GdrAddCommandsTests(PristineProjectFixture pristine)
     }
 
     [Fact]
-    public void AnUnknownOrVernacularWritingSystemIsRefusedAndAfterAtTheTopLevelReportsNoParent()
+    public void AnUnknownWritingSystemIsRefusedAVernacularOneIsAcceptedAndAfterAtTheTopLevelReportsNoParent()
     {
         string vernacular = "";
         var path = ProjectWith(cache =>
@@ -167,8 +201,7 @@ public sealed class GdrAddCommandsTests(PristineProjectFixture pristine)
         Assert.NotEmpty(vernacular);
         Assert.Equal(RefusalCodes.GdrTitleInvalid, GdrAddCommands.Add(new GdrAddRequest(path, "x", WritingSystem: "zz-unknown")).Refusal!.Code);
         var vern = GdrAddCommands.Add(new GdrAddRequest(path, "x", WritingSystem: vernacular));
-        Assert.False(vern.Succeeded);
-        Assert.Equal(RefusalCodes.GdrTitleInvalid, vern.Refusal!.Code);
+        Assert.True(vern.Succeeded, vern.Refusal?.Message);
         var after = GdrAddCommands.Add(new GdrAddRequest(path, "after one", After: "GDR-1"));
         Assert.True(after.Succeeded, after.Refusal?.Message);
         Assert.Null(after.Value!.ParentId);

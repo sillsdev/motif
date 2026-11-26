@@ -112,10 +112,10 @@ public static class GdrSectionSupport
         list.Depth = 127;
     }
 
-    /// <summary>The next permanent <c>GDR-n</c>: one more than the largest number the list holds or has ever given out, <c>GDR-1</c> for a new list.</summary>
-    public static string NextNumber(LcmCache cache, ICmPossibilityList? list)
+    /// <summary>The next permanent <c>GDR-n</c>: one more than the largest of the list's own mark, <paramref name="storedFloor"/> (Motif's store mark and open Drafts) and the numbers it holds, <c>GDR-1</c> for a new list.</summary>
+    public static string NextNumber(LcmCache cache, ICmPossibilityList? list, long storedFloor = 0)
     {
-        var largest = HighWater(cache, list);
+        var largest = Math.Max(HighWater(cache, list), storedFloor);
         if (list is not null)
             foreach (var item in list.ReallyReallyAllPossibilities)
                 if (Number.Match(NumberOf(cache, item).Normalize(NormalizationForm.FormD)) is { Success: true } match &&

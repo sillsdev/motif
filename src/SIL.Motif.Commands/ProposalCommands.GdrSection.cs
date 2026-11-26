@@ -44,23 +44,22 @@ public static partial class ProposalCommands
         var outcome = ProjectStoreCommand.Run(projectPath, MotifProductVersion.CurrentText, (database, project) =>
         {
             var draftName = namedDraft ?? PendingChanges.DraftName;
+            var marks = new GuideNumberMarkRepository(database);
+            var floor = 0L;
             try
             {
+                floor = marks.Floor();
                 var steps = new List<ComposeStep>
                 {
                     new(null, "AddGdrSection", (cache, _) =>
                     {
                         var list = GdrSectionSupport.FindList(cache, GdrSectionOperationKinds.Create);
                         listCreated = list is null;
-                        number = GdrSectionSupport.NextNumber(cache, list);
+                        number = GdrSectionSupport.NextNumber(cache, list, floor);
                         var ws = string.IsNullOrWhiteSpace(writingSystem)
                             ? cache.WritingSystemFactory.GetStrFromWs(cache.DefaultAnalWs) : writingSystem.Trim();
-                        var wsHandle = cache.WritingSystemFactory.GetWsFromStr(ws);
-                        if (wsHandle == 0)
+                        if (cache.WritingSystemFactory.GetWsFromStr(ws) == 0)
                             throw new GdrSectionRefusal(RefusalCodes.GdrTitleInvalid, $"The writing system '{ws}' is not in this project.");
-                        if (!cache.LangProject.AnalysisWritingSystems.Any(system => system.Handle == wsHandle))
-                            throw new GdrSectionRefusal(RefusalCodes.GdrTitleInvalid,
-                                $"The writing system '{ws}' is not an analysis writing system of this project, so a title cannot be written in it.");
                         string? Resolve(string? text, string role)
                         {
                             if (text is null) return null;
@@ -103,7 +102,9 @@ public static partial class ProposalCommands
                 steps.Add(new ComposeStep(null, "Validate", (_, _) =>
                     (JsonSerializer.SerializeToElement(new { }), Array.Empty<OperationEnvelope>())));
                 if (namedDraft is null) draftName = PendingChanges.EnsurePendingDraft(database, new ProposalRepository(database));
-                return ComposeStepsIntoDraft(database, project, draftName, steps);
+                var composed = ComposeStepsIntoDraft(database, project, draftName, steps);
+                if (composed.Succeeded && number is not null && long.TryParse(number.AsSpan(4), out var given)) marks.Raise(given);
+                return composed;
             }
             catch (Exception exception) when (SqliteConnections.IsBusy(exception))
             {
