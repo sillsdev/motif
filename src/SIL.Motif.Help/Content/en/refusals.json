@@ -169,8 +169,12 @@
     "source": "Hand-written from the Motif store binding rules."
   },
   "store.other-version": {
-    "why": "Motif's data for this project was made by another version of Motif, so this version cannot read it. If the refusal names an older schema (storeUpgradable), a normal open of the project in Motif upgrades it and keeps a .schema<N>.bak, or run motif store upgrade --project; never delete it. If it names a newer store (storeNewer), Motif will not reset or delete it: tell the linguist to install the newer Motif or restore a pre-upgrade backup with motif store restore. Do not retry.",
+    "why": "Motif's data for this project was made by another version of Motif, so this version cannot read it. If the refusal names an older schema (storeUpgradable), Motif upgrades it on open, after taking a backup it names; if you see this on a read, run motif store upgrade --project; never delete it. If it names a newer store (storeNewer), Motif will not reset or delete it: tell the linguist to install the newer Motif or restore a pre-upgrade backup with motif store restore. Do not retry.",
     "source": "Hand-written from the Motif MCP refusal advice."
+  },
+  "store.upgrade-failed": {
+    "why": "Motif could not upgrade this project's older store, and it changed nothing: the store is as it was. The refusal names the backup taken first (backupPath) and the step that failed (failedStep). Tell the linguist; do not retry in a loop and do not delete the store. If failedStep is swap, opening the project again finishes the upgrade; otherwise the linguist can run motif store restore with backupPath.",
+    "source": "Hand-written from the Motif store upgrade rules."
   },
   "parse.already-running": {
     "why": "A parse is already running for this project, so a second cannot start. Wait a minute.",

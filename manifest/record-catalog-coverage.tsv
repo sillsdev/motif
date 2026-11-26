@@ -1458,7 +1458,7 @@ ComputedFields	LexEntry	head-word	LexEntry.HeadWord	ClearRich	none	ComputedField
 # Root create	lists/item	MoMorphType	Uncovered	ADR 0033 D1: never invents list items
 # Root create	lists/item	PartOfSpeech	Uncovered	ADR 0033 D1: never invents list items
 # Root create	lists/item	PhPhonRuleFeat	Uncovered	ADR 0033 D1: never invents list items
-# Root create	notebook/record	RnGenericRec	Uncovered	no lowering yet
+# Root create	notebook/record	RnGenericRec	Covered	lowered through createRecords, setTitle and setType, as InsertRecordDlg makes a record
 # Parser-only kinds: lexical/entry/create, sequence/move
 # Runner declarations	Kind	Declaring class	Field	Verb	Placement	Owner restriction	Child classes	Shape	Fallback
 # Handler	analysis/decisionEvidence/record	(no direct field edit)

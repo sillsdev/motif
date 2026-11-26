@@ -115,6 +115,8 @@ internal static int Run(
     Func<AssessRequest, CommandOutcome<AssessCommandResponse>>? assess = null)
 {
     using var ambient = AmbientEnvironment.Push(environment);
+    using var storeUpgrades = StoreUpgradeNotices.Begin();
+    void NoteStoreUpgrades() => StoreUpgradeReport.Apply(storeUpgrades.Notices, new CommandResult(1, string.Empty), false, error);
     // A leading --autonomous is the global flag; it moves behind the verb so the verb is still args[0].
     if (args is [CommandSurfacePolicy.AutonomousFlag, var leadingVerb, ..var afterVerb])
         args = [leadingVerb, CommandSurfacePolicy.AutonomousFlag, .. afterVerb];
@@ -1297,6 +1299,7 @@ try
             });
             if (trialResultExit != 0)
             {
+                result = StoreUpgradeReport.Apply(storeUpgrades.Notices, result, asJson, error);
                 var pickedTrial = Picked(result);
                 output.Write(pickedTrial.Output);
                 return pickRefused ? pickedTrial.ExitCode : trialResultExit;
@@ -3706,6 +3709,7 @@ try
             return Usage($"Unknown command '{verb}'.", asJson, withUsageBanner: true);
     }
 
+    result = StoreUpgradeReport.Apply(storeUpgrades.Notices, result, asJson, error);
     result = Picked(result);
     if (result.ExitCode == 0)
     {
@@ -3721,6 +3725,7 @@ try
 }
 catch (ProjectWritingSystemsUnavailableException ex)
 {
+    NoteStoreUpgrades();
     // A setup problem the message explains, never an unexpected failure, even outside a project-store command.
     var refusal = ProjectStoreCommand.WritingSystemRefusal(ex, namedProject);
     if (asJson)
@@ -3732,6 +3737,7 @@ catch (ProjectWritingSystemsUnavailableException ex)
 }
 catch (OperationCanceledException ex)
 {
+    NoteStoreUpgrades();
     var message = string.IsNullOrWhiteSpace(ex.Message) ? "The CLI operation was cancelled." : ex.Message;
     if (asJson)
         error.WriteLine(ProjectionJson.Serialize(
@@ -3742,6 +3748,7 @@ catch (OperationCanceledException ex)
 }
 catch (OutOfMemoryException ex)
 {
+    NoteStoreUpgrades();
     // A memory shortage says nothing about the store, so it is a refusal, not the "something broke" bucket.
     var message = string.IsNullOrWhiteSpace(ex.Message) ? "The CLI ran out of memory." : ex.Message;
     if (asJson)
@@ -3753,6 +3760,7 @@ catch (OutOfMemoryException ex)
 }
 catch (Exception ex) when (SqliteConnections.IsBusyInChain(ex))
 {
+    NoteStoreUpgrades();
     // Another process held a store lock past the busy timeout. Nothing is damaged; the same call can be repeated.
     const string message = "Motif's store is locked by another process. Wait a few seconds and repeat the same call.";
     if (asJson)
@@ -3764,6 +3772,7 @@ catch (Exception ex) when (SqliteConnections.IsBusyInChain(ex))
 }
 catch (Exception ex)
 {
+    NoteStoreUpgrades();
     // Nothing decided this; it escaped. That is a bug, not a refusal, and it gets its own code.
     var message = string.IsNullOrWhiteSpace(ex.Message) ? "An unexpected CLI failure occurred." : ex.Message;
     if (asJson)

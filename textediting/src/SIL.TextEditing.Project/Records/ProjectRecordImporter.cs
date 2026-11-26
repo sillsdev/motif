@@ -270,6 +270,11 @@ namespace SIL.TextEditing.Project
             if (computed.Count > 0)
                 return Whole(file, ProjectRecordBaseVerdict.New, guid, null, read, computed.Select(r => Refusal(RecordRefusalKind.CreateComputedField,
                     r.Field + " is computed by FieldWorks for a new record. Leave it out.", guid, r.Field)).ToList());
+            var reserved = diff.Changes.Where(c => c.ObjectType == "RnGenericRec" && _exporter.FieldBinding("RnGenericRec", c.Field) is { IsCustom: true } binding &&
+                binding.Field is "MotifJudgmentId" or "MotifJudgmentData").Select(c => c.Field).Distinct().ToList();
+            if (reserved.Count > 0)
+                return Whole(file, ProjectRecordBaseVerdict.New, guid, null, read, reserved.Select(field => Refusal(RecordRefusalKind.CreateReservedField,
+                    "A new notebook record may not set " + field + ". Motif judgments are made with the judgment commands.", guid, field)).ToList());
             return Check(diff, new CheckRun(this, null, empty, writable, guid, file), ProjectRecordBaseVerdict.New, kind.Name, guid, null, read.Diagnostics);
         }
 

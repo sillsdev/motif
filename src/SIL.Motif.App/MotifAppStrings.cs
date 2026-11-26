@@ -2934,6 +2934,8 @@ public static class MotifAppStrings
 
     public static string RefusalDetailsGrammarIssuesTitle => Text("MotifApp.RefusalDetailsGrammarIssuesTitle");
 
+    public static string RefusalStoreUpgradeFailed => Text("MotifApp.RefusalStoreUpgradeFailed");
+
     public static string RefusalStoreOtherVersionHeading => Text("MotifApp.RefusalStoreOtherVersionHeading");
 
     public static string StatisticsColumnKind => Text("MotifApp.StatisticsColumnKind");
@@ -3023,6 +3025,10 @@ public static class MotifAppStrings
     public static string ProjectCardOpenAnotherAccessibleName => Text("MotifApp.ProjectCardOpenAnotherAccessibleName");
 
     public static string TechDemoNoticeText => Text("MotifApp.TechDemoNoticeText");
+
+    public static string StoreUpgradeNoticeDismiss => Text("MotifApp.StoreUpgradeNoticeDismiss");
+
+    public static string StoreUpgradeNoticeDismissAccessibleName => Text("MotifApp.StoreUpgradeNoticeDismissAccessibleName");
 
     public static string TechDemoNoticeGotIt => Text("MotifApp.TechDemoNoticeGotIt");
 

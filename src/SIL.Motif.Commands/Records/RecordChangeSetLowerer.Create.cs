@@ -5,6 +5,7 @@ using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Runner.Composers;
+using SIL.Motif.Runner.Operations;
 using SIL.TextEditing.Markdown.Records;
 using SIL.TextEditing.Project;
 
@@ -14,6 +15,10 @@ public sealed partial class RecordChangeSetLowerer
 {
     /// <summary>The record kind whose creation is lowered, through the entry composers.</summary>
     public const string EntryKind = "lexicon/entry";
+    /// <summary>The record kind whose creation is lowered to the notebook's record create.</summary>
+    public const string NotebookKind = "notebook/record";
+    private const string NotebookPath = "InsertRecordDlg.OnClosing, IRnGenericRecFactory.Create";
+    private const string RecordClass = "RnGenericRec";
     private const string MainEntryPath = "InsertEntryDlg.CreateNewEntryInternal, ILexEntryFactory.Create";
     private const string VariantPath = "LinkVariantToEntryOrSense, ILexEntry.CreateVariantEntryAndBackRef";
 
@@ -25,8 +30,60 @@ public sealed partial class RecordChangeSetLowerer
         return run.LowerEntry(plan);
     }
 
+    /// <summary>Lowers a new notebook record as InsertRecordDlg does.</summary>
+    private RecordLowering LowerCreatedRecord(LcmCache cache, ProjectRecordPlan plan)
+    {
+        var run = new Run(schema, catalog, cache, plan.RecordGuid!.Value.ToString("D"),
+            new ProjectRecordExporter(cache, schema).CreateReadOptions().Markdown) { Changes = plan.ChangeSet.Changes };
+        return run.LowerRecord(plan);
+    }
+
     private sealed partial class Run
     {
+        /// <summary>Lowers the plan of a new notebook record.</summary>
+        internal RecordLowering LowerRecord(ProjectRecordPlan plan)
+        {
+            var record = plan.RecordGuid!.Value;
+            var analysis = cache.ServiceLocator.WritingSystems.AnalysisWritingSystems.Select(item => item.Id).ToHashSet();
+            var titleIndexes = Enumerable.Range(0, Changes.Count).Where(index => Changes[index].ObjectGuid == record && Changes[index].Field == "title" &&
+                Changes[index].Kind is RecordChangeKind.SetRich or RecordChangeKind.SetAlternative && !string.IsNullOrWhiteSpace(Changes[index].New) &&
+                (Changes[index].WritingSystem is null || analysis.Contains(Changes[index].WritingSystem!))).ToList();
+            var typeIndex = Enumerable.Range(0, Changes.Count).FirstOrDefault(index => Changes[index].ObjectGuid == record &&
+                Changes[index].Field == "type" && Changes[index].Kind == RecordChangeKind.Set, -1);
+            if (cache.LangProject.ResearchNotebookOA is not { } notebook)
+                return Whole(plan, "a Research Notebook to hold it", NotebookPath);
+            if (titleIndexes.Count == 0)
+                return Whole(plan, "a title in an analysis writing system", NotebookPath);
+            if (Changes.Any(change => change.Kind == RecordChangeKind.AddObject && change.Subtree is { } subtree && SameGuid(subtree, record)))
+                return Whole(plan, "a record that is not its own sub-record", NotebookPath);
+            var observation = RnResearchNbkTags.kguidRecObservation;
+            if (typeIndex < 0 && !cache.ServiceLocator.ObjectRepository.TryGetObject(observation, out _))
+                return Whole(plan, "a type, since this project has no Observation type to default to", NotebookPath);
+
+            _created.Add(record);
+            _classes[record] = RecordClass;
+            var first = titleIndexes[0];
+            Operations.Add(Operation(Id("create:record"), RnResearchNbkRecordsOperationKinds.Create, CanonicalId.FromGuid(notebook.Guid), new { },
+                entity: CanonicalId.FromGuid(record)));
+            OperationChanges.Add(first);
+            if (typeIndex < 0)
+            {
+                Operations.Add(Operation(Id("create:type"), RnGenericRecTypeOperationKinds.SetType, CanonicalId.FromGuid(record),
+                    new { @ref = CanonicalId.FromGuid(observation).Value }));
+                OperationChanges.Add(first);
+            }
+            for (var index = 0; index < Changes.Count; index++)
+                Lower(index, Changes[index]);
+            Depend();
+            var required = new HashSet<int>(titleIndexes);
+            if (typeIndex >= 0) required.Add(typeIndex);
+            return new(Operations, Refusals, plan.ChangeSet.Refusals, OperationChanges, RefusedCodes, null, required);
+        }
+
+        private static bool SameGuid(RecordObject subtree, Guid record) =>
+            subtree.Guid == record || subtree.Fields.Any(field => field.Value is RecordObject nested && SameGuid(nested, record) ||
+                field.Value is RecordList list && list.Items.OfType<RecordObject>().Any(item => SameGuid(item, record)));
+
         private RecordLowering Whole(ProjectRecordPlan plan, string part, string path, string? detail = null)
         {
             var set = plan.ChangeSet;

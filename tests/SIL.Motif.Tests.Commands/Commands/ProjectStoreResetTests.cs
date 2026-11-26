@@ -141,7 +141,7 @@ public sealed class ProjectStoreResetTests : IDisposable
         var storePath = StorePathOf(project);
         using var deleteWaiting = new ManualResetEventSlim();
         Task<CommandOutcome<string>> creating;
-        Task<bool> deleting;
+        Task<StoreDeletion> deleting;
 
         // A write lock on the still-empty file pauses a real creator inside creation, holding the creation lock.
         using (var writer = Connection(storePath))
@@ -163,7 +163,7 @@ public sealed class ProjectStoreResetTests : IDisposable
         }
 
         Assert.True((await creating.WaitAsync(TimeSpan.FromSeconds(30))).Succeeded);
-        Assert.False(await deleting.WaitAsync(TimeSpan.FromSeconds(30)));
+        Assert.False((await deleting.WaitAsync(TimeSpan.FromSeconds(30))).Deleted);
         Assert.True(File.Exists(storePath));
         Assert.Equal((long)MotifSchema.CurrentSchema, Scalar(storePath, "PRAGMA user_version;"));
         Open(project);
@@ -230,6 +230,49 @@ public sealed class ProjectStoreResetTests : IDisposable
         Assert.Equal(before, File.ReadAllBytes(aside));
         Assert.True(ProjectStoreCommand.Run<string>(
             original, "1.0", (_, _) => CommandOutcome<string>.Success(string.Empty)).Succeeded);
+    }
+
+    [Fact]
+    public void AResetBacksTheStoreUpFirstAndShowsTheBackup()
+    {
+        var project = Project("reset");
+        var storePath = StorePathOf(project);
+        Open(project);
+        var older = MotifSchema.CurrentSchema - 5;
+        Execute(storePath, $"INSERT INTO Proposals (ProposalId, Status) VALUES ('kept', 'applied'); PRAGMA user_version = {older};");
+
+        var outcome = ProjectStoreReset.DeleteRefused(
+            new ProjectStoreResetRequest(project), "1.0", null, MotifSchema.CurrentSchema - 1);
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        Assert.True(outcome.Value!.Deleted);
+        Assert.False(File.Exists(storePath));
+        var backup = outcome.Value.BackupPath!;
+        Assert.StartsWith(Path.Combine(_root, "reset.motif-backups", $"pre-reset-schema{older}-"), backup, StringComparison.Ordinal);
+        Assert.Equal(Path.Combine(backup, StoreBackups.ReceiptName), outcome.Value.BackupReceiptPath);
+        var copy = Path.Combine(backup, StoreBackups.StoreName);
+        Assert.Equal((long)older, Scalar(copy, "PRAGMA user_version;"));
+        Assert.Equal(1L, Scalar(copy, "SELECT COUNT(*) FROM Proposals WHERE ProposalId = 'kept';"));
+    }
+
+    [Fact]
+    public void AResetWhoseBackupFailsDeletesNothing()
+    {
+        var project = Project("reset-fails");
+        var storePath = StorePathOf(project);
+        Open(project);
+        Execute(storePath, $"PRAGMA user_version = {MotifSchema.CurrentSchema - 5};");
+        // A file where the backups folder must go makes the backup fail.
+        File.WriteAllText(Path.Combine(_root, "reset-fails.motif-backups"), "in the way");
+        var before = File.ReadAllBytes(storePath);
+
+        var outcome = ProjectStoreReset.DeleteRefused(
+            new ProjectStoreResetRequest(project), "1.0", null, MotifSchema.CurrentSchema - 1);
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal("project.store-io", outcome.Refusal!.Code);
+        Assert.Contains("deleted nothing", outcome.Refusal.Message);
+        Assert.Equal(before, File.ReadAllBytes(storePath));
     }
 
     [Fact]

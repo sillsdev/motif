@@ -4172,9 +4172,13 @@ Never included unless you tick it in the preview: local details, which may conta
     <value>This project's Motif store was made by a newer version of Motif. Install the newer Motif, or restore a backup made before the upgrade; your FieldWorks project is not touched.</value>
     <comment>Sentence the window shows when the project's Motif store is newer than this Motif, so it is neither upgraded nor deleted. FieldWorks is a product name.</comment>
   </data>
+  <data name="MotifApp.RefusalStoreUpgradeFailed" xml:space="preserve">
+    <value>Motif could not upgrade this project's store, so it left it as it was. If a backup was taken, the details name it and Motif's restore command puts it back; your FieldWorks project is not touched.</value>
+    <comment>Sentence the window shows when upgrading an older Motif store failed. FieldWorks is a product name.</comment>
+  </data>
   <data name="MotifApp.RefusalStoreUpgradable" xml:space="preserve">
-    <value>This project's Motif store is from an older version. Refresh the project to upgrade it; the original is kept as a .bak file, and your FieldWorks project is not touched.</value>
-    <comment>Sentence the window shows when a read found an older Motif store that a normal open upgrades. FieldWorks is a product name; .bak is a file extension.</comment>
+    <value>This project's Motif store is from an older version. Refresh the project to upgrade it; Motif backs the store up first, and your FieldWorks project is not touched.</value>
+    <comment>Sentence the window shows when a read found an older Motif store that a normal open upgrades. FieldWorks is a product name.</comment>
   </data>
   <data name="MotifApp.RefusalStoreFromOtherVersion" xml:space="preserve">
     <value>Motif cannot open this store. Delete it and reopen the project to continue. Changes not applied yet are lost; your FieldWorks project is not touched.</value>
@@ -5136,6 +5140,14 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.TechDemoNoticeText" xml:space="preserve">
     <value>Tech demo: only Apply writes; back up FieldWorks.</value>
     <comment>First-run notice about applying changes and backing up the FieldWorks project.</comment>
+  </data>
+  <data name="MotifApp.StoreUpgradeNoticeDismiss" xml:space="preserve">
+    <value>Dismiss</value>
+    <comment>Button that hides the notice saying the project store was upgraded after a backup.</comment>
+  </data>
+  <data name="MotifApp.StoreUpgradeNoticeDismissAccessibleName" xml:space="preserve">
+    <value>Dismiss the store upgrade notice</value>
+    <comment>Accessible name of the Dismiss button on the store upgrade notice.</comment>
   </data>
   <data name="MotifApp.TechDemoNoticeGotIt" xml:space="preserve">
     <value>_Got It</value>

@@ -21,6 +21,8 @@ public static partial class RefusalCatalog
             NextStep.PersonStep()),
         Spec(RefusalCodes.StoreOtherVersion, FailureReason.Refused,
             NextStep.PersonStep()),
+        Spec(RefusalCodes.StoreUpgradeFailed, FailureReason.Refused,
+            NextStep.PersonStep()),
         Spec(RefusalCodes.StoreRelocateConfirmationRequired, FailureReason.InvalidArgument),
         Spec(RefusalCodes.StoreRelocateIdentityUnproven, FailureReason.Refused,
             NextStep.PersonStep()),
@@ -33,6 +35,7 @@ public static partial class RefusalCatalog
         RefusalCodes.StoreInconsistent,
         RefusalCodes.StoreOtherProject,
         RefusalCodes.StoreOtherVersion,
+        RefusalCodes.StoreUpgradeFailed,
         RefusalCodes.StoreUnsupported,
     ];
 }

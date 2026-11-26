@@ -433,6 +433,58 @@ public sealed class GdrEditCommandsTests(PristineProjectFixture pristine)
     }
 
     [Theory]
+    [InlineData("*a", "c", "d*", "--choosing and --because has an unbalanced marker", "--over")]
+    [InlineData("a [b", "c", "d](http://x) e", "--choosing and --because has an unbalanced marker", "--over")]
+    [InlineData("a", "_c", "d_", "--over and --because has an unbalanced marker", "--choosing")]
+    [InlineData("`a", "b", "c`", "--choosing has an unbalanced marker", "--over")]
+    [InlineData("a\\", "c", "d", "--choosing has an unbalanced marker", "--over")]
+    [InlineData("a", "c", "[b]{ws=", "--because is not inline Markdown", "--over")]
+    [InlineData("[a", "c", "b]{ws=en}", "--choosing and --because has an unbalanced marker", "--over")]
+    public void AnUnbalancedMarkerThatWouldPairAcrossPartsIsRefusedNamingOnlyThoseParts(string chosen, string over, string because,
+        string named, string notNamed)
+    {
+        var path = ProjectWithGdrs(HeadingStyles);
+
+        var refused = GdrEditCommands.Decide(new GdrDecideRequest(path, "GDR-2", chosen, over, because));
+
+        Assert.Equal(RefusalCodes.GdrDecisionInvalid, refused.Refusal!.Code);
+        Assert.StartsWith(named, refused.Refusal.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(notNamed, refused.Refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("\\<", refused.Refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("a\\*b", "c", "d")]
+    [InlineData("a \\_ b", "c \\` d", "e \\< f \\[ g \\\\ h")]
+    [InlineData("*a*", "_b_", "**c**")]
+    [InlineData("a < b", "<c", "d>")]
+    [InlineData("[x]{.v}", "[y]{.v}", "[z]{.v}")]
+    [InlineData("accept [alila]{ws=en}", "reject", "x")]
+    [InlineData("plain words", "other words", "it fits.")]
+    public void BalancedPartsAreStagedAndReadPartByPart(string chosen, string over, string because)
+    {
+        var path = ProjectWithGdrs(HeadingStyles);
+
+        var decided = GdrEditCommands.Decide(new GdrDecideRequest(path, "GDR-2", chosen, over, because));
+
+        Assert.True(decided.Succeeded, decided.Refusal?.Message);
+    }
+
+    [Fact]
+    public void ALoneMarkerInOnePartMakesNoEmphasisWithAnother()
+    {
+        var path = ProjectWithGdrs(HeadingStyles);
+
+        Assert.False(GdrEditCommands.Decide(new GdrDecideRequest(path, "GDR-2", "*a", "c", "d*")).Succeeded);
+        var escaped = GdrEditCommands.Decide(new GdrDecideRequest(path, "GDR-2", "a \\* b", "c", "d \\* e"));
+        Assert.True(escaped.Succeeded, escaped.Refusal?.Message);
+        var runs = GdrQuery.Show(new GdrShowRequest(path, "GDR-2", AsOf: escaped.Value!.DraftName)).Value!
+            .Discussion.SelectMany(paragraph => paragraph.Runs).ToArray();
+        Assert.Contains("a * b or c, I am choosing a * b, because d * e.", string.Concat(runs.Select(run => run.Text)), StringComparison.Ordinal);
+        Assert.All(runs.Where(run => run.Text.Contains("b or c", StringComparison.Ordinal)), run => Assert.Equal(runs[^1].Properties, run.Properties));
+    }
+
+    [Theory]
     [InlineData("# heading", "b", "c")]
     [InlineData("a", "- item", "c")]
     [InlineData("a", "b", "> quote")]
