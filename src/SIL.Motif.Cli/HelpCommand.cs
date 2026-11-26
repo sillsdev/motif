@@ -85,7 +85,7 @@ public static class HelpCommand
             for (var length = codeParts.Length - 1; length >= 1; length--)
             {
                 var prefix = string.Join(' ', codeParts.Take(length));
-                if (!IsKnownCommand(catalog, prefix)) continue;
+                if (!IsKnownCommand(catalog, prefix) && !IsVerbGroup(prefix)) continue;
                 code = prefix;
                 break;
             }
@@ -104,6 +104,14 @@ public static class HelpCommand
             if (json)
                 return Usage(error);
             PrintAutonomousHelp(output, policy);
+            return 0;
+        }
+
+        if (!code.StartsWith("guide:", StringComparison.Ordinal) && IsVerbGroup(code) && !IsKnownEntry(catalog, code))
+        {
+            if (json)
+                return Usage(error);
+            PrintVerbGroup(code, catalog, output);
             return 0;
         }
 
@@ -129,6 +137,8 @@ public static class HelpCommand
             foreach (var usage in UsageLines(command.Name))
                 output.WriteLine(NormalizeUsage(usage));
             output.WriteLine(EnablementText(command));
+            if (IsVerbGroup(code))
+                PrintVerbsSection(code, catalog, output);
             return 0;
         }
         if (entry is null)
@@ -148,6 +158,8 @@ public static class HelpCommand
         }
 
         PrintEntry(entry, entryKind, catalog, output);
+        if (entryKind != HelpEntryKind.Guide && IsVerbGroup(entry.Code))
+            PrintVerbsSection(entry.Code, catalog, output);
         if (unavailable)
         {
             output.WriteLine();
@@ -162,6 +174,58 @@ public static class HelpCommand
         }
 
         return 0;
+    }
+
+    /// <summary>
+    /// The verb groups, derived from <see cref="CliVerbCatalog"/>: a first word that heads at least one command whose
+    /// next word is a verb rather than a flag (<c>guide list</c>, <c>query pairs</c>), mapped to those commands.
+    /// </summary>
+    public static IReadOnlyDictionary<string, IReadOnlyList<string>> VerbGroups { get; } = CliVerbCatalog.All
+        .Select(verb => string.Join(' ', verb.CommandName.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .TakeWhile(word => !word.StartsWith('-'))))
+        .Where(name => name.Contains(' ', StringComparison.Ordinal))
+        .Distinct(StringComparer.Ordinal)
+        .GroupBy(name => name[..name.IndexOf(' ', StringComparison.Ordinal)], StringComparer.Ordinal)
+        .ToDictionary(group => group.Key, group => (IReadOnlyList<string>)group.Order(StringComparer.Ordinal).ToArray(),
+            StringComparer.Ordinal);
+
+    private static bool IsVerbGroup(string code) => VerbGroups.ContainsKey(code);
+
+    private static void PrintVerbGroup(string group, HelpCatalog catalog, TextWriter output)
+    {
+        output.WriteLine($"{group} commands");
+        output.WriteLine($"The verbs of 'motif {group}', each with its gate.");
+        PrintVerbsSection(group, catalog, output, leadingBlank: false);
+    }
+
+    private static void PrintVerbsSection(string group, HelpCatalog catalog, TextWriter output, bool leadingBlank = true)
+    {
+        if (leadingBlank)
+            output.WriteLine();
+        output.WriteLine("Verbs:");
+        foreach (var name in VerbGroups[group])
+        {
+            var surface = CommandCatalog.All.FirstOrDefault(item => item.Name == name)?.Surface;
+            var gate = surface switch
+            {
+                CommandSurface.Released => "Released",
+                CommandSurface.AdvancedAi => "Advanced AI",
+                CommandSurface.Autonomous => "Autonomous",
+                CommandSurface.Developer => "Developer",
+                _ => "Unlisted",
+            };
+            output.WriteLine($"  {name,-34} [{gate}] {Summary(catalog, name)}");
+        }
+        output.WriteLine($"Use 'motif help {group} <verb>' for one verb, for example 'motif help {VerbGroups[group][0]}'.");
+    }
+
+    private static string Summary(HelpCatalog catalog, string name)
+    {
+        var description = catalog.Find(HelpEntryKind.Command, name)?.Description;
+        if (string.IsNullOrWhiteSpace(description))
+            return "No summary yet.";
+        var end = description.IndexOf(". ", StringComparison.Ordinal);
+        return end < 0 ? description.Trim() : description[..(end + 1)].Trim();
     }
 
     // A Command-kind Help page can be a topic with no command behind it, such as lexicon-import.

@@ -73,6 +73,43 @@ public sealed class HelpCommandTests
     }
 
     [Fact]
+    public void EveryVerbGroupInTheCatalogResolvesAsATopicListingItsVerbsWithGates()
+    {
+        Assert.Contains("guide", HelpCommand.VerbGroups.Keys);
+        Assert.Contains("query", HelpCommand.VerbGroups.Keys);
+        var catalog = HelpCatalog.Load();
+        var failures = new System.Collections.Generic.List<string>();
+        foreach (var (group, verbs) in HelpCommand.VerbGroups)
+        {
+            var result = Run(true, true, "help", group);
+            if (result.ExitCode != 0) { failures.Add($"{group}: exit {result.ExitCode}"); continue; }
+            if (!result.Output.Contains($"motif help {group} <verb>", StringComparison.Ordinal))
+                failures.Add($"{group}: no pointer to 'motif help {group} <verb>'");
+            foreach (var verb in verbs)
+            {
+                var line = result.Output.Split('\n').FirstOrDefault(l => l.TrimStart().StartsWith(verb + " ", StringComparison.Ordinal));
+                var surface = CommandCatalog.All.First(command => command.Name == verb).Surface;
+                var gate = surface == CommandSurface.AdvancedAi ? "Advanced AI" : surface.ToString();
+                if (line is null || !line.Contains($"[{gate}]", StringComparison.Ordinal))
+                    failures.Add($"{group}: verb '{verb}' missing or without gate [{gate}]");
+            }
+        }
+
+        Assert.Empty(failures);
+    }
+
+    [Fact]
+    public void AVerbGroupThatIsAlsoATopicKeepsItsPageAndGainsAVerbsSection()
+    {
+        var result = Run(true, true, "help", "list");
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(HelpCatalog.Load().Find(HelpEntryKind.Command, "list")!.Title, result.Output.Split('\n')[0].TrimEnd('\r'));
+        Assert.Contains("Verbs:", result.Output, StringComparison.Ordinal);
+        Assert.Contains("list requests", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void HelpListsReleasedCommandsWithTitles()
     {
         var result = Run("help");
