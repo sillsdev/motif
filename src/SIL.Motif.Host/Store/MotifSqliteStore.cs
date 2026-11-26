@@ -368,7 +368,7 @@ internal sealed class MotifSqliteStore : IDisposable
             DropSwapCopyIfVerified(report.BackupPath, report.BackupReceiptPath, report.SourceSchema);
     }
 
-    // The exact original goes only when the backup folder reads back as the same store; otherwise it stays and a warning says so.
+    // The original goes only when its backup verifies; otherwise it stays.
     private static void DropSwapCopyIfVerified(string original, string receiptPath, int schema)
     {
         if (!File.Exists(original)) return;
