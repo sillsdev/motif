@@ -41,7 +41,7 @@ public static class SplitPhonemeComposer
         if (EditPhonemeComposer.ReadEnvironmentsWriting(cache, spelling).FirstOrDefault() is { } environment)
             throw new InvalidOperationException(
                 $"{EditPhonemeComposer.Referenced}: environment '{environment.Name}' writes '{intent.Representation}'; " +
-                "change that environment first with compose-edit-environment.");
+                "switch that side of the environment to a natural class with compose-edit-environment first.");
 
         var ws = cache.DefaultVernWs;
         var builder = new SoundSystemAuthoring.Builder(mintId, "Authored by the SplitPhoneme composer.");

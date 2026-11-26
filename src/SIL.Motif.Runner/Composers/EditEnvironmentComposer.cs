@@ -18,7 +18,7 @@ namespace SIL.Motif.Runner.Composers;
 /// pattern (<c>IPhEnvironment.StringRepresentation</c>).
 /// </summary>
 /// <param name="Environment">Canonical id of the environment.</param>
-/// <param name="ExpectedText">The environment's current string such as <c>/ a _ [C]</c>, or its name; a stale-edit guard.</param>
+/// <param name="ExpectedText">The environment's current string such as <c>/ a _ [C]</c> (Unicode-normalization insensitive, spacing exact); a stale-edit guard.</param>
 /// <param name="Left">The new left context, or null to keep the current one.</param>
 /// <param name="Right">The new right context, or null to keep the current one.</param>
 public sealed record EditEnvironmentIntent(CanonicalId Environment, string ExpectedText,
@@ -51,7 +51,7 @@ public static class EditEnvironmentComposer
     /// <summary>Refusal name: the target is not an environment of the phonological data.</summary>
     public const string NotFound = "environment-edit-not-found";
 
-    /// <summary>Refusal name: the environment no longer carries the expected string or name.</summary>
+    /// <summary>Refusal name: the environment no longer carries the expected string.</summary>
     public const string Stale = "environment-edit-stale";
 
     /// <summary>Refusal name: a context names an unknown phoneme or natural class, or cannot condition an allomorph.</summary>
@@ -72,8 +72,7 @@ public static class EditEnvironmentComposer
             throw new InvalidOperationException($"{Empty}: name a left context, a right context or both.");
         var environment = Resolve(cache, intent.Environment);
         var current = environment.StringRepresentation?.Text;
-        var names = environment.Name.AvailableWritingSystemIds.Select(ws => environment.Name.get_String(ws).Text);
-        if (!names.Append(current).Any(text => string.Equals(text, intent.ExpectedText, StringComparison.Ordinal)))
+        if (!string.Equals(Nfc(current), Nfc(intent.ExpectedText), StringComparison.Ordinal))
             throw new InvalidOperationException(
                 $"{Stale}: environment '{intent.Environment.Value}' has {(string.IsNullOrEmpty(current) ? "no string" : $"the string '{current}'")}, " +
                 $"not '{intent.ExpectedText}'.");
@@ -96,7 +95,7 @@ public static class EditEnvironmentComposer
         {
             throw new InvalidOperationException($"{Invalid}: {exception.Message}");
         }
-        if (string.Equals(pattern, current, StringComparison.Ordinal))
+        if (string.Equals(Nfc(pattern), Nfc(current), StringComparison.Ordinal))
             throw new InvalidOperationException($"{Unchanged}: the environment already reads '{pattern}'.");
 
         var builder = new SoundSystemAuthoring.Builder(mintId, "Authored by the EditEnvironment composer: the environment keeps its identity.");
@@ -118,6 +117,8 @@ public static class EditEnvironmentComposer
             .Select(user => new ComposedRelatedObject(user.ClassName, SoundSystemAuthoring.Id(user).Value, UnusedObjects.Describe(user)))
             .ToArray();
     }
+
+    private static string Nfc(string? text) => (text ?? string.Empty).Normalize(NormalizationForm.FormC);
 
     private static IPhEnvironment Resolve(LcmCache cache, CanonicalId id)
     {

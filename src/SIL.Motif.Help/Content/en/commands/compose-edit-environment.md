@@ -8,7 +8,7 @@ motif compose-edit-environment --project language.fwdata --draft envfix \
              "left": [{"naturalClass": "<class-id>"}]}'
 ```
 
-The intent has `environment`, `expectedText` and at least one of `left` and `right`; it is closed. A side you give replaces that whole side; a side you leave out is kept. Each context names exactly one `phoneme`, `naturalClass`, `boundary` (`"word"`, at the outer edge) or `boundaryMarker`, as in `compose-author-environment`. A phoneme respelling, a phoneme-to-class change or a swap is a new `left` or `right`. `expectedText` must match the current string or name, so a stale target is refused.
+The intent has `environment`, `expectedText` and at least one of `left` and `right`; it is closed. A side you give replaces that whole side; a side you leave out is kept. Each context names exactly one `phoneme`, `naturalClass`, `boundary` (`"word"`, at the outer edge) or `boundaryMarker`, as in `compose-author-environment`. A phoneme-to-class change or a swap is a new `left` or `right`. An environment always writes a phoneme's first spelling as it is now, so naming the same phoneme again changes nothing (`environment-edit-unchanged`); to free a spelling for `compose-edit-phoneme`, switch that side to a natural class, such as a one-member class. `expectedText` must match the current string (Unicode normalization form does not matter, spacing does), so a stale target is refused.
 
 A kept side is read back from the stored string and must render exactly as it is stored. If it does not (optional groups, a phoneme with several spellings, a morpheme boundary), give both sides. Give both sides to repair an environment whose string no longer parses.
 

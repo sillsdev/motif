@@ -68,7 +68,7 @@ public sealed class EditEnvironmentComposerTests(PristineProjectFixture pristine
         var environment = Author(cache, "t_a", [new(Phoneme: t)], [new(Phoneme: a)]);
 
         SoundSystemComposerTests.Execute(cache,
-            EditEnvironmentComposer.Build(cache, new(environment, "t_a", null, [new(Phoneme: i)])));
+            EditEnvironmentComposer.Build(cache, new(environment, "/ t _ a", null, [new(Phoneme: i)])));
 
         Assert.Equal("/ t _ i", Text(cache, environment));
     }
@@ -98,7 +98,7 @@ public sealed class EditEnvironmentComposerTests(PristineProjectFixture pristine
             .GetObject(pristine.Seed.FirstEntryId).LexemeFormOA!;
         NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () => stem.PhoneEnvRC.Add(Environment(cache, environment)));
 
-        var users = EditEnvironmentComposer.ReadAffectedUsers(cache, new(environment, "after a", [], null));
+        var users = EditEnvironmentComposer.ReadAffectedUsers(cache, new(environment, "/ a _", [], null));
 
         Assert.Contains(users, user => user.Id == CanonicalId.FromGuid(stem.Guid).Value);
     }
@@ -114,7 +114,7 @@ public sealed class EditEnvironmentComposerTests(PristineProjectFixture pristine
         var lone = Author(cache, "lone", [new(Phoneme: t)], []);
 
         Assert.StartsWith(EditEnvironmentComposer.Empty,
-            Refusal(() => EditEnvironmentComposer.Build(cache, new(environment, "t_a", null, null))));
+            Refusal(() => EditEnvironmentComposer.Build(cache, new(environment, "/ t _ a", null, null))));
         Assert.StartsWith(EditEnvironmentComposer.NotFound,
             Refusal(() => EditEnvironmentComposer.Build(cache, new(missing, "x", [], null))));
         Assert.StartsWith(EditEnvironmentComposer.NotFound,
@@ -122,15 +122,17 @@ public sealed class EditEnvironmentComposerTests(PristineProjectFixture pristine
         Assert.StartsWith(EditEnvironmentComposer.Stale,
             Refusal(() => EditEnvironmentComposer.Build(cache, new(environment, "/ q _ q", [new(Phoneme: a)], null))));
         Assert.StartsWith(EditEnvironmentComposer.Invalid,
-            Refusal(() => EditEnvironmentComposer.Build(cache, new(environment, "t_a", [new(Phoneme: missing)], null))));
+            Refusal(() => EditEnvironmentComposer.Build(cache, new(environment, "/ t _ a", [new(Phoneme: missing)], null))));
         Assert.StartsWith(EditEnvironmentComposer.Invalid,
-            Refusal(() => EditEnvironmentComposer.Build(cache, new(environment, "t_a", [new(NaturalClass: missing)], null))));
+            Refusal(() => EditEnvironmentComposer.Build(cache, new(environment, "/ t _ a", [new(NaturalClass: missing)], null))));
         Assert.StartsWith(EditEnvironmentComposer.Invalid,
-            Refusal(() => EditEnvironmentComposer.Build(cache, new(environment, "t_a", [new(Boundary: "morpheme")], null))));
+            Refusal(() => EditEnvironmentComposer.Build(cache, new(environment, "/ t _ a", [new(Boundary: "morpheme")], null))));
         Assert.StartsWith(EditEnvironmentComposer.Invalid,
-            Refusal(() => EditEnvironmentComposer.Build(cache, new(lone, "lone", [], []))));
+            Refusal(() => EditEnvironmentComposer.Build(cache, new(lone, "/ t _", [], []))));
+        Assert.StartsWith(EditEnvironmentComposer.Stale,
+            Refusal(() => EditEnvironmentComposer.Build(cache, new(environment, "t_a", [new(Phoneme: a)], null))));
         Assert.StartsWith(EditEnvironmentComposer.Unchanged,
-            Refusal(() => EditEnvironmentComposer.Build(cache, new(environment, "t_a", [new(Phoneme: t)], null))));
+            Refusal(() => EditEnvironmentComposer.Build(cache, new(environment, "/ t _ a", [new(Phoneme: t)], null))));
     }
 
     [Fact]
@@ -147,6 +149,21 @@ public sealed class EditEnvironmentComposerTests(PristineProjectFixture pristine
 
         Assert.StartsWith(EditEnvironmentComposer.Unparseable, message);
         Assert.Contains("give both", message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ExpectedTextIgnoresUnicodeNormalizationFormButNotTheName()
+    {
+        using var cache = pristine.NewScratch();
+        var e = Phoneme(cache, "e", "e\u0301");
+        var a = Phoneme(cache, "a", "a");
+        var environment = Author(cache, "after e", [new(Phoneme: e)], []);
+
+        var operations = EditEnvironmentComposer.Build(cache, new(environment, "/ \u00E9 _", null, [new(Phoneme: a)]));
+
+        Assert.Single(operations);
+        Assert.Contains("environment-edit-stale", Refusal(() =>
+            EditEnvironmentComposer.Build(cache, new(environment, "after e", null, [new(Phoneme: a)]))));
     }
 
     [Fact]

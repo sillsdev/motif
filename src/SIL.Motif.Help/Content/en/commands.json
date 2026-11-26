@@ -1251,7 +1251,7 @@
     "fields": {
       "draft": "Draft name.",
       "environment": "Id of the environment to edit.",
-      "expectedText": "The environment's current string, such as / ா _ #, or its name.",
+      "expectedText": "The environment's current string, such as / ா _ #.",
       "left": "New left context, replacing the whole left side; each item names one phoneme, naturalClass, boundary or boundaryMarker. Leave out to keep it.",
       "right": "New right context, replacing the whole right side. Leave out to keep it."
     },
