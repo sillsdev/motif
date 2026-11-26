@@ -182,7 +182,8 @@ public sealed partial class MotifDatabase : IDisposable
     {
         var descriptor = Describe(path, project, MotifSchema.CurrentSchema, workerVersion);
         using var lease = MotifSqliteStore.AcquireExistingReadLease(path);
-        var scratch = Path.Combine(Path.GetTempPath(), "motif-upgrade-dry-run-" + Guid.NewGuid().ToString("N"));
+        // Beside the store, as the real upgrade writes, so a store too large for the temp volume still has its dry run.
+        var scratch = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(path))!, ".motif-upgrade-dry-run-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(scratch);
         try
         {
@@ -199,14 +200,24 @@ public sealed partial class MotifDatabase : IDisposable
                     $"This {descriptor.Name} is at schema {schema} and this build understands {MotifSchema.CurrentSchema}. " +
                     "Install the newer Motif, or restore a pre-upgrade backup with motif store restore.")
                 { Newer = true };
-            if (schema == MotifSchema.CurrentSchema) return null;
+            if (schema == MotifSchema.CurrentSchema)
+            {
+                // A store that needs a newer worker is refused here too.
+                if (workerVersion < MotifSchema.ReadMetadata(probe).MinimumWorkerVersion)
+                    throw new MotifStoreVersionException(Path.GetFullPath(path),
+                        $"Worker {workerVersion} is older than database minimum {MotifSchema.ReadMetadata(probe).MinimumWorkerVersion}. " +
+                        "Install the newer Motif, or restore a pre-upgrade backup with motif store restore.")
+                    { Newer = true };
+                return null;
+            }
             probe.Close();
             return MotifStoreUpgrade.Build(path, Path.Combine(scratch, "dry-run.db"), project, false, null, workerVersion);
         }
         finally
         {
             SqliteConnection.ClearAllPools();
-            try { Directory.Delete(scratch, recursive: true); } catch (IOException) { }
+            try { Directory.Delete(scratch, recursive: true); }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
         }
     }
 
