@@ -6,7 +6,8 @@ namespace SIL.Motif.Commands.Review;
 
 /// <summary>
 /// Chooses which forms (of the referring entries, or the touched ones) may select corpus types, and matches them. A form keeps its affix mark: a suffix
-/// (<c>-x</c>, <c>=x</c>) must end the type, a prefix (<c>x-</c>, <c>x=</c>) must start it, anything else may sit anywhere. A form
+/// (<c>-x</c>, <c>=x</c>) may sit anywhere but at the very start of the type, a prefix (<c>x-</c>, <c>x=</c>) anywhere but at the
+/// very end, since suffixes and prefixes stack; anything else may sit anywhere. A form
 /// shorter than <see cref="MinGraphemes"/> or found in more than <see cref="MaxShare"/> of the corpus types would select the
 /// corpus at large, so it is skipped and reported, unless it is the only form of an edited object: that one is kept, on a quarter of
 /// the cap when it is still common. The share limit needs <see cref="MinTypesForShare"/> types to mean anything.
@@ -45,8 +46,8 @@ internal sealed class ReferrerFormMatcher
     /// <summary>True when the word matches the kept form at <paramref name="index"/>.</summary>
     public bool Fits(string word, int index) => _kinds[index] switch
     {
-        Suffix => word.EndsWith(_forms[index], StringComparison.Ordinal),
-        Prefix => word.StartsWith(_forms[index], StringComparison.Ordinal),
+        Suffix => word.AsSpan(Math.Min(1, word.Length)).Contains(_forms[index].AsSpan(), StringComparison.Ordinal),
+        Prefix => word.AsSpan(0, Math.Max(0, word.Length - 1)).Contains(_forms[index].AsSpan(), StringComparison.Ordinal),
         _ => word.Contains(_forms[index], StringComparison.Ordinal),
     };
 
@@ -126,7 +127,7 @@ internal sealed class ReferrerFormMatcher
     }
 
     private static bool Fits(int kind, int start, int length, int wordLength) =>
-        kind == Anywhere || (kind == Suffix ? start + length == wordLength : start == 0);
+        kind == Anywhere || (kind == Suffix ? start > 0 : start + length < wordLength);
 
     private Dictionary<int, Dictionary<string, List<int>>> Index()
     {

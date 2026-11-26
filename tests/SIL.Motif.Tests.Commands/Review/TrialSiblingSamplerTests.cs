@@ -194,15 +194,16 @@ public sealed class TrialSiblingSamplerTests : IDisposable
     }
 
     [Fact]
-    public void AReferrerFormKeepsItsAffixMarkASuffixEndsTheTypeAPrefixStartsItAndABareFormMayBeAnywhere()
+    public void AReferrerFormKeepsItsAffixMarkASuffixMayNotStartTheTypeAPrefixMayNotEndItAndABareFormMayBeAnywhere()
     {
-        var corpus = Types([("kuish", true), ("ishku", true), ("prekuu", true), ("kuupre", true), ("amidb", true), .. Filler(100)]);
+        var corpus = Types([("kuish", true), ("kuishwa", true), ("ishku", true), ("prekuu", true), ("kuupre", true), ("prekuupre", true),
+            ("kuu", true), ("amidb", true), ("mid", true), .. Filler(100)]);
 
-        Assert.Equal(["kuish"], Words(corpus, "-ish"));
-        Assert.Equal(["kuish"], Words(corpus, "=ish"));
-        Assert.Equal(["kuupre"], Words(corpus, "kuu-"));
-        Assert.Equal(["prekuu"], Words(corpus, "-kuu"));
-        Assert.Equal(["amidb"], Words(corpus, "mid"));
+        Assert.Equal(["kuish", "kuishwa"], Words(corpus, "-ish"));
+        Assert.Equal(["kuish", "kuishwa"], Words(corpus, "=ish"));
+        Assert.Equal(["kuupre", "prekuupre"], Words(corpus, "kuu-"));
+        Assert.Equal(["prekuu", "prekuupre"], Words(corpus, "-kuu"));
+        Assert.Equal(["amidb", "mid"], Words(corpus, "mid"));
     }
 
     private static string[] Words(CorpusType[] corpus, string form) =>
@@ -256,11 +257,11 @@ public sealed class TrialSiblingSamplerTests : IDisposable
     public void ATouchedFormKeepsItsAffixMarkAndIsSkippedWhenShortOrCommonAndTheSkipSaysTouched()
     {
         var common = Enumerable.Range(0, 20).Select(index => ("kwaz" + index, true));
-        var corpus = Types([("kuish", true), ("ishku", true), ("uverb", true), .. common, .. Filler(100)]);
+        var corpus = Types([("kuishwa", true), ("ishku", true), ("uverb", true), .. common, .. Filler(100)]);
 
         var sample = TrialSiblingSampler.Sample(corpus, "sha", ["-ish", "a", "kwa", "verb-"], null, 50, "rev", None).Value!;
 
-        Assert.Equal(["kuish"], sample.Words);
+        Assert.Equal(["kuishwa"], sample.Words);
         Assert.Equal([("a", "shorter than 2 characters", "touched"), ("kwa", "matches 20 of 123 corpus types (over 5%)", "touched")],
             sample.SkippedReferrerForms!.Select(form => (form.Form, form.Reason, form.Kind)));
     }
