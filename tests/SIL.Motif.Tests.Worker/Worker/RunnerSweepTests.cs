@@ -698,7 +698,9 @@ public sealed class RunnerSweepTests : IDisposable
         var stale = SeedProject(known, "rerun-project");
         var path = stale.Database.FullPath;
         var project = stale.Project;
-        Thread.Sleep(50);
+        // Any test in the process may clear the shared connection pools, which closes the idle handle that keeps the
+        // old inode allocated; do it here so the recreated file is exposed to inode reuse every time it can happen.
+        Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
         foreach (var suffix in new[] { "", "-wal", "-shm" })
             if (File.Exists(path + suffix)) File.Delete(path + suffix);
         using (var second = new ProjectRuntimeRegistry(
