@@ -330,7 +330,6 @@ public sealed class StoreRelocateCommandTests : IDisposable
 
     public void Dispose()
     {
-        SqliteConnection.ClearAllPools();
         try { Directory.Delete(_root, recursive: true); } catch (IOException) { }
     }
 

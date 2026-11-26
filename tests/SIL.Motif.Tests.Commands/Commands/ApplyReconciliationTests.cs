@@ -206,6 +206,30 @@ public sealed class ApplyReconciliationTests(PristineProjectFixture pristine)
         AssertGlossOnDisk(path, pristine.Seed.FirstSenseId, NewLangProjFixture.AnalysisTag, gloss);
     }
 
+    // A connection used after its handle closed is a Motif defect: it surfaces, never as apply.drift.
+    [Fact]
+    public void ADisposedObjectInTheApplyBodyIsNotLabelledDrift()
+    {
+        var seed = pristine.Seed;
+        string projectPath;
+        using (var scratch = pristine.NewScratch())
+            projectPath = scratch.ProjectId.Path;
+
+        var proposalId = CreateMeasuredProposal(projectPath, "disposed-demo",
+            CanonicalId.FromGuid(seed.FirstSenseId).Value, SeededProject.FirstGloss + " disposed");
+        var previous = Environment.GetEnvironmentVariable("MOTIF_TEST_DISPOSED_IN_APPLY_FOR");
+        try
+        {
+            Environment.SetEnvironmentVariable("MOTIF_TEST_DISPOSED_IN_APPLY_FOR", projectPath);
+            Assert.Throws<ObjectDisposedException>(() => ProposalCommands.Apply(new ApplyRequest(
+                projectPath, "1.0", proposalId, Force: true)));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("MOTIF_TEST_DISPOSED_IN_APPLY_FOR", previous);
+        }
+    }
+
     [Fact]
     public void ReceiptWriteFailureAfterSavedApplyIsStoreInconsistent()
     {

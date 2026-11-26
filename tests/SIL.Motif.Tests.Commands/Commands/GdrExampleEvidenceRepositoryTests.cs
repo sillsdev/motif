@@ -27,7 +27,6 @@ public sealed class GdrExampleEvidenceRepositoryTests : IDisposable
     public void Dispose()
     {
         _database.Dispose();
-        SqliteConnection.ClearAllPools();
         try { Directory.Delete(_root, true); } catch (IOException) { }
     }
 

@@ -32,7 +32,6 @@ public sealed class HypothesisCommandsTests(ITestOutputHelper output) : IDisposa
 
     public void Dispose()
     {
-        SqliteConnection.ClearAllPools();
         try { Directory.Delete(_root, true); } catch (IOException) { }
     }
 

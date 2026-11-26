@@ -45,7 +45,6 @@ public sealed class CoverageArgvTests : IDisposable
 
     public void Dispose()
     {
-        SqliteConnection.ClearAllPools();
         try { Directory.Delete(_root, recursive: true); } catch (IOException) { }
         try { Directory.Delete(_workerRoot, recursive: true); } catch (IOException) { }
     }

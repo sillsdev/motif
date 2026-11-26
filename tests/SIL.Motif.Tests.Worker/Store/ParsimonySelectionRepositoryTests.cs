@@ -69,7 +69,6 @@ public sealed class ParsimonySelectionRepositoryTests : IDisposable
     public void Dispose()
     {
         _database.Dispose();
-        SqliteConnection.ClearAllPools();
         if (Directory.Exists(_root)) Directory.Delete(_root, true);
     }
 }
