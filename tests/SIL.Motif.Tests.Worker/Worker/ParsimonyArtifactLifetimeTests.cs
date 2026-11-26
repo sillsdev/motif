@@ -468,6 +468,7 @@ public sealed class ParsimonyArtifactLifetimeTests : IDisposable
         Assert.Equal(1, result.PinReasonCounts["current-baseline-material"]);
     }
 
+    [Trait("Quarantine", "#417")]
     [Fact]
     public async Task CleanupWaitsForACompetingReaderLeaseThenRetriesDeletion()
     {

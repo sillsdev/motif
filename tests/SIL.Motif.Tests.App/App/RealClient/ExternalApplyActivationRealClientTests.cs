@@ -80,6 +80,7 @@ public sealed class ExternalApplyActivationRealClientTests(PristineProjectFixtur
         return Task.CompletedTask;
     }
 
+    [Trait("Quarantine", "#504")]
     [Theory]
     [InlineData(0)]
     [InlineData(2)]

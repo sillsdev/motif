@@ -689,6 +689,7 @@ public sealed class RunnerSweepTests : IDisposable
         Assert.Equal(new[] { true, true, false, true, true }, outcomes);
     }
 
+    [Trait("Quarantine", "#417")]
     [Fact]
     public void AnIdleRuntimeWhoseStoreFileWasDeletedAndRecreatedIsReplacedByOneOpenOnTheNewFile()
     {

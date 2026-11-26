@@ -184,3 +184,4 @@ constraints. The source root instructions are context, not binding on Motif. The
 SHA are provenance, not a live dependency.
 
 - **macOS runs only in the merge queue** (owner, 2026-11-26). On a pull request the macOS jobs report a placeholder success; enqueue once the Linux job is green, and the queue group runs the real macOS build; the macOS release check runs on main.
+- **Quarantine a flake when it's filed** (owner, 2026-11-26): tag it `[Trait("Quarantine", "#NNN")]`; it runs in the non-required `quarantined-tests` job until its fix PR removes the trait. Never quarantine a test the PR's own diff touches.

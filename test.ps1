@@ -37,6 +37,12 @@
   .PARAMETER All
   Run Unit, Integration and System tests. This is the merge-gate mode.
 
+  .PARAMETER Quarantined
+  Run only the quarantined tests, at every level. A known flake is tagged [Trait("Quarantine", "#NNN")] (NNN is its
+  issue) and is excluded from every other run, so it cannot fail the merge gate; CI reads it in the non-required
+  quarantined-tests job. Without -Project, only the test projects that hold a quarantined test run. Remove the
+  trait in the PR that fixes the flake.
+
   .PARAMETER System
   Run only System tests, without selecting the full suite.
 
@@ -105,6 +111,7 @@ param(
     [string] $Configuration = 'Debug',
     [switch] $SkipBuild,
     [switch] $All,
+    [switch] $Quarantined,
     [switch] $System,
     [string[]] $Project,
     [string] $Filter,
@@ -199,6 +206,30 @@ if ($BuildMap) {
     Assert-MotifSymlinkSupport -Directory (Join-Path $repoRoot 'bin')
 }
 $levelSelection = if ($All -or $Changed) { 'All' } elseif ($System) { 'System' } else { 'Unit,Integration' }
+
+# A quarantined test carries [Trait("Quarantine", "#NNN")]; every run but -Quarantined filters those out.
+$quarantineIssues = @{}
+$quarantineProjects = @{}
+foreach ($sourceFile in Get-ChildItem -LiteralPath $testsRoot -Filter '*.cs' -File -Recurse |
+    Where-Object { $_.FullName -notmatch '[\\/](obj|bin)[\\/]' }) {
+    foreach ($m in [regex]::Matches([IO.File]::ReadAllText($sourceFile.FullName), 'Trait\(\s*"Quarantine"\s*,\s*"([^"]*)"')) {
+        if ($m.Groups[1].Value -notmatch '\A#[0-9]+\z') {
+            throw "Quarantine trait '$($m.Groups[1].Value)' in $($sourceFile.FullName) must be the open issue, like [Trait(""Quarantine"", ""#123"")]."
+        }
+        $quarantineIssues[$m.Groups[1].Value] = $true
+        $quarantineProjects[$sourceFile.FullName.Substring($testsRoot.Length).Split([char[]]@('\', '/'))[0]] = $true
+    }
+}
+$quarantineFilter = if ($Quarantined) { 'Quarantine~#' }
+    else { (@($quarantineIssues.Keys | Sort-Object | ForEach-Object { "Quarantine!=$_" }) -join '&') }
+if ($Quarantined) {
+    if ($System -or $Changed -or $BuildMap) { throw '-Quarantined runs by itself; do not combine it with -System, -Changed or -BuildMap.' }
+    if ($quarantineIssues.Count -eq 0) { Write-Host 'No quarantined tests.'; return }
+    $All = [switch]::Present
+    $levelSelection = 'All'
+    if (-not $Project) { $Project = @($quarantineProjects.Keys | Sort-Object) }
+}
+$runFilter = if ($quarantineFilter -and $Filter) { "($Filter)&$quarantineFilter" } elseif ($quarantineFilter) { $quarantineFilter } else { $Filter }
 
 if ($Filter -and -not $Project) { throw '-Filter requires -Project.' }
 if ($Filter -and $Project.Count -gt 1) { throw '-Filter belongs to one -Project; a filter that matches nothing in the others fails them.' }
@@ -346,7 +377,7 @@ $startOrder = @($testProjects | Sort-Object `
 $testRuns = @(foreach ($testProject in $startOrder) {
     $runShards = $testProject.Shards
     if ($changedClasses) { $runShards = [Math]::Min($runShards, $changedPlan.Projects[$testProject.Name].Shards) }
-    elseif ($Filter) { $runShards = 1 }
+    elseif ($Filter -or $Quarantined) { $runShards = 1 }
     elseif (-not $All) { $runShards = [Math]::Max(1, [int][Math]::Ceiling($runShards / 2.0)) }
     # With one project selected, shards past the process cap would only run as a short second wave.
     if ($testProjects.Count -eq 1) { $runShards = [Math]::Min($runShards, $projectConcurrency) }
@@ -501,7 +532,7 @@ $jobs = foreach ($run in $testRuns) {
             -TestProjects @($testProjects.Name) -OutputPath (Join-Path $resultsRoot "$($run.Label).runsettings")
     }
     Start-ThreadJob -Name $run.Label -ThrottleLimit $projectConcurrency `
-        -ArgumentList $run.Label, $runAssembly, $run.Shard, $Filter, $levelSelection, $Configuration,
+        -ArgumentList $run.Label, $runAssembly, $run.Shard, $runFilter, $levelSelection, $Configuration,
             $projectResults, $projectLog, $projectErrorLog, $projectInput, $inputToken, $coverageAdapter,
             $runSettings, $testThreads, $(if ($run.NeedsPortable) { $portablePrepare } else { $null }),
             $mapDirectory, $classSelectionFile -ScriptBlock {

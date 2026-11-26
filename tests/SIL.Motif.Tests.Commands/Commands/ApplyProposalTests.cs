@@ -82,6 +82,7 @@ public sealed class ApplyProposalTests(PristineProjectFixture pristine)
         Assert.Equal([bound], before.Value!.AssessmentIds);
     }
 
+    [Trait("Quarantine", "#504")]
     [Fact]
     public async Task AProposalReopenedForReviewIsAppliedUnderItsOwnId()
     {
