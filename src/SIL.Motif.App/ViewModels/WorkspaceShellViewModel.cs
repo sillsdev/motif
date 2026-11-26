@@ -90,15 +90,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
             };
         }
         DismissStoreUpgradeNoticeCommand = new RelayCommand(() => StoreUpgradeMessage = null);
-        var self = new WeakReference<WorkspaceShellViewModel>(this);
-        Action<StoreUpgradeNotice>? subscription = null;
-        subscription = notice =>
-        {
-            if (self.TryGetTarget(out var shell)) shell.OnStoreUpgraded(notice);
-            else StoreUpgradeNotices.Upgraded -= subscription;
-        };
-        _storeUpgradeSubscription = subscription;
-        StoreUpgradeNotices.Upgraded += subscription;
+        _storeUpgradeSubscription = SubscribeToStoreUpgrades(this);
         OpenRecentProjectFolderCommand = new AsyncRelayCommand<string>(OpenRecentProjectFolderAsync,
             CanOpenRecentProjectFolder);
         Context = new WorkspaceContext(selection, assess, new ChangesViewModel(commandClient), commandClient, folderPicker,
@@ -228,6 +220,20 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     public IRelayCommand DismissStoreUpgradeNoticeCommand { get; }
 
     private readonly Action<StoreUpgradeNotice> _storeUpgradeSubscription;
+
+    // A static method, so the subscription's closure cannot share a compiler closure that holds the shell alive.
+    private static Action<StoreUpgradeNotice> SubscribeToStoreUpgrades(WorkspaceShellViewModel shell)
+    {
+        var weak = new WeakReference<WorkspaceShellViewModel>(shell);
+        Action<StoreUpgradeNotice>? subscription = null;
+        subscription = notice =>
+        {
+            if (weak.TryGetTarget(out var target)) target.OnStoreUpgraded(notice);
+            else StoreUpgradeNotices.Upgraded -= subscription;
+        };
+        StoreUpgradeNotices.Upgraded += subscription;
+        return subscription;
+    }
 
     private void OnStoreUpgraded(StoreUpgradeNotice notice)
     {
