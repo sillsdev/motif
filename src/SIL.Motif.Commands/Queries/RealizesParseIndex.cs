@@ -315,6 +315,9 @@ internal interface IRealizesIndexBuilder
     /// <summary>What a cached index depends on beyond the grammar and the words: the parser build.</summary>
     string Identity { get; }
 
+    /// <summary>False for a builder that must never run, such as a Guide render's: a missing index is then refused, not built.</summary>
+    bool CanBuild => true;
+
     /// <summary>Parses <paramref name="words"/> with the grammar and returns the path of the <c>--analyses</c> file; the caller deletes the folder around it.</summary>
     string Build(string grammarPath, IReadOnlyList<string> words, CancellationToken cancellationToken);
 }
@@ -520,6 +523,12 @@ internal static class RealizesParseIndexCache
         return null;
     }
 
+    /// <summary>The refusal for an index that is not built where a build is not allowed.</summary>
+    internal static SIL.Motif.Contract.Commands.Refusal ColdRefusal(string path) =>
+        new(SIL.Motif.Contract.Commands.RefusalCodes.QueryParseIndexCold, SIL.Motif.Contract.Responses.FailureReason.Refused,
+            "parse index not built: this query reads the parse of the corpus, and a render never builds one.",
+            new Dictionary<string, string>(StringComparer.Ordinal) { ["index"] = Path.GetFileName(path) });
+
     private static string Bare(string digest) => digest[(digest.IndexOf(':') + 1)..];
 
     /// <summary>The cached index when one exists for this grammar, word list and parser build; null otherwise, and nothing is built.</summary>
@@ -542,6 +551,7 @@ internal static class RealizesParseIndexCache
         var clock = Stopwatch.StartNew();
         var path = Path.Combine(root, KeyFor(grammarPath, words, builder.Identity));
         if (TryRead(path, notice) is { } hit) return (hit, false, Math.Round(clock.Elapsed.TotalSeconds, 1));
+        if (!builder.CanBuild) throw new SIL.Motif.Contract.Query.QueryRefusalException(ColdRefusal(path));
         Directory.CreateDirectory(root);
         using var buildLock = AcquireLock(path + ".lock", notice, cancellationToken);
         // The process that held the lock may have written the index while this one waited.
@@ -567,4 +577,15 @@ internal static class RealizesParseIndexCache
             try { Directory.Delete(Path.GetDirectoryName(analyses)!, true); } catch (IOException) { }
         }
     }
+}
+
+/// <summary>A builder wrapper that cannot build, so a block with a cold index gets a refusal in place of a wait.</summary>
+internal sealed class NoBuildIndexBuilder(Func<IRealizesIndexBuilder> inner) : IRealizesIndexBuilder
+{
+    public string Identity => inner().Identity;
+
+    public bool CanBuild => false;
+
+    public string Build(string grammarPath, IReadOnlyList<string> words, CancellationToken cancellationToken) =>
+        throw new InvalidOperationException("A render never builds a parse index.");
 }

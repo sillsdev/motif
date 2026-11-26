@@ -22,7 +22,7 @@ public sealed class HelpCatalogTests
         Assert.Contains("format fw-md", entry.Description, StringComparison.Ordinal);
         Assert.DoesNotContain("--format", entry.Description, StringComparison.Ordinal);
         Assert.DoesNotContain("--json", entry.Description, StringComparison.Ordinal);
-        Assert.Contains("Advanced AI mode", entry.Description, StringComparison.Ordinal);
+        Assert.DoesNotContain("Advanced AI mode", entry.Description, StringComparison.Ordinal);
         Assert.Contains("--json", entry.HelpPage!, StringComparison.Ordinal);
         Assert.Contains("--format fw-md", CliVerbCatalog.All.Single(verb => verb.CommandName == "guide show").UsageLines.Single());
     }

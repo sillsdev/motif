@@ -113,6 +113,7 @@ public sealed partial record WindowRefusal
         [C.QueryNoTrialRows] = () => MotifAppStrings.RefusalQueryNoTrialRows,
         [C.GuideQueryRunInvalid] = () => MotifAppStrings.RefusalGuideQueryRunInvalid,
         [C.GuideQueryRunNotReadOnly] = () => MotifAppStrings.RefusalGuideQueryRunNotReadOnly,
+        [C.GuideQueryRunPathOutsideProject] = () => MotifAppStrings.RefusalGuideQueryRunPathOutsideProject,
         [C.ProposalRationaleUnchecked] = () => MotifAppStrings.RefusalProposalRationaleUnchecked,
         [C.ProposalUnreadable] = () => MotifAppStrings.RefusalProposalUnreadable,
         [C.ApplyPreconditionFailed] = () => MotifAppStrings.RefusalApplyPreconditionFailed,
@@ -382,7 +383,7 @@ public sealed partial record WindowRefusal
     /// </summary>
     public bool OffersStoreDeletion =>
         Code == C.StoreOtherVersion && Facts.ContainsKey(RefusalFactNames.StorePath) &&
-        !Facts.ContainsKey(RefusalFactNames.StoreUpgradable);
+        !Facts.ContainsKey(RefusalFactNames.StoreUpgradable) && !Facts.ContainsKey(RefusalFactNames.StoreNewer);
 
     /// <summary>The heading for a refused Motif store that can be deleted and recreated.</summary>
     public string? Heading => OffersStoreDeletion ? MotifAppStrings.RefusalStoreOtherVersionHeading : null;
@@ -393,7 +394,8 @@ public sealed partial record WindowRefusal
     /// </summary>
     public bool IsStoreCauseThatRetryCannotClear =>
         Code == C.StoreOtherProject || Facts.ContainsKey(RefusalFactNames.StoreLockMissing) ||
-        Code == C.StoreOtherVersion && Facts.ContainsKey(RefusalFactNames.StoreUpgradable);
+        Code == C.StoreOtherVersion &&
+        (Facts.ContainsKey(RefusalFactNames.StoreUpgradable) || Facts.ContainsKey(RefusalFactNames.StoreNewer));
 
     /// <summary>Whether this refusal is an older Motif store that Refresh upgrades, because Refresh writes to the store.</summary>
     public bool OffersRefreshToUpgrade => Code == C.StoreOtherVersion && Facts.ContainsKey(RefusalFactNames.StoreUpgradable);
@@ -459,6 +461,8 @@ public sealed partial record WindowRefusal
             return string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.AssessBudgetStoppedFormat,
                 refusal.Facts.GetValueOrDefault("wordsDone") ?? "0", refusal.Facts.GetValueOrDefault("wordsNotDone") ?? "0");
         if (refusal.Code == C.StoreInconsistent) return StoreDamaged;
+        if (refusal.Code == C.StoreOtherVersion && refusal.Facts.ContainsKey(RefusalFactNames.StoreNewer))
+            return MotifAppStrings.RefusalStoreNewer;
         if (refusal.Code == C.StoreOtherVersion)
             return refusal.Facts.ContainsKey(RefusalFactNames.StoreUpgradable)
                 ? MotifAppStrings.RefusalStoreUpgradable : StoreFromOtherVersion;

@@ -301,6 +301,43 @@ public sealed class StoreBackupCommandTests : IDisposable
     }
 
     [Fact]
+    public void ARestoreFoldsANonEmptyWalIntoTheMovedStoreAndLeavesNoSidecarWhenNoProcessHoldsTheStore()
+    {
+        AddMarker(Store, "kept");
+        var backup = StoreBackupCommand.Backup(new StoreBackupRequest(Project, Folder("b1"))).Value!;
+        CommitOnlyToTheWalWithNoHolder("later");
+
+        var result = StoreBackupCommand.Restore(new StoreRestoreRequest(Project, backup.BackupDirectory));
+
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        // The checkpoint's last close removes the WAL and shm; its row is in the moved store.
+        Assert.Equal(["kept", "later"], Markers(Backed(result.Value!, "store.sqlite")));
+        Assert.All(new[] { "-wal", "-shm", "-journal" }, suffix => Assert.False(File.Exists(Store + suffix), suffix));
+        Assert.Equal(["kept"], Markers(Store));
+    }
+
+    [Fact]
+    public void AWindowsRestoreWhileAnotherProcessHoldsTheStoreOpenIsRefusedNamingTheCauseAndChangesNothing()
+    {
+        if (!OperatingSystem.IsWindows()) return; // only Windows refuses to move a file a handle holds open
+        AddMarker(Store, "kept");
+        var backup = StoreBackupCommand.Backup(new StoreBackupRequest(Project, Folder("b1"))).Value!;
+        CommitOnlyToTheWal("later", closeOnWindows: false);
+
+        var result = StoreBackupCommand.Restore(new StoreRestoreRequest(Project, backup.BackupDirectory));
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(RefusalCodes.ProjectStoreInUse, result.Refusal!.Code);
+        Assert.Contains("another process has the store open", result.Refusal.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(["kept", "later"], Markers(Store));
+        Assert.True(File.Exists(Store + "-wal"));
+        Assert.Empty(Directory.GetFiles(_root, "*.restore-*"));
+        var moved = Path.Combine(_root, "Koro.motif-backups");
+        Assert.Empty(Directory.Exists(moved) ? Directory.GetFiles(moved, "*", SearchOption.AllDirectories)
+            .Where(path => !path.EndsWith("restore-incomplete", StringComparison.Ordinal)) : []);
+    }
+
+    [Fact]
     public void AStoreTooDamagedToBackUpIsMovedAsideAndAGoodBackupReplacesIt()
     {
         AddMarker(Store, "kept");
@@ -521,7 +558,7 @@ public sealed class StoreBackupCommandTests : IDisposable
     private SqliteConnection? _walHolder;
 
     /// <summary>Commits a row held only in the WAL: auto-checkpoint off, connection kept open.</summary>
-    private void CommitOnlyToTheWal(string marker)
+    private void CommitOnlyToTheWal(string marker, bool closeOnWindows = true)
     {
         _walHolder = Open(Store, SqliteOpenMode.ReadWrite);
         using (var pragma = _walHolder.CreateCommand())
@@ -536,12 +573,39 @@ public sealed class StoreBackupCommandTests : IDisposable
         command.ExecuteNonQuery();
         Assert.True(new FileInfo(Store + "-wal").Length > 0, "the committed row must be only in the WAL");
         // Windows cannot rename a file a handle holds open, so close the holder there.
-        if (OperatingSystem.IsWindows())
+        if (closeOnWindows && OperatingSystem.IsWindows())
         {
             _walHolder.Dispose();
             _walHolder = null;
             SqliteConnection.ClearAllPools();
         }
+    }
+
+    /// <summary>Commits to the WAL, closes every handle, then puts a WAL copy and shm back with no holder.</summary>
+    private void CommitOnlyToTheWalWithNoHolder(string marker)
+    {
+        CommitOnlyToTheWal(marker, closeOnWindows: false);
+        var copies = Folder("sidecar-copies");
+        Directory.CreateDirectory(copies);
+        foreach (var suffix in new[] { "-wal", "-shm" })
+            CopyShared(Store + suffix, Path.Combine(copies, "s" + suffix));
+        _walHolder!.Dispose();
+        _walHolder = null;
+        SqliteConnection.ClearAllPools();
+        foreach (var suffix in new[] { "-wal", "-shm" })
+            if (!File.Exists(Store + suffix)) File.Copy(Path.Combine(copies, "s" + suffix), Store + suffix);
+        Assert.True(new FileInfo(Store + "-wal").Length > 0, "the WAL put back must hold frames");
+        Assert.True(File.Exists(Store + "-shm"));
+        // Opening the file for write with no sharing proves nothing holds the sidecars.
+        foreach (var suffix in new[] { "-wal", "-shm" })
+            using (new FileStream(Store + suffix, FileMode.Open, FileAccess.ReadWrite, FileShare.None)) { }
+    }
+
+    private static void CopyShared(string source, string destination)
+    {
+        using var input = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var output = new FileStream(destination, FileMode.Create, FileAccess.Write, FileShare.None);
+        input.CopyTo(output);
     }
 
     /// <summary>True where the holder stays open, so the WAL and shm remain to be moved.</summary>

@@ -12,4 +12,4 @@ The heading `### Decisions` is added at the end of the section when it has none,
 motif guide decide --project Koro.fwdata GDR-4 --choosing "plural -ng" --over "plural -ngo" --because "-ngo only appears after vowels in the Gospel of Mark" --autonomous
 ```
 
-`guide decide` is an Autonomous command: pass `--autonomous` or set MOTIF_AUTONOMOUS=1. It does not imply Advanced AI mode, which `guide show` and `guide edit` need (`motif settings advanced-ai on`); an agent that reads and edits sections needs both. A value flag left without a value is refused. The section must already exist and the project's styles must include Heading 3 and Bulleted List, which a FieldWorks project has.
+`guide decide` is an Autonomous command: pass `--autonomous` or set MOTIF_AUTONOMOUS=1. It does not imply Advanced AI mode, which `guide edit` and `guide add` need (`motif settings advanced-ai on`); `guide show` needs neither. An agent that edits sections and records decisions needs both. A value flag left without a value is refused. The section must already exist and the project's styles must include Heading 3 and Bulleted List, which a FieldWorks project has.
