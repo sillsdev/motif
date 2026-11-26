@@ -61,6 +61,7 @@ public sealed class GdrStandardStylesTests(PristineProjectFixture pristine)
         {
             await runner.DisposeAsync();
         }
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), RootFor(path)).Succeeded);
 
         Assert.Equal(["Bulleted List", "Heading 3", "Normal"], StyleNames(path).Order(StringComparer.Ordinal));
         AssertFieldWorksDefaults(path);
@@ -96,14 +97,15 @@ public sealed class GdrStandardStylesTests(PristineProjectFixture pristine)
     }
 
     [Fact]
-    public void AStyleThatIsNotAStandardStyleStillRefusesWithTextStyleUnknown()
+    public void AStyleThatIsNotAStandardStyleStillRefusesAndStagesNoStyle()
     {
         var path = Project(styles: false);
 
         var added = GdrAddCommands.Add(new GdrAddRequest(path, "Verbs", Markdown: "A [styled]{custom-style=Invented} word.", WritingSystem: "en"));
 
         Assert.False(added.Succeeded);
-        Assert.Equal(RefusalCodes.TextStyleUnknown, added.Refusal!.Code);
+        Assert.Contains("Invented", added.Refusal!.Message, StringComparison.Ordinal);
+        Assert.Empty(StyleNames(path));
     }
 
     [Fact]
