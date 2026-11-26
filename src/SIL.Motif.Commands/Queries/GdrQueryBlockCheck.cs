@@ -55,7 +55,7 @@ public static class GdrQueryBlockCheck
                 $"{Place(source.Gdr, source.Section)}, query {query.Id}: {(result.Code is { } c && result.Status == GdrQueryBlockStatus.Refused ? c + ": " : "")}{result.Message}",
                 source.Gdr, source.Section, null, 1, [query.Id]));
         }
-        // A v1 query takes no token, so an abandoned block runs on; waiting briefly lets it release its Baseline copy before the process ends.
+        // A v1 query takes no token and runs on; waiting briefly lets it free its Baseline copy.
         if (abandoned.Count > 0) Task.WaitAll([.. abandoned.Select(task => task.ContinueWith(_ => { }, TaskScheduler.Default))], AbandonedGrace);
         return (runs, findings);
     }
