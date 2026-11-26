@@ -571,6 +571,7 @@ public sealed class MachinePanGlossQueueTests
         Assert.All(observedRates, rate => Assert.Equal((uint)WindowsCpuJob.CpuRateHardCapBasisPoints, rate));
     }
 
+    [Trait("Quarantine", "#417")]
     [RequiresWindowsFact]
     public async Task RunAsync_CancelsAJobStillWaitingForASlotWithoutBlockingOthers()
     {

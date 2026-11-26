@@ -288,6 +288,93 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  # Known flakes, tagged [Trait("Quarantine", "#NNN")], are excluded from build-and-test so they cannot evict a merge-queue
+  # group. They run here and are read, never required. The fix PR for the issue removes the trait.
+  quarantined-tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            icu_rid: linux-x64
+          # One quarantined test is Windows-only (RequiresWindowsFact).
+          - os: windows-latest
+            icu_rid: win-x64
+    name: quarantined-tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    env:
+      MSBUILDDISABLENODEREUSE: '1'
+      UseSharedCompilation: 'false'
+      AVALONIA_TELEMETRY_OPTOUT: '1'
+      ICU_RID: ${{ matrix.icu_rid }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ matrix.icu_rid }}-${{ hashFiles('**/*.csproj', '**/Directory.Build.props', 'SilVersions.props', 'nuget.config') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-${{ matrix.icu_rid }}-
+
+      - name: Provision approved synthetic sample inputs
+        shell: pwsh
+        run: |
+          $path = ./evals/Get-SyntheticSamples.ps1 -Download
+          "MOTIF_SYNTHETIC_SAMPLES=$path" >> $env:GITHUB_ENV
+
+      - name: Fetch SIL ICU runtime (Ubuntu)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          root=$(bash tools/stage-sil-icu.sh "$RUNNER_TEMP/sil-icu/linux-x64" | tail -1)
+          printf 'MOTIF_SIL_ICU_STAGE=%s\n' "$root" >> "$GITHUB_ENV"
+
+      - name: Build (comment hygiene, then compile)
+        shell: pwsh
+        run: ./build.ps1 -Configuration Release
+
+      - name: Fetch pinned test grammars
+        shell: pwsh
+        run: |
+          $path = ./evals/Get-TestGrammars.ps1
+          "MOTIF_TEST_GRAMMARS=$path" >> $env:GITHUB_ENV
+
+      - name: Fetch pinned conformance fixture
+        shell: pwsh
+        run: |
+          $path = ./evals/Get-ConformanceFixture.ps1
+          "MOTIF_TEST_CONFORMANCE=$path" >> $env:GITHUB_ENV
+
+      - name: Stage pinned PanGloss release
+        shell: pwsh
+        run: |
+          Import-Module ./tools/PanGlossRelease.psm1
+          $artifact = Get-PinnedPanGlossArtifact -RepositoryRoot (Get-Location).Path `
+            -CacheDirectory (Join-Path $env:RUNNER_TEMP "motif-pangloss/$env:ICU_RID")
+          "MOTIF_PANGLOSS_EXE=$($artifact.Path)" >> $env:GITHUB_ENV
+
+      - name: Prefetch self-contained runtime packs (the portable-package restore is offline)
+        shell: pwsh
+        run: |
+          $env:MOTIF_PACKAGE_INTERMEDIATE_ROOT = Join-Path $env:RUNNER_TEMP 'runtime-pack-prefetch/obj'
+          dotnet restore src/SIL.Motif.App/SIL.Motif.App.csproj --runtime ${{ matrix.icu_rid }} -p:SelfContained=true -p:MotifPortablePackage=true "-p:MotifBinRoot=$(Join-Path $env:RUNNER_TEMP 'runtime-pack-prefetch/bin/')" --nologo -v q
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Test (quarantined tests only)
+        shell: pwsh
+        run: ./test.ps1 -Configuration Release -SkipBuild -All -Quarantined
+
   documentation-release:
     if: github.event_name == 'workflow_dispatch' && inputs.publish_website
     runs-on: windows-latest

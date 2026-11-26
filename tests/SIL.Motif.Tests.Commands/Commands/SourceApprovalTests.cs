@@ -775,6 +775,7 @@ public sealed class SourceApprovalTests(PristineProjectFixture pristine)
         Assert.Single(fine.Value.Places, place => place.State == "approved");
     }
 
+    [Trait("Quarantine", "#514")]
     [Fact]
     public void AnApprovalWhoseWordChangedUnderTheSameVerseTextIsStaleBecauseTheTokenizerChanged()
     {

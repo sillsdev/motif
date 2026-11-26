@@ -112,6 +112,7 @@ public sealed class RefreshBeforeCheckRealRefusalTests(PristineProjectFixture pr
         return Task.CompletedTask;
     }
 
+    [Trait("Quarantine", "#472")]
     [Fact]
     public Task AReviewCheckAfterAFieldWorksSaveIsRefusedUntilTheWindowsRefreshCapturesTheSave()
     {

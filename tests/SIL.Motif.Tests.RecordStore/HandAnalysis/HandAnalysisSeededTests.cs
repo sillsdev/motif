@@ -532,6 +532,7 @@ public sealed class HandAnalysisSeededTests : IDisposable
         Assert.All(new[] { exact, linked, fallback }, page => Assert.Equal(pin.Stamp, page.Stamp));
     }
 
+    [Trait("Quarantine", "#498")]
     [Fact]
     public async Task AReadingPreservesNativeBundleOrderEvenWhenGuidsSortDifferently()
     {

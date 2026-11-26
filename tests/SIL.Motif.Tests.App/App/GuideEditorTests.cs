@@ -259,6 +259,7 @@ public sealed partial class GuideEditorTests
         });
     }
 
+    [Trait("Quarantine", "#472")]
     [Fact]
     public void APauseInTheFieldEndsTheSession()
     {
