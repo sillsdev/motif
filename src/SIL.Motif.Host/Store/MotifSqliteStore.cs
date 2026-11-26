@@ -357,15 +357,23 @@ internal sealed class MotifSqliteStore : IDisposable
             throw new MotifStoreUpgradeFailedException(path, MotifStoreUpgradeFailedException.SwapStep, schema, next, safety, exception);
         }
         // The verified backup folder holds the original, so the sibling copy that only guarded the swap is dropped.
-        DropSwapCopy(backup);
+        DropSwapCopyIfVerified(backup, safety.ReceiptPath, schema);
         Announce(path, built);
         Retain(descriptor, safety);
     }
 
     private static void DropSwapCopyIfBackedUp(MotifStoreUpgrade.Report report)
     {
-        if (report.BackupPath is not null && report.BackupReceiptPath is not null && File.Exists(report.BackupReceiptPath))
-            DropSwapCopy(report.BackupPath);
+        if (report.BackupPath is not null && report.BackupReceiptPath is not null)
+            DropSwapCopyIfVerified(report.BackupPath, report.BackupReceiptPath, report.SourceSchema);
+    }
+
+    // The exact original goes only when the backup folder reads back as the same store; otherwise it stays and a warning says so.
+    private static void DropSwapCopyIfVerified(string original, string receiptPath, int schema)
+    {
+        if (!File.Exists(original)) return;
+        if (StoreBackups.MatchesOriginal(receiptPath, original, schema, out var why)) DropSwapCopy(original);
+        else System.Diagnostics.Trace.TraceWarning($"Motif kept '{original}': its backup did not verify ({why}).");
     }
 
     private static void DropSwapCopy(string backup)

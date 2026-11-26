@@ -165,6 +165,64 @@ public static class StoreBackups
         }
     }
 
+    /// <summary>
+    /// Whether the backup behind <paramref name="receiptPath"/> is good enough to let the exact original go: its files match
+    /// the receipt's sha256, its store opens read-only, passes <c>integrity_check</c>, is at <paramref name="schema"/>, and
+    /// holds the same row count in every table as <paramref name="original"/>. Never throws.
+    /// </summary>
+    public static bool MatchesOriginal(string receiptPath, string original, int schema, out string why)
+    {
+        why = "";
+        try
+        {
+            var receipt = JsonSerializer.Deserialize<StoreBackupResponse>(File.ReadAllText(receiptPath), ReceiptJson)
+                ?? throw new InvalidDataException("The receipt is empty.");
+            Verify(receipt, schema);
+            var store = receipt.Files.Single(file => file.Role == "store").Path;
+            var backupCounts = Check(store, schema, integrity: true);
+            var originalCounts = Check(original, schema, integrity: false);
+            foreach (var pair in originalCounts)
+                if (!backupCounts.TryGetValue(pair.Key, out var count) || count != pair.Value)
+                    throw new InvalidDataException($"Table {pair.Key} holds {pair.Value} rows in the original and a different count in the backup.");
+            if (backupCounts.Count != originalCounts.Count) throw new InvalidDataException("The tables differ.");
+            return true;
+        }
+        catch (Exception exception) when (exception is IOException or InvalidDataException or JsonException or
+            InvalidOperationException or Microsoft.Data.Sqlite.SqliteException or UnauthorizedAccessException)
+        {
+            why = exception.Message;
+            return false;
+        }
+    }
+
+    private static Dictionary<string, long> Check(string path, int schema, bool integrity)
+    {
+        using var connection = new Microsoft.Data.Sqlite.SqliteConnection(new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder
+        { DataSource = path, Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadOnly, Pooling = false }.ToString());
+        connection.Open();
+        object? Scalar(string sql)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = sql;
+            return command.ExecuteScalar();
+        }
+        if (integrity && !string.Equals(Scalar("PRAGMA integrity_check;") as string, "ok", StringComparison.Ordinal))
+            throw new InvalidDataException("The backup's integrity check failed.");
+        if (Convert.ToInt32(Scalar("PRAGMA user_version;"), CultureInfo.InvariantCulture) != schema)
+            throw new InvalidDataException("A store is not at the schema that was backed up.");
+        var tables = new List<string>();
+        using (var list = connection.CreateCommand())
+        {
+            list.CommandText = "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%';";
+            using var reader = list.ExecuteReader();
+            while (reader.Read()) tables.Add(reader.GetString(0));
+        }
+        var counts = new Dictionary<string, long>(StringComparer.Ordinal);
+        foreach (var table in tables)
+            counts[table] = Convert.ToInt64(Scalar("SELECT COUNT(*) FROM \"" + table.Replace("\"", "\"\"") + "\";"), CultureInfo.InvariantCulture);
+        return counts;
+    }
+
     /// <summary>Removes a backup folder that was never finished.</summary>
     public static void Discard(string destination)
     {

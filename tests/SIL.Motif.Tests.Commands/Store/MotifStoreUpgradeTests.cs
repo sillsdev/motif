@@ -747,6 +747,31 @@ public sealed class MotifStoreUpgradeTests : IDisposable
         Assert.True(File.Exists(PreUpgradeBackups.StoreOf(Source)));
     }
 
+    [Theory]
+    [InlineData("truncate")]
+    [InlineData("flip")]
+    public void ABackupThatDoesNotVerifyKeepsTheExactOriginalAndTheUpgradeStillSucceeds(string damage)
+    {
+        CreateSchema49();
+        MotifSqliteStore.StepHook = step =>
+        {
+            if (step != "store-swapped") return;
+            var store = PreUpgradeBackups.StoreOf(Source);
+            if (damage == "truncate") { using var stream = new FileStream(store, FileMode.Open); stream.SetLength(stream.Length / 2); }
+            else { var bytes = File.ReadAllBytes(store); bytes[bytes.Length / 2] ^= 0xFF; File.WriteAllBytes(store, bytes); }
+        };
+        try
+        {
+            using var db = MotifDatabase.OpenOwned(Source, Project, MotifSchema.CurrentSchema, new Version(1, 0));
+            using var connection = db.OpenConnection();
+            Assert.Equal((long)MotifSchema.CurrentSchema, Scalar(connection, "PRAGMA user_version;"));
+        }
+        finally { MotifSqliteStore.StepHook = null; }
+        using var original = Connect(Source + ".schema49.bak");
+        Assert.Equal(49L, Scalar(original, "PRAGMA user_version;"));
+        Assert.Equal(1, Count(original, "ProposalRevisions"));
+    }
+
     [Fact]
     public void ExistingBackupIsNeverOverwritten()
     {
