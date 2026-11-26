@@ -84,6 +84,26 @@ public sealed class GdrInterlinearRoundTripTests(PristineProjectFixture pristine
     }
 
     [Fact]
+    public void AQueryBlockBesideAnInterlinearBlockBothRoundTrip()
+    {
+        var path = ProjectWithGdrs();
+        var block = Examples.First(item => (string)item[0] == "swahili")[1]!.ToString()!;
+        var body = "Before.\n\n```motif-query\nid: forms\ntitle: Forms\nrun: motif query forms\n```\n\n" + block + "\n\nAfter.";
+        var staged = GdrEditCommands.Edit(new GdrEditRequest(path, "GDR-9", body));
+        Assert.True(staged.Succeeded, staged.Refusal?.Message);
+        Assert.True(Apply(path).Succeeded);
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), RootFor(path)).Succeeded);
+
+        var markdown = Markdown(path, "GDR-9");
+        Assert.Contains("```motif-query\nid: forms\ntitle: Forms\nrun: motif query forms\n```", markdown, StringComparison.Ordinal);
+        Assert.Contains(block, markdown, StringComparison.Ordinal);
+        var again = GdrEditCommands.Edit(new GdrEditRequest(path, "GDR-9", markdown));
+        Assert.True(again.Succeeded, again.Refusal?.Message);
+        Assert.Empty(again.Value!.Fields);
+        Assert.Equal(markdown, Markdown(path, "GDR-9"));
+    }
+
+    [Fact]
     public void ADivWhoseLinesAreNotTheLabelsIsRefusedAndNothingIsStaged()
     {
         var path = ProjectWithGdrs();
