@@ -66,6 +66,26 @@ public sealed class ProposalTextCheckerTests
         Assert.Equal(5, finding.Line);
     }
 
+    [Fact]
+    public void AnUnclosedQueryBlockIsAFindingNamingItsLineEvenBeforeAnotherFence()
+    {
+        var checkedText = ProposalTextChecker.Check("Intro.\n\n```motif-query\nid: a\n\n```python\nx", null, null);
+
+        var finding = Assert.Single(checkedText.Findings, f => f.Id == ProposalTextChecker.BlockUnclosed);
+        Assert.Equal(3, finding.Line);
+    }
+
+    [Fact]
+    public void AMalformedButClosedBlockIsAWarningAndKeptAsWritten()
+    {
+        const string Text = "```motif-query\nnot a key value line\n```";
+        var checkedText = ProposalTextChecker.Check(Text, null, null);
+
+        Assert.Empty(checkedText.Findings);
+        Assert.Equal(Text, checkedText.Text);
+        Assert.Contains("line 2", Assert.Single(checkedText.Warnings, w => w.Contains("key: value", StringComparison.Ordinal)));
+    }
+
     [Theory]
     [InlineData("Some <b>raw</b> HTML.")]
     [InlineData("Above.\n\n---\n\nBelow.")]

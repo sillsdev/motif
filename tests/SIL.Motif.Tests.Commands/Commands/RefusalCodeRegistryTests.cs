@@ -30,7 +30,7 @@ public sealed class RefusalCodeRegistryTests
 
     // Dotted literals that are not refusal codes: finding and advisory codes, cgroups, SQL tables, trace spans.
     private static readonly Regex NotRefusalCodes = new(
-        "^(?:change\\.(?:abstract|at|dropped|gained|left|right)$|letters\\.(?:dropped|gained)$|assess\\.unavailable$|review\\.(?:cursor-invalid|detail-unavailable)$|motif\\.(?:review-word-set|proposal-review-report)$|motif\\.list\\.|proposal\\.(?:rationale|read)$|delta\\.|cgroup\\.|cpu\\.|memory\\.|facts\\.|sil\\.lcmodel$|parse\\.(?:allomorph\\.|state$)|base\\.(?:parse\\.state|readings)$|" +
+        "^(?:change\\.(?:abstract|at|dropped|gained|left|right)$|letters\\.(?:dropped|gained)$|assess\\.unavailable$|review\\.(?:cursor-invalid|detail-unavailable)$|motif\\.(?:review-word-set|proposal-review-report)$|motif\\.(?:list|block)\\.|proposal\\.(?:rationale|read)$|delta\\.|cgroup\\.|cpu\\.|memory\\.|facts\\.|sil\\.lcmodel$|parse\\.(?:allomorph\\.|state$)|base\\.(?:parse\\.state|readings)$|" +
         "lexicon\\.(?:stem-typed-as-content-word|duplicate-entry|affix-hyphen-on-wrong-side)$|" +
         "job\\.claim-lost$|grammar\\.(?:compile\\.failed$|empty-lexicon|required-slot-empty|negated-feature-value|derived-stem-keeps-from-class|template-has-no-slots|phoneme-spelling-ambiguous|phoneme-case-alias-missing|phoneme-never-used$|allomorph-environment-ignored-by-parser|allomorph-repeats-environment-material|restricted-solid-blocks-hyphen|stored-analysis\\.)|" +
         "compose\\.(?:repeated-condition|whole-word-environment|one-stem-inflection-class)$|" +
