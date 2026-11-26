@@ -230,6 +230,12 @@ public sealed class OwningFieldCapabilityTests(PristineProjectFixture pristine)
                     variantType = Id(cache.LangProject.LexDbOA.VariantEntryTypesOA.PossibilitiesOS
                         .OfType<ILexEntryType>().First()).Value,
                 },
+                ComplexFormRefCreateOperationKinds.Create => new
+                {
+                    complexTypes = new[] { Id(cache.LangProject.LexDbOA.ComplexEntryTypesOA.PossibilitiesOS
+                        .OfType<ILexEntryType>().First()).Value },
+                    components = new[] { Id(MakeOwner(cache, "LexEntry")).Value },
+                },
                 LexExampleOperationKinds.Create => new { text = new[] { new { ws, text = "example" } } },
                 WfiAnalysisOperationKinds.CreateAnalysis => new { morphs = new[] { new { guessedString = "form" } } },
                 FsFeatStrucFeatureSpecsOperationKinds.CreateFeatureSpecs when childClass == "FsClosedValue" => new { },

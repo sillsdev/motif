@@ -84,6 +84,7 @@ internal sealed class ComplexFormRefCreateHandler : IOperationHandler
         {
             foreach (var component in components) reference.ComponentLexemesRS.Add(component);
             foreach (var primary in primaries) reference.PrimaryLexemesRS.Add(primary);
+            reference.ShowComplexFormsInRS.Clear();
             foreach (var show in shows) reference.ShowComplexFormsInRS.Add(show);
         }
         catch (ArgumentException exception)
@@ -117,7 +118,7 @@ internal sealed class ComplexFormRefCreateHandler : IOperationHandler
         return type;
     }
 
-    /// <summary>An entry or sense that is not the new form itself or one of its own senses, and does not already lead back to it.</summary>
+    // An entry or sense other than the form itself or its senses, not already leading back to it.
     private static ICmObject CheckComponent(LcmCache cache, ILexEntry source, CanonicalId id)
     {
         var component = VariantLinkSafety.ResolveObject<ICmObject>(cache, id, RefusalCodes.VariantInvalidComponent,

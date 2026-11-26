@@ -237,13 +237,13 @@ public sealed partial class RecordChangeSetLowerer
             return new(Operations, Refusals, plan.ChangeSet.Refusals, OperationChanges, RefusedCodes, null, required);
         }
 
-        /// <summary>The components that an earlier file of the batch creates, as ids, so the composer does not read them from the project.</summary>
+        // Components an earlier file of the batch creates; the composer cannot read them from the project.
         private HashSet<CanonicalId> InBatch(IEnumerable<Guid> components) => components.Where(IsNewInBatch).Select(item => CanonicalId.FromGuid(item)).ToHashSet();
 
         private bool IsNewInBatch(Guid item) => BatchClasses?.ContainsKey(item) == true &&
             !cache.ServiceLocator.ObjectRepository.TryGetObject(item, out _);
 
-        /// <summary>Why a component is neither an entry nor a sense, or null; only a component new in the batch is judged here, the composer checks the others.</summary>
+        // Only a component new in the batch is judged here; the composer checks the others.
         private string? NotEntryOrSense(Guid item) => IsNewInBatch(item) && BatchClasses![item] is not ("LexEntry" or "LexSense")
             ? $"The object {item:D} is a {BatchClasses[item]}, and a component must be an entry or sense." : null;
 

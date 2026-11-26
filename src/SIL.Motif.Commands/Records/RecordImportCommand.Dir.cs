@@ -411,23 +411,18 @@ public static partial class RecordImportCommand
         }
     }
 
-    /// <summary>
-    /// Refuses every file of a loop of variant or complex-form links between new records: FieldWorks does not hold an entry that
-    /// is its own variant or component (ILexEntryRef component-lexemes checked by LexEntryRef.CheckForCircularRefs).
-    /// </summary>
+    // FieldWorks follows both kinds of component link as one graph, so one loop marks all its files.
     private static void RefuseBatchCycles(IReadOnlyList<DirFile> files, IReadOnlyDictionary<Guid, string> creators)
     {
         var byPath = files.Where(file => file.Status is CreatedStatus or UpdatedStatus).ToDictionary(file => file.Input.Path, StringComparer.Ordinal);
-        // Variant links and complex-form links are separate graphs: an entry may be a variant of one that is its complex form.
-        foreach (var kind in new[] { VariantRefCreateOperationKinds.Create, ComplexFormRefCreateOperationKinds.Create })
-        {
-            var edges = byPath.ToDictionary(pair => pair.Key,
-                pair => ComponentTargets(pair.Value, creators, kind).Where(byPath.ContainsKey).Distinct().ToList(), StringComparer.Ordinal);
-            foreach (var group in StronglyConnected(edges).Where(group => group.Count > 1 || edges[group[0]].Contains(group[0])))
-                foreach (var path in group)
-                    byPath[path].Refuse(RefusalCodes.RecordImportBatchCycle, "These files are variants or complex forms of each other in a loop (" +
-                        ListOf(group.Order(StringComparer.Ordinal)) + "), which FieldWorks does not allow. Break the loop in one of them.");
-        }
+        var edges = byPath.ToDictionary(pair => pair.Key,
+            pair => ComponentTargets(pair.Value, creators, VariantRefCreateOperationKinds.Create)
+                .Concat(ComponentTargets(pair.Value, creators, ComplexFormRefCreateOperationKinds.Create)).Where(byPath.ContainsKey).Distinct().ToList(),
+            StringComparer.Ordinal);
+        foreach (var group in StronglyConnected(edges).Where(group => group.Count > 1 || edges[group[0]].Contains(group[0])))
+            foreach (var path in group)
+                byPath[path].Refuse(RefusalCodes.RecordImportBatchCycle, "These files are variants or complex forms of each other in a loop (" +
+                    ListOf(group.Order(StringComparer.Ordinal)) + "), which FieldWorks does not allow. Break the loop in one of them.");
     }
 
     /// <summary>The files whose new records a file's variant or complex-form links name as components.</summary>

@@ -105,7 +105,7 @@ public sealed class RecordBatchImportTests(PristineProjectFixture pristine) : ID
 
     private static RecordObject Sense(RecordDocument d) => (RecordObject)((RecordList)d.Data["senses"]!).Items[0];
 
-    /// <summary>The template's export as a file for a new record with the given root, its text edited by <paramref name="edit"/>; returns the root.</summary>
+    // Writes the template's export as a new-record file, edited by the callbacks; returns the root.
     private Guid Write(Seed seed, string name, Guid template, Func<string, string>? text = null, Action<RecordDocument>? edit = null, Guid? root = null)
     {
         Directory.CreateDirectory(Folder);
@@ -165,14 +165,15 @@ public sealed class RecordBatchImportTests(PristineProjectFixture pristine) : ID
         read.Document!.Base = null;
         read.Document.Data["head-word"] = null;
         read.Document.Data["homograph-number"] = null;
-        return RecordFileWriter.Write(read.Document, schema.Schema);
+        // A link's label and path are computed display text; its guid is the link.
+        return Regex.Replace(RecordFileWriter.Write(read.Document, schema.Schema), @"\[[^\]]*\]\([^{]*?\)(?=\{[^}]*guid=)", "[](/)");
     }
 
     /// <summary>Stages, applies as a person, reopens, and requires each record to export as its file.</summary>
     private void RoundTrips(Seed seed, params (string Name, Guid Root)[] files)
     {
         var rows = Rows(seed);
-        Assert.All(files, file => Assert.Equal("created", rows[file.Name].Status));
+        Assert.All(files, file => Assert.True(rows[file.Name].Status == "created", file.Name + " " + rows[file.Name].Status + " " + rows[file.Name].Code + " " + rows[file.Name].Reason));
         StageFinalizeApply(seed);
         using var reopened = new FwDataProjectLoader().LoadCache(seed.Project);
         var (schema, exporter) = Tools(reopened);
@@ -202,15 +203,29 @@ public sealed class RecordBatchImportTests(PristineProjectFixture pristine) : ID
     }
 
     [Fact]
-    public void AVariantAndAComplexFormThatNameEachOtherAreStagedAppliedAndReadBack()
+    public void AComplexFormOfANewVariantOfANewMainEntryAppliesAndReadsBackAsTheFiles()
+    {
+        var seed = Seeded();
+        var main = Write(seed, "c-main.fw.md", seed.Main);
+        var variant = Write(seed, "b-variant.fw.md", seed.Variant, text => Replace(text, seed.Main, main));
+        var complex = Write(seed, "a-complex.fw.md", seed.Complex, text => Replace(text, seed.Main, variant),
+            document => Ref(document)["show-complex-forms-in"] = Ref(document)["primary-lexemes"]);
+
+        RoundTrips(seed, ("a-complex.fw.md", complex), ("b-variant.fw.md", variant), ("c-main.fw.md", main));
+    }
+
+    [Fact]
+    public void AVariantAndAComplexFormThatNameEachOtherAreRefusedAsOneLoop()
     {
         var seed = Seeded();
         var variantRoot = Guid.NewGuid();
-        var complex = Write(seed, "b-complex.fw.md", seed.Complex, text => Replace(text, seed.Main, variantRoot),
-            document => Ref(document)["show-complex-forms-in"] = Ref(document)["primary-lexemes"]);
-        var variant = Write(seed, "a-variant.fw.md", seed.Variant, text => Replace(text, seed.Main, complex), root: variantRoot);
+        var complex = Write(seed, "b-complex.fw.md", seed.Complex, text => Replace(text, seed.Main, variantRoot));
+        Write(seed, "a-variant.fw.md", seed.Variant, text => Replace(text, seed.Main, complex), root: variantRoot);
 
-        RoundTrips(seed, ("a-variant.fw.md", variant), ("b-complex.fw.md", complex));
+        var rows = Rows(seed);
+
+        Assert.Equal(("refused", RefusalCodes.RecordImportBatchCycle), (rows["a-variant.fw.md"].Status, rows["a-variant.fw.md"].Code));
+        Assert.Equal(("refused", RefusalCodes.RecordImportBatchCycle), (rows["b-complex.fw.md"].Status, rows["b-complex.fw.md"].Code));
     }
 
     [Fact]
@@ -236,7 +251,7 @@ public sealed class RecordBatchImportTests(PristineProjectFixture pristine) : ID
         var seed = Seeded();
         var broken = Write(seed, "b-broken.fw.md", seed.Main, edit: document => Sense(document)["gloss"] = null);
         Write(seed, "a-variant.fw.md", seed.Variant, text => Replace(text, seed.Main, broken));
-        Write(seed, "c-variant-of-variant.fw.md", seed.Variant, text => Replace(text, seed.Main, RootOf("a-variant.fw.md")));
+        Write(seed, "c-variant-of-variant.fw.md", seed.Variant, text => Replace(text, seed.Main, RootOf(seed, "a-variant.fw.md")));
         Write(seed, "d-free.fw.md", seed.Main);
 
         var rows = Rows(seed);
@@ -251,10 +266,11 @@ public sealed class RecordBatchImportTests(PristineProjectFixture pristine) : ID
         Assert.Equal(1, staged.Value!.Dir!.Created);
     }
 
-    private Guid RootOf(string name)
+    private Guid RootOf(Seed seed, string name)
     {
-        var match = Regex.Match(File.ReadAllText(Path.Combine(Folder, name)), "^guid: \"?([0-9a-fA-F-]{36})", RegexOptions.Multiline);
-        return Guid.Parse(match.Groups[1].Value);
+        using var cache = new FwDataProjectLoader().LoadCache(seed.Project);
+        var (schema, exporter) = Tools(cache);
+        return RecordFileReader.Read(File.ReadAllText(Path.Combine(Folder, name)), schema.Schema, exporter.CreateReadOptions()).Document!.Data.Guid!.Value;
     }
 
     [Fact]
@@ -266,7 +282,7 @@ public sealed class RecordBatchImportTests(PristineProjectFixture pristine) : ID
         {
             var components = (RecordList)Ref(document)["component-lexemes"]!;
             components.Add(components.Items[0]);
-            Ref(document)["show-complex-forms-in"] = components;
+            Ref(document)["show-complex-forms-in"] = Ref(document)["primary-lexemes"];
         });
 
         RoundTrips(seed, ("a-complex.fw.md", complex), ("b-main.fw.md", main));
