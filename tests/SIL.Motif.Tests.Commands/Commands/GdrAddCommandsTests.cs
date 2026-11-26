@@ -10,6 +10,7 @@ using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host;
 using SIL.Motif.Host.Gdr;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Store;
