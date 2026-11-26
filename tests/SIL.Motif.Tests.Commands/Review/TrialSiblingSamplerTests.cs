@@ -83,7 +83,7 @@ public sealed class TrialSiblingSamplerTests : IDisposable
     [Fact]
     public void TheSampleIsTheSameForTheSameSeedAndDiffersWithTheRevision()
     {
-        var corpus = Types([.. Enumerable.Range(0, 200).Select(index => ("w" + index + "ish", false))]);
+        var corpus = Types([.. Enumerable.Range(0, 200).Select(index => ("w" + index + "ish", false)), .. Filler(4000)]);
 
         var first = TrialSiblingSampler.Sample(corpus, "sha", ["ish"], null, 20, "rev-a", None).Value!;
         var again = TrialSiblingSampler.Sample(corpus, "sha", ["ish"], null, 20, "rev-a", None).Value!;
@@ -155,5 +155,164 @@ public sealed class TrialSiblingSamplerTests : IDisposable
         Assert.Equal(RefusalCodes.TrialSiblingsNone, TrialSiblingSampler.Sample(corpus, "sha", [], null, 5, "rev", None).Refusal!.Code);
         Assert.Equal(RefusalCodes.TrialSiblingsNone,
             TrialSiblingSampler.Sample(corpus, "sha", ["abc"], null, 5, "rev", new HashSet<string> { "abc" }).Refusal!.Code);
+    }
+
+    [Fact]
+    public void AQuotedLedgerCellMayHoldTabsAndLineBreaksWithoutSplittingTheRow()
+    {
+        var path = Write("word\tstate\tnote\r\n\"abc\"\tApproved\t\"a\tb\r\nc \"\"q\"\"\"\r\nabd\tOpen\tplain\r\n" +
+            "\"a\tb\"\tApproved\tx\r\nabe\tApproved\t\"two\nlines\"\n");
+
+        var types = TrialSiblingSampler.ReadCorpus(path).Value!.Types;
+
+        Assert.Equal([new CorpusType("abc", true), new CorpusType("abd", false), new CorpusType("abe", true)], types);
+    }
+
+    [Fact]
+    public void AQuoteInAPlainWordListIsPartOfTheWordAndAnUnclosedQuoteInALedgerIsRefused()
+    {
+        Assert.Equal(["\"ab", "cd"], TrialSiblingSampler.ReadCorpus(Write("\"ab\ncd\n")).Value!.Types.Select(type => type.Word));
+        Assert.Equal(RefusalCodes.TrialSiblingsInvalid,
+            TrialSiblingSampler.ReadCorpus(Write(string.Join('\n', "word\tstate", "\"abc\tOpen", "abd\tOpen"))).Refusal!.Code);
+    }
+
+    // Filler types that contain none of the forms the tests use, so a form's share of the corpus is easy to set.
+    private static (string, bool)[] Filler(int count) => [.. Enumerable.Range(0, count).Select(index => ("x" + index.ToString("D4"), true))];
+
+    [Fact]
+    public void ReferrerFormsDrawOneGroupBesideTheTouchedFormsAndNameAWordTheTouchedFormsMiss()
+    {
+        var corpus = Types([("kuishax", true), ("kwaa", true), ("kwab", true), .. Filler(100)]);
+
+        var sample = TrialSiblingSampler.Sample(corpus, "sha", ["ish"], null, 8, "rev", None, ["kwa", "-KWB-", ""]).Value!;
+
+        Assert.Equal(2, sample.ReferrerForms);
+        Assert.Contains("kuishax", sample.Words);
+        Assert.Equal(2, sample.Words.Count(word => word.StartsWith("kwa")));
+        Assert.Equal(["ish"], sample.Forms);
+        Assert.Null(sample.SkippedReferrerForms);
+    }
+
+    [Fact]
+    public void AReferrerFormKeepsItsAffixMarkASuffixMayNotStartTheTypeAPrefixMayNotEndItAndABareFormMayBeAnywhere()
+    {
+        var corpus = Types([("kuish", true), ("kuishwa", true), ("ishku", true), ("prekuu", true), ("kuupre", true), ("prekuupre", true),
+            ("kuu", true), ("amidb", true), ("mid", true), .. Filler(100)]);
+
+        Assert.Equal(["kuish", "kuishwa"], Words(corpus, "-ish"));
+        Assert.Equal(["kuish", "kuishwa"], Words(corpus, "=ish"));
+        Assert.Equal(["kuupre", "prekuupre"], Words(corpus, "kuu-"));
+        Assert.Equal(["prekuu", "prekuupre"], Words(corpus, "-kuu"));
+        Assert.Equal(["amidb", "mid"], Words(corpus, "mid"));
+    }
+
+    private static string[] Words(CorpusType[] corpus, string form) =>
+        [.. TrialSiblingSampler.Sample(corpus, "sha", [], null, 50, "rev", None, [form]).Value!.Words.Order(StringComparer.Ordinal)];
+
+    [Fact]
+    public void AShortOrNonSelectiveReferrerFormIsSkippedAndReported()
+    {
+        var common = Enumerable.Range(0, 20).Select(index => ("kwaz" + index, true));
+        var corpus = Types([("uverb", true), .. common, .. Filler(100)]);
+
+        var sample = TrialSiblingSampler.Sample(corpus, "sha", [], null, 50, "rev", None, ["a", "kwa", "-verb"]).Value!;
+
+        Assert.Equal(["uverb"], sample.Words);
+        Assert.Equal(1, sample.ReferrerForms);
+        Assert.Equal([("a", "shorter than 2 characters"), ("kwa", "matches 20 of 121 corpus types (over 5%)")],
+            sample.SkippedReferrerForms!.Select(form => (form.Form, form.Reason)));
+    }
+
+    [Fact]
+    public void TheReferrerGroupTakesAtMostAQuarterOfTheCap()
+    {
+        var referring = Enumerable.Range(0, 30).Select(index => ("kwa" + (char)('a' + index % 26) + index, true));
+        var touched = Enumerable.Range(0, 30).Select(index => ("ish" + (char)('a' + index % 26) + index, true));
+        var corpus = Types([.. referring, .. touched, .. Filler(1000)]);
+
+        var sample = TrialSiblingSampler.Sample(corpus, "sha", ["ish"], null, 20, "rev", None, ["kwa"]).Value!;
+
+        Assert.Equal(20, sample.Words.Count);
+        Assert.Equal(5, sample.Words.Count(word => word.StartsWith("kwa")));
+        Assert.Equal(15, sample.Words.Count(word => word.StartsWith("ish")));
+    }
+
+    [Fact]
+    public void ALoneTrailingCarriageReturnKeepsTheLastWord()
+    {
+        Assert.Equal(["one", "two"], TrialSiblingSampler.ReadCorpus(Write("one\r\ntwo\r")).Value!.Types.Select(type => type.Word));
+    }
+
+    [Fact]
+    public void ReferrerFormsAloneAreEnoughAndAPatternIgnoresThem()
+    {
+        var corpus = Types([("akwab", true), ("zzz", true), .. Filler(100)]);
+
+        Assert.Equal(["akwab"], TrialSiblingSampler.Sample(corpus, "sha", [], null, 5, "rev", None, ["kwa"]).Value!.Words);
+        Assert.Equal(["zzz"], TrialSiblingSampler.Sample(corpus, "sha", [], "z+", 5, "rev", None, ["kwa"]).Value!.Words);
+        Assert.Null(TrialSiblingSampler.Sample(corpus, "sha", [], "z+", 5, "rev", None, ["kwa"]).Value!.ReferrerForms);
+    }
+
+    [Fact]
+    public void ATouchedFormKeepsItsAffixMarkAndIsSkippedWhenShortOrCommonAndTheSkipSaysTouched()
+    {
+        var common = Enumerable.Range(0, 20).Select(index => ("kwaz" + index, true));
+        var corpus = Types([("kuishwa", true), ("ishku", true), ("uverb", true), .. common, .. Filler(100)]);
+
+        var sample = TrialSiblingSampler.Sample(corpus, "sha", ["-ish", "a", "kwa", "verb-"], null, 50, "rev", None).Value!;
+
+        Assert.Equal(["kuishwa"], sample.Words);
+        Assert.Equal([("a", "shorter than 2 characters", "touched"), ("kwa", "matches 20 of 123 corpus types (over 5%)", "touched")],
+            sample.SkippedReferrerForms!.Select(form => (form.Form, form.Reason, form.Kind)));
+    }
+
+    [Fact]
+    public void ACommonTouchedFormThatIsTheOnlyFormOfAnObjectIsKeptOnAQuarterOfTheCap()
+    {
+        var common = Enumerable.Range(0, 120).Select(index => ("kwa" + (char)('a' + index % 26) + index, true));
+        var other = Enumerable.Range(0, 40).Select(index => ("ish" + (char)('a' + index % 26) + index, true));
+        var corpus = Types([.. common, .. other, .. Filler(1000)]);
+
+        var sample = TrialSiblingSampler.Sample(corpus, "sha", ["kwa", "ish"], null, 20, "rev", None, null,
+            new HashSet<string> { "kwa" }).Value!;
+
+        Assert.Equal(5, sample.Words.Count(word => word.StartsWith("kwa")));
+        Assert.Equal(15, sample.Words.Count(word => word.StartsWith("ish")));
+        Assert.Equal([("kwa", "kept: only form", "touched")], sample.SkippedReferrerForms!.Select(form => (form.Form, form.Reason, form.Kind)));
+    }
+
+    [Fact]
+    public void AShortTouchedFormThatIsTheOnlyFormOfAnObjectIsKept()
+    {
+        var corpus = Types([("qx", true), ("aq", true), .. Filler(100)]);
+
+        var sample = TrialSiblingSampler.Sample(corpus, "sha", ["q"], null, 10, "rev", None, null, new HashSet<string> { "q" }).Value!;
+
+        Assert.Equal(["aq", "qx"], sample.Words.Order(StringComparer.Ordinal));
+        Assert.Equal([("q", "kept: only form", "touched")], sample.SkippedReferrerForms!.Select(form => (form.Form, form.Reason, form.Kind)));
+    }
+
+    [Fact]
+    public void ATamilFormOfTwoCodePointsAndOneGraphemeIsSkippedAndATwoGraphemeFormIsKept()
+    {
+        var corpus = Types([("கும்பல்", true), ("அகுது", true), .. Filler(100)]);
+
+        var sample = TrialSiblingSampler.Sample(corpus, "sha", ["கு", "கும்"], null, 10, "rev", None).Value!;
+
+        Assert.Equal(["கும்பல்"], sample.Words);
+        Assert.Equal([("கு", "shorter than 2 characters", "touched")], sample.SkippedReferrerForms!.Select(form => (form.Form, form.Reason, form.Kind)));
+    }
+
+    [Theory]
+    [InlineData(99, true)]
+    [InlineData(100, false)]
+    public void TheShareLimitAppliesFromOneHundredCorpusTypes(int total, bool kept)
+    {
+        var common = Enumerable.Range(0, 6).Select(index => ("kwa" + (char)('a' + index), true));
+        var corpus = Types([.. common, .. Filler(total - 6)]);
+
+        var sample = TrialSiblingSampler.Sample(corpus, "sha", ["kwa", "xyzzy"], null, 50, "rev", None);
+
+        Assert.Equal(kept, sample.Succeeded && sample.Value!.Words.Any(word => word.StartsWith("kwa")));
     }
 }

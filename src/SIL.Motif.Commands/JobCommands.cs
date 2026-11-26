@@ -297,7 +297,7 @@ public static class JobCommands
                     ExportRevision = record.DraftName is null ? record.IntentDigest : DraftRevision.Compute(record.ProposalJson),
                     Siblings = request.SiblingSample is { } siblings
                         ? new TrialSiblingsInput(JobWordLists.Store(database, siblings.Words), siblings.Pattern, siblings.Seed,
-                            siblings.Max, siblings.Forms, siblings.CorpusTypesSha256, siblings.Candidates, siblings.ParsedCandidates) { Warning = siblings.Warning }
+                            siblings.Max, siblings.Forms, siblings.CorpusTypesSha256, siblings.Candidates, siblings.ParsedCandidates) { Warning = siblings.Warning, ReferrerForms = siblings.ReferrerForms, Referrers = siblings.Referrers, SkippedReferrerForms = siblings.SkippedReferrerForms }
                         : null,
                     ReviewBeforeDispatches = request.ReviewBeforeDispatches?.Select(batch => batch with
                     {
