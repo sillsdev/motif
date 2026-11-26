@@ -491,7 +491,7 @@ internal sealed class MotifSqliteStore : IDisposable
         }
     }
 
-    // A rebuilt store counts as finished only when it carries the current schema and identity, which is committed last.
+    // Finished means the current schema and identity, which are committed last.
     private static bool IsFinished(string pending, MotifSqliteStoreDescriptor descriptor)
     {
         try
