@@ -54,18 +54,22 @@ public sealed class PostApplyLockTests(PristineProjectFixture pristine) : IDispo
         var holder = HoldWriteLock(database);
         try
         {
-            BusyRetry.BackoffMilliseconds = [100, 100, 100];
-            using var release = new Timer(_ => Release(holder), null, 1800, Timeout.Infinite);
+            BusyRetry.BackoffMilliseconds = [10, 10, 10];
             var calls = 0;
-            var watch = System.Diagnostics.Stopwatch.StartNew();
-            var log = "";
+            var released = false;
             BusyRetry.Run(() =>
             {
                 calls++;
-                try { SIL.Motif.Worker.Sources.SourceIndexRefresh.MarkPending(database, [], false); log += $"[ok@{watch.ElapsedMilliseconds}]"; }
-                catch (Exception e) { log += $"[{e.GetType().Name}@{watch.ElapsedMilliseconds}]"; throw; }
+                try { SIL.Motif.Worker.Sources.SourceIndexRefresh.MarkPending(database, [], false); }
+                catch (Exception exception) when (SqliteConnections.IsBusyInChain(exception))
+                {
+                    // Release on the first real BUSY, so the retry is what succeeds, with no wall-clock race.
+                    if (!released) { released = true; Release(holder); }
+                    throw;
+                }
             });
-            Assert.True(calls > 1, $"the first attempt must have met the lock; log={log} calls={calls} after {watch.ElapsedMilliseconds} ms");
+            Assert.True(released, "the first attempt must have met the held lock");
+            Assert.Equal(2, calls);
         }
         finally { Environment.SetEnvironmentVariable(TimeoutVariable, previous); }
     }

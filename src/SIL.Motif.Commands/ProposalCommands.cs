@@ -2195,8 +2195,8 @@ public static partial class ProposalCommands
                 var refreshVerb = $"Finish this stage with `motif baseline capture --project {quotedProject}`.";
                 var promoteNext = "The new Assessment was not made current; `motif assess --project " + quotedProject +
                     "` creates a fresh current one.";
-                var bindNext = "The Before Assessment was not bound to the saved project state; `motif assess --project " +
-                    quotedProject + "` measures it again.";
+                var bindNext = "The Before Assessment was not bound to the saved project state, so a later Trial of this " +
+                    "project may measure its Before state again.";
                 var cleanupNext = "Older Assessments of this Proposal were not removed; they are harmless and may stay.";
 
                 TryPostApplyStep("Source index queueing", refreshVerb, () =>
