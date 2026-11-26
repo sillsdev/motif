@@ -147,7 +147,8 @@ public static partial class GuideInterlinear
 
     /// <summary>
     /// Parses stored paragraphs, each the text of one: a run of paragraphs labelled word, morphemes and gloss, then
-    /// optionally translation, is one block. Text that does not start such a run is ordinary prose.
+    /// optionally translation, is one block. A word paragraph with neither a morphemes nor a gloss paragraph after it is
+    /// ordinary prose and is not checked.
     /// </summary>
     public static GuideInterlinearBlocks ParseStored(IReadOnlyList<string> paragraphs)
     {
@@ -160,7 +161,13 @@ public static partial class GuideInterlinear
         {
             if (LabelOf(paragraphs[i]) != GuideInterlinearLabels.Word) continue;
             var count = 1;
-            while (count < 4 && i + count < paragraphs.Count && LabelOf(paragraphs[i + count]) == Order[count]) count++;
+            var last = 0;
+            while (i + count < paragraphs.Count && Array.IndexOf(Order, LabelOf(paragraphs[i + count])) is var at && at > last)
+            {
+                last = at;
+                count++;
+            }
+            if (count < 2) continue;
             var end = i + count - 1;
             var span = new GuideBlockSpan(offsets[i], offsets[end + 1] - 1, i + 1, end + 1, offsets[i], offsets[end + 1] - 1);
             var run = Enumerable.Range(i, count).Select(index => (paragraphs[index] ?? "", index + 1)).ToList();

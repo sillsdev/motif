@@ -114,9 +114,41 @@ public sealed class GuideInterlinearTests
     }
 
     [Fact]
-    public void StoredProseThatMerelyStartsWithWordIsDiagnosedNotThrown()
+    public void ALoneWordParagraphIsProseAndRaisesNothing()
     {
-        var parsed = GuideInterlinear.ParseStored(["word: lonely"]);
+        var parsed = GuideInterlinear.ParseStored(["word: the root is lonely", "More prose"]);
+        Assert.Empty(parsed.Diagnostics);
+        Assert.Empty(parsed.Blocks);
+    }
+
+    [Fact]
+    public void AWordAndAGlossParagraphAreARecognisedBlockMissingItsMorphemes()
+    {
+        var parsed = GuideInterlinear.ParseStored(["word: a", "gloss: b"]);
         Assert.Contains(parsed.Diagnostics, item => item.Kind == GuideInterlinearDiagnosticKind.MissingLine);
+    }
+
+    [Fact]
+    public void ATamilBlockInDecomposedFormRoundTripsAndPairsUp()
+    {
+        var block = Tamil.Normalize(System.Text.NormalizationForm.FormD);
+        var expanded = GuideInterlinear.Expand("Before\n\n" + block + "\n\nAfter");
+        Assert.Equal("Before\n\n" + block + "\n\nAfter", GuideInterlinear.Fold(expanded));
+        Assert.Empty(GuideInterlinear.Parse(block).Diagnostics);
+    }
+
+    [Fact]
+    public void ProseThatMerelyLooksLabelledRoundTripsIdentically()
+    {
+        const string text = "word: the root is lonely\n\nSome prose.\n\ngloss: not a block\n\nword: again";
+        Assert.Equal(text, GuideInterlinear.Fold(GuideInterlinear.Expand(text)));
+    }
+
+    [Fact]
+    public void AParagraphRunWrappedInAStylingDivStaysPlainLines()
+    {
+        const string text = "::: {field=x}\nword: a\n\nmorphemes: b\n\ngloss: c\n:::";
+        Assert.Equal(text, GuideInterlinear.Fold(text));
+        Assert.Equal(text, GuideInterlinear.Expand(text));
     }
 }

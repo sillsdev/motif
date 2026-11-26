@@ -277,7 +277,8 @@ public static class GdrSyncChecker
                 continue;
             }
             texts.Add(paragraph.Contents.Text ?? "");
-            var morphemeLine = (paragraph.Contents.Text ?? "").StartsWith("morphemes:", StringComparison.OrdinalIgnoreCase);
+            var morphemeLine = (paragraph.Contents.Text ?? "").StartsWith("morphemes:", StringComparison.OrdinalIgnoreCase) &&
+                texts.Count > 1 && texts[^2].StartsWith("word:", StringComparison.OrdinalIgnoreCase);
             current.Add(Read(paragraph.Contents, vernacular, expectation != Expectation.None && !morphemeLine));
         }
         if (started || current.Count > 0) yield return new Section(record.Label, title, expectation, current, texts);
