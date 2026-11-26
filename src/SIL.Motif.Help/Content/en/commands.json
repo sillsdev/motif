@@ -19,6 +19,11 @@
     "description": "Reads one Grammar Guide section from the current Baseline. Use format fw-md for the whole record as FieldWorks Markdown, or json for its rich text runs. asOf names a Draft or Proposal whose edits of the section are shown as if applied.",
     "source": "Hand-written from the Grammar Guide read command and shared Markdown view."
   },
+  "guide check": {
+    "title": "Check the Grammar Guide against the grammar",
+    "description": "Reports where the Grammar Guide of the current Baseline is out of step with the grammar, and runs each motif-query block read-only: ok with a row count, refused with its code, not built with the command that builds the index, or failed. All findings are advisory. no-run skips the blocks; timeout bounds one block.",
+    "source": "Hand-written from the Guide check (ADR 0005) and the shared Guide query evaluator."
+  },
   "guide edit": {
     "title": "Edit a Grammar Guide section",
     "description": "Stages an edit of one existing Grammar Guide section, given as FieldWorks Markdown, in a Draft: the whole record that guide show prints with format fw-md, or the Discussion body alone. Nothing reaches the FieldWorks project until a person applies the Draft; a Guide edit changes no word, so its Trial is exempt from the Autonomous gate. A new section is added with guide add. When the Draft already holds an edit of the section, start from guide show with asOf set to that Draft. Available in Advanced AI mode.",
