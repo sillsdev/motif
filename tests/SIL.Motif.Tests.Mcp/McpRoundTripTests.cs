@@ -45,7 +45,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ProgressLeavesMissingAndOlderStoresUnchanged(bool older)
+    public async Task ProgressLeavesMissingStoresUnchangedAndUpgradesOlderOnes(bool older)
     {
         using var project = new WalkthroughProject(pristine);
         var store = Path.ChangeExtension(project.FwDataPath, ".motif.db");
@@ -69,7 +69,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
             ["scope"] = new Dictionary<string, object?> { ["kind"] = "texts" },
         });
         Assert.True(response.IsError, response.StructuredContent?.ToString());
-        Assert.Equal(older ? RefusalCodes.StoreOtherVersion : RefusalCodes.ProgressIndexNotReady,
+        Assert.Equal(RefusalCodes.ProgressIndexNotReady,
             response.StructuredContent!.Value.GetProperty("code").GetString());
         var sourceResponse = await session.Client.CallToolAsync("motif_progress", new Dictionary<string, object?>
         {
@@ -77,10 +77,14 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
             ["scope"] = new Dictionary<string, object?> { ["kind"] = "source", ["source"] = "WEB" },
         });
         Assert.True(sourceResponse.IsError, sourceResponse.StructuredContent?.ToString());
-        Assert.Equal(older ? RefusalCodes.StoreOtherVersion : RefusalCodes.SourceIndexMissing,
+        Assert.Equal(RefusalCodes.SourceIndexMissing,
             sourceResponse.StructuredContent!.Value.GetProperty("code").GetString());
-        Assert.Equal(files.Keys.Order(StringComparer.Ordinal), StoreFiles());
-        foreach (var (file, bytes) in files) Assert.Equal(bytes, File.ReadAllBytes(file));
+        // An older store is upgraded after a backup; a missing one is left alone.
+        if (!older)
+        {
+            Assert.Equal(files.Keys.Order(StringComparer.Ordinal), StoreFiles());
+            foreach (var (file, bytes) in files) Assert.Equal(bytes, File.ReadAllBytes(file));
+        }
         Assert.Equal(before, File.ReadAllBytes(project.FwDataPath));
         Assert.Equal(older, File.Exists(store));
     }
@@ -92,7 +96,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
     [InlineData(true, null)]
     [InlineData(true, "json")]
     [InlineData(true, "fw-md")]
-    public async Task GdrShowLeavesMissingAndOlderStoresUnchanged(bool older, string? format)
+    public async Task GdrShowLeavesMissingStoresUnchangedAndUpgradesOlderOnes(bool older, string? format)
     {
         using var project = new WalkthroughProject(pristine);
         var store = Path.ChangeExtension(project.FwDataPath, ".motif.db");
@@ -115,12 +119,15 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
 
         var response = await session.Client.CallToolAsync("motif_guide_show", arguments);
 
-        Assert.Equal(files.Keys.Order(StringComparer.Ordinal).Select(Path.GetFileName), StoreFiles().Select(Path.GetFileName));
-        foreach (var (file, bytes) in files) Assert.Equal(bytes, File.ReadAllBytes(file));
+        if (!older)
+        {
+            Assert.Equal(files.Keys.Order(StringComparer.Ordinal).Select(Path.GetFileName), StoreFiles().Select(Path.GetFileName));
+            foreach (var (file, bytes) in files) Assert.Equal(bytes, File.ReadAllBytes(file));
+        }
         Assert.Equal(before, File.ReadAllBytes(project.FwDataPath));
         Assert.Equal(older, File.Exists(store));
         Assert.True(response.IsError, response.StructuredContent?.ToString());
-        Assert.Equal(older ? RefusalCodes.StoreOtherVersion : RefusalCodes.GdrNoBaseline,
+        Assert.Equal(RefusalCodes.GdrNoBaseline,
             response.StructuredContent!.Value.GetProperty("code").GetString());
     }
 

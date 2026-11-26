@@ -115,6 +115,7 @@ internal static int Run(
     Func<AssessRequest, CommandOutcome<AssessCommandResponse>>? assess = null)
 {
     using var ambient = AmbientEnvironment.Push(environment);
+    using var storeUpgrades = StoreUpgradeNotices.Begin();
     // A leading --autonomous is the global flag; it moves behind the verb so the verb is still args[0].
     if (args is [CommandSurfacePolicy.AutonomousFlag, var leadingVerb, ..var afterVerb])
         args = [leadingVerb, CommandSurfacePolicy.AutonomousFlag, .. afterVerb];
@@ -3673,6 +3674,7 @@ try
             return Usage($"Unknown command '{verb}'.", asJson, withUsageBanner: true);
     }
 
+    result = StoreUpgradeReport.Apply(storeUpgrades.Notices, result, asJson, error);
     result = Picked(result);
     if (result.ExitCode == 0)
     {

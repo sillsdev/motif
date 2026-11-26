@@ -49,7 +49,7 @@ public static class MotifMcpServer
     public static async Task RunAsync(McpLaunchOptions options, Stream input, Stream output, TextWriter log,
         CancellationToken cancellation)
     {
-        using var upgradeSuppression = SIL.Motif.Host.Store.StoreUpgradeContext.Suppress();
+        using var upgradeOnRead = SIL.Motif.Host.Store.StoreUpgradeContext.UpgradeOnRead();
         using var ambient = options.Environment is null ? null : AmbientEnvironment.Push(options.Environment);
         var profile = options.Profile is null ? ToolProfile.Builtin : ToolProfile.Load(options.Profile);
         var context = new ServerContext(string.Empty, MotifProductVersion.CurrentText,
@@ -164,7 +164,8 @@ public static class MotifMcpServer
     internal static async ValueTask<CallToolResult> CallAsync(ServerContext context, IReadOnlyList<ExposedTool> tools,
         string name, IDictionary<string, JsonElement>? arguments, CancellationToken cancellation)
     {
-        using var upgradeSuppression = SIL.Motif.Host.Store.StoreUpgradeContext.Suppress();
+        using var upgradeOnRead = SIL.Motif.Host.Store.StoreUpgradeContext.UpgradeOnRead();
+        using var upgrades = SIL.Motif.Host.Store.StoreUpgradeNotices.Begin();
         var clock = Stopwatch.StartNew();
         var args = new JsonObject();
         foreach (var (key, value) in arguments ?? new Dictionary<string, JsonElement>())
@@ -188,6 +189,7 @@ public static class MotifMcpServer
             outcome = await RunAsync(context, tool, args, cancellation);
             result = outcome.Refusal is { } refusal ? RefusalMapper.ToResult(refusal, tools, args) : Success(tool, outcome, args);
         }
+        result = StoreUpgradedNotice.Apply(upgrades.Notices, result);
         result = OpenRequestsNotice.Apply(context, args, result);
         context.Activity.Record(new ActivityEntry(DateTimeOffset.UtcNow, tool?.Tool.Name ?? name, args,
             result.IsError == true, outcome.Refusal?.Code, ResultBytes(result), clock.ElapsedMilliseconds,

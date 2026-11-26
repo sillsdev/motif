@@ -113,7 +113,7 @@ public sealed class McpOpenProjectTests
     }
 
     [Fact]
-    public async Task McpRequestsDoNotUpgradeAnOlderProjectStore()
+    public async Task McpUpgradesAnOlderProjectStoreAfterABackupAndTheFirstResultSaysSo()
     {
         var root = Path.Combine(Path.GetTempPath(), "motif-mcp-upgrade-" + Guid.NewGuid().ToString("N"));
         var projectRoot = Path.Combine(root, "project");
@@ -126,39 +126,43 @@ public sealed class McpOpenProjectTests
             var locator = new ProjectLocator(Path.GetFullPath(project), Path.GetFileNameWithoutExtension(project));
             var store = ProjectDatabaseCatalog.DatabasePathFor(locator);
             using (MotifDatabase.OpenOwned(store, locator, MotifSchema.CurrentSchema, new Version(1, 0))) { }
+            var older = MotifSchema.CurrentSchema - 1;
             using (var connection = new SqliteConnection($"Data Source={store};Pooling=False"))
             {
                 connection.Open();
                 using var command = connection.CreateCommand();
-                command.CommandText = $"PRAGMA user_version = {MotifSchema.CurrentSchema - 1};";
+                command.CommandText = $"PRAGMA user_version = {older};";
                 command.ExecuteNonQuery();
             }
             var preference = Path.Combine(workerRoot, "advanced-ai-mode.json");
             new FileAdvancedAiModePreferenceStore(preference).SetEnabled(true);
             await using var client = await StartClient(workerRoot, preference);
-            var opened = await client.CallToolAsync("motif_open", new Dictionary<string, object?> { ["path"] = project });
-            Assert.True(opened.IsError != true, ErrorText(opened));
-            var storeBytes = File.ReadAllBytes(store);
-            var projectBytes = File.ReadAllBytes(project);
-            var result = await client.CallToolAsync("motif_proposals", new Dictionary<string, object?> { ["project"] = project });
-            Assert.True(result.IsError, ErrorText(result));
-            Assert.Equal("store.other-version", result.StructuredContent!.Value.GetProperty("code").GetString());
-            Assert.Equal(store, result.StructuredContent.Value.GetProperty("facts").GetProperty("storePath").GetString());
-            Assert.Equal("true", result.StructuredContent.Value.GetProperty("facts").GetProperty("storeUpgradable").GetString());
-            var older = MotifSchema.CurrentSchema - 1;
-            var text = ErrorText(result);
-            Assert.Contains($"schema {older}", text);
-            Assert.Contains($".schema{older}.bak", text);
-            Assert.Contains("motif store upgrade", text);
-            Assert.DoesNotContain("recreate", text);
-            Assert.Equal(storeBytes, File.ReadAllBytes(store));
-            Assert.Equal(projectBytes, File.ReadAllBytes(project));
-            Assert.False(File.Exists(store + $".schema{MotifSchema.CurrentSchema - 1}.bak"));
+            var first = await client.CallToolAsync("motif_proposals", new Dictionary<string, object?> { ["project"] = project });
+
+            Assert.True(first.IsError != true, ErrorText(first));
+            var notice = $"Your Motif project store was upgraded from schema {older} to {MotifSchema.CurrentSchema}; a backup is at ";
+            var text = string.Join("\n", first.Content.OfType<TextContentBlock>().Select(block => block.Text));
+            Assert.Contains(notice, text);
+            Assert.Contains("these derived results were dropped:", text);
+            var upgrade = first.StructuredContent!.Value.GetProperty("storeUpgrades")[0];
+            Assert.Equal(older, upgrade.GetProperty("fromSchema").GetInt32());
+            var backup = upgrade.GetProperty("backupPath").GetString()!;
+            Assert.True(File.Exists(Path.Combine(backup, "motif-backup.json")));
+            using var backedUp = new SqliteConnection($"Data Source={Path.Combine(backup, "store.sqlite")};Mode=ReadOnly;Pooling=False");
+            backedUp.Open();
+            using var backedUpVersion = backedUp.CreateCommand();
+            backedUpVersion.CommandText = "PRAGMA user_version;";
+            Assert.Equal((long)older, backedUpVersion.ExecuteScalar());
             using var check = new SqliteConnection($"Data Source={store};Mode=ReadOnly;Pooling=False");
             check.Open();
             using var version = check.CreateCommand();
             version.CommandText = "PRAGMA user_version;";
-            Assert.Equal((long)MotifSchema.CurrentSchema - 1, version.ExecuteScalar());
+            Assert.Equal((long)MotifSchema.CurrentSchema, version.ExecuteScalar());
+
+            var second = await client.CallToolAsync("motif_proposals", new Dictionary<string, object?> { ["project"] = project });
+            Assert.True(second.IsError != true, ErrorText(second));
+            Assert.DoesNotContain(notice, string.Join("\n", second.Content.OfType<TextContentBlock>().Select(block => block.Text)));
+            Assert.False(second.StructuredContent!.Value.TryGetProperty("storeUpgrades", out _));
         }
         finally
         {
