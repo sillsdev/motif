@@ -128,6 +128,7 @@ public static class CorpusRunLine
         ArgumentNullException.ThrowIfNull(request);
         resolved = null;
         var root = Canonical(Path.GetFullPath(baseDirectory));
+        if (root is null) { refusal = Invalid("The project folder could not be resolved.", "project"); return false; }
         var named = new List<(string Flag, string? Path)>();
         named.AddRange(request.CorpusPath.Split(['\n', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(path => ("corpus", (string?)path)));
         named.Add(("grammar", request.GrammarPath));
@@ -147,37 +148,52 @@ public static class CorpusRunLine
         return true;
     }
 
+    /// <summary>Whether the path stays in the folder after links resolve; a later link swap is not caught.</summary>
     private static bool IsInsideFolder(string path, string canonicalRoot)
     {
         if (path.Length >= 2 && char.IsAsciiLetter(path[0]) && path[1] == ':') return false;
         if (path[0] is '/' or '\\' || Path.IsPathRooted(path)) return false;
-        var portable = path.Replace('\\', '/');
-        var full = Canonical(Path.GetFullPath(portable, canonicalRoot));
+        var full = Canonical(Path.Combine(canonicalRoot, path.Replace('\\', '/')));
+        if (full is null) return false;
         var relative = Path.GetRelativePath(canonicalRoot, full);
         return relative != ".." && !relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal) &&
             !relative.StartsWith("../", StringComparison.Ordinal) && !Path.IsPathRooted(relative);
     }
 
-    /// <summary>The full path with symbolic links followed.</summary>
-    private static string Canonical(string fullPath)
+    private const int MaxLinkHops = 40;
+
+    /// <summary>The path as realpath resolves it; null past <see cref="MaxLinkHops"/> links.</summary>
+    private static string? Canonical(string absolutePath)
     {
-        var root = Path.GetPathRoot(fullPath) ?? "";
-        var parts = fullPath[root.Length..].Split([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar], StringSplitOptions.RemoveEmptyEntries);
-        var current = root;
-        for (var hop = 0; hop < parts.Length; hop++)
+        var current = Path.GetPathRoot(absolutePath) ?? "";
+        var pending = new Stack<string>(Split(absolutePath[current.Length..]).Reverse());
+        var hops = 0;
+        while (pending.Count > 0)
         {
-            current = Path.Combine(current, parts[hop]);
-            for (var guard = 0; guard < 40; guard++)
+            var part = pending.Pop();
+            if (part == ".") continue;
+            if (part == "..")
             {
-                FileSystemInfo info = Directory.Exists(current) ? new DirectoryInfo(current) : new FileInfo(current);
-                if (info.LinkTarget is null) break;
-                var target = info.ResolveLinkTarget(false);
-                if (target is null) break;
-                current = Path.GetFullPath(target.FullName);
+                current = Path.GetDirectoryName(current) ?? current;
+                continue;
             }
+            var next = Path.Combine(current, part);
+            FileSystemInfo info = Directory.Exists(next) ? new DirectoryInfo(next) : new FileInfo(next);
+            var target = info.LinkTarget;
+            if (target is null) { current = next; continue; }
+            if (++hops > MaxLinkHops) return null;
+            if (Path.IsPathRooted(target))
+            {
+                current = Path.GetPathRoot(target) ?? "";
+                target = target[current.Length..];
+            }
+            foreach (var step in Split(target).Reverse()) pending.Push(step);
         }
         return current;
     }
+
+    private static string[] Split(string path) =>
+        path.Split([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar], StringSplitOptions.RemoveEmptyEntries);
 
     private static bool TryNumber(Dictionary<string, string> flags, string name, out int? value, [NotNullWhen(false)] out Refusal? refusal)
     {

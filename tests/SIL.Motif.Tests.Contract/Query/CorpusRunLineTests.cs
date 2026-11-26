@@ -3,6 +3,7 @@ using SIL.Motif.Contract.Gdr;
 using SIL.Motif.Contract.Query;
 using SIL.Motif.Contract.Query.Corpus;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.Contract.Query;
@@ -209,29 +210,74 @@ public sealed class CorpusRunLineTests
         Assert.True(CorpusRunLine.TryResolve(Parse(@"motif query corpus forms --corpus sub\words.tsv forms"), root, out _, out _));
     }
 
-    [Fact]
+    [RequiresSymbolicLinkFact]
     public void ASymlinkInsideTheFolderThatPointsOutsideIsRefused()
     {
-        var parent = Path.Combine(Path.GetTempPath(), "motif487-" + Guid.NewGuid().ToString("N"));
-        var root = Path.Combine(parent, "proj");
-        var outside = Path.Combine(parent, "outside");
-        Directory.CreateDirectory(root);
-        Directory.CreateDirectory(outside);
-        File.WriteAllText(Path.Combine(outside, "secret.tsv"), "x");
-        try
+        using var tree = new LinkTree();
+        Directory.CreateSymbolicLink(Path.Combine(tree.Root, "link"), tree.Outside);
+        File.CreateSymbolicLink(Path.Combine(tree.Root, "file.tsv"), Path.Combine(tree.Outside, "secret.tsv"));
+        foreach (var flags in new[] { "--corpus link/secret.tsv", "--corpus file.tsv" }) AssertRefused(tree.Root, flags);
+    }
+
+    [RequiresSymbolicLinkFact]
+    public void ALinkWhoseTargetPassesThroughAnotherLinkOutIsRefused()
+    {
+        using var tree = new LinkTree();
+        Directory.CreateSymbolicLink(Path.Combine(tree.Root, "dirlink"), tree.Outside);
+        File.CreateSymbolicLink(Path.Combine(tree.Root, "abs.tsv"), Path.Combine(tree.Root, "dirlink", "secret.tsv"));
+        File.CreateSymbolicLink(Path.Combine(tree.Root, "rel.tsv"), Path.Combine("dirlink", "secret.tsv"));
+        foreach (var flags in new[] { "--corpus abs.tsv", "--corpus rel.tsv" }) AssertRefused(tree.Root, flags);
+    }
+
+    [RequiresSymbolicLinkFact]
+    public void ALinkFollowedByDotDotIsResolvedAfterTheLink()
+    {
+        using var tree = new LinkTree();
+        Directory.CreateSymbolicLink(Path.Combine(tree.Root, "deep"), Path.Combine(tree.Outside, "sub"));
+        AssertRefused(tree.Root, "--corpus deep/../secret.tsv");
+    }
+
+    [RequiresSymbolicLinkFact]
+    public void ALinkLoopIsRefusedNotFollowedForever()
+    {
+        using var tree = new LinkTree();
+        Directory.CreateSymbolicLink(Path.Combine(tree.Root, "a"), Path.Combine(tree.Root, "b"));
+        Directory.CreateSymbolicLink(Path.Combine(tree.Root, "b"), Path.Combine(tree.Root, "a"));
+        AssertRefused(tree.Root, "--corpus a/words.tsv");
+    }
+
+    [RequiresSymbolicLinkFact]
+    public void ALinkThatStaysInsideTheFolderResolves()
+    {
+        using var tree = new LinkTree();
+        File.WriteAllText(Path.Combine(tree.Root, "real.tsv"), "x");
+        File.CreateSymbolicLink(Path.Combine(tree.Root, "alias.tsv"), "real.tsv");
+        Assert.True(CorpusRunLine.TryResolve(Parse("motif query corpus forms --corpus alias.tsv forms"), tree.Root, out _, out _));
+    }
+
+    private static void AssertRefused(string root, string flags)
+    {
+        Assert.False(CorpusRunLine.TryResolve(Parse("motif query corpus forms " + flags + " forms"), root, out _, out var refusal), flags);
+        Assert.Equal(RefusalCodes.GuideQueryRunPathOutsideProject, refusal!.Code);
+    }
+
+    private sealed class LinkTree : IDisposable
+    {
+        private readonly string _parent = Path.Combine(Path.GetTempPath(), "motif487-" + Guid.NewGuid().ToString("N"));
+
+        public LinkTree()
         {
-            try
-            {
-                Directory.CreateSymbolicLink(Path.Combine(root, "link"), outside);
-                File.CreateSymbolicLink(Path.Combine(root, "file.tsv"), Path.Combine(outside, "secret.tsv"));
-            }
-            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException) { return; }
-            foreach (var flags in new[] { "--corpus link/secret.tsv", "--corpus file.tsv" })
-            {
-                Assert.False(CorpusRunLine.TryResolve(Parse("motif query corpus forms " + flags + " forms"), root, out _, out var refusal));
-                Assert.Equal(RefusalCodes.GuideQueryRunPathOutsideProject, refusal!.Code);
-            }
+            Root = Path.Combine(_parent, "proj");
+            Outside = Path.Combine(_parent, "outside");
+            Directory.CreateDirectory(Root);
+            Directory.CreateDirectory(Path.Combine(Outside, "sub"));
+            File.WriteAllText(Path.Combine(Outside, "secret.tsv"), "x");
         }
-        finally { Directory.Delete(parent, true); }
+
+        public string Root { get; }
+
+        public string Outside { get; }
+
+        public void Dispose() => Directory.Delete(_parent, true);
     }
 }
