@@ -34,14 +34,21 @@ function Get-FailedTestNames {
     , $seen.ToArray()
 }
 
-# A test counts as named in an issue when the issue text holds its full name or its method name as a whole word.
+# A test counts as named in an issue when its full name, or Class.Method, appears as a whole token: the characters
+# either side may not continue an identifier, so Ns.C.Method never matches inside Ns.C.MethodTwo, and a bare method
+# name never matches at all.
 function Test-NamedInText {
     [CmdletBinding()]
     param([string] $TestName, [string] $Text)
 
     if (-not $Text) { return $false }
-    $method = $TestName.Substring($TestName.LastIndexOf('.') + 1)
-    return $Text.Contains($TestName) -or ($Text -cmatch ('(?<![\w])' + [regex]::Escape($method) + '(?![\w])'))
+    $parts = $TestName -split '\.'
+    $forms = @($TestName)
+    if ($parts.Count -ge 3) { $forms += ($parts[-2] + '.' + $parts[-1]) }
+    foreach ($form in $forms) {
+        if ($Text -cmatch ('(?<![\w.])' + [regex]::Escape($form) + '(?![\w]|\.\w)')) { return $true }
+    }
+    return $false
 }
 
 # Decides whether a PR evicted for failed checks may be requeued. Returns Requeue (bool) and Reason.
@@ -60,14 +67,26 @@ function Get-RequeueDecision {
         [string[]] $PrFiles = @(),
         [hashtable] $TestFiles = @{},
         [int] $RequeuesToday = 0,
-        [int] $MaxPerDay = 2
+        [int] $MaxPerDay = 2,
+        # One entry per non-success job of the failed run: Name, Conclusion, Tests (names parsed from its log).
+        [object[]] $Jobs = $null
     )
+
+    if ($null -ne $Jobs) {
+        foreach ($job in $Jobs) {
+            if ($job.Conclusion -ne 'failure') { return [pscustomobject]@{ Requeue = $false; Reason = "job '$($job.Name)' ended $($job.Conclusion), not a test failure" } }
+            if (@($job.Tests).Count -eq 0) { return [pscustomobject]@{ Requeue = $false; Reason = "job '$($job.Name)' failed with no [FAIL] test names in its log" } }
+        }
+    }
 
     if ($FailingTests.Count -eq 0) { return [pscustomobject]@{ Requeue = $false; Reason = 'no [FAIL] test names found in the failed job logs' } }
     if ($RequeuesToday -ge $MaxPerDay) { return [pscustomobject]@{ Requeue = $false; Reason = "already requeued $RequeuesToday time(s) today" } }
 
     foreach ($test in $FailingTests) {
-        if ($TestFiles.ContainsKey($test) -and $TestFiles[$test] -and ($PrFiles -contains $TestFiles[$test])) {
+        if (-not ($TestFiles.ContainsKey($test) -and $TestFiles[$test])) {
+            return [pscustomobject]@{ Requeue = $false; Reason = "no source file found for $test at the PR head, so the diff guard cannot clear it" }
+        }
+        if ($PrFiles -contains $TestFiles[$test]) {
             return [pscustomobject]@{ Requeue = $false; Reason = "$test is defined in $($TestFiles[$test]), which this PR changes" }
         }
     }
