@@ -413,7 +413,23 @@ internal static class TrialSiblingResolver
         forms.AddRange(entry.AlternateFormsOS);
         foreach (var form in forms)
             for (var slot = 0; slot < form.Form.StringCount; slot++)
-                if (form.Form.GetStringFromIndex(slot, out _)?.Text is { Length: > 0 } text) yield return text;
+                if (form.Form.GetStringFromIndex(slot, out _)?.Text is { Length: > 0 } text) yield return Marked(form, text);
+    }
+
+    // A bare form gets the mark its morph type implies; a mark it already carries wins.
+    private static string Marked(SIL.LCModel.IMoForm form, string text)
+    {
+        var trimmed = text.Trim();
+        if (trimmed.Length == 0 || "-=".Contains(trimmed[0]) || "-=".Contains(trimmed[^1])) return text;
+        var type = form.MorphTypeRA?.Guid;
+        if (type is null) return text;
+        if (type == SIL.LCModel.MoMorphTypeTags.kguidMorphSuffix || type == SIL.LCModel.MoMorphTypeTags.kguidMorphEnclitic ||
+            type == SIL.LCModel.MoMorphTypeTags.kguidMorphSuffixingInterfix)
+            return "-" + trimmed;
+        if (type == SIL.LCModel.MoMorphTypeTags.kguidMorphPrefix || type == SIL.LCModel.MoMorphTypeTags.kguidMorphProclitic ||
+            type == SIL.LCModel.MoMorphTypeTags.kguidMorphPrefixingInterfix)
+            return trimmed + "-";
+        return text;
     }
 
     /// <summary>
