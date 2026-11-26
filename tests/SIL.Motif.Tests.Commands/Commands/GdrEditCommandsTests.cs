@@ -433,24 +433,31 @@ public sealed class GdrEditCommandsTests(PristineProjectFixture pristine)
     }
 
     [Theory]
-    [InlineData("*a", "c", "d*")]
-    [InlineData("a [b", "c", "d](http://x) e")]
-    [InlineData("a", "_c", "d_")]
-    [InlineData("`a", "b", "c`")]
-    public void AnUnbalancedMarkerThatWouldPairAcrossPartsIsRefusedNamingThePart(string chosen, string over, string because)
+    [InlineData("*a", "c", "d*", "--choosing and --because has an unbalanced marker", "--over")]
+    [InlineData("a [b", "c", "d](http://x) e", "--choosing and --because has an unbalanced marker", "--over")]
+    [InlineData("a", "_c", "d_", "--over and --because has an unbalanced marker", "--choosing")]
+    [InlineData("`a", "b", "c`", "--choosing has an unbalanced marker", "--over")]
+    [InlineData("a\\", "c", "d", "--choosing has an unbalanced marker", "--over")]
+    [InlineData("a", "c", "[b]{ws=", "--because is not inline Markdown", "--over")]
+    [InlineData("[a", "c", "b]{ws=en}", "--choosing and --because has an unbalanced marker", "--over")]
+    public void AnUnbalancedMarkerThatWouldPairAcrossPartsIsRefusedNamingOnlyThoseParts(string chosen, string over, string because,
+        string named, string notNamed)
     {
         var path = ProjectWithGdrs(HeadingStyles);
 
         var refused = GdrEditCommands.Decide(new GdrDecideRequest(path, "GDR-2", chosen, over, because));
 
         Assert.Equal(RefusalCodes.GdrDecisionInvalid, refused.Refusal!.Code);
-        Assert.Contains("--", refused.Refusal.Message, StringComparison.Ordinal);
+        Assert.StartsWith(named, refused.Refusal.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(notNamed, refused.Refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("\\<", refused.Refusal.Message, StringComparison.Ordinal);
     }
 
     [Theory]
     [InlineData("a\\*b", "c", "d")]
     [InlineData("a \\_ b", "c \\` d", "e \\< f \\[ g \\\\ h")]
     [InlineData("*a*", "_b_", "**c**")]
+    [InlineData("a < b", "<c", "d>")]
     [InlineData("[x]{.v}", "[y]{.v}", "[z]{.v}")]
     [InlineData("accept [alila]{ws=en}", "reject", "x")]
     [InlineData("plain words", "other words", "it fits.")]

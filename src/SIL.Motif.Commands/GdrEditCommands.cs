@@ -44,7 +44,7 @@ public static class GdrEditCommands
         if (!shown.Succeeded) return CommandOutcome<GdrEditResponse>.Refused(WithAddSectionHint(shown.Refusal!));
         if (BlockPart(request, shown.Value!, Path.GetFileNameWithoutExtension(request.ProjectPath)) is { } block)
             return CommandOutcome<GdrEditResponse>.Refused(new Refusal(RefusalCodes.GdrDecisionInvalid, FailureReason.InvalidArgument,
-                block + " Write a literal [ as \\[ ."));
+                block + " Escape a literal [ * _ ` < or \\ as \\[ \\* \\_ \\` \\< or \\\\ ."));
         var named = string.IsNullOrWhiteSpace(request.Draft) ? null : request.Draft.Trim();
         var current = GdrQuery.Show(new GdrShowRequest(request.ProjectPath, request.Id, AsOf: named ?? PendingChanges.DraftName));
         if (!current.Succeeded && (named is not null || current.Refusal!.Code != "draft.not-found"))
@@ -75,13 +75,18 @@ public static class GdrEditCommands
     {
         var (chosen, over, because) = Pieces(request);
         if (Agrees(form, chosen, over, because)) return null;
-        // Probe with plain words for the others to name a part that pairs with its own repeat.
+        // Probe the others as plain words: name a part that fails alone, else the pair that fails together.
         var alone = new List<string>();
         if (!Agrees(form, chosen, "x", "x")) alone.Add("--choosing");
         if (!Agrees(form, "x", over, "x")) alone.Add("--over");
         if (!Agrees(form, "x", "x", because)) alone.Add("--because");
-        var named = alone.Count > 0 ? alone : ["--choosing", "--over", "--because"];
-        return $"{string.Join(" and ", named)} has an unbalanced marker (* _ ` [ < or a span) that would pair with another part of the Decisions line.";
+        if (alone.Count == 0)
+        {
+            if (!Agrees(form, chosen, over, "x")) alone.AddRange(["--choosing", "--over"]);
+            else if (!Agrees(form, chosen, "x", because)) alone.AddRange(["--choosing", "--because"]);
+            else alone.AddRange(["--over", "--because"]);
+        }
+        return $"{string.Join(" and ", alone)} has an unbalanced marker that would pair with another part of the Decisions line.";
     }
 
     private static bool Agrees(FieldWorksMarkdownSourceForm form, string chosen, string over, string because)
