@@ -55,8 +55,12 @@ public static partial class ProposalCommands
                         number = GdrSectionSupport.NextNumber(cache, list);
                         var ws = string.IsNullOrWhiteSpace(writingSystem)
                             ? cache.WritingSystemFactory.GetStrFromWs(cache.DefaultAnalWs) : writingSystem.Trim();
-                        if (cache.WritingSystemFactory.GetWsFromStr(ws) == 0)
+                        var wsHandle = cache.WritingSystemFactory.GetWsFromStr(ws);
+                        if (wsHandle == 0)
                             throw new GdrSectionRefusal(RefusalCodes.GdrTitleInvalid, $"The writing system '{ws}' is not in this project.");
+                        if (!cache.LangProject.AnalysisWritingSystems.Any(system => system.Handle == wsHandle))
+                            throw new GdrSectionRefusal(RefusalCodes.GdrTitleInvalid,
+                                $"The writing system '{ws}' is not an analysis writing system of this project, so a title cannot be written in it.");
                         string? Resolve(string? text, string role)
                         {
                             if (text is null) return null;
@@ -67,9 +71,6 @@ public static partial class ProposalCommands
                         var parentGuid = Resolve(parent, "parent");
                         var afterGuid = Resolve(after, "section to follow");
                         parentId = parentGuid;
-                        if (afterGuid is not null && list is not null && parentGuid is null &&
-                            GdrSectionSupport.Find(cache, list, after!.Trim()) is { } sibling && sibling.Owner is SIL.LCModel.ICmPossibility ownerItem)
-                            parentId = CanonicalId.FromGuid(ownerItem.Guid).Value;
                         var payload = new Dictionary<string, string> { ["id"] = number, ["title"] = title.Trim(), ["ws"] = ws };
                         if (parentGuid is not null) payload["parent"] = parentGuid;
                         if (afterGuid is not null) payload["after"] = afterGuid;

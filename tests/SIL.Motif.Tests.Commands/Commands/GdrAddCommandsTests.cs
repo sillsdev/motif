@@ -97,6 +97,84 @@ public sealed class GdrAddCommandsTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public void ANumberIsNeverReusedAfterTheHighestItemIsDeleted()
+    {
+        var path = ProjectWithGdrs();
+        var first = GdrAddCommands.Add(new GdrAddRequest(path, "added"));
+        Assert.True(first.Succeeded, first.Refusal?.Message);
+        Assert.Equal("GDR-3", first.Value!.Abbreviation);
+        Applied(path);
+
+        using (var cache = new FwDataProjectLoader().LoadScratchCache(path))
+        {
+            var added = cache.ServiceLocator.GetInstance<ICmPossibilityRepository>().AllInstances()
+                .Single(item => item.Abbreviation.get_String(cache.DefaultAnalWs).Text == "GDR-3");
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () => added.Delete());
+            new FwDataProjectLoader().Save(cache);
+        }
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), RootFor(path)).Succeeded);
+        Assert.DoesNotContain(GdrQuery.List(new GdrListRequest(path)).Value!.Records, record => record.Abbreviation == "GDR-3");
+
+        var second = GdrAddCommands.Add(new GdrAddRequest(path, "after the delete"));
+        Assert.True(second.Succeeded, second.Refusal?.Message);
+        Assert.Equal("GDR-4", second.Value!.Abbreviation);
+    }
+
+    [Fact]
+    public void TheNewGuideListHasThePropertiesFieldWorksGivesACustomList()
+    {
+        var path = ProjectWithoutList();
+        Assert.True(GdrAddCommands.Add(new GdrAddRequest(path, "first")).Succeeded);
+        Applied(path);
+
+        using var cache = new FwDataProjectLoader().LoadScratchCache(path);
+        var lists = cache.ServiceLocator.GetInstance<ICmPossibilityListRepository>();
+        var guide = lists.AllInstances().Single(list => list.Name.get_String(cache.DefaultAnalWs).Text == "Grammar Guide");
+        ICmPossibilityList reference = null!;
+        // The calls of xWorks CustomListDlg for a hierarchical, unsorted, analysis list.
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            reference = cache.ServiceLocator.GetInstance<ICmPossibilityListFactory>().CreateUnowned("Reference", cache.DefaultAnalWs);
+            reference.DisplayOption = (int)PossNameType.kpntName;
+            reference.PreventDuplicates = false;
+            reference.IsSorted = false;
+            reference.WsSelector = WritingSystemServices.kwsAnals;
+            reference.IsVernacular = false;
+            reference.Depth = 127;
+        });
+        Assert.Equal(reference.ItemClsid, guide.ItemClsid);
+        Assert.Equal(CmCustomItemTags.kClassId, guide.ItemClsid);
+        Assert.Equal(reference.Depth, guide.Depth);
+        Assert.Equal(127, guide.Depth);
+        Assert.Equal(reference.IsSorted, guide.IsSorted);
+        Assert.Equal(reference.DisplayOption, guide.DisplayOption);
+        Assert.Equal(reference.WsSelector, guide.WsSelector);
+        Assert.Equal(reference.IsVernacular, guide.IsVernacular);
+        Assert.Equal(reference.PreventDuplicates, guide.PreventDuplicates);
+        Assert.Equal(reference.Owner, guide.Owner);
+        Assert.Null(guide.Owner);
+    }
+
+    [Fact]
+    public void AnUnknownOrVernacularWritingSystemIsRefusedAndAfterAtTheTopLevelReportsNoParent()
+    {
+        string vernacular = "";
+        var path = ProjectWith(cache =>
+        {
+            SeededGdrs.Seed(cache);
+            vernacular = cache.WritingSystemFactory.GetStrFromWs(cache.DefaultVernWs);
+        });
+        Assert.NotEmpty(vernacular);
+        Assert.Equal(RefusalCodes.GdrTitleInvalid, GdrAddCommands.Add(new GdrAddRequest(path, "x", WritingSystem: "zz-unknown")).Refusal!.Code);
+        var vern = GdrAddCommands.Add(new GdrAddRequest(path, "x", WritingSystem: vernacular));
+        Assert.False(vern.Succeeded);
+        Assert.Equal(RefusalCodes.GdrTitleInvalid, vern.Refusal!.Code);
+        var after = GdrAddCommands.Add(new GdrAddRequest(path, "after one", After: "GDR-1"));
+        Assert.True(after.Succeeded, after.Refusal?.Message);
+        Assert.Null(after.Value!.ParentId);
+    }
+
+    [Fact]
     public void AMarkdownBodyThatCannotBeReadStagesNothingAndABlankTitleIsRefused()
     {
         var path = ProjectWithGdrs();

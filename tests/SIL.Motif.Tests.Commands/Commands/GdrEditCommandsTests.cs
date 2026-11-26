@@ -78,7 +78,7 @@ public sealed class GdrEditCommandsTests(PristineProjectFixture pristine)
         Assert.True(unchanged.Succeeded, unchanged.Refusal?.Message);
         Assert.Equal(0, unchanged.Value!.OperationCount);
 
-        // Left to right becomes right to left, right to left becomes left to right, and a text edit keeps the direction.
+        // Flip the first paragraph's direction and add a right to left one.
         var body = new GdrMarkdownView(Show(path, "GDR-1"), "p").Fields.Single(field => field.Name == "discussion").Body;
         Assert.Contains("rightToLeft=1", body, StringComparison.Ordinal);
         var flipped = body.Replace("rightToLeft=1", "rightToLeft=0", StringComparison.Ordinal)
