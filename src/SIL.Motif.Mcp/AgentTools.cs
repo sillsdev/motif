@@ -957,7 +957,7 @@ internal static class AgentTools
                     ["Scope"] = null, ["AllWords"] = null,
                     ["ExpectedDraftRevision"] = null, ["Limits"] = null, ["BaselineAssessmentIds"] = null,
                     ["ReviewSetIds"] = null, ["ExpectedLosses"] = "expect_loss", ["NoBackground"] = "no_background",
-                    ["NoBaseSample"] = "no_base_sample", ["Touched"] = "touched",
+                    ["NoBaseSample"] = "no_base_sample", ["Touched"] = "touched", ["Siblings"] = null,
                     ["ProjectKey"] = null, ["EffectiveDetail"] = null, ["EffectiveSide"] = null,
                 } },
 

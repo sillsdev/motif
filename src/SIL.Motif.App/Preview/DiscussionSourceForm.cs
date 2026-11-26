@@ -1,3 +1,4 @@
+using SIL.Motif.Contract.Gdr;
 using SIL.TextEditing;
 using SIL.TextEditing.Markdown;
 
@@ -39,14 +40,15 @@ public sealed class DiscussionSourceForm : ISourceForm, ISourceFormFingerprint
     {
         ArgumentNullException.ThrowIfNull(paragraphs);
         _writtenInline = _richString && paragraphs.Count == 1 ? paragraphs[0] : null;
-        return _markdown.Write(paragraphs.Select(_discussion.AsProject).ToArray(), singleParagraph || _writtenInline != null);
+        var written = _markdown.Write(paragraphs.Select(_discussion.AsProject).ToArray(), singleParagraph || _writtenInline != null);
+        return written is null ? null : GuideInterlinear.Fold(written);
     }
 
     /// <inheritdoc/>
     public SourceReading Read(string source, bool singleParagraph)
     {
         var inline = _writtenInline;
-        var read = _markdown.Read(source, singleParagraph || inline != null);
+        var read = _markdown.Read(GuideInterlinear.Expand(source), singleParagraph || inline != null);
         var paragraphs = read.Paragraphs.Select(_discussion.AsShown);
         if (inline != null) paragraphs = paragraphs.Select(paragraph => Shaped(inline, paragraph));
         return new SourceReading(paragraphs.ToArray(), read.Diagnostics, read.Tokens);

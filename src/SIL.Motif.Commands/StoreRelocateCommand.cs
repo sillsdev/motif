@@ -111,8 +111,10 @@ public static partial class StoreRelocateCommand
         }
         catch (MotifStoreVersionException exception)
         {
-            return Refused(RefusalCodes.StoreOtherVersion, FailureReason.Refused, exception.Message,
-                project.FullFwDataPath, storePath);
+            var facts = Facts(project.FullFwDataPath, storePath);
+            if (exception.Newer) facts[RefusalFactNames.StoreNewer] = "true";
+            return CommandOutcome<StoreRelocateResponse>.Refused(
+                new Refusal(RefusalCodes.StoreOtherVersion, FailureReason.Refused, exception.Message, facts));
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException
             or NotSupportedException)

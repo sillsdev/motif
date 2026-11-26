@@ -24,3 +24,11 @@ Each row keeps `caseKey`, the id the report and regression rows use, and lists t
 
 The command exits 0 only when the state is `green`. Any other state exits 6, as a Trial with a lost word does; read `expectations.state` to tell them apart. `--pick` projects the result on that path too. Manifests spell words lower-cased and ids the Proposal creates as `created:N`, so use `--alias-created false` and `--keep-case` when yours do not. `--write-manifests` cannot be combined with these flags.
 
+
+## Write a receipt for Apply
+
+`--write-receipt <file>` goes with at least one expectation flag. When the state is `green` it writes a receipt there and the result carries `receipt` (`path`, `receiptDigest`, `gateCodeDigest`); any other state removes an earlier file at that path and writes none. The receipt binds the Proposal's revision, the Baseline the Trial measured, that Trial and the build of the gate rules that judged it, and carries a digest of its own content. `motif apply <proposalId> --receipt <file>` and `motif apply --proposal <id> --receipt <file>` then stop with `apply.receipt-invalid` when the file is missing, edited or not green, and with `apply.receipt-stale` when the Proposal revision, the Baseline, the Trial or the gate build has changed since; run a new Trial and write a new receipt. Without `--receipt`, Apply asks for none. `apply --all-pending` takes no receipt.
+
+## Siblings
+
+A Trial queued with `--siblings` (see `motif trial`) measured corpus words that share a touched form. They are in the delta and judged by the expectations above like every other measured word. The result also carries `siblings`: `pattern`, `seed`, `max`, `touchedForms`, `corpusTypesSha256`, `candidates`, `parsedCandidates`, `sampled`, `measured`, `lost`, `lostSample`, `doubled` and `doubledSample` (up to twenty words each), and `warning` when the sample could not use something (for example the forms of existing entries when the project had no Baseline). It is omitted when the Trial sampled no siblings. A sampled sibling the Trial did not measure, or a sibling record that cannot be read, makes `expectations.state` `unmeasured` and adds the limitation `siblings-unmeasured` or `siblings-unreadable`; it never reads green.

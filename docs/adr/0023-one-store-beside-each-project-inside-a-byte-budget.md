@@ -7,6 +7,8 @@ released when no longer useful, while authored work, primary sources and permane
 
 **Amended 2026-11-17:** Hand-analysis annotation and its full-fidelity Home boundary.
 
+**Amended 2026-11-25:** A project store is upgraded across versions, always after a backup (D7); MCP upgrades too.
+
 ## Context
 
 Location-dependent stores can show different work for the same project. Parser workspaces can also grow
@@ -85,9 +87,9 @@ its measurement results do not belong in the language project.
 Construct the current schema in a separate file under ownership and exclusive-use locks; copy authored
 columns by name, clear discarded-evidence references, verify, retain a versioned original backup and only
 then replace. Unparseable Proposal revisions remain intact and are identified in the upgrade report.
-Source/output inspection leaves the source untouched. MCP cannot initiate an upgrade. Refuse newer schemas;
-the machine store retains its separate policy. No blanket refusal/recreation of older project stores is
-permitted in place of preserving authored work. `store relocate` points a copied store at its project's new
+Source/output inspection leaves the source untouched. Refuse newer schemas. No blanket refusal/recreation of
+older project stores is permitted in place of preserving authored work. The 2026-11-25 amendment below
+replaces the earlier rules that MCP cannot initiate an upgrade and that the machine store has a separate policy. `store relocate` points a copied store at its project's new
 path after confirmation and a project-identity check, and records the old path, new path, time and basis in the
 store's `StoreRelocations` history, which an upgrade carries like other authored records.
 
@@ -96,6 +98,20 @@ Difference summaries eligible under that contract, durable corpus language summa
 provenance. Drop/recompute derived detail and indexes rather than migrate their semantics. A failed summary
 archive retains its source evidence for retry. An upgrade cannot erase an unreadable authored revision just
 because the current operation registry cannot parse it.
+
+**A project store is upgraded across versions, always after a backup (amended 2026-11-25).** The steps are
+declared in one table keyed on the store's `user_version`, and the original is never touched.
+
+- Authored data is carried. Derived data (Trials, Assessments, Baselines, Jobs, indexes) is dropped for every
+  schema version and listed in the upgrade receipt; it stays in the backup.
+- A newer store is refused. Neither upgrade nor `store reset` is offered for it: install the newer Motif, or
+  restore a pre-upgrade backup.
+- A backup precedes every upgrade and every `store reset`, and `store restore` is the way back. The receipt
+  names the backup; the last three pre-upgrade backups are kept, and the newest is never deleted automatically.
+- The machine store is rebuilt empty after a backup.
+- MCP upgrades too, so installing a newer Motif does not stop an open MCP client. Its first tool result says the
+  store was upgraded, names the backup and lists what was dropped. A failed upgrade changes nothing and names
+  the backup and `motif store restore`.
 
 ### D8. Project and per-user byte budgets are housekeeping targets
 

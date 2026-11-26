@@ -9,6 +9,7 @@ motif store restore "D:\Backups\koro-before-switch" --project "D:\Projects\Koro\
 Pass the backup folder (or its `motif-backup.json`). Before it changes anything the command refuses when:
 
 - the store is open or busy in another Motif process (`project.busy`); close the runner with `motif worker stop` and repeat;
+- on Windows, another process holds the store, its `-wal` or its `-shm` open (`project.store-in-use`); close Motif sessions and repeat. Nothing is changed;
 - the backup's store schema is newer than this build understands (`store.restore-newer-schema`); update Motif first;
 - a file's sha256 or size differs from the receipt (`store.restore-checksum-mismatch`), checked on the copy staged beside the target;
 - the folder has no readable receipt, the receipt names a file outside the backup, lists a file twice or lists a file the folder lacks (`store.restore-invalid`);

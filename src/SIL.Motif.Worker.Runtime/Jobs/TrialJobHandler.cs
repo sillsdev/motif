@@ -90,6 +90,10 @@ public sealed record TrialJobInput(
     [JsonPropertyName("cliPhases"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyList<TrialPhase>? CliPhases { get; init; }
 
+    /// <summary>The sibling words this Trial added to its list and how they were chosen; null when it sampled none.</summary>
+    [JsonPropertyName("siblings"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public TrialSiblingsInput? Siblings { get; init; }
+
     /// <summary>The exact input references for Baseline batches whose dispatch was observed.</summary>
     [JsonPropertyName("reviewBeforeDispatches"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyList<TrialBeforeDispatch>? ReviewBeforeDispatches { get; init; }
@@ -98,6 +102,30 @@ public sealed record TrialJobInput(
     public static TrialJobInput Parse(string inputJson) =>
         JsonSerializer.Deserialize<TrialJobInput>(inputJson, MotifJson.CreateOptions())
         ?? throw new InvalidOperationException("A Trial job's input could not be read.");
+}
+
+/// <summary>The sibling sample a Trial added to its word list, frozen when the Trial was queued.</summary>
+/// <param name="Words">The sampled siblings, stored beside the project's store.</param>
+/// <param name="Pattern">The pattern the candidates matched, or <c>per-form</c>.</param>
+/// <param name="Seed">The seed of the shuffle.</param>
+/// <param name="Max">The cap on the sample.</param>
+/// <param name="TouchedForms">The forms the sample was drawn for.</param>
+/// <param name="CorpusTypesSha256">The digest of the corpus-types file.</param>
+/// <param name="Candidates">Corpus types that matched and were not already in the word list.</param>
+/// <param name="ParsedCandidates">Those the corpus-types file marks as parsed.</param>
+public sealed record TrialSiblingsInput(
+    [property: JsonPropertyName("words")] JobWordList Words,
+    [property: JsonPropertyName("pattern")] string Pattern,
+    [property: JsonPropertyName("seed")] long Seed,
+    [property: JsonPropertyName("max")] int Max,
+    [property: JsonPropertyName("touchedForms")] IReadOnlyList<string> TouchedForms,
+    [property: JsonPropertyName("corpusTypesSha256")] string CorpusTypesSha256,
+    [property: JsonPropertyName("candidates")] int Candidates,
+    [property: JsonPropertyName("parsedCandidates")] int ParsedCandidates)
+{
+    /// <summary>What the sample could not use; null when nothing was dropped.</summary>
+    [JsonPropertyName("warning"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Warning { get; init; }
 }
 
 /// <summary>Identifies the words and parser for one observed Baseline batch dispatch.</summary>

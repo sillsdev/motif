@@ -9,6 +9,12 @@ public static partial class SnapshotFields
     /// <summary>The Sources of the project: the items of the "Motif Sources" list, found through the language project.</summary>
     public const string ScriptureSourceItems = "scripture/langProject/sources";
 
+    /// <summary>The Grammar Guide: the items of the "Grammar Guide" list, found through the language project.</summary>
+    public const string GuideSections = "guide/langProject/sections";
+
+    /// <summary>The project's styles: the <c>StStyle</c> objects of the language project's <c>Styles</c> collection.</summary>
+    public const string StyleDefinitions = "styles/langProject/styles";
+
     /// <summary>A <c>CmPossibility</c>'s <c>Description</c> MultiString field, which holds a Source's Context.</summary>
     public const string CmPossibilityDescription = "lists/cmPossibility/description";
 

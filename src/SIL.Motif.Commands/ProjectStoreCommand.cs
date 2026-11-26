@@ -316,6 +316,10 @@ public static class ProjectStoreCommand
             "The exception is not a recognized project-store failure."),
     };
 
+    /// <summary>The store.other-version refusal for <paramref name="version"/>, with its facts.</summary>
+    internal static Refusal VersionRefusal(MotifStoreVersionException version, string fwDataPath) =>
+        new("store.other-version", FailureReason.Refused, version.Message, VersionFacts(version, fwDataPath));
+
     private static Dictionary<string, string> VersionFacts(MotifStoreVersionException version, string fwDataPath)
     {
         var facts = new Dictionary<string, string>(StringComparer.Ordinal)
@@ -324,6 +328,7 @@ public static class ProjectStoreCommand
             [RefusalFactNames.StorePath] = version.StorePath,
         };
         if (version.Upgradable) facts[RefusalFactNames.StoreUpgradable] = "true";
+        if (version.Newer) facts[RefusalFactNames.StoreNewer] = "true";
         return facts;
     }
 
