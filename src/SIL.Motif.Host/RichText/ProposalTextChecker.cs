@@ -5,6 +5,7 @@ using CodeInline = Markdig.Syntax.Inlines.CodeInline;
 using ListBlock = Markdig.Syntax.ListBlock;
 using ParagraphBlock = Markdig.Syntax.ParagraphBlock;
 using SIL.LCModel;
+using SIL.Motif.Contract.Gdr;
 using SIL.Motif.Contract.Responses;
 using SIL.TextEditing;
 using SIL.TextEditing.Markdown;
@@ -65,7 +66,7 @@ public static class ProposalTextChecker
     public static bool NeedsProject(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
-        var parsed = MarkdownConverter.Parse(text, Options(null, null));
+        var parsed = MarkdownConverter.Parse(MaskQueryBlocks(text), Options(null, null));
         var codeSpans = CodeSpans(parsed);
         var errors = parsed.Diagnostics
             .Where(diagnostic => diagnostic.Severity == MarkdownSeverity.Error && !InCodeSpan(diagnostic, codeSpans)).ToArray();
@@ -83,7 +84,7 @@ public static class ProposalTextChecker
     {
         ArgumentNullException.ThrowIfNull(text);
         var options = Options(cache, projectName);
-        var parsed = MarkdownConverter.Parse(text, options);
+        var parsed = MarkdownConverter.Parse(MaskQueryBlocks(text), options);
         var codeSpans = CodeSpans(parsed);
         var findings = parsed.Diagnostics
             .Where(diagnostic => IsFinding(diagnostic) && !InCodeSpan(diagnostic, codeSpans))
@@ -106,6 +107,18 @@ public static class ProposalTextChecker
     {
         ArgumentNullException.ThrowIfNull(diagnostic);
         return diagnostic.Severity == MarkdownSeverity.Error ? !TidyUps.Contains(diagnostic.Id) : AlsoVisible.Contains(diagnostic.Id);
+    }
+
+    // Query and show fences are kept as written; the reader sees same-length filler, so offsets hold.
+    private static string MaskQueryBlocks(string text)
+    {
+        var spans = GuideQueryBlocks.Spans(text);
+        if (spans.Count == 0) return text;
+        var masked = text.ToCharArray();
+        foreach (var span in spans)
+            for (var i = span.Start; i < span.End; i++)
+                if (masked[i] is not ('\n' or '\r')) masked[i] = 'x';
+        return new string(masked);
     }
 
     // Where CommonMark reads a code span: its backticks are plain text (ADR 0006 rule 8), never a finding.
@@ -154,7 +167,7 @@ public static class ProposalTextChecker
         }
         var result = tidied.ToString().Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').TrimEnd();
         if (result.Length == 0 || result == text) return text;
-        var reread = MarkdownConverter.Parse(result, options);
+        var reread = MarkdownConverter.Parse(MaskQueryBlocks(result), options);
         return reread.Diagnostics.Count == parsed.Diagnostics.Count && Same(parsed.Document, reread.Document) ? result : text;
 
         bool NeedsGuid(MarkdownObject link)
