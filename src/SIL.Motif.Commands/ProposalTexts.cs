@@ -185,6 +185,7 @@ public static class ProposalTexts
             {
                 Findings = checkedText.Findings,
                 Text = written.Rationale,
+                Warnings = checkedText.Warnings,
             });
         });
     }
