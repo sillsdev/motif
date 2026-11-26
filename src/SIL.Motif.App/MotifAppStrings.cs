@@ -4281,6 +4281,7 @@ public static class MotifAppStrings
     public static string RefusalQueryNoTrialRows => Text("MotifApp.RefusalQueryNoTrialRows");
     public static string RefusalGuideQueryRunInvalid => Text("MotifApp.RefusalGuideQueryRunInvalid");
     public static string RefusalGuideQueryRunNotReadOnly => Text("MotifApp.RefusalGuideQueryRunNotReadOnly");
+    public static string RefusalGuideQueryRunPathOutsideProject => Text("MotifApp.RefusalGuideQueryRunPathOutsideProject");
     public static string ProposalQuerySaveUnsupported => Text("MotifApp.ProposalQuerySaveUnsupported");
     public static string GuideQueryRun => Text("MotifApp.GuideQueryRun");
     public static string GuideQueryEdit => Text("MotifApp.GuideQueryEdit");

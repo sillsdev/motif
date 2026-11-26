@@ -113,6 +113,7 @@ public sealed partial record WindowRefusal
         [C.QueryNoTrialRows] = () => MotifAppStrings.RefusalQueryNoTrialRows,
         [C.GuideQueryRunInvalid] = () => MotifAppStrings.RefusalGuideQueryRunInvalid,
         [C.GuideQueryRunNotReadOnly] = () => MotifAppStrings.RefusalGuideQueryRunNotReadOnly,
+        [C.GuideQueryRunPathOutsideProject] = () => MotifAppStrings.RefusalGuideQueryRunPathOutsideProject,
         [C.ProposalRationaleUnchecked] = () => MotifAppStrings.RefusalProposalRationaleUnchecked,
         [C.ProposalUnreadable] = () => MotifAppStrings.RefusalProposalUnreadable,
         [C.ApplyPreconditionFailed] = () => MotifAppStrings.RefusalApplyPreconditionFailed,
