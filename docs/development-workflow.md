@@ -182,3 +182,5 @@ bugfix discipline. It removes source-repository-specific platform, installer, le
 build-order, and ticket-shape assumptions, and adds Motif's authority, vocabulary, and `net10.0`
 constraints. The source root instructions are context, not binding on Motif. The source checkout and
 SHA are provenance, not a live dependency.
+
+- **macOS runs only in the merge queue** (owner, 2026-11-26). On a pull request the macOS jobs report a placeholder success; enqueue once the Linux job is green, and the queue group runs the real macOS build and release check.
