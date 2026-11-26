@@ -4,8 +4,6 @@ on:
   push:
     branches: ['**', '!mac-debug/**', '!linux-debug/**']
   pull_request:
-  # The merge queue's group run is where macOS release-check-macos runs; PR runs skip it.
-  merge_group:
   schedule:
     - cron: '17 3 * * *'
   workflow_dispatch:
@@ -610,7 +608,7 @@ jobs:
           retention-days: 30
 
   # Owner decision 2026-11-26: no macOS runners on PR or feature-branch runs (they starve the merge queue). macOS runs
-  # for merge-queue groups, pushes to main, the nightly schedule and manual dispatch. It is not a required check, and
+  # only for pushes to main, the nightly schedule and manual dispatch (not merge-queue groups: a second macOS runner per group). It is not a required check, and
   # a skipped non-matrix job keeps its name, so it reports as skipped on a PR.
   release-check-macos:
     needs: [nightly-change]
