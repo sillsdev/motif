@@ -24,7 +24,7 @@ public static partial class RefusalCodes
     public const string RecordImportStrictRefused = "record-import.strict-refused";
     /// <summary>Staging was asked for, but the file lowers to no operation, so no Draft was made.</summary>
     public const string RecordImportNothingToStage = "record-import.nothing-to-stage";
-    /// <summary>The file would create a record, and a record file cannot create this kind (a list item, a phonological rule), or it can plan the create but cannot yet lower it to operations.</summary>
+    /// <summary>The file would create a record, and a record file cannot create this kind (a list item, a phonological rule), or it plans the create but no operation makes it (a complex form, a notebook record).</summary>
     public const string RecordImportCreateKindNotCreatable = "record-import.create-kind-not-creatable";
     /// <summary>A new record must be a whole file, but the file's root: names part of a record.</summary>
     public const string RecordImportCreatePartial = "record-import.create-partial";
@@ -38,6 +38,10 @@ public static partial class RefusalCodes
     public const string RecordImportGuidPendingUnchecked = "record-import.guid-pending-unchecked";
     /// <summary>The new record's GUID belonged to an object the project's home has deleted.</summary>
     public const string RecordImportGuidRetired = "record-import.guid-retired";
+    /// <summary>A new entry lacks a part FieldWorks makes with one (a lexeme form with a morph type, a sense with a gloss and grammatical info, or a variant link), or its parts do not fit together.</summary>
+    public const string RecordImportCreateShape = "record-import.create-shape";
+    /// <summary>A new record's file sets a field FieldWorks computes for it.</summary>
+    public const string RecordImportCreateComputedField = "record-import.create-computed-field";
     /// <summary>The page asked for is not a page number from 1.</summary>
     public const string RecordImportInvalidPage = "record-import.invalid-page";
 }

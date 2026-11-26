@@ -35,7 +35,7 @@ public sealed record RecordImportRefusal(string Code, string? Class, string Fiel
 /// <param name="Mode"><c>dryRun</c> or <c>draft</c>.</param>
 /// <param name="RecordKind">The record kind the file names.</param>
 /// <param name="RecordId">The canonical id of the project record the file is about.</param>
-/// <param name="BaseVerdict">Whether the file's base matches a fresh export: <c>fresh</c> for any file that gets this far.</param>
+/// <param name="BaseVerdict">Whether the file's base matches a fresh export: <c>fresh</c>, <c>new</c> for a record the project does not have yet, or <c>unchanged</c>.</param>
 /// <param name="ChangeCount">The changes the file makes.</param>
 /// <param name="OperationCount">The operations those changes lowered to.</param>
 /// <param name="RefusalCount">The changes the import declines: the importer's, the lowering's, and those a scratch copy of the project refused when the operations were tried on it. A staged Draft holds none of them.</param>

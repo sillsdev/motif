@@ -28,15 +28,27 @@ public sealed class RecordCreatePlanCommandTests(PristineProjectFixture pristine
         catch (IOException) { }
     }
 
-    private static void FreshGuids(RecordObject item)
+    internal static void FreshGuids(RecordObject item, Dictionary<Guid, Guid> renamed)
     {
-        if (item.Guid is not null) item.Guid = Guid.NewGuid();
+        if (item.Guid is { } old) item.Guid = renamed[old] = Guid.NewGuid();
         foreach (var field in item.Fields)
         {
-            if (field.Value is RecordObject child) FreshGuids(child);
+            if (field.Value is RecordObject child) FreshGuids(child, renamed);
             else if (field.Value is RecordList list)
-                foreach (var entry in list.Items.OfType<RecordObject>()) FreshGuids(entry);
+                foreach (var entry in list.Items.OfType<RecordObject>()) FreshGuids(entry, renamed);
         }
+    }
+
+    /// <summary>Writes <paramref name="document"/> with every object GUID renamed, and every link to one renamed with it.</summary>
+    internal static string WriteRenamed(RecordDocument document, ProjectRecordSchemaResult schema, Guid? record = null)
+    {
+        var renamed = new Dictionary<Guid, Guid>();
+        var root = document.Data.Guid!.Value;
+        FreshGuids(document.Data, renamed);
+        if (record is { } made) { renamed[root] = made; document.Data.Guid = made; }
+        var text = RecordFileWriter.Write(document, schema.Schema);
+        foreach (var pair in renamed) text = text.Replace(pair.Key.ToString("D"), pair.Value.ToString("D"), StringComparison.OrdinalIgnoreCase);
+        return text;
     }
 
     /// <summary>A saved project with one entry, and a file that would create a second entry like it.</summary>
@@ -52,9 +64,17 @@ public sealed class RecordCreatePlanCommandTests(PristineProjectFixture pristine
             entryId = entry.Guid;
             var form = services.GetInstance<IMoStemAllomorphFactory>().Create();
             entry.LexemeFormOA = form;
+            form.MorphTypeRA = services.GetInstance<IMoMorphTypeRepository>().GetObject(MoMorphTypeTags.kguidMorphStem);
             form.Form.set_String(cache.DefaultVernWs, "zzword");
+            var pos = services.GetInstance<IPartOfSpeechFactory>().Create();
+            cache.LangProject.PartsOfSpeechOA.PossibilitiesOS.Add(pos);
+            pos.Name.set_String(cache.DefaultAnalWs, "zznoun");
+            var msa = services.GetInstance<IMoStemMsaFactory>().Create();
+            entry.MorphoSyntaxAnalysesOC.Add(msa);
+            msa.PartOfSpeechRA = pos;
             var sense = services.GetInstance<ILexSenseFactory>().Create();
             entry.SensesOS.Add(sense);
+            sense.MorphoSyntaxAnalysisRA = msa;
             sense.Gloss.set_String(cache.DefaultAnalWs, "zzgloss");
         });
         new FwDataProjectLoader().Save(cache);
@@ -65,10 +85,9 @@ public sealed class RecordCreatePlanCommandTests(PristineProjectFixture pristine
         var made = guid ?? Guid.NewGuid();
         if (!withBase) read.Document!.Base = null;
         read.Document!.Data["head-word"] = null;
-        FreshGuids(read.Document.Data);
-        read.Document.Data.Guid = made;
+        read.Document.Data["homograph-number"] = null;
         var file = Path.Combine(_folder, "create.md");
-        File.WriteAllText(file, RecordFileWriter.Write(read.Document, schema.Schema));
+        File.WriteAllText(file, WriteRenamed(read.Document, schema, made));
         return (cache.ProjectId.Path, file, made);
     }
 
@@ -94,29 +113,22 @@ public sealed class RecordCreatePlanCommandTests(PristineProjectFixture pristine
         Assert.Equal("lexicon/entry", response.RecordKind);
         Assert.Equal(CanonicalId.FromGuid(guid).Value, response.RecordId);
         Assert.True(response.ChangeCount > 0);
-        Assert.Equal(0, response.OperationCount);
-        Assert.True(response.RefusalCount >= response.ChangeCount);
+        Assert.True(response.OperationCount > 0);
+        Assert.Equal(0, response.RefusalCount);
         Assert.NotEmpty(response.Changes!);
-        Assert.All(response.Changes!, change =>
-        {
-            Assert.Equal("refused", change.Status);
-            Assert.Equal(RefusalCodes.RecordImportCreateKindNotCreatable, change.RefusalCode);
-        });
         Assert.Equal(before, Directory.EnumerateFiles(Path.GetDirectoryName(project)!, "*", SearchOption.AllDirectories).Order(StringComparer.Ordinal)
             .Select(path => path + ":" + new FileInfo(path).Length).ToList());
     }
 
     [Fact]
-    public void StagingACreateIsRefusedAsNotYetLoweredAndMakesNoDraft()
+    public void StagingACreatedEntryMakesOneDraft()
     {
         var (project, file, _) = Fixture();
 
         var outcome = RecordImportCommand.Run(new(project, file, "create-draft"));
 
-        Assert.False(outcome.Succeeded);
-        Assert.Equal(RefusalCodes.RecordImportCreateKindNotCreatable, outcome.Refusal!.Code);
-        Assert.Equal("not-yet-lowered", outcome.Refusal.Facts["reason"]);
-        Assert.Equal(0, DraftCount(project));
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        Assert.Equal(1, DraftCount(project));
     }
 
     [Fact]

@@ -53,7 +53,12 @@ public static class AuthorVariantEntryComposer
 
     /// <summary>Composes the variant without mutating the caller's project.</summary>
     public static IReadOnlyList<OperationEnvelope> Build(
-        LcmCache cache, AuthorVariantEntryIntent intent, Func<CanonicalId>? mintId = null)
+        LcmCache cache, AuthorVariantEntryIntent intent, Func<CanonicalId>? mintId = null) =>
+        Build(cache, intent, mintId, null);
+
+    /// <summary>Composes the variant with the entry, form and reference ids in <paramref name="ids"/>; <paramref name="mintId"/> makes only operation ids.</summary>
+    public static IReadOnlyList<OperationEnvelope> Build(
+        LcmCache cache, AuthorVariantEntryIntent intent, Func<CanonicalId>? mintId, NewEntryIds? ids)
     {
         ArgumentNullException.ThrowIfNull(cache);
         ArgumentNullException.ThrowIfNull(intent);
@@ -66,12 +71,12 @@ public static class AuthorVariantEntryComposer
         var source = mintId ?? (() => CanonicalId.Mint());
         var entryIntent = new AuthorLexicalEntryIntent(intent.Form, intent.FormWritingSystem, intent.MorphType, "", "",
             new LexicalEntryMsa(LexicalEntryMsaKind.Stem, default), Environments: intent.Environments);
-        var operations = AuthorLexicalEntryComposer.BuildEntry(cache, entryIntent, source, null, withSense: false, withMsa: false)
+        var operations = AuthorLexicalEntryComposer.BuildEntry(cache, entryIntent, source, null, withSense: false, withMsa: false, ids: ids)
             .ToList();
         var createEntry = operations.Single(operation => operation.Kind == LexDbEntriesOperationKinds.Create);
         var entryId = createEntry.EntityId!.Value;
         operations.Add(new OperationEnvelope(LexicalFormAuthoring.Normalize(source()), VariantRefCreateOperationKinds.Create,
-            target: entryId, entityId: LexicalFormAuthoring.Normalize(source()),
+            target: entryId, entityId: LexicalFormAuthoring.Normalize(ids?.VariantRef ?? source()),
             after: VariantIntentFlags.RefPayload(intent.Component, intent.VariantType, intent.HideMinorEntry),
             dependsOn: [new OperationDependency(createEntry.OperationId)], rationale: Rationale));
         return operations;

@@ -113,6 +113,10 @@ public static partial class RecordImportCommand
                 failed[change] = "The operations together could not be written: " + exception.Message;
         }
         if (failed.Count == 0) return full;
+        if (full.RequiredChanges is { } required && failed.Keys.Where(required.Contains).Order().FirstOrDefault(-1) is var fatal and >= 0)
+            return new([], full.Refusals, full.PlanRefusals, [], null, new RecordLoweringRefusal(RefusalCodes.RecordImportCreateShape,
+                changes[fatal].ObjectType ?? "", changes[fatal].Field, plan.RecordGuid,
+                "A new record needs the parts FieldWorks makes with it, and the Runner refused one: " + failed[fatal]));
         var refusedCodes = (full.RefusedChanges ?? new Dictionary<int, string>()).ToDictionary(pair => pair.Key, pair => pair.Value);
         foreach (var index in failed.Keys) refusedCodes[index] = RefusalCodes.RecordImportChangeRefused;
         var kept = new List<OperationEnvelope>();

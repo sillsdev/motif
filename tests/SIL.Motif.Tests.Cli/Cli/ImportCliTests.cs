@@ -152,6 +152,41 @@ public sealed class ImportCliTests : IDisposable
     }
 
     [Fact]
+    public void AFileForANewEntryIsCheckedAndThenStagedAsOneDraftWithTheProjectUnchanged()
+    {
+        var (project, file) = CreatedEntryFile.Build(_pristine);
+        var before = SHA256.HashData(File.ReadAllBytes(project));
+
+        var dry = Run("import", "--project", project, "--file", file, "--json");
+        var staged = Run("import", "--project", project, "--file", file, "--draft", "new-entry", "--json");
+
+        Assert.True(dry.ExitCode == 0, dry.Error + dry.Output);
+        var dryNode = JsonNode.Parse(dry.Output)!;
+        Assert.Equal("dryRun", dryNode["mode"]!.GetValue<string>());
+        Assert.Equal("new", dryNode["baseVerdict"]!.GetValue<string>());
+        Assert.True(dryNode["operationCount"]!.GetValue<int>() > 0);
+        Assert.Equal(0, dryNode["refusalCount"]!.GetValue<int>());
+        Assert.True(staged.ExitCode == 0, staged.Error + staged.Output);
+        Assert.Equal("draft", JsonNode.Parse(staged.Output)!["mode"]!.GetValue<string>());
+        var listed = Run("proposals", "--project", project, "--json");
+        Assert.Single(JsonNode.Parse(listed.Output)!["proposals"]!.AsArray());
+        Assert.Equal(before, SHA256.HashData(File.ReadAllBytes(project)));
+    }
+
+    [Fact]
+    public void AFileForANewEntryWithNoSenseIsRefusedWithItsCodeAndMakesNoDraft()
+    {
+        var (project, created) = CreatedEntryFile.Build(_pristine);
+        var file = CreatedEntryFile.Edited(project, created, "no-sense.md", document => document.Data["senses"] = null);
+
+        var result = Run("import", "--project", project, "--file", file, "--draft", "bad", "--json");
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains("record-import.create-shape", result.Output + result.Error, StringComparison.Ordinal);
+        Assert.Empty(JsonNode.Parse(Run("proposals", "--project", project, "--json").Output)!["proposals"]!.AsArray());
+    }
+
+    [Fact]
     public void AStaleFileIsRefusedWithItsCodeAndANonZeroExit()
     {
         var stale = File.ReadAllText(_file).Replace("base:", "base: 0000", StringComparison.Ordinal);
