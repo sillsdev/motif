@@ -131,7 +131,7 @@
         },
         {
           "name": "guide check",
-          "summary": "Checks the Grammar Guide in the current Baseline and reports problems, such as morphemes the lexi...",
+          "summary": "Checks the Grammar Guide in the current Baseline: morphemes the lexicon lacks, interlinear lines...",
           "gate": "Autonomous",
           "helpTopic": "motif help guide check"
         },

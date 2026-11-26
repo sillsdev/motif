@@ -54,4 +54,6 @@ public sealed record GdrLinkToPathRequest(string ProjectPath, string Path, Basel
 /// </summary>
 /// <param name="ProjectPath">The recorded project path.</param>
 /// <param name="ExpectedBaseline">The required Baseline identity; null accepts the current Baseline.</param>
-public sealed record GdrCheckRequest(string ProjectPath, BaselineToken? ExpectedBaseline = null);
+/// <param name="RunBlocks">Whether to run the Guide's <c>motif-query</c> blocks read-only; false lists them as skipped.</param>
+/// <param name="BlockTimeoutSeconds">The longest one block may run before it is reported as failed.</param>
+public sealed record GdrCheckRequest(string ProjectPath, BaselineToken? ExpectedBaseline = null, bool RunBlocks = true, int BlockTimeoutSeconds = 60);

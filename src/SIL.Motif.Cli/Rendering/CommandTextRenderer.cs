@@ -1733,6 +1733,25 @@ public static class CommandTextRenderer
         text.AppendLine($"Read {counts.Records} record(s), {counts.Sections} section(s), {counts.Links} link(s); " +
             $"{counts.ExamplesChecked} of {counts.Examples} example word(s) settled by stored Trial or Assessment rows.");
         foreach (var kind in response.Coverage) text.AppendLine($"  {kind.Kind}: {kind.Covered} of {kind.Objects} have a section");
+        if (response.QueryBlocks is { Count: > 0 } blocks)
+        {
+            text.AppendLine();
+            text.AppendLine($"{blocks.Count} query block(s):");
+            foreach (var block in blocks)
+            {
+                var place = block.Section is { Length: > 0 } ? $"{block.Gdr}, {block.Section}" : block.Gdr;
+                var count = block.Rows is { } rows ? $"{(block.Complete == false ? "at least " : "")}{rows.ToString("N0", CultureInfo.InvariantCulture)} row(s)" : "no count";
+                var detail = block.Status switch
+                {
+                    GdrQueryBlockStatus.Ok => count,
+                    GdrQueryBlockStatus.Skipped => "not run",
+                    GdrQueryBlockStatus.Refused => block.Code ?? "refused",
+                    GdrQueryBlockStatus.NotBuilt => "not built",
+                    _ => "failed",
+                };
+                text.AppendLine($"  {block.Id}  {place}  {block.Status}  {detail}  {block.Milliseconds.ToString("0.#", CultureInfo.InvariantCulture)} ms");
+            }
+        }
         foreach (var finding in response.Findings)
         {
             text.AppendLine();
