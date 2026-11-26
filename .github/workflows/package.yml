@@ -1,8 +1,10 @@
 name: Package install smoke
 
 on:
+  # PR branches run under pull_request only, and merge-queue branches (gh-readonly-queue/**) not at all: this
+  # workflow is not a required check, and a push run beside each PR or queue entry doubles the macOS and Windows jobs.
   push:
-    branches: ['**', '!mac-debug/**', '!linux-debug/**']
+    branches: [main]
   pull_request:
   schedule:
     - cron: '17 3 * * *'
