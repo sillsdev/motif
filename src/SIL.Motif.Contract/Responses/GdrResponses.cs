@@ -132,8 +132,13 @@ public sealed record GdrShowResponse(GdrSummary Record, IReadOnlyList<GdrParagra
 /// <param name="Fields">The fields the edit changed, such as discussion or title (ws); empty when nothing differed.</param>
 /// <param name="OperationCount">The Draft operations staged for the section.</param>
 /// <param name="Warnings">Findings from reading the Markdown that do not stop the edit.</param>
+/// <remarks><see cref="StylesCreated"/> lists the FieldWorks standard styles the Draft also creates because the project lacks them.</remarks>
 public sealed record GdrEditResponse(
-    string DraftName, string Id, string Abbreviation, IReadOnlyList<string> Fields, int OperationCount, IReadOnlyList<string> Warnings);
+    string DraftName, string Id, string Abbreviation, IReadOnlyList<string> Fields, int OperationCount, IReadOnlyList<string> Warnings)
+{
+    /// <summary>The standard styles the Draft also creates; empty when the project had them all.</summary>
+    public IReadOnlyList<string> StylesCreated { get; init; } = [];
+}
 
 /// <summary>What staging a new Grammar Guide item added to a Draft.</summary>
 /// <param name="DraftName">The Draft the item is staged in.</param>
@@ -144,6 +149,11 @@ public sealed record GdrEditResponse(
 /// <param name="Fields">The fields staged beyond the item itself, such as discussion.</param>
 /// <param name="OperationCount">The Draft operations staged for the item.</param>
 /// <param name="Warnings">Findings from reading the Markdown that do not stop the add.</param>
+/// <remarks><see cref="StylesCreated"/> lists the FieldWorks standard styles the Draft also creates because the project lacks them.</remarks>
 public sealed record GdrAddResponse(
     string DraftName, string Id, string Abbreviation, string? ParentId, bool ListCreated, IReadOnlyList<string> Fields,
-    int OperationCount, IReadOnlyList<string> Warnings);
+    int OperationCount, IReadOnlyList<string> Warnings)
+{
+    /// <summary>The standard styles the Draft also creates; empty when the project had them all.</summary>
+    public IReadOnlyList<string> StylesCreated { get; init; } = [];
+}

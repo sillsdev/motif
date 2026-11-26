@@ -1816,6 +1816,7 @@ ComputedFields	LexEntry	head-word	LexEntry.HeadWord	ClearRich	none	ComputedField
 # Handler	scripture/source/setName	(no direct field edit)
 # Handler	scripture/source/setStatus	(no direct field edit)
 # Handler	scripture/source/setVersification	(no direct field edit)
+# Handler	styles/style/create	(no direct field edit)
 # Handler	system/rnGenericRec/clearTitle	RnGenericRec	Title	ClearRich	Forbidden	-		Unspecified	False
 # Handler	system/rnGenericRec/clearType	RnGenericRec	Type	Clear	Forbidden	-		Unspecified	False
 # Handler	system/rnGenericRec/createDescription	RnGenericRec	Description	AddObject	Forbidden	-	StText	Unspecified	False

@@ -137,10 +137,11 @@ public static class GdrEditCommands
                     ? " Only motif-query and motif-show blocks may be fenced; other code blocks are not kept in a Guide."
                     : "")));
         var draftName = string.IsNullOrWhiteSpace(draft) ? null : draft.Trim();
-        var result = ProposalCommands.StageGdrMarkdown(projectPath, read.Edits!, draftName);
+        var stylesCreated = new List<string>();
+        var result = ProposalCommands.StageGdrMarkdown(projectPath, read.Edits!, draftName, stylesCreated);
         if (!result.Succeeded) return CommandOutcome<GdrEditResponse>.Refused(result.Refusal!);
         var response = result.Value!.LastOrDefault();
         return CommandOutcome<GdrEditResponse>.Success(new GdrEditResponse(response?.DraftName ?? draftName ?? PendingChanges.DraftName,
-            shown.Record.Id, shown.Record.Abbreviation, read.ChangedFields, result.Value!.Sum(item => item.Operations.Count), read.Warnings));
+            shown.Record.Id, shown.Record.Abbreviation, read.ChangedFields, result.Value!.Sum(item => item.Operations.Count), read.Warnings) { StylesCreated = stylesCreated.ToArray() });
     }
 }

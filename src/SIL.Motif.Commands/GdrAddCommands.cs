@@ -33,7 +33,7 @@ public static class GdrAddCommands
             request.Markdown, request.WritingSystem, string.IsNullOrWhiteSpace(request.Draft) ? null : request.Draft.Trim());
         return staged.Succeeded
             ? CommandOutcome<GdrAddResponse>.Success(new GdrAddResponse(staged.Value!.DraftName, staged.Value.Id, staged.Value.Abbreviation,
-                staged.Value.ParentId, staged.Value.ListCreated, staged.Value.Fields, staged.Value.OperationCount, staged.Value.Warnings))
+                staged.Value.ParentId, staged.Value.ListCreated, staged.Value.Fields, staged.Value.OperationCount, staged.Value.Warnings) { StylesCreated = staged.Value.StylesCreated ?? [] })
             : CommandOutcome<GdrAddResponse>.Refused(staged.Refusal!);
     }
 }

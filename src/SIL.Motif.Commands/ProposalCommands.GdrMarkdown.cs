@@ -34,7 +34,7 @@ public static partial class ProposalCommands
     /// <paramref name="namedDraft"/> the edit joins the pending changes; a named Draft must already exist.
     /// </summary>
     public static CommandOutcome<ComposedOperationsResponse[]> StageGdrMarkdown(string projectPath, GdrMarkdownEdits edits,
-        string? namedDraft = null) =>
+        string? namedDraft = null, List<string>? stylesCreated = null) =>
         ProjectStoreCommand.Run(projectPath, MotifProductVersion.CurrentText, (database, project) =>
         {
             var draftName = namedDraft ?? PendingChanges.DraftName;
@@ -52,6 +52,10 @@ public static partial class ProposalCommands
                                 "The record ID, parent or list position changed. Reload the Markdown.");
                         return (JsonSerializer.SerializeToElement(new { }), Array.Empty<OperationEnvelope>());
                     }));
+                steps.Add(EnsureStandardStylesStep(_ => (
+                    (edits.Paragraphs?.Changed.Select(change => change.Style) ?? []),
+                    edits.RichStrings.SelectMany(payload => payload.Runs).Concat(edits.Paragraphs?.Changed.SelectMany(change => change.Runs) ?? [])
+                        .Select(run => run.CharacterStyle)), stylesCreated ??= []));
                 foreach (var payload in edits.RichStrings)
                 {
                     var intent = new SetTextRichStringIntent(target, payload);

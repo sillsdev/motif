@@ -22,7 +22,8 @@ namespace SIL.Motif.Commands;
 
 /// <summary>What staging a new Guide item decided: the number it took and whether it also creates the list.</summary>
 public sealed record GdrSectionStaged(string Id, string Abbreviation, string? ParentId, bool ListCreated,
-    IReadOnlyList<string> Fields, int OperationCount, string DraftName, IReadOnlyList<string> Warnings);
+    IReadOnlyList<string> Fields, int OperationCount, string DraftName, IReadOnlyList<string> Warnings,
+    IReadOnlyList<string>? StylesCreated = null);
 
 public static partial class ProposalCommands
 {
@@ -38,6 +39,7 @@ public static partial class ProposalCommands
         string? number = null;
         string? parentId = null;
         var listCreated = false;
+        var stylesCreated = new List<string>();
         var entity = CanonicalId.Mint();
         var outcome = ProjectStoreCommand.Run(projectPath, MotifProductVersion.CurrentText, (database, project) =>
         {
@@ -81,6 +83,8 @@ public static partial class ProposalCommands
                     }),
                 };
                 if (!string.IsNullOrWhiteSpace(markdown))
+                    steps.Add(EnsureStandardStylesStep(cache => GdrBodyStyles(cache, entity.Value, projectPath, markdown), stylesCreated));
+                if (!string.IsNullOrWhiteSpace(markdown))
                     steps.Add(new ComposeStep(null, SetTextParagraphsComposer.Name, (cache, _) =>
                     {
                         var shown = GdrReader.Show(cache, entity.Value, Path.GetFileNameWithoutExtension(projectPath))
@@ -113,7 +117,7 @@ public static partial class ProposalCommands
         var all = outcome.Value!;
         return CommandOutcome<GdrSectionStaged>.Success(new GdrSectionStaged(entity.Value, number ?? "", parentId, listCreated,
             all.Sum(item => item.Operations.Count) > 1 ? ["discussion"] : [], all.Sum(item => item.Operations.Count),
-            all.LastOrDefault()?.DraftName ?? namedDraft ?? PendingChanges.DraftName, warnings));
+            all.LastOrDefault()?.DraftName ?? namedDraft ?? PendingChanges.DraftName, warnings, stylesCreated.ToArray()));
     }
 
     private sealed class GdrSectionRefusal(string code, string message)

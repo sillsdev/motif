@@ -14,6 +14,8 @@ motif guide add --project Koro.fwdata --title "Verb conjugation" --parent GDR-2 
 motif guide add --project Koro.fwdata --title "வினைச்சொல் இணைப்பு" --ws ta
 ```
 
+A body that uses a FieldWorks standard style the project lacks (`Normal`, `Heading 1` to `Heading 3`, `Bulleted List`, `Numbered List`, `Block Quote`, `Hyperlink`, `Table Header`, `Table Row`), as a project generated and never opened in FieldWorks does, also stages creating that style in the same Draft with FieldWorks' default properties. The result lists them as `stylesCreated`. A style that is not a standard style is still refused (`text.style-unknown`).
+
 A project with no Grammar Guide list gets the list created by the same Draft, so `guide list` reads `GDR-1` after Apply. A list still named "Grammar Design Records" is read but not written (`guide.list-not-writable`): rename it in FieldWorks. Two lists carrying either name are refused.
 
 ## First time on a project

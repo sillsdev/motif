@@ -22,7 +22,7 @@ internal static class GuideNotesOnlyProposal
     private static bool IsNote(OperationEnvelope operation) => operation.Kind == EditTextNotesOperationKinds.Set;
 
     private static bool IsGuideEdit(OperationEnvelope operation, ISet<string> guideSectionGuids) =>
-        operation.Kind == GdrSectionOperationKinds.Create || operation.Kind is CmPossibilityNameOperationKinds.SetName or CmPossibilityNameOperationKinds.ClearName or
+        operation.Kind is GdrSectionOperationKinds.Create or StyleCreateOperationKinds.Create || operation.Kind is CmPossibilityNameOperationKinds.SetName or CmPossibilityNameOperationKinds.ClearName or
             TextRichStringOperationKinds.Set or TextParagraphsOperationKinds.Set &&
         operation.Target is { } target && guideSectionGuids.Contains(OperationSlotRegistry.ByGuid(target).Value);
 }

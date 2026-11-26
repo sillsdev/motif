@@ -1704,6 +1704,8 @@ public static class CommandTextRenderer
         text.AppendLine(response.Fields.Count == 0
             ? $"{response.Abbreviation}: the Markdown matches the section, so nothing was staged in {response.DraftName}."
             : $"{response.Abbreviation}: staged {string.Join(", ", response.Fields)} in {response.DraftName} ({response.OperationCount} operation(s)).");
+        if (response.StylesCreated.Count > 0)
+            text.AppendLine($"Also creates the FieldWorks standard style(s) the project lacks: {string.Join(", ", response.StylesCreated)}.");
         foreach (var warning in response.Warnings) text.AppendLine("warning: " + warning);
         if (response.Fields.Count > 0)
             text.AppendLine($"Preview it with 'guide show {response.Abbreviation} --as-of {response.DraftName}'; Apply it with the rest of {response.DraftName}.");
@@ -1715,6 +1717,8 @@ public static class CommandTextRenderer
         var text = new StringBuilder();
         text.AppendLine($"{response.Abbreviation}: staged a new section{(response.ListCreated ? " and the Grammar Guide list" : "")} " +
             $"in {response.DraftName} ({response.OperationCount} operation(s)); its id is {response.Id}.");
+        if (response.StylesCreated.Count > 0)
+            text.AppendLine($"Also creates the FieldWorks standard style(s) the project lacks: {string.Join(", ", response.StylesCreated)}.");
         foreach (var warning in response.Warnings) text.AppendLine("warning: " + warning);
         text.AppendLine($"Apply {response.DraftName}, then run 'baseline capture --project <fwdata>'; 'guide show {response.Abbreviation}' and 'guide check' read the Baseline.");
         return text.ToString();
