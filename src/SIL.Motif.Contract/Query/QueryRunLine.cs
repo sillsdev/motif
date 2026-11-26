@@ -20,8 +20,8 @@ public sealed record QueryArguments(QueryRecord Record, string? Project, string?
 public sealed record GroupRunArguments(string Kind, string? Ending, string? Start, string? Pattern, string? ParseState,
     int? Limit, int? Page, string? AsOf, string? Fold, int? MinStem);
 
-/// <summary>One parsed run line: exactly one of <see cref="Query"/> and <see cref="Group"/> is set.</summary>
-public sealed record RunLine(string Verb, QueryArguments? Query, GroupRunArguments? Group)
+/// <summary>One parsed run line: exactly one of <see cref="Query"/>, <see cref="Group"/> and <see cref="Corpus"/> is set.</summary>
+public sealed record RunLine(string Verb, QueryArguments? Query, GroupRunArguments? Group, SIL.Motif.Contract.Query.Corpus.CorpusFormsRequest? Corpus = null)
 {
     /// <summary>The revision the line reads as of, whichever verb it is.</summary>
     public string? AsOf => Query?.AsOf ?? Group?.AsOf;
@@ -54,7 +54,7 @@ public static class QueryRunLine
         if (!TryParseRun(run, out var line, out refusal)) return false;
         if (line.Query is null)
         {
-            refusal = Invalid("A group line returns word groups, not a query record; use TryParseRun.", ("verb", line.Verb));
+            refusal = Invalid("A group or corpus line does not return a query record; use TryParseRun.", ("verb", line.Verb));
             return false;
         }
         record = line.Query.Record;
@@ -75,6 +75,10 @@ public static class QueryRunLine
         var args = tokens.Skip(2).ToArray();
         switch (verb)
         {
+            case QueryVerb when SIL.Motif.Contract.Query.Corpus.CorpusRunLine.IsCorpusLine(args):
+                if (!SIL.Motif.Contract.Query.Corpus.CorpusRunLine.TryParse(args.Skip(2).ToArray(), out var corpus, out refusal)) return false;
+                line = new RunLine(verb, null, null, corpus);
+                return true;
             case QueryVerb:
                 if (!TryParseQueryArguments(args, true, out var query, out refusal)) return false;
                 if (query.Project is not null || query.MembersFile is not null)
