@@ -42,10 +42,11 @@ public sealed class StoreUpgradeFixtureTests : IDisposable
         Create(Source, Project, schema);
         using var db = Open(Source);
         Assert.Equal(schema, Scalar(db, "PRAGMA user_version;"));
-        Assert.Equal(schema >= 56 ? 1 : 0, Scalar(db, "SELECT COUNT(*) FROM sqlite_master WHERE name = 'ProposalDifferences';"));
-        Assert.Equal(schema >= 62 ? 1 : 0, Scalar(db, "SELECT COUNT(*) FROM sqlite_master WHERE name = 'ProposalComments';"));
+        Assert.Equal(schema >= 55 ? 1 : 0, Scalar(db, "SELECT COUNT(*) FROM sqlite_master WHERE name = 'ProposalDifferences';"));
+        Assert.Equal(schema >= 56 ? 1 : 0, Scalar(db, "SELECT COUNT(*) FROM pragma_table_info('ProposalDifferences') WHERE name = 'Reference';"));
+        Assert.Equal(schema >= 75 ? 1 : 0, Scalar(db, "SELECT COUNT(*) FROM sqlite_master WHERE name = 'ProposalComments';"));
         Assert.Equal(schema >= 77 ? 1 : 0, Scalar(db, "SELECT COUNT(*) FROM sqlite_master WHERE name = 'GrammarCoverageMeasurements';"));
-        Assert.Equal(schema >= 79 ? 1 : 0, Scalar(db, "SELECT COUNT(*) FROM sqlite_master WHERE name = 'WordTypeDispositions';"));
+        Assert.Equal(0, Scalar(db, "SELECT COUNT(*) FROM sqlite_master WHERE name = 'WordTypeDispositions';"));
         if (schema is >= 50 and < 60)
             Assert.Equal(1, Scalar(db, "SELECT COUNT(*) FROM pragma_table_info('NamedSelections') WHERE name = 'PerWordStepLimit';"));
     }
@@ -92,6 +93,7 @@ public sealed class StoreUpgradeFixtureTests : IDisposable
         AssertAuthoredDataIsCarried(schema, real, backup, upgraded);
         AssertDerivedDataIsDroppedAndCounted(schema, real, upgraded);
         AssertStepEffects(schema, upgraded);
+        AssertSchemaMatchesAFreshStore(upgraded);
 
         // A second open has nothing to do and takes no further backup.
         var backups = Directory.GetDirectories(Path.Combine(_root, "real", "project.motif-backups")).Length;
@@ -121,7 +123,7 @@ public sealed class StoreUpgradeFixtureTests : IDisposable
         Assert.Contains("Jobs", report.Dropped);
         Assert.Equal(1L, report.DroppedCounts!["Jobs"]);
         Assert.Equal(0, Scalar(upgraded, "SELECT COUNT(*) FROM Jobs;"));
-        if (schema != 49)
+        if (schema >= 75)
         {
             Assert.Equal(1L, report.DroppedCounts["ProgressState"]);
             Assert.Equal(0, Scalar(upgraded, "SELECT COUNT(*) FROM ProgressState;"));
@@ -130,6 +132,12 @@ public sealed class StoreUpgradeFixtureTests : IDisposable
         {
             Assert.Equal(1L, report.DroppedCounts["GrammarCoverageMeasurements"]);
             Assert.Equal(0, Scalar(upgraded, "SELECT COUNT(*) FROM GrammarCoverageMeasurements;"));
+        }
+        if (schema == 55)
+        {
+            // Summaries before 56 cannot be read, so every one is dropped and counted.
+            Assert.False(report.Carried.ContainsKey("ProposalDifferences"));
+            Assert.Equal(2L, report.DroppedCounts["ProposalDifferences"]);
         }
         if (schema >= 56)
         {
@@ -142,10 +150,22 @@ public sealed class StoreUpgradeFixtureTests : IDisposable
         Assert.All(report.Dropped, table => Assert.False(report.Carried.ContainsKey(table), table));
     }
 
+    // Whatever the old store held, the upgraded one defines exactly the tables, columns and indexes a new store does.
+    private void AssertSchemaMatchesAFreshStore(SqliteConnection upgraded)
+    {
+        var fresh = Path.Combine(_root, "fresh", "project.motif.db");
+        Directory.CreateDirectory(Path.GetDirectoryName(fresh)!);
+        using (MotifDatabase.OpenOwned(fresh, Project, MotifSchema.CurrentSchema, new Version(1, 0))) { }
+        SqliteConnection.ClearAllPools();
+        using var current = Open(fresh);
+        Assert.Equal(NormalisedSchema(current), NormalisedSchema(upgraded));
+    }
+
     private static void AssertStepEffects(int schema, SqliteConnection upgraded)
     {
         if (schema != 49)
         {
+            // A schema 61 or older Note is folded into a Comment; a newer store's Comment is carried as it was.
             Assert.Equal(1, Scalar(upgraded, "SELECT COUNT(*) FROM ProposalComments;"));
             Assert.Equal(Note, Text(upgraded, "SELECT Text FROM ProposalComments WHERE ProposalId = 'p-open';"));
             Assert.Equal(5000, Scalar(upgraded, "SELECT PerWordParserWorkLimit FROM NamedSelections WHERE SelectionName = 'sel';"));
