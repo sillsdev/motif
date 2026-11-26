@@ -155,6 +155,43 @@ public sealed class GdrStandardStylesTests(PristineProjectFixture pristine)
         Assert.All(cache.LangProject.StylesOC, style => Assert.Same(cache.LangProject, style.Owner));
     }
 
+    [Fact]
+    public void AForgedIdentityOrAFactoryGuidUnderAnotherNameOrASecondCreateRefuses()
+    {
+        using var cache = pristine.NewScratch();
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () => cache.LangProject.StylesOC.Clear());
+        var normal = SIL.Motif.Runner.Operations.StandardStyles.Find("Normal", StyleType.kstParagraph)!;
+        SIL.Motif.Contract.Model.OperationEnvelope Create(string name, SIL.Motif.Contract.Ids.CanonicalId entity) =>
+            new(SIL.Motif.Contract.Ids.CanonicalId.Mint(), SIL.Motif.Runner.Operations.StyleCreateOperationKinds.Create, entityId: entity,
+                target: SIL.Motif.Contract.Ids.CanonicalId.FromGuid(cache.LangProject.Guid),
+                after: System.Text.Json.JsonSerializer.SerializeToElement(new { name, type = "paragraph" }));
+        var handler = SIL.Motif.Runner.Operations.StyleCreateHandler.Instance;
+        void Run(SIL.Motif.Contract.Model.OperationEnvelope operation) =>
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () => handler.ApplyAndCaptureEffect(cache, operation, []));
+
+        // A random identity for Normal is refused.
+        Assert.Throws<InvalidOperationException>(() => Run(Create("Normal", SIL.Motif.Contract.Ids.CanonicalId.Mint())));
+        // The drift footprint changes when the style appears after the Dry Run.
+        var probe = Create("Normal", SIL.Motif.Contract.Ids.CanonicalId.FromGuid(normal.Guid));
+        var before = handler.ReadCurrentFootprint(cache, probe);
+        Run(probe);
+        Assert.Empty(before.Before);
+        Assert.Contains("ref", handler.ReadCurrentFootprint(cache, probe).Before.Keys);
+        // A second Draft creating Normal is refused at Apply, so there is never a duplicate.
+        Assert.Throws<InvalidOperationException>(() => Run(Create("Normal", SIL.Motif.Contract.Ids.CanonicalId.FromGuid(normal.Guid))));
+        Assert.Single(cache.LangProject.StylesOC, style => style.Name == "Normal");
+        // Normal's factory guid held by a style of another name is refused.
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            cache.LangProject.StylesOC.Clear();
+            var held = cache.ServiceLocator.GetInstance<IStStyleFactory>().Create(cache, normal.Guid);
+            cache.LangProject.StylesOC.Add(held);
+            held.Name = "Renamed";
+            held.Type = StyleType.kstParagraph;
+        });
+        Assert.Throws<InvalidOperationException>(() => Run(Create("Normal", SIL.Motif.Contract.Ids.CanonicalId.FromGuid(normal.Guid))));
+    }
+
     private static void Applied(string path)
     {
         var runner = new InProcessRunnerLauncher(IsolatedRunner.Options(RootFor(path)));

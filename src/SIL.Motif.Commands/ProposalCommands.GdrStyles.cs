@@ -33,7 +33,7 @@ public static partial class ProposalCommands
                             name = style.Name, type = style.Type == StyleType.kstCharacter ? "character" : "paragraph",
                         });
                         operations.Add(new OperationEnvelope(CanonicalId.Mint(), StyleCreateOperationKinds.Create,
-                            entityId: style.Guid is { } guid ? CanonicalId.FromGuid(guid) : CanonicalId.Mint(),
+                            entityId: CanonicalId.FromGuid(style.Guid),
                             target: languageProject, after: after, rationale: $"Create the standard style '{style.Name}'."));
                         created.Add(style.Name);
                     }

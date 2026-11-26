@@ -39,14 +39,14 @@ public static class StyleCreateOperationKinds
 /// <summary>One standard style: what FieldWorks' stylesheet says about it, kept as data.</summary>
 /// <param name="Name">The style name, as FlexStyles.xml's <c>id</c> with the underscores read as spaces.</param>
 /// <param name="Type">Paragraph or character.</param>
-/// <param name="Guid">The factory guid FlexStyles.xml gives it, or null for a Motif table style, which FieldWorks does not define.</param>
+/// <param name="Guid">The guid every project gives it: FlexStyles.xml's factory guid, or Motif's own for a table style.</param>
 /// <param name="Context">The style's context attribute.</param>
 /// <param name="UserLevel">The style's userlevel attribute.</param>
 /// <param name="Usage">The English usage text, or null.</param>
 /// <param name="BasedOn">The style it is based on, or null.</param>
 /// <param name="Next">The style that follows it, or null; the style's own name when it follows itself.</param>
 /// <param name="Ints">The <c>(property, variation, value)</c> int text properties the stylesheet sets.</param>
-public sealed record StandardStyle(string Name, StyleType Type, Guid? Guid, ContextValues Context, int UserLevel, string? Usage,
+public sealed record StandardStyle(string Name, StyleType Type, Guid Guid, ContextValues Context, int UserLevel, string? Usage,
     string? BasedOn, string? Next, IReadOnlyList<(int Property, int Variation, int Value)> Ints);
 
 /// <summary>
@@ -58,7 +58,7 @@ public sealed record StandardStyle(string Name, StyleType Type, Guid? Guid, Cont
 /// the way <c>StylesXmlAccessor.CreateAndUpdateStyles</c> (Src/Common/Framework) reads it: factory guid, type, context,
 /// userlevel, usage, then the <c>font</c> and <c>paragraph</c> attributes as text properties, in milli-points, and BasedOn and
 /// Next in a second pass. Structure and function are the accessor's defaults for a tag with neither attribute (Undefined, Prose),
-/// and the style is built-in and unmodified. Table Header and Table Row are not in that stylesheet (ADR 0005, ADR 0006): they are
+/// and the style is built-in and unmodified. Table Header and Table Row are not in that stylesheet (ADR 0005, ADR 0006) and carry fixed Motif guids: they are
 /// paragraph styles based on Normal that follow themselves, with no properties of their own, so nothing is invented.
 /// </remarks>
 public static class StandardStyles
@@ -79,11 +79,14 @@ public static class StandardStyles
     private const int BulNum = (int)FwTextPropType.ktptBulNumScheme;
     private const int BulNumStart = (int)FwTextPropType.ktptBulNumStartAt;
 
-    private static IReadOnlyList<(int, int, int)> Heading(bool bold, bool italic, int size) =>
-    [
-        (Bold, Enum, bold ? Invert : Off), (Italic, Enum, italic ? Invert : Off), (Size, MilliPoint, size),
-        (Before, MilliPoint, 12000), (After, MilliPoint, 3000),
-    ];
+    // FlexStyles.xml writes italic only when the tag has the attribute, so Heading 1 sets none.
+    private static IReadOnlyList<(int, int, int)> Heading(bool bold, bool? italic, int size)
+    {
+        var props = new List<(int, int, int)> { (Bold, Enum, bold ? Invert : Off) };
+        if (italic is { } on) props.Add((Italic, Enum, on ? Invert : Off));
+        props.AddRange([(Size, MilliPoint, size), (Before, MilliPoint, 12000), (After, MilliPoint, 3000)]);
+        return props;
+    }
 
     /// <summary>The standard styles, in dependency order: a style's BasedOn and Next come before it, or are itself.</summary>
     public static IReadOnlyList<StandardStyle> All { get; } =
@@ -93,7 +96,7 @@ public static class StandardStyles
             "Normal is a parent style that all other paragraph styles are usually based on.", null, "Normal",
             [(Size, MilliPoint, 10000), ((int)FwTextPropType.ktptLineHeight, MilliPoint, 12000), (Before, MilliPoint, 0), (After, MilliPoint, 6000)]),
         new("Heading 1", StyleType.kstParagraph, new Guid("77997501-47D3-4574-AE1D-7300107DFB73"), ContextValues.General, 1,
-            "Major headings (1, 2, 3)", "Normal", "Normal", Heading(true, false, 14000)),
+            "Major headings (1, 2, 3)", "Normal", "Normal", Heading(true, null, 14000)),
         new("Heading 2", StyleType.kstParagraph, new Guid("3191611C-41C6-4ECF-BCD5-A5084CC3E1F2"), ContextValues.General, 1,
             "Second-level headings (1.1, 1.2, 1.3)", "Normal", "Normal", Heading(true, true, 12000)),
         new("Heading 3", StyleType.kstParagraph, new Guid("366E9470-26F7-4BDF-86E4-F829784C3113"), ContextValues.General, 1,
@@ -115,8 +118,8 @@ public static class StandardStyles
             "Links to other material via URLs", null, null,
             [((int)FwTextPropType.ktptForeColor, Default, 0xFF0000), ((int)FwTextPropType.ktptUnderColor, Default, 0xFF0000),
                 ((int)FwTextPropType.ktptUnderline, Enum, (int)FwUnderlineType.kuntSingle)]),
-        new("Table Header", StyleType.kstParagraph, null, ContextValues.General, 1, null, "Normal", "Table Header", []),
-        new("Table Row", StyleType.kstParagraph, null, ContextValues.General, 1, null, "Normal", "Table Row", []),
+        new("Table Header", StyleType.kstParagraph, new Guid("318fcbf8-cdaf-4337-9d4d-64e21e11db07"), ContextValues.General, 1, null, "Normal", "Table Header", []),
+        new("Table Row", StyleType.kstParagraph, new Guid("336c3572-4997-4131-9a39-100c19a0e203"), ContextValues.General, 1, null, "Normal", "Table Row", []),
     ];
 
     /// <summary>The standard style of that name and type, or null when the name is not a standard style.</summary>
@@ -154,6 +157,8 @@ internal sealed class StyleCreateHandler : IOperationHandler
             throw new InvalidOperationException($"'{Kind}': storage GUID overrides are not supported for this create.");
         var entityId = operation.EntityId ?? throw new InvalidOperationException($"'{Kind}' requires entityId.");
         var definition = Definition(operation);
+        if (entityId.ToGuid() != definition.Guid)
+            throw new InvalidOperationException($"'{Kind}': the style '{definition.Name}' must carry its standard identity {definition.Guid}.");
         var (id, _) = TargetResolution.Resolve<ILangProject>(cache, operation, Kind);
         CreateIdentity.RequireFresh(cache, entityId, Kind, "StStyle");
         if (Find(cache, definition.Name, definition.Type) is not null)
