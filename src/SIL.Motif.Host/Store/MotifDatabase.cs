@@ -151,6 +151,8 @@ public sealed partial class MotifDatabase : IDisposable
                 if (reason == StoreBackups.PreUpgrade) RefuseOtherProjectOrNewerWorker(path, project, workerVersion);
                 return StoreBackups.WriteHeldExclusively(project, path, reason, timeProvider);
             },
+            Retain = safety => StoreBackupRetention.Prune(
+                Path.GetDirectoryName(safety.Directory)!, StoreBackups.PreUpgrade, safety.Directory, supportedSchema),
             BeforeOpen = connection =>
             {
                 var metadata = MotifSchema.ReadMetadata(connection);

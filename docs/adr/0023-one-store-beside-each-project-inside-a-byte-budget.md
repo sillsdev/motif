@@ -108,7 +108,11 @@ declared in one table keyed on the store's `user_version`, and the original is n
   restore a pre-upgrade backup.
 - A backup precedes every upgrade and every `store reset`, and `store restore` is the way back. The receipt
   names the backup; the last three pre-upgrade backups are kept, and the newest is never deleted automatically.
-- The machine store is rebuilt empty after a backup.
+  The cap is hard: three folders and 4 GiB together, oldest evicted first, after the upgrade has succeeded. Never
+  evicted are the backup the upgrade just made, the newest backup with a receipt, and any backup of a newer store;
+  folders from `store backup`, reset or restore are not pre-upgrade backups and are never touched.
+- The machine store is rebuilt empty after a backup, taken to `motif.db-backups` beside `motif.db` under the same
+  caps. A newer machine store is refused and left alone.
 - MCP upgrades too, so installing a newer Motif does not stop an open MCP client. Its first tool result says the
   store was upgraded, names the backup and lists what was dropped. A failed upgrade changes nothing and names
   the backup and `motif store restore`.

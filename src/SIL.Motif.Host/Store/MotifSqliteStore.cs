@@ -63,6 +63,21 @@ internal sealed class MotifSqliteStoreDescriptor
     /// <c>pre-reset</c>), refusing a store that is not this project's before any file is written.
     /// </summary>
     public Func<string, StoreSafetyBackup>? BackUp { get; init; }
+
+    /// <summary>
+    /// Runs after an upgrade (or rebuild) has finished, with the backup it made, to keep the backups within their caps.
+    /// A failure here never fails the upgrade.
+    /// </summary>
+    public Action<StoreSafetyBackup>? Retain { get; init; }
+
+    /// <summary>
+    /// When true, an existing store of an older schema is not upgraded but rebuilt empty after <see cref="BackUp"/>
+    /// has taken its backup (the machine store: it holds only records that are recomputed). A newer store is still refused.
+    /// </summary>
+    public bool RebuildOlder { get; init; }
+
+    /// <summary>What a rebuilt store is called in the notice that says it was rebuilt.</summary>
+    public string NoticeName { get; init; } = "project store";
 }
 
 /// <summary>
@@ -129,6 +144,7 @@ internal sealed class MotifSqliteStore : IDisposable
         try
         {
             if (descriptor.Upgrade is not null) PrepareUpgrade(fullPath, descriptor, ownershipPatience ?? DefaultOwnershipPatience);
+            else if (descriptor.RebuildOlder) PrepareRebuild(fullPath, descriptor, ownershipPatience ?? DefaultOwnershipPatience);
             useLease = AcquireUseLease(fullPath, ownershipPatience ?? DefaultOwnershipPatience);
             // This orders first creation without excluding other readers.
             if (NeedsCreation(fullPath))
@@ -327,6 +343,98 @@ internal sealed class MotifSqliteStore : IDisposable
             throw new MotifStoreUpgradeFailedException(path, MotifStoreUpgradeFailedException.SwapStep, schema, next, safety, exception);
         }
         Announce(path, built);
+        Retain(descriptor, safety);
+    }
+
+    // A failure to tidy old backups must never undo or hide an upgrade that finished.
+    private static void Retain(MotifSqliteStoreDescriptor descriptor, StoreSafetyBackup safety)
+    {
+        try { descriptor.Retain?.Invoke(safety); }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException) { }
+    }
+
+    // Backs up and removes an older store under both locks; the open that follows creates it empty.
+    private static void PrepareRebuild(string path, MotifSqliteStoreDescriptor descriptor, TimeSpan patience)
+    {
+        if (StoreUpgradeContext.IsSuppressed || !NeedsRebuild(path, descriptor, out _)) return;
+        using var ownership = AcquireOwnership(path, patience);
+        var deadline = DateTime.UtcNow.Add(patience);
+        FileStream lease;
+        while (true)
+        {
+            try { lease = AcquireExclusiveUseLease(path); break; }
+            catch (MotifStoreLockException) when (DateTime.UtcNow < deadline) { Thread.Sleep(25); }
+        }
+        using (lease)
+        {
+            if (!NeedsRebuild(path, descriptor, out var schema)) return;
+            var next = descriptor.CurrentSchema;
+            var dropped = CountRows(path);
+            StoreSafetyBackup safety;
+            try { safety = descriptor.BackUp!(StoreBackups.PreUpgrade); }
+            catch (Exception exception) when (IsUpgradeFailure(exception))
+            {
+                throw new MotifStoreUpgradeFailedException(path, MotifStoreUpgradeFailedException.BackupStep, schema, next, null, exception);
+            }
+            Step("backed-up");
+            SqliteConnection.ClearAllPools();
+            try
+            {
+                foreach (var suffix in new[] { "-wal", "-shm", "-journal", "" })
+                    if (File.Exists(path + suffix)) File.Delete(path + suffix);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                throw new MotifStoreUpgradeFailedException(path, MotifStoreUpgradeFailedException.SwapStep, schema, next, safety, exception);
+            }
+            Step("rebuilt");
+            StoreUpgradeNotices.Record(new StoreUpgradeNotice(path, schema, next, safety.Directory, safety.ReceiptPath, dropped,
+                descriptor.NoticeName));
+            Retain(descriptor, safety);
+        }
+    }
+
+    // True for an older store of this kind; a newer, empty, foreign or broken file is left for Open to refuse.
+    private static bool NeedsRebuild(string path, MotifSqliteStoreDescriptor descriptor, out int schema)
+    {
+        schema = 0;
+        if (!File.Exists(path)) return false;
+        try
+        {
+            using var connection = OpenReadOnly(path);
+            schema = PragmaInt(connection, "user_version");
+            return schema > 0 && schema < descriptor.CurrentSchema &&
+                PragmaInt(connection, "application_id") == descriptor.ApplicationId;
+        }
+        catch (SqliteException)
+        {
+            return false;
+        }
+    }
+
+    private static Dictionary<string, long> CountRows(string path)
+    {
+        var counts = new Dictionary<string, long>(StringComparer.Ordinal);
+        try
+        {
+            using var connection = OpenReadOnly(path);
+            var tables = new List<string>();
+            using (var list = connection.CreateCommand())
+            {
+                list.CommandText = "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%';";
+                using var reader = list.ExecuteReader();
+                while (reader.Read()) tables.Add(reader.GetString(0));
+            }
+            foreach (var table in tables)
+            {
+                using var count = connection.CreateCommand();
+                var quoted = "\"" + table.Replace("\"", "\"\"") + "\"";
+                count.CommandText = "SELECT COUNT(*) FROM " + quoted + ";";
+                counts[table] = Convert.ToInt64(count.ExecuteScalar(), System.Globalization.CultureInfo.InvariantCulture);
+            }
+        }
+        catch (SqliteException) { }
+        return counts;
     }
 
     /// <summary>Where an upgrade or reset is, for tests that stop it between steps as a crash would.</summary>
