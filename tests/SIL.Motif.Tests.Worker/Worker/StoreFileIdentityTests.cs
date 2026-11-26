@@ -135,4 +135,75 @@ public sealed class StoreFileIdentityTests
             Directory.Delete(root, recursive: true);
         }
     }
+
+    [Fact]
+    public void AStoreWhoseWriteLockIsHeldOpensWithoutAnIdInsteadOfFailing()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "motif-store-id-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var path = Path.Combine(root, "store.motif");
+            var project = new ProjectLocator(Path.Combine(root, "p.fwdata"), "project-guid");
+            using (MotifDatabase.OpenOwned(path, project, MotifSchema.CurrentSchema, new Version(1, 0))) { }
+            SqliteConnection.ClearAllPools();
+            using var holder = new SqliteConnection($"Data Source={path};Pooling=False");
+            holder.Open();
+            Exec(holder, "DROP TABLE MotifStoreIdentity;");
+            Exec(holder, "BEGIN IMMEDIATE;");
+            using var second = new SqliteConnection($"Data Source={path};Pooling=False");
+            second.Open();
+
+            var started = System.Diagnostics.Stopwatch.StartNew();
+            MotifSchema.EnsureStoreId(second);
+
+            Assert.True(started.Elapsed < TimeSpan.FromSeconds(10));
+            Exec(holder, "COMMIT;");
+            Assert.Null(MotifDatabase.TryReadStoreId(path));
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void AReadOnlyOpenOfAStoreWithoutAnIdLeavesTheFileByteForByteUnwritten()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "motif-store-id-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var path = Path.Combine(root, "store.motif");
+            var project = new ProjectLocator(Path.Combine(root, "p.fwdata"), "project-guid");
+            using (MotifDatabase.OpenOwned(path, project, MotifSchema.CurrentSchema, new Version(1, 0))) { }
+            SqliteConnection.ClearAllPools();
+            using (var old = new SqliteConnection($"Data Source={path};Pooling=False"))
+            {
+                old.Open();
+                Exec(old, "DROP TABLE MotifStoreIdentity;");
+            }
+            SqliteConnection.ClearAllPools();
+            var before = File.ReadAllBytes(path);
+
+            MotifDatabase.ReadExisting(path, project, (_, _) => 0);
+            SqliteConnection.ClearAllPools();
+
+            Assert.Equal(before, File.ReadAllBytes(path));
+            Assert.Null(MotifDatabase.TryReadStoreId(path));
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    private static void Exec(SqliteConnection connection, string sql)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        command.ExecuteNonQuery();
+    }
 }

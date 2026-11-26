@@ -77,8 +77,17 @@ public static class MotifSchema
         command.ExecuteNonQuery();
     }
 
-    /// <summary>Gives a store opened for writing its id if it has none; the id is then never changed.</summary>
+    /// <summary>
+    /// Gives a store opened for writing its id if it has none; the id is then never changed. A store that is busy,
+    /// locked or read-only for the moment is left without one and the open continues, as it did before the id existed.
+    /// </summary>
     internal static void EnsureStoreId(SqliteConnection connection)
+    {
+        try { EnsureStoreIdCore(connection); }
+        catch (SqliteException exception) when (exception.SqliteErrorCode is 5 or 6 or 8) { }
+    }
+
+    private static void EnsureStoreIdCore(SqliteConnection connection)
     {
         using (var probe = connection.CreateCommand())
         {
@@ -89,7 +98,8 @@ public static class MotifSchema
                 if (Convert.ToInt32(probe.ExecuteScalar(), CultureInfo.InvariantCulture) == 1) return;
             }
         }
-        Run(connection, "BEGIN IMMEDIATE;");
+        // A held write lock should cost a second at most, not the connection's usual patience.
+        Run(connection, "BEGIN IMMEDIATE;", timeoutSeconds: 1);
         try
         {
             Run(connection, StoreIdentityDdl);
@@ -104,9 +114,10 @@ public static class MotifSchema
         }
     }
 
-    private static void Run(SqliteConnection connection, string sql)
+    private static void Run(SqliteConnection connection, string sql, int? timeoutSeconds = null)
     {
         using var command = connection.CreateCommand();
+        if (timeoutSeconds is { } seconds) command.CommandTimeout = seconds;
         command.CommandText = sql;
         command.ExecuteNonQuery();
     }
