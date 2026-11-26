@@ -46,12 +46,14 @@ public static class StyleCreateOperationKinds
 /// <param name="BasedOn">The style it is based on, or null.</param>
 /// <param name="Next">The style that follows it, or null; the style's own name when it follows itself.</param>
 /// <param name="Ints">The <c>(property, variation, value)</c> int text properties the stylesheet sets.</param>
+/// <param name="Strings">The <c>(property, value)</c> string text properties the style sets, such as a font family; none when null.</param>
 public sealed record StandardStyle(string Name, StyleType Type, Guid Guid, ContextValues Context, int UserLevel, string? Usage,
-    string? BasedOn, string? Next, IReadOnlyList<(int Property, int Variation, int Value)> Ints);
+    string? BasedOn, string? Next, IReadOnlyList<(int Property, int Variation, int Value)> Ints,
+    IReadOnlyList<(int Property, string Value)>? Strings = null);
 
 /// <summary>
 /// The FieldWorks standard styles the Grammar Guide Markdown profile uses (ADR 0006): Normal, Heading 1 to 3, Bulleted List,
-/// Numbered List, Block Quote and Hyperlink, and Motif's Table Header and Table Row.
+/// Numbered List, Block Quote and Hyperlink, and Motif's Table Header, Table Row and Code.
 /// </summary>
 /// <remarks>
 /// Every value of the first eight is read from FieldWorks' own stylesheet, <c>DistFiles/Language Explorer/FlexStyles.xml</c>,
@@ -118,6 +120,10 @@ public static class StandardStyles
             "Links to other material via URLs", null, null,
             [((int)FwTextPropType.ktptForeColor, Default, 0xFF0000), ((int)FwTextPropType.ktptUnderColor, Default, 0xFF0000),
                 ((int)FwTextPropType.ktptUnderline, Enum, (int)FwUnderlineType.kuntSingle)]),
+        // Not in FlexStyles.xml: what a Guide code span is read as; Motif's own guid, the default monospace font.
+        new("Code", StyleType.kstCharacter, new Guid("b7556fbc-fcf1-433f-9480-83e98267cf58"), ContextValues.General, 1,
+            "Code, command names and identifiers in running text", null, null, [],
+            [((int)FwTextPropType.ktptFontFamily, "<default monospace>")]),
         new("Table Header", StyleType.kstParagraph, new Guid("318fcbf8-cdaf-4337-9d4d-64e21e11db07"), ContextValues.General, 1, null, "Normal", "Table Header", []),
         new("Table Row", StyleType.kstParagraph, new Guid("336c3572-4997-4131-9a39-100c19a0e203"), ContextValues.General, 1, null, "Normal", "Table Row", []),
     ];
@@ -179,6 +185,7 @@ internal sealed class StyleCreateHandler : IOperationHandler
             style.Usage.set_String(en, TsStringUtils.MakeString(definition.Usage, en));
         var props = TsStringUtils.MakePropsBldr();
         foreach (var (property, variation, value) in definition.Ints) props.SetIntPropValues(property, variation, value);
+        foreach (var (property, value) in definition.Strings ?? []) props.SetStrPropValue(property, value);
         style.Rules = props.GetTextProps();
         if (definition.BasedOn is not null) style.BasedOnRA = Find(cache, definition.BasedOn, definition.Type) ?? throw Missing(definition.BasedOn);
         if (definition.Next is not null)

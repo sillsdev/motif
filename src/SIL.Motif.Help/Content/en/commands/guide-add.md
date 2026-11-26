@@ -7,14 +7,14 @@ The new item takes the next permanent number: one more than the largest `GDR-n` 
 - `--parent <GDR-n>` puts it under that part or section. Without it the item goes at the top of the list (a Guide part).
 - `--after <GDR-n>` puts it right after that sibling. Without it the item goes last under its parent.
 - `--ws <tag>` is the title's writing system, any writing system of the project, analysis or vernacular, for example `ta`; an unknown tag is refused (`guide.title-invalid`). The default is the project's default analysis writing system. The title is plain text and is stored as given.
-- `--from-file <file.md>` (or `-` for standard input) is the body: FieldWorks Markdown in the ADR 0005 template, `### How it works`, `### Examples`, `### Grouping commands`, `### Exceptions`, `### Decisions`, `### Open questions`, `### In the grammar`. Give the body only, with no front matter. Fenced `motif-query` and `motif-show` blocks cannot be added with this command, as with `guide edit`. A body that cannot be read stages nothing (`guide.markdown-invalid`).
+- `--from-file <file.md>` (or `-` for standard input) is the body: FieldWorks Markdown in the ADR 0005 template, `### How it works`, `### Examples`, `### Grouping commands`, `### Exceptions`, `### Decisions`, `### Open questions`, `### In the grammar`. Give the body only, with no front matter. Fenced `motif-query` and `motif-show` blocks cannot be added with this command, as with `guide edit`. An inline code span in backticks, such as an object id, a command name or a pattern, is accepted: it is the `Code` character style, its content is literal (`_`, `*` and `[` need no escaping) and `guide show` writes it back as a backtick span. A literal backtick is written with a backslash before it. A body that cannot be read stages nothing (`guide.markdown-invalid`).
 
 ```text
 motif guide add --project Koro.fwdata --title "Verb conjugation" --parent GDR-2 --after GDR-5 --from-file body.md
 motif guide add --project Koro.fwdata --title "வினைச்சொல் இணைப்பு" --ws ta
 ```
 
-A body that uses a FieldWorks standard style the project lacks (`Normal`, `Heading 1` to `Heading 3`, `Bulleted List`, `Numbered List`, `Block Quote`, `Hyperlink`, `Table Header`, `Table Row`), as a project generated and never opened in FieldWorks does, also stages creating that style in the same Draft with FieldWorks' default properties. The result lists them as `stylesCreated`. A style that is not a standard style is still refused (`text.style-unknown`).
+A body that uses a FieldWorks standard style the project lacks (`Normal`, `Heading 1` to `Heading 3`, `Bulleted List`, `Numbered List`, `Block Quote`, `Hyperlink`, `Table Header`, `Table Row`, and `Code` for a code span), as a project generated and never opened in FieldWorks does, also stages creating that style in the same Draft with FieldWorks' default properties. The result lists them as `stylesCreated`. A style that is not a standard style is still refused (`text.style-unknown`).
 
 A project with no Grammar Guide list gets the list created by the same Draft, so `guide list` reads `GDR-1` after Apply. A list still named "Grammar Design Records" is read but not written (`guide.list-not-writable`): rename it in FieldWorks. Two lists carrying either name are refused.
 

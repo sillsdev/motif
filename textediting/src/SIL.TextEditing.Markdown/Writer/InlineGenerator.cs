@@ -243,6 +243,7 @@ namespace SIL.TextEditing.Markdown.Writer
 
         void WriteTextRun(Run run, int stars)
         {
+            if (stars == 0 && CodeSpan(run) is { } span) { Syn(span); return; }
             var items = RunItems(run, stars != 0 && (stars & 2) != 0, stars != 0 && (stars & 1) != 0, null, generic: false);
             if (stars != 0)
             {
@@ -256,6 +257,32 @@ namespace SIL.TextEditing.Markdown.Writer
             OpenScope();
             Text(run.Text);
             CloseScope("]" + Block(items));
+        }
+
+        /// <summary>The code span a run is written as, or null: the host names a code style, the run has only that style in the default analysis writing system, and
+        /// its text reads back the same inside backticks in any reader (printable characters, single interior spaces, no backtick at either end, no
+        /// <c>|</c> in a table). Anything else keeps the span form <c>[x]{custom-style=...}</c>.</summary>
+        string? CodeSpan(Run run)
+        {
+            string? style = Names.Code;
+            if (style == null || _mode.Safe || _mode.Numeric || run.ObjData != null || run.Ws != _analysis || run.Text.Length == 0) return null;
+            var bag = run.Props.Clone();
+            if (!bag.StrProps.TryGetValue(TextPropertyNumbers.NamedStyle, out string? held) || held != style) return null;
+            bag.StrProps.Remove(TextPropertyNumbers.NamedStyle);
+            if (PropertyKeys.ToItems(bag).Count != 0) return null;
+            string text = run.Text;
+            if (text[0] == ' ' || text[text.Length - 1] == ' ' || text[0] == '`' || text[text.Length - 1] == '`') return null;
+            int longest = 0, current = 0;
+            for (int i = 0; i < text.Length; i++)
+            {
+                char c = text[i];
+                if (c == ' ' ? i > 0 && text[i - 1] == ' ' : c < ' ' || c >= '\x7F' && c <= '\x9F' || char.IsWhiteSpace(c) || char.IsSurrogate(c)
+                    || c == Chars.ObjectReplacement || c == Chars.ByteOrderMark || Chars.IsInvisible(c) || _context.InTable && c == '|') return null;
+                current = c == '`' ? current + 1 : 0;
+                if (current > longest) longest = current;
+            }
+            string fence = new string('`', longest + 1);
+            return fence + text + fence;
         }
 
         int _openScope;
