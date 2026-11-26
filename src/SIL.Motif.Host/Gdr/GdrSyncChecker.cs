@@ -27,6 +27,13 @@ public interface IGdrExampleEvidence
 /// <summary>A passed hypothesis's link to a Guide section, from the ledger (ADR 0011).</summary>
 public sealed record GdrLedgerLink(string HypothesisId, string GdrId, string? Section);
 
+/// <summary>One <c>motif-query</c> block of the Guide, with the section it sits in and the problems the block parser found in it.</summary>
+/// <param name="Gdr">The <c>GDR-n</c> of the record.</param>
+/// <param name="Section">The heading it sits under; null before the first heading.</param>
+/// <param name="Query">The block; null for a problem that belongs to no query block (a <c>motif-show</c> naming no query).</param>
+/// <param name="Diagnostics">What the parser reported about this block.</param>
+public sealed record GdrQueryBlockSource(string Gdr, string? Section, GuideQueryDefinition? Query, IReadOnlyList<GuideBlockDiagnostic> Diagnostics);
+
 /// <summary>
 /// The Guide check (ADR 0005). One pass over the grammar's rules and affix processes, one over the records' paragraphs
 /// and runs, one batched read of example words: O(rules + sections + examples). It never opens a unit of work and never parses.
@@ -39,6 +46,29 @@ public static class GdrSyncChecker
 
     private static readonly char[] TrimmedPunctuation =
         ['.', ',', ';', ':', '!', '?', '(', ')', '[', ']', '{', '}', '"', '\'', '‘', '’', '“', '”', '/', '\\', '|', '<', '>'];
+
+    /// <summary>
+    /// The <c>motif-query</c> blocks of every section, in Guide order, each with the block parser's problems. It reads text only: nothing
+    /// is run. A <c>motif-show</c> problem with no query block comes back as a source with no query.
+    /// </summary>
+    public static IReadOnlyList<GdrQueryBlockSource> ReadQueryBlocks(LcmCache cache)
+    {
+        ArgumentNullException.ThrowIfNull(cache);
+        var vernacular = cache.ServiceLocator.WritingSystems.VernacularWritingSystems.Select(ws => ws.Handle).ToHashSet();
+        var sources = new List<GdrQueryBlockSource>();
+        foreach (var record in GdrReader.ReadStructure(cache))
+            foreach (var section in Sections(record, vernacular))
+            {
+                if (!section.Texts.Any(text => text.Contains("```", StringComparison.Ordinal))) continue;
+                var blocks = GuideQueryBlocks.Parse(string.Join("\n", section.Texts));
+                var place = section.Title.Length == 0 ? null : section.Title;
+                foreach (var query in blocks.Queries)
+                    sources.Add(new GdrQueryBlockSource(section.Gdr, place, query, [.. blocks.Diagnostics.Where(d => d.Span == query.Span)]));
+                var orphans = blocks.Diagnostics.Where(d => !blocks.Queries.Any(query => query.Span == d.Span)).ToArray();
+                if (orphans.Length > 0) sources.Add(new GdrQueryBlockSource(section.Gdr, place, null, orphans));
+            }
+        return sources;
+    }
 
     /// <summary>Checks the records of <paramref name="cache"/>.</summary>
     public static GdrCheckResponse Check(LcmCache cache, IGdrExampleEvidence evidence, IReadOnlyList<GdrLedgerLink> ledger)
