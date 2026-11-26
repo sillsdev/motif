@@ -69,6 +69,9 @@ public sealed class MachinePanGlossQueue : IDisposable
     /// <summary>Observes each job object the moment a job is admitted into it. Set only by tests.</summary>
     internal Action<PanGlossContainmentJob>? JobAdmitted { get; set; }
 
+    /// <summary>Creates each admitted job's containment object. Set only by tests; defaults to the platform job.</summary>
+    internal Func<PanGlossContainmentJob>? JobFactory { get; set; }
+
     /// <summary>Observes the first failed slot acquisition for each job.</summary>
     internal Action<string>? SlotWaitStarted { get; set; }
 
@@ -171,12 +174,13 @@ public sealed class MachinePanGlossQueue : IDisposable
     {
         try
         {
-            using var cpuJob = PanGlossContainment.CreateJob();
+            using var cpuJob = (JobFactory ?? PanGlossContainment.CreateJob)();
             JobAdmitted?.Invoke(cpuJob);
             await job.ExecuteAsync(cpuJob, linked.Token).ConfigureAwait(false);
         }
-        catch (PanGlossMemoryLimitSettingException exception)
+        catch (Exception exception)
         {
+            // The caller still awaits this job, so any failure after admission must reach it.
             job.Fail(exception);
         }
         finally
