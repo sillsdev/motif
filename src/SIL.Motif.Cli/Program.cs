@@ -3391,6 +3391,18 @@ try
         case "store":
             if (positionals.Count == 1 && positionals[0] == "upgrade")
             {
+                if (flags.TryGetValue("project", out var upgradeDryRunProject) && flags.ContainsKey("dry-run") &&
+                    flags.Keys.All(key => key is "project" or "dry-run" or "json"))
+                {
+                    var upgradeDryRun = ProjectStoreCommand.DryRunUpgrade(upgradeDryRunProject, CliProductVersion());
+                    if (!upgradeDryRun.Succeeded)
+                    {
+                        result = RenderCommand(upgradeDryRun);
+                        break;
+                    }
+                    output.WriteLine(upgradeDryRun.Value);
+                    return 0;
+                }
                 if (flags.TryGetValue("source", out var upgradeSource) && flags.TryGetValue("out", out var upgradeOutput) &&
                     !flags.ContainsKey("project") && flags.Keys.All(key => key is "source" or "out" or "json"))
                 {

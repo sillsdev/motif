@@ -79,7 +79,7 @@
   },
   "store upgrade": {
     "title": "Upgrade project store",
-    "description": "Carries authored work into the current store and keeps a backup of the old store. Computed results are discarded and can be recreated.",
+    "description": "Carries authored work into the current store and keeps a backup of the old store. Computed results are discarded and can be recreated. --dry-run reports what an upgrade would carry and drop without changing the store.",
     "source": "Hand-written from the project store upgrade behavior."
   },
   "store relocate": {
