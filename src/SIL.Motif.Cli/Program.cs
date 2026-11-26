@@ -277,6 +277,26 @@ try
         }
     }
 
+    CommandOutcome<RecordImportResponse> WriteImportReport(CommandOutcome<RecordImportResponse> outcome, string? reportPath)
+    {
+        if (!outcome.Succeeded || outcome.Value?.ReportRows is not { } rows || reportPath is null) return outcome;
+        try
+        {
+            using var writer = new StreamWriter(reportPath, append: false, new UTF8Encoding(false)) { NewLine = "\n" };
+            foreach (var row in rows) writer.WriteLine(ProjectionJson.SerializeLine(row));
+            return outcome;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            // A staged Draft stays whether or not the report could be written, so the refusal names it.
+            var draft = outcome.Value.DraftName;
+            return CommandOutcome<RecordImportResponse>.Refused(new Refusal(RefusalCodes.RecordExportOutputUnwritable,
+                FailureReason.InvalidArgument,
+                "The report file could not be written" + (draft is null ? "." : "; Draft '" + draft + "' was staged."),
+                new Dictionary<string, string> { ["file"] = Path.GetFileName(reportPath) }));
+        }
+    }
+
     CommandOutcome<DryRunProjection> WriteDryRunEffectsArtifact(
         CommandOutcome<DryRunProjection> outcome, string projectPath, string jobId)
     {
@@ -433,11 +453,12 @@ try
             if (flags.TryGetValue("page", out var importPageText) &&
                 (!int.TryParse(importPageText, NumberStyles.None, CultureInfo.InvariantCulture, out importPage) || importPage < 1))
                 return Usage(UsageLineFor("import"), asJson);
-            result = RenderCommand(RecordImportCommand.Run(new RecordImportRequest(
+            result = RenderCommand(WriteImportReport(RecordImportCommand.Run(new RecordImportRequest(
                 importProject, flags.GetValueOrDefault("file"), flags.GetValueOrDefault("draft"), importPage,
                 flags.ContainsKey("strict"), flags.GetValueOrDefault("dir"), flags.ContainsKey("page") ? true : null,
                 flags.ContainsKey("refused-only") ? true : null, flags.GetValueOrDefault("report"),
-                flags.GetValueOrDefault("source"), flags.GetValueOrDefault("revision"), flags.GetValueOrDefault("licence"))));
+                flags.GetValueOrDefault("source"), flags.GetValueOrDefault("revision"), flags.GetValueOrDefault("licence"))),
+                flags.GetValueOrDefault("report")));
             break;
 
         case "record":
