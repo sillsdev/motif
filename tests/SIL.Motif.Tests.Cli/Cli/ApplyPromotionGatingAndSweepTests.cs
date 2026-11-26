@@ -823,6 +823,7 @@ public sealed class ApplyPromotionGatingAndSweepTests
         Assert.False(refused.Succeeded);
         Assert.Equal("apply.receipt-stale", refused.Refusal!.Code);
         Assert.Contains("FieldWorks data changed", refused.Refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("motif baseline capture --project", refused.Refusal.Message, StringComparison.Ordinal);
         Assert.Equal("proposed", GetRecord(proposalId).Status);
     }
 
