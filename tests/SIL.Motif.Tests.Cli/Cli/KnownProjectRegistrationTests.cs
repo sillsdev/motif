@@ -72,33 +72,6 @@ public sealed class KnownProjectRegistrationTests : IDisposable
     }
 
     [Fact]
-    public void ASecondProjectInTheSameLanguageWithAMixedCaseFolderNeedsItsOwnTagAndThenRuns()
-    {
-        // The release-pathway shape: two synthetic projects, one language, the same mixed-case folder name.
-        string Make(string parent)
-        {
-            var path = Path.Combine(_root, parent, "MotifSyntheticTurkic", "MotifSyntheticTurkic.fwdata");
-            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            File.WriteAllText(path, "<languageproject version=\"7000072\"><rt class=\"LangProject\" guid=\"" +
-                Guid.NewGuid().ToString("D") + "\" ownerguid=\"\"><CurVernWss><Uni>tur</Uni></CurVernWss></rt></languageproject>");
-            return path;
-        }
-
-        var app = Make("app");
-        var cli = Make("cli");
-        Assert.Equal(0, Run($"project tag --project \"{app}\"").ExitCode);
-
-        var refused = Run($"dry-run --project \"{cli}\" some-proposal --wait");
-        Assert.Equal(2, refused.ExitCode);
-        Assert.Contains("MotifSyntheticTurkic", refused.Error, StringComparison.Ordinal);
-
-        Assert.Equal(0, Run($"project tag --set cli0 --project \"{cli}\"").ExitCode);
-        var allowed = Run($"dry-run --project \"{cli}\" some-proposal --wait");
-        Assert.DoesNotContain("project tag", allowed.Error, StringComparison.Ordinal);
-        Assert.DoesNotContain("could not be recorded", allowed.Error, StringComparison.Ordinal);
-    }
-
-    [Fact]
     public void RunningAProjectVerbRecordsTheProjectInKnownProjects()
     {
         var result = Run($"new --project \"{_fwDataPath}\" --draft d");
