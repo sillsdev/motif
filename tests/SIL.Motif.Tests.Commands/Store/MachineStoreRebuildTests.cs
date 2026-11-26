@@ -90,6 +90,36 @@ public sealed class MachineStoreRebuildTests : IDisposable
     }
 
     [Fact]
+    public void AProjectTagSurvivesARebuildAndUsageIsDropped()
+    {
+        MakeStoreAt(MachineSchema.CurrentSchema - 1);
+        using (var raw = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = Db, Pooling = false }.ToString()))
+        {
+            raw.Open();
+            using var command = raw.CreateCommand();
+            command.CommandText =
+                "INSERT INTO KnownProjects (WorkspaceKey, FullFwDataPath, LastSeenUtc, ProjectTag) VALUES ('k', '/p/a.fwdata', '2026-01-01T00:00:00Z', 'mine');" +
+                "INSERT INTO Usage (TimestampUtc, Command, ArgumentShapeJson) VALUES ('2026-01-01T00:00:00Z', 'x', '{}');";
+            command.ExecuteNonQuery();
+        }
+
+        var notices = new List<StoreUpgradeNotice>();
+        using (var scope = StoreUpgradeNotices.Begin())
+        {
+            using var machine = MachineDatabase.Open(_root);
+            using var connection = machine.OpenConnection();
+            using var tag = connection.CreateCommand();
+            tag.CommandText = "SELECT ProjectTag || '|' || FullFwDataPath || '|' || LastSeenUtc FROM KnownProjects WHERE WorkspaceKey = 'k';";
+            Assert.Equal("mine|/p/a.fwdata|2026-01-01T00:00:00Z", tag.ExecuteScalar());
+            Assert.Equal(0, Scalar(connection, "SELECT COUNT(*) FROM Usage;"));
+            notices.AddRange(scope.Notices);
+        }
+        var notice = Assert.Single(notices);
+        Assert.Equal(1, notice.DroppedCounts["Usage"]);
+        Assert.DoesNotContain("KnownProjects", notice.DroppedCounts.Keys);
+    }
+
+    [Fact]
     public void ACurrentMachineStoreTakesNoBackup()
     {
         using (MachineDatabase.Open(_root)) { }

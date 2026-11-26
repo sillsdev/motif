@@ -14,21 +14,21 @@ public sealed record StoreBackupRetentionPolicy(int MaxCount, long MaxBytes)
 }
 
 /// <summary>
-/// Keeps the pre-upgrade backups of a store within a hard cap by count and by bytes, evicting the oldest first, so
+/// Keeps the pre-upgrade backups of a store within a cap by count and by bytes, evicting the oldest first, so
 /// upgrading across many versions cannot fill the disk.
 /// </summary>
 /// <remarks>
-/// Only folders this class's naming makes (<c>pre-upgrade-schema&lt;N&gt;-&lt;stamp&gt;[-n]</c>) are candidates; a backup the
-/// person took with <c>motif store backup</c>, a pre-reset or pre-restore folder, and anything else beside them is never
-/// touched. Never evicted, whatever the caps say: the backup the running upgrade just made, the newest backup that has
-/// its receipt (the verified one), a backup of a NEWER store than this build understands (it is someone else's way back,
-/// and is not counted), and a folder that cannot be told apart from one of those. When the protected folders alone exceed
-/// a cap, the cap is simply exceeded.
+/// Candidates are the folders this class's naming makes (<c>pre-upgrade-schema&lt;N&gt;-&lt;stamp&gt;[-n]</c>) and, for a
+/// project store, the <c>&lt;store&gt;.schema&lt;N&gt;.bak[n]</c> files older upgrades left beside it; together they count
+/// toward one cap. A backup the person took with <c>motif store backup</c>, a pre-reset or pre-restore folder, and
+/// anything else is never touched, nor is a name that does not match exactly (ASCII digits, in range). Never evicted: the
+/// backup the running upgrade just made, the newest folder that has its receipt, and any backup of a NEWER store than this
+/// build understands (not counted). When those protected backups alone exceed a cap, the cap is exceeded.
 /// </remarks>
 public static class StoreBackupRetention
 {
     private static readonly Regex Name = new(
-        @"^(?<reason>[a-z]+(?:-[a-z]+)*)-schema(?<schema>\d+)-(?<stamp>\d{8}T\d{9}Z)(?:-(?<n>\d+))?$",
+        @"^(?<reason>[a-z]+(?:-[a-z]+)*)-schema(?<schema>[0-9]+)-(?<stamp>[0-9]{8}T[0-9]{9}Z)(?:-(?<n>[0-9]+))?\z",
         RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
     /// <summary>Evicts the oldest <paramref name="reason"/> backups under <paramref name="root"/> until the caps hold.</summary>
@@ -37,21 +37,23 @@ public static class StoreBackupRetention
     /// <param name="justMade">The folder the running upgrade just made; never evicted. May be <see langword="null"/>.</param>
     /// <param name="currentSchema">The schema this build understands; a backup of a higher one is never evicted.</param>
     /// <param name="policy">The caps, or <see langword="null"/> for <see cref="StoreBackupRetentionPolicy.Default"/>.</param>
-    /// <returns>The folders removed, oldest first.</returns>
+    /// <param name="storePath">A project store whose <c>.schemaN.bak</c> siblings count toward the cap; null for none.</param>
+    /// <returns>The folders and files removed, oldest first.</returns>
     public static IReadOnlyList<string> Prune(string root, string reason, string? justMade, int currentSchema,
-        StoreBackupRetentionPolicy? policy = null)
+        StoreBackupRetentionPolicy? policy = null, string? storePath = null)
     {
         policy ??= StoreBackupRetentionPolicy.Default;
         ArgumentOutOfRangeException.ThrowIfLessThan(policy.MaxCount, 1);
         ArgumentOutOfRangeException.ThrowIfLessThan(policy.MaxBytes, 1);
-        if (!Directory.Exists(root)) return [];
 
         var counted = new List<Candidate>();
-        foreach (var directory in Directory.EnumerateDirectories(root))
-        {
-            var candidate = Describe(directory, reason, currentSchema);
-            if (candidate is { Newer: false } && !IsReparsePoint(directory)) counted.Add(candidate);
-        }
+        if (Directory.Exists(root))
+            foreach (var directory in Directory.EnumerateDirectories(root))
+            {
+                var candidate = Describe(directory, reason, currentSchema);
+                if (candidate is { Newer: false } && !IsReparsePoint(directory)) counted.Add(candidate);
+            }
+        if (storePath is not null) counted.AddRange(Siblings(storePath, currentSchema));
         counted.Sort(Candidate.Oldest);
 
         var newestVerified = counted.LastOrDefault(candidate => candidate.HasReceipt);
@@ -67,7 +69,7 @@ public static class StoreBackupRetention
         {
             if (count <= policy.MaxCount && bytes <= policy.MaxBytes) break;
             if (Protected(candidate)) continue;
-            try { Directory.Delete(candidate.Path, recursive: true); }
+            try { candidate.Delete(); }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { continue; }
             removed.Add(candidate.Path);
             count--;
@@ -76,11 +78,43 @@ public static class StoreBackupRetention
         return removed;
     }
 
+    private static IEnumerable<Candidate> Siblings(string storePath, int currentSchema)
+    {
+        var full = Path.GetFullPath(storePath);
+        var directory = Path.GetDirectoryName(full);
+        if (directory is null || !Directory.Exists(directory)) yield break;
+        var pattern = new Regex("^" + Regex.Escape(Path.GetFileName(full)) + @"\.schema(?<schema>[0-9]+)\.bak(?<n>[0-9]*)\z",
+            RegexOptions.CultureInvariant);
+        foreach (var file in Directory.EnumerateFiles(directory))
+        {
+            var match = pattern.Match(Path.GetFileName(file));
+            if (!match.Success || !int.TryParse(match.Groups["schema"].Value, NumberStyles.None, CultureInfo.InvariantCulture, out var schema))
+                continue;
+            if (schema > currentSchema) continue;
+            long bytes = 0;
+            DateTime written;
+            try
+            {
+                foreach (var part in new[] { file, file + "-wal", file + "-shm" })
+                    if (File.Exists(part)) bytes += new FileInfo(part).Length;
+                written = File.GetLastWriteTimeUtc(file);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { continue; }
+            var n = match.Groups["n"].Value.Length > 0 &&
+                int.TryParse(match.Groups["n"].Value, NumberStyles.None, CultureInfo.InvariantCulture, out var parsed) ? parsed : 1;
+            yield return new Candidate(file, written.ToString("yyyyMMdd'T'HHmmssfff'Z'", CultureInfo.InvariantCulture), n, bytes,
+                false, false, IsFile: true);
+        }
+    }
+
     private static Candidate? Describe(string directory, string reason, int currentSchema)
     {
         var match = Name.Match(System.IO.Path.GetFileName(directory));
         if (!match.Success || match.Groups["reason"].Value != reason) return null;
-        var schema = int.Parse(match.Groups["schema"].Value, CultureInfo.InvariantCulture);
+        if (!int.TryParse(match.Groups["schema"].Value, NumberStyles.None, CultureInfo.InvariantCulture, out var schema)) return null;
+        var n = 1;
+        if (match.Groups["n"].Success &&
+            !int.TryParse(match.Groups["n"].Value, NumberStyles.None, CultureInfo.InvariantCulture, out n)) return null;
         var receipt = System.IO.Path.Combine(directory, StoreBackups.ReceiptName);
         var hasReceipt = File.Exists(receipt);
         if (hasReceipt && ReceiptSchema(receipt) is { } recorded) schema = Math.Max(schema, recorded);
@@ -91,7 +125,6 @@ public static class StoreBackupRetention
                 bytes += file.Length;
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
-        var n = match.Groups["n"].Success ? int.Parse(match.Groups["n"].Value, CultureInfo.InvariantCulture) : 1;
         return new Candidate(System.IO.Path.GetFullPath(directory), match.Groups["stamp"].Value, n, bytes, hasReceipt,
             schema > currentSchema);
     }
@@ -113,8 +146,15 @@ public static class StoreBackupRetention
     private static bool IsReparsePoint(string directory) =>
         (File.GetAttributes(directory) & FileAttributes.ReparsePoint) != 0;
 
-    private sealed record Candidate(string Path, string Stamp, int N, long Bytes, bool HasReceipt, bool Newer)
+    private sealed record Candidate(string Path, string Stamp, int N, long Bytes, bool HasReceipt, bool Newer, bool IsFile = false)
     {
+        public void Delete()
+        {
+            if (!IsFile) { Directory.Delete(Path, recursive: true); return; }
+            foreach (var part in new[] { Path + "-wal", Path + "-shm", Path })
+                if (File.Exists(part)) File.Delete(part);
+        }
+
         public static int Oldest(Candidate a, Candidate b)
         {
             var stamp = string.CompareOrdinal(a.Stamp, b.Stamp);

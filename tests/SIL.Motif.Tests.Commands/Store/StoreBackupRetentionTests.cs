@@ -122,6 +122,51 @@ public sealed class StoreBackupRetentionTests : IDisposable
         Assert.True(Directory.Exists(third));
     }
 
+    [Theory]
+    [InlineData("pre-upgrade-schema99999999999-20261101T000000000Z")]
+    [InlineData("pre-upgrade-schema\u0661-20261101T000000000Z")]
+    [InlineData("pre-upgrade-schema1-20261101T000000000Z-99999999999")]
+    [InlineData("pre-upgrade-schema1-20261101T000000000Z\n")]
+    public void ANameThatIsNotExactlyOursIsNeverTouchedAndNeverThrows(string name)
+    {
+        if (name.EndsWith('\n') && OperatingSystem.IsWindows()) return;
+        var odd = Path.Combine(_root, name);
+        Directory.CreateDirectory(odd);
+        var dirs = Enumerable.Range(1, 4).Select(n => Make(Stamp(n))).ToArray();
+        StoreBackupRetention.Prune(_root, "pre-upgrade", dirs[^1], 79, new StoreBackupRetentionPolicy(1, long.MaxValue));
+        Assert.True(Directory.Exists(odd));
+        Assert.Equal(1, Names().Count(n => n!.StartsWith("pre-upgrade-schema78", StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public void SiblingBakFilesCountTowardTheSameCapOldestFirstAndNeverBeatTheNewestFolder()
+    {
+        var store = Path.Combine(_root, "project.motif.db");
+        var bak1 = store + ".schema60.bak";
+        var bak2 = store + ".schema70.bak2";
+        File.WriteAllBytes(bak1, new byte[10]);
+        File.WriteAllBytes(bak2, new byte[10]);
+        File.WriteAllBytes(bak2 + "-wal", new byte[10]);
+        File.SetLastWriteTimeUtc(bak1, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+        File.SetLastWriteTimeUtc(bak2, new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc));
+        var newerBak = store + ".schema500.bak";
+        File.WriteAllBytes(newerBak, new byte[10]);
+        var folders = new[] { Make("20261103T000000000Z"), Make("20261104T000000000Z") };
+        var removed = StoreBackupRetention.Prune(_root, "pre-upgrade", folders[1], 79,
+            new StoreBackupRetentionPolicy(3, long.MaxValue), store);
+        Assert.Equal([Path.GetFullPath(bak1)], removed);
+        Assert.False(File.Exists(bak1));
+        Assert.True(File.Exists(bak2));
+        Assert.True(File.Exists(newerBak));
+
+        // A tighter cap evicts the other .bak next, and never a folder that is the newest verified one.
+        StoreBackupRetention.Prune(_root, "pre-upgrade", folders[1], 79, new StoreBackupRetentionPolicy(1, long.MaxValue), store);
+        Assert.False(File.Exists(bak2));
+        Assert.False(File.Exists(bak2 + "-wal"));
+        Assert.True(Directory.Exists(folders[1]));
+        Assert.False(Directory.Exists(folders[0]));
+    }
+
     [Fact]
     public void AbsentRootIsNothingToDo() =>
         Assert.Empty(StoreBackupRetention.Prune(Path.Combine(_root, "none"), "pre-upgrade", null, 79));
@@ -174,5 +219,7 @@ public sealed class ProjectUpgradeBackupRetentionTests : IDisposable
         Assert.Contains(Path.GetFileName(newer), kept);
         Assert.Contains(kept, name => name!.StartsWith("pre-upgrade-schema78-", StringComparison.Ordinal));
         Assert.Equal(4, kept.Count);
+        // The original is in the verified backup folder; no .bak copy is left beside the store.
+        Assert.Empty(Directory.GetFiles(_root, "*.bak*"));
     }
 }

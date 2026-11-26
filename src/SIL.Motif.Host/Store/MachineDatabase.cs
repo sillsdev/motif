@@ -38,8 +38,11 @@ public sealed class MachineDatabase : IDisposable
             CurrentSchema = MachineSchema.CurrentSchema,
             ValidateSchema = MachineSchema.ValidateSchema,
             Create = MachineSchema.Create,
-            // Only recomputable records live here, so an older store is rebuilt empty after a backup (ADR 0023).
+            // An older store is rebuilt after a backup (ADR 0023). Usage is recomputable and dropped; KnownProjects holds
+            // what a person authored (ProjectTag, set by `project tag`), so its shared columns are carried across.
             RebuildOlder = true,
+            CarryAfterRebuild = CarryKnownProjects,
+            CarriedTables = ["KnownProjects"],
             NoticeName = "machine store",
             BackUp = _ => BackUpBeforeRebuild(path, clock),
             Retain = safety => StoreBackupRetention.Prune(
@@ -104,6 +107,39 @@ public sealed class MachineDatabase : IDisposable
             StoreBackups.Discard(destination);
             throw;
         }
+    }
+
+    // Copies every KnownProjects row, column by column for the columns both schemas have; a bump that adds a required column must default it.
+    private static void CarryKnownProjects(SqliteConnection target, string backupStore)
+    {
+        using var source = new SqliteConnection(new SqliteConnectionStringBuilder
+        { DataSource = backupStore, Mode = SqliteOpenMode.ReadOnly, Pooling = false }.ToString());
+        source.Open();
+        var oldColumns = Columns(source, "KnownProjects");
+        var shared = Columns(target, "KnownProjects").Where(oldColumns.Contains).ToArray();
+        if (shared.Length == 0) return;
+        var list = string.Join(", ", shared.Select(column => "\"" + column + "\""));
+        using var read = source.CreateCommand();
+        read.CommandText = "SELECT " + list + " FROM KnownProjects;";
+        using var reader = read.ExecuteReader();
+        while (reader.Read())
+        {
+            using var insert = target.CreateCommand();
+            insert.CommandText = "INSERT INTO KnownProjects (" + list + ") VALUES (" +
+                string.Join(", ", shared.Select((_, i) => "$p" + i)) + ");";
+            for (var i = 0; i < shared.Length; i++) insert.Parameters.AddWithValue("$p" + i, reader.GetValue(i));
+            insert.ExecuteNonQuery();
+        }
+    }
+
+    private static HashSet<string> Columns(SqliteConnection connection, string table)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT name FROM pragma_table_info('" + table + "');";
+        using var reader = command.ExecuteReader();
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        while (reader.Read()) names.Add(reader.GetString(0));
+        return names;
     }
 
     private static int ReadSchema(string path)

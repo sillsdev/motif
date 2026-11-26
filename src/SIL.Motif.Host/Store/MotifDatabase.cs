@@ -152,7 +152,8 @@ public sealed partial class MotifDatabase : IDisposable
                 return StoreBackups.WriteHeldExclusively(project, path, reason, timeProvider);
             },
             Retain = safety => StoreBackupRetention.Prune(
-                Path.GetDirectoryName(safety.Directory)!, StoreBackups.PreUpgrade, safety.Directory, supportedSchema),
+                Path.GetDirectoryName(safety.Directory)!, StoreBackups.PreUpgrade, safety.Directory, supportedSchema,
+                storePath: path),
             BeforeOpen = connection =>
             {
                 var metadata = MotifSchema.ReadMetadata(connection);
