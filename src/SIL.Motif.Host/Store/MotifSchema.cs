@@ -605,7 +605,7 @@ public static class MotifSchema
         [C("Id", "INTEGER", false, 1), C("FullFwDataPath", "TEXT", true),
             C("FieldWorksProjectIdentity", "TEXT", true), C("MinimumWorkerVersion", "TEXT", true),
             C("CreatedUtc", "TEXT", true), C("CurrentAssessmentId", "TEXT"), C("SetupSkippedUtc", "TEXT")],
-        // This default repeats the Contract constant; MotifDatabaseMigrationTests pins both.
+        // This default repeats the Contract constant; MotifDatabaseOpenTests pins both.
         "NamedSelections" =>
         [C("SelectionName", "TEXT", false, 1), C("TextIdsJson", "TEXT", true), C("AddedWordsJson", "TEXT", true),
             C("CreatedUtc", "TEXT", true), C("UpdatedUtc", "TEXT", true),
@@ -1181,7 +1181,7 @@ public static class MotifSchema
 
         """;
 
-    // This default repeats the Contract constant; MotifDatabaseMigrationTests pins both.
+    // This default repeats the Contract constant; MotifDatabaseOpenTests pins both.
     private const string SelectionDdl = """
         CREATE TABLE NamedSelections (
             SelectionName TEXT PRIMARY KEY,
