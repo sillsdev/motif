@@ -1,6 +1,6 @@
 # Read a project tag
 
-Read the tag Motif stores for this project on this machine. For a project without a tag, Motif uses its vernacular language code when that code is available. If the code is already used, Motif tries the exact folder name and refuses if that name is invalid or taken.
+Read the tag Motif stores for this project on this machine. For a project without a tag, Motif uses its vernacular language code when that code is available. If the code is already used, Motif uses the folder name (lowercased, other characters turned into '-', cut to 10 characters, and numbered when that clashes) and refuses if the folder name is a valid tag already taken or yields no valid tag.
 
 ```text
 motif project tag --project <fwdata>

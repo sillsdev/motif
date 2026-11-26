@@ -38,6 +38,24 @@ public sealed class ProjectTagRegistryTests : IDisposable
     }
 
     [Fact]
+    public void AMixedCaseFolderFallbackIsNormalisedAndNumberedWhenItClashes()
+    {
+        using var machine = MachineDatabase.Open(_root);
+        var registry = new KnownProjectRegistry(machine);
+        var seen = new DateTimeOffset(2026, 10, 24, 0, 0, 0, TimeSpan.Zero);
+
+        registry.Record("holder", Project("holder", "tur"), seen);
+        registry.Record("one", Project("a/MotifSyntheticTurkic", "tur"), seen);
+        registry.Record("two", Project("b/MotifSyntheticTurkic", "tur"), seen);
+        registry.Record("three", Project("c/Wolff Dictionary", "tur"), seen);
+
+        Assert.Equal("tur", ReadTag(machine, "holder"));
+        Assert.Equal("motifsynth", ReadTag(machine, "one"));
+        Assert.Equal("motifsynt2", ReadTag(machine, "two"));
+        Assert.Equal("wolff-dict", ReadTag(machine, "three"));
+    }
+
+    [Fact]
     public void RecordingRefusesInvalidOrTakenFolderFallbacksWithoutPersistingRows()
     {
         using var machine = MachineDatabase.Open(_root);
