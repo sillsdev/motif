@@ -902,7 +902,7 @@ public sealed partial class GuideEditorTests
                 paragraphs.Expected["para-1"]);
             var changed = Assert.Single(paragraphs.Changed);
             Assert.Equal("xsee entry-1 and entry-2 and site", string.Concat(changed.Runs.Select(run => run.Text)));
-            Assert.Equal((0, 1), changed.Props!.Ints[128]);
+            Assert.Equal((3, 1), changed.Props!.Ints[128]);
             var link = changed.Runs.Single(run => run.Text == "entry-1");
             Assert.Equal("link-1", link.ObjData);
             Assert.Equal([TextPropertyNumbers.Italic], link.Props!.Ints.Keys);

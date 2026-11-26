@@ -231,9 +231,9 @@ public sealed class GdrScriptsRoundTripTests(PristineProjectFixture pristine) : 
     public async Task ARightToLeftParagraphKeepsItsDirectionAndAMixedRunKeepsItsOrderAndWritingSystems()
     {
         var path = Project();
-        Assert.Contains("p128=1:enum", await ShowAsync(path, "GDR-1"), StringComparison.Ordinal);
+        Assert.Contains("rightToLeft=1", await ShowAsync(path, "GDR-1"), StringComparison.Ordinal);
         var markdown = WithContent(await ShowAsync(path, "GDR-2"), "title-2",
-            "::: {p128=1:enum}\n[مرحبا بالعالم]{ws=ar}\n:::\n\nEnglish [كتاب]{ws=ar} then [புத்தகம்]{ws=ta} and ASCII.");
+            "::: {rightToLeft=1}\n[مرحبا بالعالم]{ws=ar}\n:::\n\nEnglish [كتاب]{ws=ar} then [புத்தகம்]{ws=ta} and ASCII.");
 
         await EditAsync(path, "GDR-2", markdown);
         Apply(path);

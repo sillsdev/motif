@@ -44,15 +44,18 @@ public static partial class ProposalCommands
         var outcome = ProjectStoreCommand.Run(projectPath, MotifProductVersion.CurrentText, (database, project) =>
         {
             var draftName = namedDraft ?? PendingChanges.DraftName;
+            var marks = new GuideNumberMarkRepository(database);
+            var floor = 0L;
             try
             {
+                floor = marks.Floor();
                 var steps = new List<ComposeStep>
                 {
                     new(null, "AddGdrSection", (cache, _) =>
                     {
                         var list = GdrSectionSupport.FindList(cache, GdrSectionOperationKinds.Create);
                         listCreated = list is null;
-                        number = GdrSectionSupport.NextNumber(cache, list);
+                        number = GdrSectionSupport.NextNumber(cache, list, floor);
                         var ws = string.IsNullOrWhiteSpace(writingSystem)
                             ? cache.WritingSystemFactory.GetStrFromWs(cache.DefaultAnalWs) : writingSystem.Trim();
                         if (cache.WritingSystemFactory.GetWsFromStr(ws) == 0)
@@ -67,9 +70,6 @@ public static partial class ProposalCommands
                         var parentGuid = Resolve(parent, "parent");
                         var afterGuid = Resolve(after, "section to follow");
                         parentId = parentGuid;
-                        if (afterGuid is not null && list is not null && parentGuid is null &&
-                            GdrSectionSupport.Find(cache, list, after!.Trim()) is { } sibling && sibling.Owner is SIL.LCModel.ICmPossibility ownerItem)
-                            parentId = CanonicalId.FromGuid(ownerItem.Guid).Value;
                         var payload = new Dictionary<string, string> { ["id"] = number, ["title"] = title.Trim(), ["ws"] = ws };
                         if (parentGuid is not null) payload["parent"] = parentGuid;
                         if (afterGuid is not null) payload["after"] = afterGuid;
@@ -102,7 +102,9 @@ public static partial class ProposalCommands
                 steps.Add(new ComposeStep(null, "Validate", (_, _) =>
                     (JsonSerializer.SerializeToElement(new { }), Array.Empty<OperationEnvelope>())));
                 if (namedDraft is null) draftName = PendingChanges.EnsurePendingDraft(database, new ProposalRepository(database));
-                return ComposeStepsIntoDraft(database, project, draftName, steps);
+                var composed = ComposeStepsIntoDraft(database, project, draftName, steps);
+                if (composed.Succeeded && number is not null && long.TryParse(number.AsSpan(4), out var given)) marks.Raise(given);
+                return composed;
             }
             catch (Exception exception) when (SqliteConnections.IsBusy(exception))
             {

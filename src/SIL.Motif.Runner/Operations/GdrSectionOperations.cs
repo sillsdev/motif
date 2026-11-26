@@ -80,10 +80,42 @@ public static class GdrSectionSupport
         return "";
     }
 
-    /// <summary>The next permanent <c>GDR-n</c>: one more than the largest number in the list, <c>GDR-1</c> for an empty list.</summary>
-    public static string NextNumber(LcmCache cache, ICmPossibilityList? list)
+    private static readonly Regex HighWaterText = new(@"highest GDR-(\d+)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    /// <summary>The highest number the list has ever given out, from its own Description, or 0 when it records none.</summary>
+    public static long HighWater(LcmCache cache, ICmPossibilityList? list) =>
+        list is not null && HighWaterText.Match(list.Description.get_String(cache.DefaultAnalWs).Text ?? "") is { Success: true } match &&
+            long.TryParse(match.Groups[1].Value, out var value) ? value : 0;
+
+    /// <summary>Records <paramref name="number"/> as given out, so a later delete of it never frees it for reuse. Never lowers the mark.</summary>
+    internal static void RecordHighWater(LcmCache cache, ICmPossibilityList list, string number)
     {
-        var largest = 0L;
+        if (Number.Match(number) is not { Success: true } match || !long.TryParse(match.Groups[1].Value, out var value) ||
+            value <= HighWater(cache, list)) return;
+        var ws = cache.DefaultAnalWs;
+        list.Description.set_String(ws, TsStringUtils.MakeString(
+            $"Motif numbers sections GDR-n and never reuses a number: highest GDR-{value} given out. Leave this line as it is.", ws));
+    }
+
+    /// <summary>
+    /// Gives a new Guide list the properties FieldWorks gives a custom list made with Tools, Configure, Custom Lists
+    /// (CustomListDlg): hierarchical (depth 127), shown by name, in the order the person sets (not sorted), analysis
+    /// writing systems, duplicates allowed. The item class is the one <c>CreateUnowned</c> sets, and the list has no owner.
+    /// </summary>
+    internal static void ConfigureNewList(ICmPossibilityList list)
+    {
+        list.DisplayOption = (int)PossNameType.kpntName;
+        list.PreventDuplicates = false;
+        list.IsSorted = false;
+        list.WsSelector = WritingSystemServices.kwsAnals;
+        list.IsVernacular = false;
+        list.Depth = 127;
+    }
+
+    /// <summary>The next permanent <c>GDR-n</c>: one more than the largest of the list's own mark, <paramref name="storedFloor"/> (Motif's store mark and open Drafts) and the numbers it holds, <c>GDR-1</c> for a new list.</summary>
+    public static string NextNumber(LcmCache cache, ICmPossibilityList? list, long storedFloor = 0)
+    {
+        var largest = Math.Max(HighWater(cache, list), storedFloor);
         if (list is not null)
             foreach (var item in list.ReallyReallyAllPossibilities)
                 if (Number.Match(NumberOf(cache, item).Normalize(NormalizationForm.FormD)) is { Success: true } match &&
@@ -136,7 +168,11 @@ internal sealed class GdrSectionCreateHandler : IOperationHandler
 
         var before = Read(cache, entityId, number);
         var analysis = cache.DefaultAnalWs;
-        list ??= cache.ServiceLocator.GetInstance<ICmPossibilityListFactory>().CreateUnowned(GdrSectionSupport.ListName, analysis);
+        if (list is null)
+        {
+            list = cache.ServiceLocator.GetInstance<ICmPossibilityListFactory>().CreateUnowned(GdrSectionSupport.ListName, analysis);
+            GdrSectionSupport.ConfigureNewList(list);
+        }
         ICmPossibility? parent = null;
         if (parentId is not null)
             parent = FindIn(cache, list, parentId) ?? throw new InvalidOperationException(
@@ -157,6 +193,7 @@ internal sealed class GdrSectionCreateHandler : IOperationHandler
         if (index < siblings.Count - 1) siblings.MoveTo(siblings.Count - 1, siblings.Count - 1, siblings, index);
         item.Abbreviation.set_String(analysis, TsStringUtils.MakeString(number, analysis));
         item.Name.set_String(ws, TsStringUtils.MakeString(title, ws));
+        GdrSectionSupport.RecordHighWater(cache, list, number);
         touchedTargets.Add(id);
         return new ExpectedEffect(id, SnapshotFields.GuideSections, before, Read(cache, entityId, number));
     }

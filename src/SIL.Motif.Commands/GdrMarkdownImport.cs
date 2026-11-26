@@ -222,7 +222,7 @@ public static class GdrMarkdownImport
     internal static TextProps ParagraphProps(Paragraph paragraph)
     {
         var props = paragraph.Props.Clone();
-        if (paragraph.Rtl || props.IntProps.ContainsKey(128)) props.IntProps[128] = new IntPropValue(0, paragraph.Rtl ? 1 : 0);
+        if (paragraph.Rtl || props.IntProps.ContainsKey(128)) props.IntProps[128] = new IntPropValue(GdrMarkdownView.StoredDirectionVariation, paragraph.Rtl ? 1 : 0);
         return Props(props);
     }
 

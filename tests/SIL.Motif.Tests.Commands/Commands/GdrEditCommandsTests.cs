@@ -68,6 +68,38 @@ public sealed class GdrEditCommandsTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public void EveryDirectionIsShownAsRightToLeftAndRoundTripsThroughEditApplyAndShow()
+    {
+        var path = ProjectWithGdrs();
+        var markdown = Markdown(path, "GDR-1");
+        Assert.Contains("rightToLeft=1", markdown, StringComparison.Ordinal);
+        Assert.DoesNotContain("p128", markdown, StringComparison.Ordinal);
+        var unchanged = GdrEditCommands.Edit(new GdrEditRequest(path, "GDR-1", markdown));
+        Assert.True(unchanged.Succeeded, unchanged.Refusal?.Message);
+        Assert.Equal(0, unchanged.Value!.OperationCount);
+
+        // Flip the first paragraph's direction and add a right to left one.
+        var body = new GdrMarkdownView(Show(path, "GDR-1"), "p").Fields.Single(field => field.Name == "discussion").Body;
+        Assert.Contains("rightToLeft=1", body, StringComparison.Ordinal);
+        var flipped = body.Replace("rightToLeft=1", "rightToLeft=0", StringComparison.Ordinal)
+            + "\n\n::: {rightToLeft=1}\nnew right to left\n:::";
+        var staged = GdrEditCommands.Edit(new GdrEditRequest(path, "GDR-1", flipped));
+        Assert.True(staged.Succeeded, staged.Refusal?.Message);
+        Assert.True(Apply(path).Succeeded);
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), RootFor(path)).Succeeded);
+
+        var shown = Show(path, "GDR-1");
+        Assert.Equal([false, false, true], shown.Discussion.Select(paragraph => paragraph.RightToLeft));
+        var after = Markdown(path, "GDR-1");
+        Assert.Contains("rightToLeft=1", after, StringComparison.Ordinal);
+        Assert.Contains("rightToLeft=0", after, StringComparison.Ordinal);
+        Assert.DoesNotContain("p128", after, StringComparison.Ordinal);
+        var again = GdrEditCommands.Edit(new GdrEditRequest(path, "GDR-1", after));
+        Assert.True(again.Succeeded, again.Refusal?.Message);
+        Assert.Equal(0, again.Value!.OperationCount);
+    }
+
+    [Fact]
     public void AnUnchangedParagraphKeepsItsKeyAndOnlyTheChangedOneIsStaged()
     {
         var path = ProjectWithGdrs();

@@ -2,11 +2,11 @@
 
 `guide add --project <fwdata> --title <text> [--parent <GDR-n>] [--after <GDR-n>] [--from-file <file.md | ->] [--ws <tag>] [--draft <name>]` stages a new item in the project's Grammar Guide list as a Draft change. It stages only what FieldWorks can create, a new item in a possibility list. Nothing reaches the FieldWorks project until a person applies the Draft.
 
-The new item takes the next permanent number: one more than the largest `GDR-n` in the list, so the first is `GDR-1`. The number is final once applied; titles and bodies change later with `guide edit`.
+The new item takes the next permanent number: one more than the largest `GDR-n` in the list, so the first is `GDR-1`. A number is never reused, even after its item is deleted: the highest number given out is kept in the project's Grammar Guide list Description and in Motif's store. The number is final once applied; titles and bodies change later with `guide edit`.
 
 - `--parent <GDR-n>` puts it under that part or section. Without it the item goes at the top of the list (a Guide part).
 - `--after <GDR-n>` puts it right after that sibling. Without it the item goes last under its parent.
-- `--ws <tag>` is the title's writing system, for example a vernacular such as `ta`. The default is the project's default analysis writing system. The title is plain text and is stored as given.
+- `--ws <tag>` is the title's writing system, any writing system of the project, analysis or vernacular, for example `ta`; an unknown tag is refused (`guide.title-invalid`). The default is the project's default analysis writing system. The title is plain text and is stored as given.
 - `--from-file <file.md>` (or `-` for standard input) is the body: FieldWorks Markdown in the ADR 0005 template, `### How it works`, `### Examples`, `### Grouping commands`, `### Exceptions`, `### Decisions`, `### Open questions`, `### In the grammar`. Give the body only, with no front matter. Fenced `motif-query` and `motif-show` blocks cannot be added with this command, as with `guide edit`. A body that cannot be read stages nothing (`guide.markdown-invalid`).
 
 ```text
