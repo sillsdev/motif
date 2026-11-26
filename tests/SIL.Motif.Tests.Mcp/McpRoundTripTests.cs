@@ -13,6 +13,7 @@ using SIL.LCModel.Core.KernelInterfaces;
 using SIL.LCModel.DomainServices;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Commands;
+using SIL.Motif.Contract.Projects;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Review;
 using SIL.Motif.Commands.Requests;
@@ -45,7 +46,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ProgressLeavesMissingAndOlderStoresUnchanged(bool older)
+    public async Task ProgressLeavesMissingStoresUnchangedAndUpgradesOlderOnes(bool older)
     {
         using var project = new WalkthroughProject(pristine);
         var store = Path.ChangeExtension(project.FwDataPath, ".motif.db");
@@ -69,7 +70,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
             ["scope"] = new Dictionary<string, object?> { ["kind"] = "texts" },
         });
         Assert.True(response.IsError, response.StructuredContent?.ToString());
-        Assert.Equal(older ? RefusalCodes.StoreOtherVersion : RefusalCodes.ProgressIndexNotReady,
+        Assert.Equal(RefusalCodes.ProgressIndexNotReady,
             response.StructuredContent!.Value.GetProperty("code").GetString());
         var sourceResponse = await session.Client.CallToolAsync("motif_progress", new Dictionary<string, object?>
         {
@@ -77,10 +78,14 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
             ["scope"] = new Dictionary<string, object?> { ["kind"] = "source", ["source"] = "WEB" },
         });
         Assert.True(sourceResponse.IsError, sourceResponse.StructuredContent?.ToString());
-        Assert.Equal(older ? RefusalCodes.StoreOtherVersion : RefusalCodes.SourceIndexMissing,
+        Assert.Equal(RefusalCodes.SourceIndexMissing,
             sourceResponse.StructuredContent!.Value.GetProperty("code").GetString());
-        Assert.Equal(files.Keys.Order(StringComparer.Ordinal), StoreFiles());
-        foreach (var (file, bytes) in files) Assert.Equal(bytes, File.ReadAllBytes(file));
+        // An older store is upgraded after a backup; a missing one is left alone.
+        if (!older)
+        {
+            Assert.Equal(files.Keys.Order(StringComparer.Ordinal), StoreFiles());
+            foreach (var (file, bytes) in files) Assert.Equal(bytes, File.ReadAllBytes(file));
+        }
         Assert.Equal(before, File.ReadAllBytes(project.FwDataPath));
         Assert.Equal(older, File.Exists(store));
     }
@@ -92,7 +97,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
     [InlineData(true, null)]
     [InlineData(true, "json")]
     [InlineData(true, "fw-md")]
-    public async Task GdrShowLeavesMissingAndOlderStoresUnchanged(bool older, string? format)
+    public async Task GdrShowLeavesMissingStoresUnchangedAndUpgradesOlderOnes(bool older, string? format)
     {
         using var project = new WalkthroughProject(pristine);
         var store = Path.ChangeExtension(project.FwDataPath, ".motif.db");
@@ -115,13 +120,99 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
 
         var response = await session.Client.CallToolAsync("motif_guide_show", arguments);
 
-        Assert.Equal(files.Keys.Order(StringComparer.Ordinal).Select(Path.GetFileName), StoreFiles().Select(Path.GetFileName));
-        foreach (var (file, bytes) in files) Assert.Equal(bytes, File.ReadAllBytes(file));
+        if (!older)
+        {
+            Assert.Equal(files.Keys.Order(StringComparer.Ordinal).Select(Path.GetFileName), StoreFiles().Select(Path.GetFileName));
+            foreach (var (file, bytes) in files) Assert.Equal(bytes, File.ReadAllBytes(file));
+        }
         Assert.Equal(before, File.ReadAllBytes(project.FwDataPath));
         Assert.Equal(older, File.Exists(store));
         Assert.True(response.IsError, response.StructuredContent?.ToString());
-        Assert.Equal(older ? RefusalCodes.StoreOtherVersion : RefusalCodes.GdrNoBaseline,
+        Assert.Equal(RefusalCodes.GdrNoBaseline,
             response.StructuredContent!.Value.GetProperty("code").GetString());
+    }
+
+    [Fact]
+    public async Task McpUpgradesAnOlderStoreAfterABackupAndOnlyTheFirstResultSaysSo()
+    {
+        using var project = new WalkthroughProject(pristine);
+        var store = Path.ChangeExtension(project.FwDataPath, ".motif.db");
+        var older = MotifSchema.CurrentSchema - 1;
+        using (var database = ProjectMotifDatabase.Open(project.FwDataPath))
+        using (var connection = database.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = $"PRAGMA user_version = {older};";
+            command.ExecuteNonQuery();
+        }
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions(), openStore: false);
+        var arguments = new Dictionary<string, object?> { ["project"] = project.FwDataPath, ["id"] = "GDR-1" };
+
+        var first = await session.Client.CallToolAsync("motif_guide_show", arguments);
+
+        var text = string.Join("\n", first.Content.OfType<ModelContextProtocol.Protocol.TextContentBlock>().Select(block => block.Text));
+        Assert.Contains($"Your Motif project store was upgraded from schema {older} to {MotifSchema.CurrentSchema}; a backup is at ", text);
+        Assert.Contains("these derived results were dropped:", text);
+        var upgrade = first.StructuredContent!.Value.GetProperty("storeUpgrades")[0];
+        Assert.Equal(older, upgrade.GetProperty("fromSchema").GetInt32());
+        var backup = upgrade.GetProperty("backupPath").GetString()!;
+        Assert.True(File.Exists(Path.Combine(backup, "motif-backup.json")));
+        using (var original = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={Path.Combine(backup, "store.sqlite")};Mode=ReadOnly;Pooling=False"))
+        {
+            original.Open();
+            using var version = original.CreateCommand();
+            version.CommandText = "PRAGMA user_version;";
+            Assert.Equal((long)older, version.ExecuteScalar());
+        }
+        using (var current = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={store};Mode=ReadOnly;Pooling=False"))
+        {
+            current.Open();
+            using var version = current.CreateCommand();
+            version.CommandText = "PRAGMA user_version;";
+            Assert.Equal((long)MotifSchema.CurrentSchema, version.ExecuteScalar());
+        }
+
+        var second = await session.Client.CallToolAsync("motif_guide_show", arguments);
+        Assert.DoesNotContain("was upgraded from schema", string.Join("\n",
+            second.Content.OfType<ModelContextProtocol.Protocol.TextContentBlock>().Select(block => block.Text)));
+        Assert.False(second.StructuredContent!.Value.TryGetProperty("storeUpgrades", out _));
+    }
+
+    [Fact]
+    public async Task AnUpgradeByAResourceReadIsToldInTheNextToolResult()
+    {
+        using var project = new WalkthroughProject(pristine);
+        var older = MotifSchema.CurrentSchema - 1;
+        using (var database = ProjectMotifDatabase.Open(project.FwDataPath))
+        using (var connection = database.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = $"PRAGMA user_version = {older};";
+            command.ExecuteNonQuery();
+        }
+        var key = ProjectWorkspaceKey.Compute(new ProjectLocator(Path.GetFullPath(project.FwDataPath),
+            Path.GetFileNameWithoutExtension(project.FwDataPath)));
+        await using var session = await Session.StartAsync(project.FwDataPath,
+            new McpLaunchOptions(AdvancedAiModeEnabled: true), openStore: false);
+
+        await Assert.ThrowsAnyAsync<Exception>(() => session.Client.ReadResourceAsync($"motif://projects/{key}/trial-reports/none").AsTask());
+        var store = Path.ChangeExtension(project.FwDataPath, ".motif.db");
+        using (var current = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={store};Mode=ReadOnly;Pooling=False"))
+        {
+            current.Open();
+            using var version = current.CreateCommand();
+            version.CommandText = "PRAGMA user_version;";
+            Assert.Equal((long)MotifSchema.CurrentSchema, version.ExecuteScalar());
+        }
+
+        var first = await session.Client.CallToolAsync("motif_guide_show",
+            new Dictionary<string, object?> { ["project"] = project.FwDataPath, ["id"] = "GDR-1" });
+        var text = string.Join("\n", first.Content.OfType<ModelContextProtocol.Protocol.TextContentBlock>().Select(block => block.Text));
+        Assert.Contains($"was upgraded from schema {older} to {MotifSchema.CurrentSchema}; a backup is at ", text);
+        var second = await session.Client.CallToolAsync("motif_guide_show",
+            new Dictionary<string, object?> { ["project"] = project.FwDataPath, ["id"] = "GDR-1" });
+        Assert.DoesNotContain("was upgraded from schema", string.Join("\n",
+            second.Content.OfType<ModelContextProtocol.Protocol.TextContentBlock>().Select(block => block.Text)));
     }
 
     [Fact]

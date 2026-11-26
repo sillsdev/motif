@@ -26,9 +26,10 @@ public sealed class MotifStoreUpgradeTests : IDisposable
         var reads = new HashSet<string>(StringComparer.Ordinal);
         void Observe(SqliteConnection connection, bool source)
         {
-            SQLitePCL.strdelegate_authorizer authorizer = (_, action, table, _, database, _) =>
+            // A row count reads the table with no column name; only a column read looks at what the table holds.
+            SQLitePCL.strdelegate_authorizer authorizer = (_, action, table, column, database, _) =>
             {
-                if (action == SQLitePCL.raw.SQLITE_READ && database == (source ? "main" : "old"))
+                if (action == SQLitePCL.raw.SQLITE_READ && database == (source ? "main" : "old") && !string.IsNullOrEmpty(column))
                     reads.Add(table);
                 return SQLitePCL.raw.SQLITE_OK;
             };
@@ -628,11 +629,184 @@ public sealed class MotifStoreUpgradeTests : IDisposable
         CreateSchema49();
         var backup = Source + ".schema49.bak";
         File.WriteAllText(backup, "previous backup");
-        Assert.Throws<IOException>(() => MotifDatabase.OpenOwned(Source, Project, MotifSchema.CurrentSchema, new Version(1, 0)));
+        using (var db = MotifDatabase.OpenOwned(Source, Project, MotifSchema.CurrentSchema, new Version(1, 0)))
+        using (var connection = db.OpenConnection())
+            Assert.Equal(1, Count(connection, "ProposalRevisions"));
         Assert.Equal("previous backup", File.ReadAllText(backup));
+        using var kept = Connect(Source + ".schema49.bak2");
+        Assert.Equal(49L, Scalar(kept, "PRAGMA user_version;"));
+    }
+
+    [Fact]
+    public void OpenTakesAStoreBackupFirstAndTheReportNamesItsReceiptAndWhatWasDropped()
+    {
+        CreateSchema49();
+        using (MotifDatabase.OpenOwned(Source, Project, MotifSchema.CurrentSchema, new Version(1, 0))) { }
+
+        var report = JsonSerializer.Deserialize<MotifStoreUpgrade.Report>(File.ReadAllText(Source + ".upgrade.json"))!;
+        Assert.StartsWith(Path.Combine(_root, "project.motif-backups", "pre-upgrade-schema49-"), report.BackupDirectory,
+            StringComparison.Ordinal);
+        Assert.Equal(Path.Combine(report.BackupDirectory!, StoreBackups.ReceiptName), report.BackupReceiptPath);
+        var receipt = JsonSerializer.Deserialize<SIL.Motif.Contract.Responses.StoreBackupResponse>(
+            File.ReadAllText(report.BackupReceiptPath!), StoreBackups.ReceiptOptions)!;
+        Assert.Equal(49, receipt.SchemaVersion);
+        StoreBackups.Verify(receipt, 49);
+        using var original = Connect(Path.Combine(report.BackupDirectory!, StoreBackups.StoreName));
+        Assert.Equal(1, Count(original, "ProposalRevisions"));
+        Assert.Equal(1L, report.DroppedCounts!["Jobs"]);
+        Assert.Contains("Jobs", report.Dropped);
+    }
+
+    [Fact]
+    public void AFailedBackupRefusesTheUpgradeAndChangesNothing()
+    {
+        CreateSchema49();
+        // A file where the backups folder must go makes the backup fail.
+        File.WriteAllText(Path.Combine(_root, "project.motif-backups"), "in the way");
+        string[] Entries() => Directory.GetFileSystemEntries(_root).Where(path => !path.EndsWith(".lock", StringComparison.Ordinal))
+            .Order(StringComparer.Ordinal).ToArray();
+        var before = Entries();
+        var storeBytes = File.ReadAllBytes(Source);
+
+        var failure = Assert.Throws<MotifStoreUpgradeFailedException>(() =>
+            MotifDatabase.OpenOwned(Source, Project, MotifSchema.CurrentSchema, new Version(1, 0)));
+
+        Assert.Equal(MotifStoreUpgradeFailedException.BackupStep, failure.Step);
+        Assert.Null(failure.Backup);
+        Assert.Contains("changed nothing", failure.Message);
+        Assert.Equal(storeBytes, File.ReadAllBytes(Source));
+        Assert.Equal(before, Entries());
+    }
+
+    [Theory]
+    [InlineData("backed-up")]
+    [InlineData("built")]
+    [InlineData("original-moved")]
+    [InlineData("sidecars-moved")]
+    [InlineData("store-swapped")]
+    public void ACrashAtAnyStepOfTheUpgradeIsRecoveredByTheNextOpen(string crashAfter)
+    {
+        CreateSchema49();
+        MotifSqliteStore.StepHook = step => { if (step == crashAfter) throw new SimulatedCrash(); };
+        try
+        {
+            Assert.Throws<SimulatedCrash>(() =>
+                MotifDatabase.OpenOwned(Source, Project, MotifSchema.CurrentSchema, new Version(1, 0)));
+        }
+        finally
+        {
+            MotifSqliteStore.StepHook = null;
+        }
+
+        using (var db = MotifDatabase.OpenOwned(Source, Project, MotifSchema.CurrentSchema, new Version(1, 0)))
+        using (var connection = db.OpenConnection())
+        {
+            Assert.Equal(1, Count(connection, "ProposalRevisions"));
+            Assert.Equal((long)MotifSchema.CurrentSchema, Scalar(connection, "PRAGMA user_version;"));
+        }
+        Assert.False(File.Exists(Source + ".upgrading"));
+        using var original = Connect(Source + ".schema49.bak");
+        Assert.Equal(49L, Scalar(original, "PRAGMA user_version;"));
+        var report = JsonSerializer.Deserialize<MotifStoreUpgrade.Report>(File.ReadAllText(Source + ".upgrade.json"))!;
+        Assert.True(File.Exists(report.BackupReceiptPath));
+    }
+
+    [Fact]
+    public void AnAlteredBackupFailsVerification()
+    {
+        CreateSchema49();
+        var backup = MotifDatabase.WithExclusiveStoreFiles(Source, null, () =>
+            StoreBackups.WriteHeldExclusively(Project, Source, StoreBackups.PreUpgrade));
+        var receipt = JsonSerializer.Deserialize<SIL.Motif.Contract.Responses.StoreBackupResponse>(
+            File.ReadAllText(backup.ReceiptPath), StoreBackups.ReceiptOptions)!;
+        StoreBackups.Verify(receipt, 49);
+        var copy = Path.Combine(backup.Directory, StoreBackups.StoreName);
+        var bytes = File.ReadAllBytes(copy);
+        bytes[^1] ^= 0xff;
+        File.WriteAllBytes(copy, bytes);
+
+        Assert.Throws<InvalidDataException>(() => StoreBackups.Verify(receipt, 49));
+    }
+
+    [Fact]
+    public void AFailedBuildLeavesTheOriginalAndNamesTheBackup()
+    {
+        CreateSchema49();
+        using (var connection = Connect(Source))
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "CREATE TABLE Unclassified (Value TEXT);";
+            command.ExecuteNonQuery();
+        }
+
+        var failure = Assert.Throws<MotifStoreUpgradeFailedException>(() =>
+            MotifDatabase.OpenOwned(Source, Project, MotifSchema.CurrentSchema, new Version(1, 0)));
+
+        Assert.Equal(MotifStoreUpgradeFailedException.BuildStep, failure.Step);
+        Assert.NotNull(failure.Backup);
+        Assert.True(File.Exists(failure.Backup!.ReceiptPath));
+        Assert.Contains(failure.Backup.Directory, failure.Message);
+        Assert.False(File.Exists(Source + ".schema49.bak"));
         using var original = Connect(Source);
         Assert.Equal(49L, Scalar(original, "PRAGMA user_version;"));
+        Assert.Equal(1, Count(original, "ProposalRevisions"));
+        using var copy = Connect(Path.Combine(failure.Backup.Directory, StoreBackups.StoreName));
+        Assert.Equal(49L, Scalar(copy, "PRAGMA user_version;"));
     }
+
+    [Fact]
+    public void AFailedRenameIsRefusedAtTheSwapStepAndTheNextOpenRecovers()
+    {
+        CreateSchema49();
+        MotifSqliteStore.StepHook = step => { if (step == "original-moved") throw new IOException("held by an indexer"); };
+        MotifStoreUpgradeFailedException failure;
+        try
+        {
+            failure = Assert.Throws<MotifStoreUpgradeFailedException>(() =>
+                MotifDatabase.OpenOwned(Source, Project, MotifSchema.CurrentSchema, new Version(1, 0)));
+        }
+        finally
+        {
+            MotifSqliteStore.StepHook = null;
+        }
+
+        Assert.Equal(MotifStoreUpgradeFailedException.SwapStep, failure.Step);
+        Assert.NotNull(failure.Backup);
+        Assert.Contains(failure.Backup!.Directory, failure.Message);
+        Assert.True(File.Exists(failure.Backup.ReceiptPath));
+        using (var db = MotifDatabase.OpenOwned(Source, Project, MotifSchema.CurrentSchema, new Version(1, 0)))
+        using (var connection = db.OpenConnection())
+        {
+            Assert.Equal((long)MotifSchema.CurrentSchema, Scalar(connection, "PRAGMA user_version;"));
+            Assert.Equal(1, Count(connection, "ProposalRevisions"));
+        }
+    }
+
+    [Fact]
+    public async Task TwoOpenersOfAnOlderStoreUpgradeItOnceAndBothSeeItCurrent()
+    {
+        CreateSchema49();
+        var started = new ManualResetEventSlim();
+        Task<long> Open() => Task.Run(() =>
+        {
+            started.Wait();
+            using var db = MotifDatabase.OpenOwned(Source, Project, MotifSchema.CurrentSchema, new Version(1, 0),
+                TimeSpan.FromSeconds(60));
+            using var connection = db.OpenConnection();
+            return Scalar(connection, "PRAGMA user_version;");
+        });
+        var first = Open();
+        var second = Open();
+        started.Set();
+
+        var versions = await Task.WhenAll(first, second);
+
+        Assert.All(versions, version => Assert.Equal((long)MotifSchema.CurrentSchema, version));
+        Assert.Single(Directory.GetDirectories(Path.Combine(_root, "project.motif-backups")));
+        Assert.True(File.Exists(Source + ".schema49.bak"));
+    }
+
+    private sealed class SimulatedCrash : Exception;
 
     [Fact]
     public void UnknownTablesAreNotSilentlyDiscarded()

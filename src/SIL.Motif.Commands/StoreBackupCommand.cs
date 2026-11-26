@@ -46,17 +46,15 @@ namespace SIL.Motif.Commands;
 public static partial class StoreBackupCommand
 {
     /// <summary>The receipt's file name inside a backup folder.</summary>
-    public const string ReceiptName = "motif-backup.json";
+    public const string ReceiptName = StoreBackups.ReceiptName;
 
     private const string IncompleteMarker = "restore-incomplete";
-    private const string StoreName = "store.sqlite";
-    private const string ConfigName = "Config.motif.toml";
-    private const string UpgradeReportName = "store.upgrade.json";
-    private const string TrialExportsPrefix = "trial-exports/";
-    private const string FwDataNote =
-        "The FieldWorks project file (.fwdata) is not part of this backup. Back it up with FieldWorks' own store backup.";
+    private const string StoreName = StoreBackups.StoreName;
+    private const string ConfigName = StoreBackups.ConfigName;
+    private const string UpgradeReportName = StoreBackups.UpgradeReportName;
+    private const string TrialExportsPrefix = StoreBackups.TrialExportsPrefix;
 
-    private static readonly JsonSerializerOptions ReceiptJson = new(JsonSerializerDefaults.Web) { WriteIndented = true };
+    private static readonly JsonSerializerOptions ReceiptJson = StoreBackups.ReceiptOptions;
 
     /// <summary>Writes a consistent copy of the project's store and owned files into a new folder.</summary>
     public static CommandOutcome<StoreBackupResponse> Backup(StoreBackupRequest request) => Backup(request, null);
@@ -92,7 +90,7 @@ public static partial class StoreBackupCommand
         try
         {
             return CommandOutcome<StoreBackupResponse>.Success(
-                WriteBackup(project, storePath, destination, now, file => MotifDatabase.BackUpExisting(storePath, file)));
+                StoreBackups.Write(project, storePath, destination, now, file => MotifDatabase.BackUpExisting(storePath, file)));
         }
         catch (Exception exception) when (exception is MotifStoreLockException or InvalidDataException or IOException
             or UnauthorizedAccessException)
@@ -408,42 +406,6 @@ public static partial class StoreBackupCommand
         public string? Directory { get; set; }
     }
 
-    private static StoreBackupResponse WriteBackup(ProjectLocator project, string storePath, string destination,
-        DateTimeOffset now, Func<string, StoreFileFacts> copyStore)
-    {
-        Directory.CreateDirectory(destination);
-        var files = new List<StoreBackupFile>();
-        var storeCopy = Path.Combine(destination, StoreName);
-        var facts = copyStore(storeCopy);
-        files.Add(Describe("store", StoreName, storeCopy));
-
-        void CopyOwned(string role, string name, string source)
-        {
-            if (!File.Exists(source)) return;
-            var copy = Path.Combine(destination, name.Replace('/', Path.DirectorySeparatorChar));
-            Directory.CreateDirectory(Path.GetDirectoryName(copy)!);
-            CopyShared(source, copy);
-            files.Add(Describe(role, name, copy));
-        }
-
-        CopyOwned("config", ConfigName, Path.ChangeExtension(project.FullFwDataPath, ".motif.toml"));
-        CopyOwned("upgrade-report", UpgradeReportName, storePath + ".upgrade.json");
-        var trialRoot = MotifDatabase.TrialExportDirectory(storePath);
-        if (Directory.Exists(trialRoot))
-            foreach (var source in Directory.EnumerateFiles(trialRoot, "*", SearchOption.AllDirectories).Order(StringComparer.Ordinal))
-                CopyOwned("trial-export", TrialExportsPrefix + Path.GetRelativePath(trialRoot, source).Replace('\\', '/'), source);
-
-        var receiptPath = Path.Combine(destination, ReceiptName);
-        var receipt = new StoreBackupResponse(destination, receiptPath, project.FullFwDataPath,
-            FwDataProjectGuid.TryRead(project.FullFwDataPath), project.FieldWorksProjectIdentity, facts.SchemaVersion,
-            MotifProductVersion.CurrentText, now, files, false, FwDataNote);
-        // Written beside, then renamed in, so a half-written receipt is never mistaken for a finished backup.
-        var receiptTemp = receiptPath + ".tmp";
-        File.WriteAllText(receiptTemp, JsonSerializer.Serialize(receipt, ReceiptJson));
-        File.Move(receiptTemp, receiptPath, overwrite: true);
-        return receipt;
-    }
-
     private sealed record Read((string Directory, StoreBackupResponse Receipt, List<Target> Targets) Value, Refusal? Refusal);
 
     private static Read ReadReceipt(string backupPath, ProjectLocator project, string storePath)
@@ -583,25 +545,9 @@ public static partial class StoreBackupCommand
         return CommandOutcome<T>.Refused(new Refusal(code, reason, message, all));
     }
 
-    private static StoreBackupFile Describe(string role, string name, string path)
-    {
-        var (bytes, sha) = Measure(path);
-        return new StoreBackupFile(role, name, path, bytes, sha);
-    }
+    private static (long Bytes, string Sha256) Measure(string path) => StoreBackups.Measure(path);
 
-    private static (long Bytes, string Sha256) Measure(string path)
-    {
-        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-        var hash = SHA256.HashData(stream);
-        return (stream.Length, Convert.ToHexStringLower(hash));
-    }
-
-    private static void CopyShared(string source, string destination)
-    {
-        using var input = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-        using var output = new FileStream(destination, FileMode.Create, FileAccess.Write, FileShare.None);
-        input.CopyTo(output);
-    }
+    private static void CopyShared(string source, string destination) => StoreBackups.CopyShared(source, destination);
 
     private static void Discard(string destination, bool created)
     {
@@ -613,6 +559,5 @@ public static partial class StoreBackupCommand
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
     }
 
-    private static string Stamp(DateTimeOffset time) =>
-        time.UtcDateTime.ToString("yyyyMMdd'T'HHmmssfff'Z'", CultureInfo.InvariantCulture);
+    private static string Stamp(DateTimeOffset time) => StoreBackups.Stamp(time);
 }
