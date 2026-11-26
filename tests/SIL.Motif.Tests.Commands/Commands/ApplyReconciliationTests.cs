@@ -364,6 +364,8 @@ public sealed class ApplyReconciliationTests(PristineProjectFixture pristine)
 
             Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
             Assert.Equal(proposalId, outcome.Value!.ProposalId);
+            Assert.Contains("The apply succeeded; finish this stage with `motif baseline capture --project", outcome.Value.ResultNote,
+                StringComparison.Ordinal);
             Assert.Contains("post-receipt housekeeping could not be completed", outcome.Value.ResultNote,
                 StringComparison.Ordinal);
             var log = ProjectDiagnosticLog.PathFor(projectPath);

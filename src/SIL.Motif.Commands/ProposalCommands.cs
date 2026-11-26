@@ -2181,16 +2181,19 @@ public static partial class ProposalCommands
                     if (logged)
                         postApplyNotes.Add($"Details are in {ProjectDiagnosticLog.PathFor(project.FullFwDataPath)}.");
                 }
-                void TryPostApplyStep(string action, Action work)
+                void TryPostApplyStep(string action, string finishWith, Action work)
                 {
-                    try { work(); }
+                    try { BusyRetry.Run(work); }
                     catch (Exception exception)
                     {
-                        NotePostApplyFailure($"Apply completed, but {action} could not be completed.", exception);
+                        NotePostApplyFailure($"Apply completed, but {action} could not be completed. " +
+                            $"The apply succeeded; finish this stage with `{finishWith}`.", exception);
                     }
                 }
+                var refreshVerb = $"motif baseline capture --project {project.FullFwDataPath}";
+                var assessVerb = $"motif assess --project {project.FullFwDataPath} (repeat the Proposal's Assessment)";
 
-                TryPostApplyStep("Source index queueing", () =>
+                TryPostApplyStep("Source index queueing", refreshVerb, () =>
                 {
                     IReadOnlyList<SIL.Motif.Scripture.SourceListEntry> sources;
                     try { sources = SIL.Motif.Scripture.SourceList.Read(cache); }
@@ -2199,7 +2202,7 @@ public static partial class ProposalCommands
                     if (noBackground) SIL.Motif.Worker.Sources.SourceIndexRefresh.MarkPending(database, sources);
                     else SIL.Motif.Worker.Sources.SourceIndexRefresh.Enqueue(database, sources);
                 });
-                TryPostApplyStep("Progress publication", () =>
+                TryPostApplyStep("Progress publication", refreshVerb, () =>
                 {
                     var pending = ProgressRepository.PendingReceipt(database, canonicalId.Value);
                     if (pending is null) return;
@@ -2226,21 +2229,21 @@ public static partial class ProposalCommands
                         incremental ? existing.Value.Projection : null, savedSource.Serialize());
                 });
 
-                TryPostApplyStep("post-receipt housekeeping", () =>
+                TryPostApplyStep("post-receipt housekeeping", refreshVerb, () =>
                 {
                     if (ShouldFailAfterReceiptForTest(project.FullFwDataPath))
                         throw new IOException("Injected post-receipt failure.");
                 });
                 if (candidate is not null)
                 {
-                    TryPostApplyStep("Assessment promotion", () =>
+                    TryPostApplyStep("Assessment promotion", assessVerb, () =>
                         assessments.PromoteToCurrent(candidate.AssessmentId));
-                    TryPostApplyStep("Before Assessment binding", () =>
+                    TryPostApplyStep("Before Assessment binding", assessVerb, () =>
                         BindBeforeAssessment(database, assessments, canonicalId, candidate, cache));
                 }
                 if (configuration.PurgeOnApply)
                 {
-                    TryPostApplyStep("Assessment cleanup", () =>
+                    TryPostApplyStep("Assessment cleanup", assessVerb, () =>
                         assessments.DeleteByProposal(canonicalId, candidate?.AssessmentId));
                 }
 
