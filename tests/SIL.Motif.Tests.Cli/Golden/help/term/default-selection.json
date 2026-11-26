@@ -1,0 +1,9 @@
+{
+  "kind": "term",
+  "code": "default-selection",
+  "slug": "default-selection",
+  "title": "Words measured by default",
+  "description": "A project\u0027s Default Selection is the chosen Texts plus any added words Motif measures when no other Selection is named. Motif resolves it to an exact word list for each run.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/terms/default-selection/"
+}

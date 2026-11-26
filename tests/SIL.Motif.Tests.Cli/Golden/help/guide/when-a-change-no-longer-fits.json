@@ -1,0 +1,9 @@
+{
+  "kind": "guide",
+  "code": "when-a-change-no-longer-fits",
+  "slug": "when-a-change-no-longer-fits",
+  "title": "When a Change No Longer Fits",
+  "description": "A staged change names the project content it was made against. A later FieldWorks save can leave that change unable to fit, or leave its occurrence uncertain. Apply stays unavailable until the engine can establish that the changes fit.",
+  "helpPage": "# When a Change No Longer Fits\n\nA staged change names the project content it was made against. A later FieldWorks save can leave that change unable to fit, or leave its occurrence uncertain. Apply stays unavailable until the engine can establish that the changes fit.\n\n**Refresh** to read the current project, then inspect the affected word in **Texts**. Use **Undo** (Ctrl\u002BZ, or \u2318\u002BZ on macOS) to take back the last staged choice if it is no longer wanted, or stage a different choice for the place, or check it against the current context before staging a replacement. Motif never forces an uncertain change onto a different place. See [Replace a Pending Change](guide:replace-a-pending-change).\n",
+  "url": "https://motif-docs.pages.dev/guide/when-a-change-no-longer-fits/"
+}

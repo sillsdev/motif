@@ -30,6 +30,17 @@ internal static class ReadingDeltaText
         foreach (var manifest in delta.Manifests)
             text.AppendLine(string.Create(CultureInfo.InvariantCulture,
                 $"Wrote {manifest.Path}: {manifest.Rows} rows, {manifest.Readings} Readings."));
+        if (delta.Expectations is { } gate)
+        {
+            text.AppendLine("Expectations: " + gate.State + (gate.Reason is null ? "" : " - " + gate.Reason));
+            foreach (var row in gate.Mismatches)
+                text.AppendLine(string.Create(CultureInfo.InvariantCulture,
+                    $"  {row.Kind} {row.Word}: {row.Unexpected.Sum(item => item.Count)} unexpected, {row.Missing.Sum(item => item.Count)} missing"));
+            if (gate.MismatchedWords > gate.Mismatches.Count)
+                text.AppendLine(string.Create(CultureInfo.InvariantCulture, $"  {gate.MismatchedWords - gate.Mismatches.Count} more mismatches in the JSON."));
+        }
+        if (delta.Receipt is { } receipt)
+            text.AppendLine($"Wrote receipt {receipt.Path} (digest {receipt.ReceiptDigest}, gate code {receipt.GateCodeDigest}).");
         foreach (var limitation in delta.Limitations) text.AppendLine("Limitation: " + limitation);
         return text.ToString();
     }

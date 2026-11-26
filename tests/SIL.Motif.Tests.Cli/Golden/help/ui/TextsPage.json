@@ -1,0 +1,9 @@
+{
+  "kind": "ui",
+  "code": "TextsPage",
+  "slug": "textspage",
+  "title": "Texts",
+  "description": "Texts shows the reader and the current Selection.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/controls/textspage/"
+}

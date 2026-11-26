@@ -24,34 +24,37 @@ namespace SIL.Motif.Commands;
 /// <para>
 /// A restore checks the receipt, the schema and the project (by LibLCM project GUID, else by project identity;
 /// <c>--force</c> overrides), then, under the store's exclusive lease, stages every file beside its target and checks
-/// the staged copy's sha256. Nothing is deleted: the store, its <c>-wal</c>, <c>-shm</c> and <c>-journal</c> and every
+/// the staged copy's sha256, then checkpoints the live store's WAL into its main file (refusing, with nothing changed, when that cannot finish). Nothing is deleted: the store, its <c>-wal</c>, <c>-shm</c> and <c>-journal</c> and every
 /// other owned file the restore replaces or the backup lacks (a trial export, a config, an upgrade report) are
-/// moved into <c>&lt;stem&gt;.motif-backups/pre-restore-&lt;time&gt;/moved</c>, and the response lists each one. Every
+/// moved into <c>&lt;stem&gt;.motif-backups/pre-restore-&lt;time&gt;/moved</c>, and the response lists each one. That
+/// move is the one copy of the old store: the raw files, which together reproduce it exactly, so no online backup
+/// doubles the bytes. Every
 /// refusal leaves the store as it was, pinned by `AFileThatDoesNotMatchItsShaIsRefusedAndTheStoreIsLeftAsItWas`.
 /// </para>
 /// <para>
 /// Crash states, in order. (1) Before any move: the old project is untouched; leftover <c>*.restore-*</c> staged files
 /// are deleted by the next restore. (2) Other owned files moved and swapped, store not yet moved: the old store is live
-/// beside the new config and trial files, a mixed state a rerun of the same restore repairs. (3) The old store and its
-/// sidecars moved as one set, the staged store not yet renamed: no store is at the path, the complete old store is in
-/// <c>moved</c> and the complete new one is staged; Motif sees no store, never a half or mixed one, and a rerun
-/// completes the restore. (4) The staged store renamed: the new store is live, complete. A failure the process
+/// beside the new config and trial files, a mixed state a rerun of the same restore repairs. (3) The sidecars moved first, the
+/// store not yet: the old store is live and holds every committed transaction, because the restore checkpointed its WAL
+/// before any move; no orphan <c>-wal</c> is at the path, and a rerun completes the restore into the same pre-restore
+/// folder (marked <c>restore-incomplete</c> until it finishes). (3b) The store moved too, the staged store not yet renamed: no store and no
+/// sidecar are at the path, the old files are all in <c>moved</c> and the new store is staged; Motif sees no store,
+/// never a half or mixed one, and a rerun completes the restore. (4) The staged store renamed: the new store is live, complete. A failure the process
 /// survives (an <see cref="IOException"/>) moves everything back instead, and names the pre-restore folder.
 /// </para>
 /// </remarks>
 public static partial class StoreBackupCommand
 {
     /// <summary>The receipt's file name inside a backup folder.</summary>
-    public const string ReceiptName = "motif-backup.json";
+    public const string ReceiptName = StoreBackups.ReceiptName;
 
-    private const string StoreName = "store.sqlite";
-    private const string ConfigName = "Config.motif.toml";
-    private const string UpgradeReportName = "store.upgrade.json";
-    private const string TrialExportsPrefix = "trial-exports/";
-    private const string FwDataNote =
-        "The FieldWorks project file (.fwdata) is not part of this backup. Back it up with FieldWorks' own store backup.";
+    private const string IncompleteMarker = "restore-incomplete";
+    private const string StoreName = StoreBackups.StoreName;
+    private const string ConfigName = StoreBackups.ConfigName;
+    private const string UpgradeReportName = StoreBackups.UpgradeReportName;
+    private const string TrialExportsPrefix = StoreBackups.TrialExportsPrefix;
 
-    private static readonly JsonSerializerOptions ReceiptJson = new(JsonSerializerDefaults.Web) { WriteIndented = true };
+    private static readonly JsonSerializerOptions ReceiptJson = StoreBackups.ReceiptOptions;
 
     /// <summary>Writes a consistent copy of the project's store and owned files into a new folder.</summary>
     public static CommandOutcome<StoreBackupResponse> Backup(StoreBackupRequest request) => Backup(request, null);
@@ -87,7 +90,7 @@ public static partial class StoreBackupCommand
         try
         {
             return CommandOutcome<StoreBackupResponse>.Success(
-                WriteBackup(project, storePath, destination, now, file => MotifDatabase.BackUpExisting(storePath, file)));
+                StoreBackups.Write(project, storePath, destination, now, file => MotifDatabase.BackUpExisting(storePath, file)));
         }
         catch (Exception exception) when (exception is MotifStoreLockException or InvalidDataException or IOException
             or UnauthorizedAccessException)
@@ -185,32 +188,30 @@ public static partial class StoreBackupCommand
             return NewerSchema(facts.SchemaVersion, project, storePath);
         }
 
-        var preRestore = Path.Combine(Path.GetDirectoryName(storePath)!,
-            Path.GetFileNameWithoutExtension(project.FullFwDataPath) + ".motif-backups", "pre-restore-" + Stamp(now));
-        for (var n = 2; Directory.Exists(preRestore) || File.Exists(preRestore); n++)
-            preRestore = Path.Combine(Path.GetDirectoryName(preRestore)!, "pre-restore-" + Stamp(now) + "-" + n);
-        var movedRoot = Path.Combine(preRestore, "moved");
-        var sidecars = new[] { "", "-wal", "-shm", "-journal" };
-
-        // A corrupt store is not a reason to refuse: its raw files are moved aside below.
-        StoreBackupResponse? previous = null;
+        // Fold the WAL into the main file first; then the sidecars hold nothing, whichever order they move in.
         if (File.Exists(storePath))
+            try { MotifDatabase.CheckpointHeldExclusively(storePath); }
+            catch (InvalidDataException) { }
+        Step("checkpointed");
+
+        var backupsRoot = Path.Combine(Path.GetDirectoryName(storePath)!,
+            Path.GetFileNameWithoutExtension(project.FullFwDataPath) + ".motif-backups");
+        // A restore that died partway left a marker; the rerun fills that folder.
+        var preRestore = Directory.Exists(backupsRoot)
+            ? Directory.GetDirectories(backupsRoot, "pre-restore-*")
+                .Where(folder => File.Exists(Path.Combine(folder, IncompleteMarker))).Order(StringComparer.Ordinal).LastOrDefault()
+            : null;
+        if (preRestore is null)
         {
-            progress.Directory = preRestore;
-            try
-            {
-                previous = WriteBackup(project, storePath, preRestore, now,
-                    file => MotifDatabase.BackUpHeldExclusively(storePath, file));
-            }
-            catch (InvalidDataException)
-            {
-                previous = null;
-                // The raw files are moved aside below; the half-made copy is not a backup.
-                try { Directory.Delete(preRestore, recursive: true); }
-                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
-            }
+            preRestore = Path.Combine(backupsRoot, "pre-restore-" + Stamp(now));
+            for (var n = 2; Directory.Exists(preRestore) || File.Exists(preRestore); n++)
+                preRestore = Path.Combine(backupsRoot, "pre-restore-" + Stamp(now) + "-" + n);
         }
-        Step("pre-restore-saved");
+        Directory.CreateDirectory(preRestore);
+        File.WriteAllText(Path.Combine(preRestore, IncompleteMarker), "");
+        progress.Directory = preRestore;
+        var movedRoot = Path.Combine(preRestore, "moved");
+        var sidecars = new[] { "-wal", "-shm", "-journal" };
 
         var moved = new List<ProjectQuarantinedFile>();
         var swapped = new List<StagedFile>();
@@ -241,10 +242,13 @@ public static partial class StoreBackupCommand
             }
             Step("owned-swapped");
 
-            // 2. The old store and every sidecar move as one set, then the staged store renames into the empty place.
+            // 2. Sidecars first, so none is left at the live path beside a store created there.
             foreach (var suffix in sidecars)
                 if (File.Exists(storePath + suffix))
                     MoveAside(storePath + suffix, Path.Combine(movedRoot, StoreName + suffix), "replaced", moved, progress, preRestore);
+            Step("sidecars-moved");
+            if (File.Exists(storePath))
+                MoveAside(storePath, Path.Combine(movedRoot, StoreName), "replaced", moved, progress, preRestore);
             Step("old-store-moved");
 
             stagedStore.SwapIn();
@@ -257,11 +261,16 @@ public static partial class StoreBackupCommand
             throw;
         }
 
+        try { File.Delete(Path.Combine(preRestore, IncompleteMarker)); }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
+        // Removed only when empty: a reused folder may hold files an earlier attempt moved.
+        try { Directory.Delete(preRestore, recursive: false); }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
         var restored = targets.Select(target => new StoreBackupFile(target.Entry.Role, target.Entry.Name,
             target.Destination, target.Entry.Bytes, target.Entry.Sha256)).ToList();
         return CommandOutcome<StoreRestoreResponse>.Success(new StoreRestoreResponse(
-            storePath, directory, facts.SchemaVersion, now, restored, previous,
-            moved.Count > 0 || previous is not null ? preRestore : null, moved));
+            storePath, directory, facts.SchemaVersion, now, restored,
+            Directory.Exists(preRestore) ? preRestore : null, moved));
     }
 
     private static void MoveAside(string original, string destination, string reason, List<ProjectQuarantinedFile> moved,
@@ -269,6 +278,8 @@ public static partial class StoreBackupCommand
     {
         progress.Directory = preRestore;
         Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+        // A name taken in a reused folder holds an earlier attempt's file; keep both.
+        for (var n = 2; File.Exists(destination) && n < 1000; n++) destination = destination.Split(".again-")[0] + ".again-" + n;
         File.Move(original, destination);
         moved.Add(new ProjectQuarantinedFile(original, destination, reason));
     }
@@ -288,9 +299,48 @@ public static partial class StoreBackupCommand
     {
         var windows = OperatingSystem.IsWindows();
         var parent = Path.GetDirectoryName(storePath)!;
+        var real = ResolveRealPath(destination, windows);
         foreach (var owned in OwnedPaths(storePath, parent, Path.GetFileNameWithoutExtension(project.FullFwDataPath)))
-            if (IsInside(destination, owned, windows)) return owned;
+            if (IsInside(destination, owned, windows) || IsInside(real, ResolveRealPath(owned, windows), windows)) return owned;
         return null;
+    }
+
+    /// <summary>
+    /// The path with every link on it followed (symlinks and junctions to their final target) and, on Windows, 8.3 short
+    /// names replaced by long ones. The part of the path that does not exist yet is kept as written, after the real
+    /// path of its deepest existing ancestor.
+    /// </summary>
+    internal static string ResolveRealPath(string path, bool windows = false, int depth = 0)
+    {
+        var full = Path.GetFullPath(path);
+        var root = Path.GetPathRoot(full) ?? "";
+        var current = root;
+        var segments = full[root.Length..].Split([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
+            StringSplitOptions.RemoveEmptyEntries);
+        for (var index = 0; index < segments.Length; index++)
+        {
+            var next = Path.Combine(current, segments[index]);
+            FileSystemInfo info = Directory.Exists(next) ? new DirectoryInfo(next) : new FileInfo(next);
+            if (info.LinkTarget is not null && depth < 32)
+            {
+                string? target = null;
+                try { target = info.ResolveLinkTarget(returnFinalTarget: true)?.FullName; }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
+                // A dangling or looping link keeps its own name; its target is then resolved from the link's folder.
+                target ??= Path.GetFullPath(info.LinkTarget, current);
+                next = ResolveRealPath(target, windows, depth + 1);
+            }
+            else if (windows && info.Exists && new DirectoryInfo(current).EnumerateFileSystemInfos(segments[index]).FirstOrDefault()
+                is { } named)
+                next = Path.Combine(current, named.Name);
+            current = next;
+            if (!info.Exists && info.LinkTarget is null)
+            {
+                for (var rest = index + 1; rest < segments.Length; rest++) current = Path.Combine(current, segments[rest]);
+                break;
+            }
+        }
+        return current;
     }
 
     /// <summary>The store file, the folders Motif owns beside it, and the folder pre-restore copies go in.</summary>
@@ -354,42 +404,6 @@ public static partial class StoreBackupCommand
     private sealed class RestoreProgress
     {
         public string? Directory { get; set; }
-    }
-
-    private static StoreBackupResponse WriteBackup(ProjectLocator project, string storePath, string destination,
-        DateTimeOffset now, Func<string, StoreFileFacts> copyStore)
-    {
-        Directory.CreateDirectory(destination);
-        var files = new List<StoreBackupFile>();
-        var storeCopy = Path.Combine(destination, StoreName);
-        var facts = copyStore(storeCopy);
-        files.Add(Describe("store", StoreName, storeCopy));
-
-        void CopyOwned(string role, string name, string source)
-        {
-            if (!File.Exists(source)) return;
-            var copy = Path.Combine(destination, name.Replace('/', Path.DirectorySeparatorChar));
-            Directory.CreateDirectory(Path.GetDirectoryName(copy)!);
-            CopyShared(source, copy);
-            files.Add(Describe(role, name, copy));
-        }
-
-        CopyOwned("config", ConfigName, Path.ChangeExtension(project.FullFwDataPath, ".motif.toml"));
-        CopyOwned("upgrade-report", UpgradeReportName, storePath + ".upgrade.json");
-        var trialRoot = MotifDatabase.TrialExportDirectory(storePath);
-        if (Directory.Exists(trialRoot))
-            foreach (var source in Directory.EnumerateFiles(trialRoot, "*", SearchOption.AllDirectories).Order(StringComparer.Ordinal))
-                CopyOwned("trial-export", TrialExportsPrefix + Path.GetRelativePath(trialRoot, source).Replace('\\', '/'), source);
-
-        var receiptPath = Path.Combine(destination, ReceiptName);
-        var receipt = new StoreBackupResponse(destination, receiptPath, project.FullFwDataPath,
-            FwDataProjectGuid.TryRead(project.FullFwDataPath), project.FieldWorksProjectIdentity, facts.SchemaVersion,
-            MotifProductVersion.CurrentText, now, files, false, FwDataNote);
-        // Written beside, then renamed in, so a half-written receipt is never mistaken for a finished backup.
-        var receiptTemp = receiptPath + ".tmp";
-        File.WriteAllText(receiptTemp, JsonSerializer.Serialize(receipt, ReceiptJson));
-        File.Move(receiptTemp, receiptPath, overwrite: true);
-        return receipt;
     }
 
     private sealed record Read((string Directory, StoreBackupResponse Receipt, List<Target> Targets) Value, Refusal? Refusal);
@@ -498,10 +512,25 @@ public static partial class StoreBackupCommand
         }
         // A store another process kept locked past the busy timeout is the CLI's retryable cli.store-busy.
         if (SqliteConnections.IsBusyInChain(exception)) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw(exception);
+        // Windows reports a file another process holds open as a sharing violation; name that cause.
+        if (IsSharingViolation(exception))
+            return Refuse<T>(RefusalCodes.ProjectStoreInUse, FailureReason.Busy,
+                "Another process has the store open; close Motif sessions and retry. " +
+                $"Nothing was changed{(savedIn is null ? "" : $", and the store and any file moved aside are as they were (see '{savedIn}')")}.",
+                project, storePath, ("exceptionDetail", exception.Message), ("preRestoreDirectory", savedIn ?? ""));
         return Refuse<T>(RefusalCodes.ProjectStoreIo, FailureReason.Refused,
             $"Motif could not {action} its file for this project, '{Path.GetFileName(storePath)}'." +
             (savedIn is null ? "" : $" The store it was replacing, and any file moved aside, are in '{savedIn}'."),
             project, storePath, ("exceptionDetail", exception.Message), ("preRestoreDirectory", savedIn ?? ""));
+    }
+
+    /// <summary>True for a Windows sharing or lock violation in the exception chain.</summary>
+    private static bool IsSharingViolation(Exception? exception)
+    {
+        if (!OperatingSystem.IsWindows()) return false;
+        for (; exception is not null; exception = exception.InnerException)
+            if (exception is IOException && (exception.HResult & 0xFFFF) is 32 or 33) return true;
+        return false;
     }
 
     private static CommandOutcome<T> Refuse<T>(string code, FailureReason reason, string message, ProjectLocator project,
@@ -516,25 +545,9 @@ public static partial class StoreBackupCommand
         return CommandOutcome<T>.Refused(new Refusal(code, reason, message, all));
     }
 
-    private static StoreBackupFile Describe(string role, string name, string path)
-    {
-        var (bytes, sha) = Measure(path);
-        return new StoreBackupFile(role, name, path, bytes, sha);
-    }
+    private static (long Bytes, string Sha256) Measure(string path) => StoreBackups.Measure(path);
 
-    private static (long Bytes, string Sha256) Measure(string path)
-    {
-        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-        var hash = SHA256.HashData(stream);
-        return (stream.Length, Convert.ToHexStringLower(hash));
-    }
-
-    private static void CopyShared(string source, string destination)
-    {
-        using var input = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-        using var output = new FileStream(destination, FileMode.Create, FileAccess.Write, FileShare.None);
-        input.CopyTo(output);
-    }
+    private static void CopyShared(string source, string destination) => StoreBackups.CopyShared(source, destination);
 
     private static void Discard(string destination, bool created)
     {
@@ -546,6 +559,5 @@ public static partial class StoreBackupCommand
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
     }
 
-    private static string Stamp(DateTimeOffset time) =>
-        time.UtcDateTime.ToString("yyyyMMdd'T'HHmmssfff'Z'", CultureInfo.InvariantCulture);
+    private static string Stamp(DateTimeOffset time) => StoreBackups.Stamp(time);
 }

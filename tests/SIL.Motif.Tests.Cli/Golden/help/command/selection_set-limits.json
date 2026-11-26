@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "selection set-limits",
+  "slug": "selection-set-limits",
+  "title": "Set Selection limits",
+  "description": "Changes only the saved Default Selection\u0027s parsing limits when its expected revision still matches. Use it to update the parser work limit or estimated-versus-explicit time policy without replacing the chosen Texts and added words.",
+  "helpPage": "# Set Selection limits\n\n\u0060selection set-limits\u0060 changes the parsing limits on the project\u0027s current Default Selection. The chosen Texts, added words, name, and setup status stay in place.\n\n## When to use it\n\nUse this from Settings or **Analysis options** when you want later Default Selection parses to use a different parser work limit or time policy. Running and saved results keep their own resolved limits. A limit of exactly 20,000,000 (the default) counts as unset, so the project\u0027s \u0060[parser] work-limit\u0060 applies; any other value beats the project setting.\n\n## Example\n\n\u0060\u0060\u0060powershell\nmotif selection set-limits --project \u0022C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\u0022 --name \u0022Default\u0022 --expected-revision 3 --parser-work-limit 20000000 --time-mode estimated\n\u0060\u0060\u0060\n\nUse \u0060--time-mode explicit --time-limit-ms \u003Cpositive\u003E\u0060 to choose a time safety net, in milliseconds on this computer. Estimated mode rejects an explicit millisecond value. Use \u0060--parser-work-limit none\u0060 for no step or time limit; an explicit time cap is not allowed with an unbounded parser work limit. Read the current revision with [selection show](cmd:selection%20show); if another write has changed it, read again and retry with the new revision.\n\n## What it prints\n\nThe command returns the updated Selection and its new revision. Add \u0060--json\u0060 to receive the structured projection.\n\n## Related commands\n\n- [Show the Default Selection](cmd:selection%20show) reads its current revision and policy.\n- [Choose a Default Selection](cmd:selection%20set-default) also changes its Texts and added words.\n- [Show project configuration](cmd:config%20show) reads named Assessment scopes from the project configuration file.\n",
+  "usage": [
+    "Usage: motif selection set-limits --project \u003Cfwdata\u003E --name \u003Cname\u003E --expected-revision \u003Crevision\u003E [--time-mode estimated|explicit] [--time-limit-ms \u003Cms\u003E] [--parser-work-limit \u003Cwork|none\u003E] [--json]"
+  ],
+  "surface": "Released",
+  "url": "https://motif-docs.pages.dev/reference/commands/selection-set-limits/"
+}

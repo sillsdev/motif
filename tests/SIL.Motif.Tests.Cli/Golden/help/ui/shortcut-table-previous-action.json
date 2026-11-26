@@ -1,0 +1,9 @@
+{
+  "kind": "ui",
+  "code": "shortcut-table-previous-action",
+  "slug": "shortcut-table-previous-action",
+  "title": "Previous Table Action",
+  "description": "Focus the previous row or group action.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/controls/shortcut-table-previous-action/"
+}

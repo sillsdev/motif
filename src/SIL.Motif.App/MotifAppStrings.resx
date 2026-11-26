@@ -4168,9 +4168,17 @@ Never included unless you tick it in the preview: local details, which may conta
     <value>PanGloss gave an answer Motif could not read. Install the PanGloss that matches this Motif, then try again.</value>
     <comment>Sentence the window shows for a refusal about an answer from PanGloss Motif could not read. PanGloss is the parser product name; FieldWorks is a product name; .motif.db and .fwdata are file extensions.</comment>
   </data>
+  <data name="MotifApp.RefusalStoreNewer" xml:space="preserve">
+    <value>This project's Motif store was made by a newer version of Motif. Install the newer Motif, or restore a backup made before the upgrade; your FieldWorks project is not touched.</value>
+    <comment>Sentence the window shows when the project's Motif store is newer than this Motif, so it is neither upgraded nor deleted. FieldWorks is a product name.</comment>
+  </data>
+  <data name="MotifApp.RefusalStoreUpgradeFailed" xml:space="preserve">
+    <value>Motif could not upgrade this project's store, so it left it as it was. If a backup was taken, the details name it and Motif's restore command puts it back; your FieldWorks project is not touched.</value>
+    <comment>Sentence the window shows when upgrading an older Motif store failed. FieldWorks is a product name.</comment>
+  </data>
   <data name="MotifApp.RefusalStoreUpgradable" xml:space="preserve">
-    <value>This project's Motif store is from an older version. Refresh the project to upgrade it; the original is kept as a .bak file, and your FieldWorks project is not touched.</value>
-    <comment>Sentence the window shows when a read found an older Motif store that a normal open upgrades. FieldWorks is a product name; .bak is a file extension.</comment>
+    <value>This project's Motif store is from an older version. Refresh the project to upgrade it; Motif backs the store up first, and your FieldWorks project is not touched.</value>
+    <comment>Sentence the window shows when a read found an older Motif store that a normal open upgrades. FieldWorks is a product name.</comment>
   </data>
   <data name="MotifApp.RefusalStoreFromOtherVersion" xml:space="preserve">
     <value>Motif cannot open this store. Delete it and reopen the project to continue. Changes not applied yet are lost; your FieldWorks project is not touched.</value>
@@ -5132,6 +5140,14 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.TechDemoNoticeText" xml:space="preserve">
     <value>Tech demo: only Apply writes; back up FieldWorks.</value>
     <comment>First-run notice about applying changes and backing up the FieldWorks project.</comment>
+  </data>
+  <data name="MotifApp.StoreUpgradeNoticeDismiss" xml:space="preserve">
+    <value>Dismiss</value>
+    <comment>Button that hides the notice saying the project store was upgraded after a backup.</comment>
+  </data>
+  <data name="MotifApp.StoreUpgradeNoticeDismissAccessibleName" xml:space="preserve">
+    <value>Dismiss the store upgrade notice</value>
+    <comment>Accessible name of the Dismiss button on the store upgrade notice.</comment>
   </data>
   <data name="MotifApp.TechDemoNoticeGotIt" xml:space="preserve">
     <value>_Got It</value>
@@ -7743,6 +7759,7 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.GuideOnThisPage" xml:space="preserve"><value>On This Page</value></data>
   <data name="MotifApp.GuideSectionsName" xml:space="preserve"><value>Grammar Guide Sections</value></data>
   <data name="MotifApp.GuideExamplesHeading" xml:space="preserve"><value>Examples from Your Texts</value></data>
+  <data name="MotifApp.GuideInterlinearHeading" xml:space="preserve"><value>Interlinear examples</value></data>
   <data name="MotifApp.GuideStaleNotice" xml:space="preserve"><value>The project has been saved since this section was read. Your typing is safe.</value></data>
   <data name="MotifApp.GuideQueriesHeading" xml:space="preserve"><value>Grouping Commands</value></data>
   <data name="MotifApp.RefusalQueryAsOfUnavailable" xml:space="preserve"><value>This query cannot be read for that Proposal. Run a Trial on it, or check that the project has a saved Baseline, then run the query again.</value></data>
@@ -7750,6 +7767,7 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.RefusalQueryNoTrialRows" xml:space="preserve"><value>There is no Trial evidence to read yet. Run a Trial, then run the query again.</value></data>
   <data name="MotifApp.RefusalGuideQueryRunInvalid" xml:space="preserve"><value>This query cannot be run from the window. Edit its run line to one read-only query line.</value></data>
   <data name="MotifApp.RefusalGuideQueryRunNotReadOnly" xml:space="preserve"><value>This query would change something, and a query shown here may only read. Edit its run line to a read-only query.</value></data>
+  <data name="MotifApp.RefusalGuideQueryRunPathOutsideProject" xml:space="preserve"><value>This query names a file outside the project's folder, and a query shown here may only read files inside it. Edit its run line to use a relative path in the project folder.</value></data>
   <data name="MotifApp.ProposalQuerySaveUnsupported" xml:space="preserve"><value>This Proposal's text cannot hold a query block yet, so the query cannot be saved here. Run it to see the table.</value></data>
   <data name="MotifApp.GuideQueryRun" xml:space="preserve"><value>Run</value></data>
   <data name="MotifApp.GuideQueryEdit" xml:space="preserve"><value>Edit Query</value></data>

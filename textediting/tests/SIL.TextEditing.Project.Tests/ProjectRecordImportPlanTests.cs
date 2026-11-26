@@ -369,7 +369,7 @@ namespace SIL.TextEditing.Project.Tests
             using var fixture = new ProjectFixture();
             var w = Build(fixture);
             var exporter = LexiconExporter(fixture);
-            var text = Edited(exporter, exporter.Export(w.Entry.Guid), d => d.Base = null);
+            var text = Edited(exporter, exporter.Export(w.Entry.Guid), d => { d.Base = null; d.Data["custom-LexEntry-Count"] = RecordScalar.Of(7); });
             var plan = Plan(exporter, text);
             Assert.Equal(ProjectRecordBaseVerdict.Missing, plan.BaseVerdict);
             Single(plan, RecordRefusalKind.MissingBase);
@@ -387,7 +387,7 @@ namespace SIL.TextEditing.Project.Tests
             var noGuid = Edited(exporter, export, d => d.Data.Guid = null);
             Single(Plan(exporter, noGuid), RecordRefusalKind.UnknownRecord);
             var gone = Edited(exporter, export, d => d.Data.Guid = Guid.NewGuid());
-            Single(Plan(exporter, gone), RecordRefusalKind.UnknownRecord);
+            Single(Plan(exporter, gone), RecordRefusalKind.RecordGone);
             Assert.Equal(ProjectRecordBaseVerdict.NotChecked, Plan(exporter, gone).BaseVerdict);
         }
 
@@ -967,6 +967,285 @@ namespace SIL.TextEditing.Project.Tests
             Single(plan, RecordRefusalKind.UnknownReference);
             Single(plan, RecordRefusalKind.DependsOnRefusedChange);
             Assert.Empty(plan.ChangeSet.Changes);
+        }
+
+        // ------------------------------------------------------------------ creating a record
+
+        static void FreshGuids(RecordObject o)
+        {
+            if (o.Guid != null) o.Guid = Guid.NewGuid();
+            foreach (var f in o.Fields)
+            {
+                if (f.Value is RecordObject child) FreshGuids(child);
+                else if (f.Value is RecordList list) foreach (var item in list.Items) if (item is RecordObject c) FreshGuids(c);
+            }
+        }
+
+        /// <summary>The entry's export as a file for a new record: no base, and new GUIDs on the record and every object it owns.</summary>
+        static string CreateFile(ProjectRecordExporter exporter, World w, Guid? guid = null, Action<RecordDocument>? edit = null)
+            => Edited(exporter, exporter.Export(w.Entry.Guid), d =>
+            {
+                d.Base = null;
+                // Computed fields are the host's to fill, so a file that creates leaves them out.
+                d.Data["head-word"] = null;
+                FreshGuids(d.Data);
+                d.Data.Guid = guid ?? Guid.NewGuid();
+                edit?.Invoke(d);
+            });
+
+        static Guid VersionGuid(char version, char variant = '8')
+            => Guid.Parse("0a1b2c3d-4e5f-" + version + "a7b-" + variant + "c9d-0e1f2a3b4c5d");
+
+        [Fact]
+        public void AFileWithNoBaseAndAnUnknownGuidPlansAsACreateFromAnEmptyRecord()
+        {
+            using var fixture = new ProjectFixture();
+            var w = Build(fixture);
+            var exporter = LexiconExporter(fixture);
+            var guid = Guid.NewGuid();
+            var before = fixture.Cache.ServiceLocator.ObjectRepository.AllInstances().Count();
+            var plan = Plan(exporter, CreateFile(exporter, w, guid));
+
+            Assert.Equal(ProjectRecordBaseVerdict.New, plan.BaseVerdict);
+            Assert.Equal(guid, plan.RecordGuid);
+            Assert.Null(plan.Export);
+            Assert.Empty(plan.ChangeSet.Refusals);
+            Assert.False(plan.ChangeSet.IsRefusedWhole);
+            Assert.NotEmpty(plan.ChangeSet.Changes);
+            // Every field is a change: the lexeme form and both senses arrive as added objects, the custom values and flags as sets.
+            Assert.Contains(plan.ChangeSet.Changes, c => c.Kind == RecordChangeKind.AddObject && c.Field == "lexeme-form");
+            Assert.Equal(2, plan.ChangeSet.Changes.Count(c => c.Kind == RecordChangeKind.AddObject && c.Field == "senses"));
+            Assert.Contains(plan.ChangeSet.Changes, c => c.Field == "custom-LexEntry-Count");
+            Assert.All(plan.ChangeSet.Changes.Where(c => c.Kind != RecordChangeKind.AddObject && c.Field.IndexOf('/') < 0), c => Assert.Equal(guid, c.ObjectGuid ?? guid));
+            // Planning writes nothing.
+            Assert.Equal(before, fixture.Cache.ServiceLocator.ObjectRepository.AllInstances().Count());
+            Assert.False(fixture.Cache.ServiceLocator.ObjectRepository.TryGetObject(guid, out _));
+        }
+
+        [Fact]
+        public void ACreatePlansTheSameChangesAnEditOfAnEmptyRecordWould()
+        {
+            using var fixture = new ProjectFixture();
+            var w = Build(fixture);
+            var exporter = LexiconExporter(fixture);
+            var text = CreateFile(exporter, w);
+            var file = RecordFileReader.Read(text, exporter.Schema, exporter.CreateReadOptions()).Document!;
+            var empty = new RecordDocument(file.Kind) { Data = new RecordObject { Guid = file.Data.Guid, Class = file.Data.Class } };
+            var expected = RecordDiffer.Diff(empty, file, exporter.Schema);
+            var plan = Plan(exporter, text);
+            Assert.Equal(expected.Changes.Count, plan.ChangeSet.Changes.Count);
+            Assert.Equal(expected.Changes.Select(c => c.Kind + "|" + c.Field), plan.ChangeSet.Changes.Select(c => c.Kind + "|" + c.Field));
+        }
+
+        [Theory]
+        [InlineData('4', '8')]
+        [InlineData('5', '9')]
+        [InlineData('7', 'a')]
+        [InlineData('4', 'b')]
+        public void GuidVersionsFourFiveAndSevenAreAccepted(char version, char variant)
+        {
+            using var fixture = new ProjectFixture();
+            var w = Build(fixture);
+            var exporter = LexiconExporter(fixture);
+            var plan = Plan(exporter, CreateFile(exporter, w, VersionGuid(version, variant)));
+            Assert.Equal(ProjectRecordBaseVerdict.New, plan.BaseVerdict);
+            Assert.Empty(plan.ChangeSet.Refusals);
+        }
+
+        [Theory]
+        [InlineData("00000000-0000-0000-0000-000000000000")]
+        [InlineData("ffffffff-ffff-ffff-ffff-ffffffffffff")]
+        [InlineData("0a1b2c3d-4e5f-1a7b-8c9d-0e1f2a3b4c5d")]
+        [InlineData("0a1b2c3d-4e5f-3a7b-8c9d-0e1f2a3b4c5d")]
+        [InlineData("0a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d")]
+        [InlineData("0a1b2c3d-4e5f-4a7b-0c9d-0e1f2a3b4c5d")]
+        [InlineData("0a1b2c3d-4e5f-4a7b-cc9d-0e1f2a3b4c5d")]
+        public void AGuidThatIsNilOrNotVersionFourFiveOrSevenOfTheRfcVariantIsRefusedWhole(string text)
+        {
+            using var fixture = new ProjectFixture();
+            var w = Build(fixture);
+            var exporter = LexiconExporter(fixture);
+            var plan = Plan(exporter, CreateFile(exporter, w, Guid.Parse(text)));
+            var refusal = Single(plan, RecordRefusalKind.GuidInvalid);
+            Assert.True(refusal.WholeFile);
+            Assert.Empty(plan.ChangeSet.Changes);
+        }
+
+        [Fact]
+        public void AnOwnedObjectsGuidIsCheckedForFormatOnACreateAndRefusesThatChange()
+        {
+            using var fixture = new ProjectFixture();
+            var w = Build(fixture);
+            var exporter = LexiconExporter(fixture);
+            var bad = Guid.Parse("0a1b2c3d-4e5f-1a7b-8c9d-0e1f2a3b4c5d");
+            var plan = Plan(exporter, CreateFile(exporter, w, null, d => SenseAt(d, 0).Guid = bad));
+            var refusal = Single(plan, RecordRefusalKind.GuidInvalid);
+            Assert.False(refusal.WholeFile);
+            Assert.Equal("senses", refusal.Field);
+            Assert.NotEmpty(plan.ChangeSet.Changes);
+        }
+
+        [Fact]
+        public void ACreateThatSetsAComputedFieldIsRefusedWholeAsCreateComputedField()
+        {
+            using var fixture = new ProjectFixture();
+            var w = Build(fixture);
+            var exporter = LexiconExporter(fixture);
+            var plan = Plan(exporter, CreateFile(exporter, w, null, d => d.Data["head-word"] = new RecordScalar("[other]{.v}")));
+            var refusal = Single(plan, RecordRefusalKind.CreateComputedField);
+            Assert.True(refusal.WholeFile);
+            Assert.Equal("head-word", refusal.Field);
+            Assert.Empty(plan.ChangeSet.Changes);
+        }
+
+        [Fact]
+        public void AReferenceToANewObjectOfTheWrongClassIsRefusedOnACreate()
+        {
+            using var fixture = new ProjectFixture();
+            var w = Build(fixture);
+            var exporter = LexiconExporter(fixture);
+            string Pointing(Func<RecordDocument, Guid> target) => CreateFile(exporter, w, null, d =>
+            {
+                var guid = target(d);
+                ((RecordList)SenseAt(d, 0)["semantic-domains"]!).Add(new RecordScalar("[new](/objects/" + guid.ToString("D") + "){.name guid=" + guid.ToString("D") + "}"));
+            });
+            var wrong = Plan(exporter, Pointing(d => ((RecordObject)((RecordList)SenseAt(d, 0)["examples"]!).Items[0]).Guid!.Value));
+            Assert.StartsWith("LexExampleSentence ", Single(wrong, RecordRefusalKind.WrongReferenceClass).Reason);
+        }
+
+        [Fact]
+        public void AnOwnedObjectGuidTheProjectHasIsStillRefusedOnACreate()
+        {
+            using var fixture = new ProjectFixture();
+            var w = Build(fixture);
+            var exporter = LexiconExporter(fixture);
+            var plan = Plan(exporter, CreateFile(exporter, w, null, d => SenseAt(d, 0).Guid = w.Sense.Guid));
+            Single(plan, RecordRefusalKind.GuidInUse);
+        }
+
+        [Fact]
+        public void AGuidTheHomeShowsAsDeletedIsRefusedWholeAndAnotherIsNot()
+        {
+            using var fixture = new ProjectFixture();
+            var w = Build(fixture);
+            var exporter = LexiconExporter(fixture);
+            var retired = Guid.NewGuid();
+            var importer = new ProjectRecordImporter(exporter) { IsRetiredGuid = g => g == retired };
+            var plan = importer.Plan(CreateFile(exporter, w, retired));
+            Assert.True(Single(plan, RecordRefusalKind.GuidRetired).WholeFile);
+            Assert.Equal(ProjectRecordBaseVerdict.New, importer.Plan(CreateFile(exporter, w, Guid.NewGuid())).BaseVerdict);
+        }
+
+        [Fact]
+        public void AFileThatSaysWhatTheProjectHoldsReadsAsUnchangedAndOneThatDiffersStaysMissingBase()
+        {
+            using var fixture = new ProjectFixture();
+            var w = Build(fixture);
+            var exporter = LexiconExporter(fixture);
+            var export = exporter.Export(w.Entry.Guid);
+            var same = Plan(exporter, Edited(exporter, export, d => d.Base = null));
+            Assert.Equal(ProjectRecordBaseVerdict.Unchanged, same.BaseVerdict);
+            Assert.True(same.IsEmpty);
+            Assert.Equal(w.Entry.Guid, same.RecordGuid);
+
+            var differs = Plan(exporter, Edited(exporter, export, d => { d.Base = null; d.Data["custom-LexEntry-Count"] = RecordScalar.Of(7); }));
+            Assert.Equal(ProjectRecordBaseVerdict.Missing, differs.BaseVerdict);
+            Single(differs, RecordRefusalKind.MissingBase);
+        }
+
+        [Fact]
+        public void AFileWhoseBaseCameFromARecordTheProjectLostIsRecordGoneNotACreate()
+        {
+            using var fixture = new ProjectFixture();
+            var w = Build(fixture);
+            var exporter = LexiconExporter(fixture);
+            var export = exporter.Export(w.Entry.Guid);
+            var plan = Plan(exporter, Edited(exporter, export, d => d.Data.Guid = Guid.NewGuid()));
+            Assert.True(Single(plan, RecordRefusalKind.RecordGone).WholeFile);
+            Assert.Empty(plan.ChangeSet.Changes);
+        }
+
+        [Fact]
+        public void APartialFileWithNoBaseAndAnUnknownGuidIsCreatePartial()
+        {
+            using var fixture = new ProjectFixture();
+            var w = Build(fixture);
+            var exporter = LexiconExporter(fixture);
+            var export = exporter.Export(w.Entry.Guid);
+            var read = RecordFileReader.Read(export.Text!, exporter.Schema, exporter.CreateReadOptions()).Document!;
+            var sense = SenseAt(read, 0);
+            sense.Guid = Guid.NewGuid();
+            var partial = new RecordDocument("lexicon/entry") { Root = export.Path + "/senses/1", Analysis = read.Analysis, Vernacular = read.Vernacular, Data = sense };
+            foreach (var pair in read.WritingSystems) partial.WritingSystems.Add(pair);
+            var plan = Plan(exporter, RecordFileWriter.Write(partial, exporter.Schema));
+            Assert.True(Single(plan, RecordRefusalKind.CreatePartial).WholeFile);
+        }
+
+        [Fact]
+        public void AReferenceToAMissingObjectInACreateIsRefusedAndOneToAnObjectOfTheSameFileIsNot()
+        {
+            using var fixture = new ProjectFixture();
+            var w = Build(fixture);
+            var exporter = LexiconExporter(fixture);
+            var ghost = Guid.NewGuid();
+            var plan = Plan(exporter, CreateFile(exporter, w, null, d =>
+                Obj(d.Data["lexeme-form"])["morph-type"] = new RecordScalar("[ghost](/objects/" + ghost.ToString("D") + "){.name guid=" + ghost.ToString("D") + "}")));
+            var refusal = Single(plan, RecordRefusalKind.UnknownReference);
+            Assert.False(refusal.WholeFile);
+            Assert.NotEmpty(plan.ChangeSet.Changes);
+
+            // A new object may refer to another new object of its own file, which the project cannot have yet.
+            var sibling = Guid.NewGuid();
+            var inFile = Plan(exporter, CreateFile(exporter, w, null, d =>
+            {
+                var senses = (RecordList)d.Data["senses"]!;
+                senses.Add(new RecordObject { Class = "LexSense", Guid = sibling }.Set("gloss", new RecordAlternatives().Add("en", new RecordScalar("x"))));
+                SenseAt(d, 0).Set("semantic-domains", new RecordList().Add(new RecordScalar("[s](/objects/" + sibling.ToString("D") + "){.name guid=" + sibling.ToString("D") + "}")));
+            }));
+            Assert.DoesNotContain(inFile.ChangeSet.Refusals, r => r.Kind == RecordRefusalKind.UnknownReference);
+        }
+
+        [Fact]
+        public void AListItemOrAPhonologicalRuleCannotBeCreatedFromAFile()
+        {
+            using var fixture = new ProjectFixture();
+            var w = Build(fixture);
+            var item = Exporter(fixture, ProjectRecordSchema.ListItemOverlay);
+            var itemFile = new RecordDocument("lists/item") { Data = new RecordObject { Guid = Guid.NewGuid(), Class = "CmPossibility" } };
+            itemFile.Data["name"] = new RecordAlternatives().Add("en", new RecordScalar("New"));
+            var itemPlan = Plan(item, RecordFileWriter.Write(itemFile, item.Schema));
+            var itemRefusal = Single(itemPlan, RecordRefusalKind.CreateKindNotCreatable);
+            Assert.True(itemRefusal.WholeFile);
+            Assert.Contains("list items", itemRefusal.Reason);
+
+            var rule = Exporter(fixture, ProjectRecordSchema.PhonologicalRuleOverlay);
+            var ruleFile = new RecordDocument("grammar/phonological-rule") { Data = new RecordObject { Guid = Guid.NewGuid(), Class = "PhRegularRule" } };
+            var rulePlan = Plan(rule, RecordFileWriter.Write(ruleFile, rule.Schema));
+            Assert.Contains("composer", Single(rulePlan, RecordRefusalKind.CreateKindNotCreatable).Reason);
+            Assert.Empty(rulePlan.ChangeSet.Changes);
+        }
+
+        [Fact]
+        public void ANotebookRecordFileWithNoBaseAndAnUnknownGuidPlansAsACreate()
+        {
+            using var fixture = new ProjectFixture();
+            Build(fixture);
+            var exporter = Exporter(fixture, ProjectRecordSchema.NotebookRecordOverlay);
+            var file = new RecordDocument("notebook/record") { Data = new RecordObject { Guid = Guid.NewGuid() } };
+            file.Data["title"] = new RecordScalar("Survey");
+            var plan = Plan(exporter, RecordFileWriter.Write(file, exporter.Schema));
+            Assert.Equal(ProjectRecordBaseVerdict.New, plan.BaseVerdict);
+            Assert.Empty(plan.ChangeSet.Refusals);
+            Assert.NotEmpty(plan.ChangeSet.Changes);
+        }
+
+        [Fact]
+        public void AFileWithNoBaseAndNoGuidIsStillUnknownRecord()
+        {
+            using var fixture = new ProjectFixture();
+            var w = Build(fixture);
+            var exporter = LexiconExporter(fixture);
+            Single(Plan(exporter, CreateFile(exporter, w, null, d => d.Data.Guid = null)), RecordRefusalKind.UnknownRecord);
         }
     }
 }

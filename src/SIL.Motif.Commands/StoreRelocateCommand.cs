@@ -111,8 +111,10 @@ public static partial class StoreRelocateCommand
         }
         catch (MotifStoreVersionException exception)
         {
-            return Refused(RefusalCodes.StoreOtherVersion, FailureReason.Refused, exception.Message,
-                project.FullFwDataPath, storePath);
+            var facts = Facts(project.FullFwDataPath, storePath);
+            if (exception.Newer) facts[RefusalFactNames.StoreNewer] = "true";
+            return CommandOutcome<StoreRelocateResponse>.Refused(
+                new Refusal(RefusalCodes.StoreOtherVersion, FailureReason.Refused, exception.Message, facts));
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException
             or NotSupportedException)
@@ -173,35 +175,5 @@ public static partial class StoreRelocateCommand
         var facts = Facts(fwDataPath ?? string.Empty, storePath);
         if (exceptionDetail is not null) facts["exceptionDetail"] = exceptionDetail;
         return CommandOutcome<StoreRelocateResponse>.Refused(new Refusal(code, reason, message, facts));
-    }
-}
-
-/// <summary>Reads the LibLCM language project GUID out of a <c>.fwdata</c> file without opening the project.</summary>
-internal static partial class FwDataProjectGuid
-{
-    [GeneratedRegex("""<rt\s[^>]*class="LangProject"[^>]*>""", RegexOptions.CultureInvariant)]
-    private static partial Regex LangProjectElement();
-
-    [GeneratedRegex(@"\bguid=""([0-9A-Fa-f-]{36})""", RegexOptions.CultureInvariant)]
-    private static partial Regex GuidAttribute();
-
-    /// <summary>The project's GUID, or <see langword="null"/> when the file has no language project.</summary>
-    internal static string? TryRead(string fwDataPath)
-    {
-        try
-        {
-            using var reader = new StreamReader(fwDataPath);
-            while (reader.ReadLine() is { } line)
-            {
-                var element = LangProjectElement().Match(line);
-                if (!element.Success) continue;
-                var guid = GuidAttribute().Match(element.Value);
-                return guid.Success ? guid.Groups[1].Value.ToLowerInvariant() : null;
-            }
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-        {
-        }
-        return null;
     }
 }

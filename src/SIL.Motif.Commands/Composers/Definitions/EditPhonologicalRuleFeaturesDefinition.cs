@@ -5,7 +5,7 @@ using SIL.Motif.Runner.Composers;
 
 namespace SIL.Motif.Commands;
 
-/// <summary>Limits a phonological rule to words that carry, or lack, given exception features or inflection classes.</summary>
+/// <summary>Limits a phonological rule to words that carry, or lack, given exception features or inflection classes, or belong to given categories.</summary>
 internal sealed class EditPhonologicalRuleFeaturesDefinition : ComposerDefinition<EditPhonologicalRuleFeaturesIntent>
 {
     /// <inheritdoc />
@@ -21,7 +21,8 @@ internal sealed class EditPhonologicalRuleFeaturesDefinition : ComposerDefinitio
     public override IntentShape Shape { get; } = IntentShape.Of(
         Field.Id("rule", IdRole.Target, required: true),
         Field.Ids("requiredFeatures", IdRole.Reference),
-        Field.Ids("excludedFeatures", IdRole.Reference));
+        Field.Ids("excludedFeatures", IdRole.Reference),
+        Field.Ids("inputCategories", IdRole.Reference));
 
     /// <inheritdoc />
     public override ComposerExposure Exposure { get; } =

@@ -1,0 +1,9 @@
+{
+  "kind": "ui",
+  "code": "shortcut-reader-next-screen",
+  "slug": "shortcut-reader-next-screen",
+  "title": "Move Down One Screen of Lines",
+  "description": "Move focus down by the number of lines visible in the reader.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/controls/shortcut-reader-next-screen/"
+}

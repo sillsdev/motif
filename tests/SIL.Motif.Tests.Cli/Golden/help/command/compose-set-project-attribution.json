@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "compose-set-project-attribution",
+  "slug": "compose-set-project-attribution",
+  "title": "State the project\u0027s source",
+  "description": "Stages one notice in the project\u0027s Description saying which source, revision and licence imported data came from, after any Description text already there. A project that already states the notice stages nothing. Only a person can Apply.",
+  "helpPage": "# State the project\u0027s source\n\nStates once, in the project\u0027s Description, which source, revision and licence imported data came from. The notice reads \u0060Attribution: \u003Csource\u003E@\u003Crevision\u003E \u003Clicence\u003E\u0060, such as \u0060Attribution: lang-sme@9ba7be7 GPL-3.0\u0060. It is the project half of how a project keeps the licence of imported data. The Lexical entries and glosses Subject explains when to use both parts, and [Tag entries with their source](cmd:compose-set-entry-attribution) stages the per-entry tag.\n\n\u0060\u0060\u0060sh\nmotif compose-set-project-attribution --project language.fwdata --draft my-draft \\\n  --intent \u0027{\u0022tag\u0022:\u0022lang-sme@9ba7be7 GPL-3.0\u0022}\u0027\n\u0060\u0060\u0060\n\nThe notice is written in an analysis writing system: \u0060analysisWs\u0060 when given, otherwise the project\u0027s default analysis writing system. It follows whatever the Description already holds in that writing system, on a new line, and the existing text is kept. The command is idempotent: a Description that already states the notice exactly stages nothing. A different revision of the same source is added as a second notice. A Description that already states the same source and revision under a different licence is refused, because which licence applies is for a person to decide.\n\nThe change is an edit of the whole Description for that writing system, so a change made in FieldWorks after the Dry Run is caught by the Proposal\u0027s anchor at Apply. It moves no parse.\n\nThe command stages a change in the Draft; it does not change the project. Add \u0060--cite-source \u003Ctext\u003E\u0060 and optionally \u0060--cite-locator \u003Ctext\u003E\u0060 (at most 300 characters) to record a source on the operation. Only a person can Apply a Proposal.\n",
+  "usage": [
+    "Usage: motif compose-set-project-attribution --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+  ],
+  "surface": "Released",
+  "url": "https://motif-docs.pages.dev/reference/commands/compose-set-project-attribution/"
+}

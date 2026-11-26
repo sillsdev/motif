@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "hypothesis grade",
+  "slug": "hypothesis-grade",
+  "title": "Grade a hypothesis",
+  "description": "Records the four numbers for a hypothesis once the answer key is known: whether the sealed loop reached the verdict, the word questions it needed, objects per attested type before and after, and agent hours against the list alternative.",
+  "helpPage": "# Grade a hypothesis\n\n\u0060hypothesis grade\u0060 records the four numbers for a hypothesis once the answer key is known: whether the sealed loop reached the verdict, the word questions it needed, objects per attested type before and after, and agent hours against the list alternative.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif hypothesis grade H-12 --project \u003Cfwdata\u003E --sealed-verdict match --verdict-source Wolff --word-questions 6 --objects-before 395 --types-before 400 --objects-after 10 --types-after 400 --agent-hours 3 --alternative-hours 20\n\u0060\u0060\u0060\n\nEach flag is optional but at least one is needed; grade in steps as numbers arrive. The response shows objects per attested type before and after.\n\n## Related commands\n\n- [Check a change\u0027s neighbours](cmd:hypothesis%20neighbours) is the check that runs before any new object.\n",
+  "usage": [
+    "Usage: motif hypothesis grade \u003CH-n\u003E --project \u003Cfwdata\u003E [--sealed-verdict match|mismatch] [--verdict-source \u003Ctext\u003E] [--word-questions \u003Cn\u003E] [--objects-before \u003Cn\u003E] [--types-before \u003Cn\u003E] [--objects-after \u003Cn\u003E] [--types-after \u003Cn\u003E] [--agent-hours \u003Cx\u003E] [--alternative-hours \u003Cx\u003E] [--json]"
+  ],
+  "surface": "Released",
+  "url": "https://motif-docs.pages.dev/reference/commands/hypothesis-grade/"
+}

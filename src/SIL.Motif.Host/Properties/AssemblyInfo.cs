@@ -5,3 +5,4 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("SIL.Motif.Tests.Cli")]
 [assembly: InternalsVisibleTo("SIL.Motif.Tests.Contract")]
 [assembly: InternalsVisibleTo("SIL.Motif.Worker.Runtime")]
+[assembly: InternalsVisibleTo("SIL.Motif.Tests.App")]

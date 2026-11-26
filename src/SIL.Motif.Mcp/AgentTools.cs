@@ -451,7 +451,7 @@ internal static class AgentTools
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeAuthorPhonologicalRule(
                 new(c.ProjectPath, c.ProductVersion, a.Required("draft"), a.IntentJson("name", "direction", "input",
-                    "output", "left", "right", "placement", "rightHandSides"))),
+                    "output", "left", "right", "placement", "rightHandSides", "inputCategories"))),
                 r => $"Draft now has {r.OperationCount} operations. Run motif_dry_run and motif_trial, revise, then Finalize."))) { Requests = [typeof(ComposeAuthorPhonologicalRuleRequest)] },
 
         new("motif_add_metathesis_rule",
@@ -957,7 +957,7 @@ internal static class AgentTools
                     ["Scope"] = null, ["AllWords"] = null,
                     ["ExpectedDraftRevision"] = null, ["Limits"] = null, ["BaselineAssessmentIds"] = null,
                     ["ReviewSetIds"] = null, ["ExpectedLosses"] = "expect_loss", ["NoBackground"] = "no_background",
-                    ["NoBaseSample"] = "no_base_sample", ["Touched"] = "touched",
+                    ["NoBaseSample"] = "no_base_sample", ["Touched"] = "touched", ["Siblings"] = null,
                     ["ProjectKey"] = null, ["EffectiveDetail"] = null, ["EffectiveSide"] = null,
                 } },
 
@@ -1373,13 +1373,14 @@ internal static class AgentTools
             ("rightHandSides", outcomes, false),
             ("left", contexts.DeepClone().AsObject(), false),
             ("right", contexts.DeepClone().AsObject(), false),
+            ("inputCategories", Schema.Array("Single-outcome shorthand only: part-of-speech ids (with their subcategories) the rule applies to, Black 6.1.2.2.1; FieldWorks stores required categories only. Use inputCategories inside rightHandSides for several outcomes.", Schema.String("Category id.")), false),
             ("placement", Schema.Object(("after", Schema.String("Adjacent existing rule before the insertion gap."), false),
                 ("before", Schema.String("Adjacent existing rule after the insertion gap."), false)), false));
         schema["oneOf"] = new JsonArray(
             new JsonObject { ["required"] = new JsonArray("output"), ["not"] = new JsonObject { ["required"] = new JsonArray("rightHandSides") } },
             new JsonObject { ["required"] = new JsonArray("rightHandSides"), ["not"] = new JsonObject
                 { ["anyOf"] = new JsonArray(new JsonObject { ["required"] = new JsonArray("output") },
-                    new JsonObject { ["required"] = new JsonArray("left") }, new JsonObject { ["required"] = new JsonArray("right") }) } });
+                    new JsonObject { ["required"] = new JsonArray("left") }, new JsonObject { ["required"] = new JsonArray("right") }, new JsonObject { ["required"] = new JsonArray("inputCategories") }) } });
         return schema;
     }
 

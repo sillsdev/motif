@@ -1,5 +1,6 @@
 using System.Globalization;
 using SIL.Motif.Contract.Query;
+using SIL.Motif.Contract.Query.Corpus;
 
 namespace SIL.Motif.Contract.Gdr;
 
@@ -52,8 +53,10 @@ public enum GuideBlockDiagnosticKind
     DuplicateId,
     /// <summary>A show directive's query names no defined id.</summary>
     UnknownQuery,
-    /// <summary>A query's run line is not a read-only <c>motif query</c> or <c>motif group</c> line.</summary>
+    /// <summary>A query's run line is not a read-only <c>motif query</c>, <c>motif query corpus forms</c> or <c>motif group</c> line.</summary>
     InvalidRun,
+    /// <summary>A <c>columns</c> or <c>sort</c> names a column the query's v2 answer does not have.</summary>
+    UnknownColumn,
 }
 
 /// <summary>One problem found in a block, typed so a caller can place it and branch on it.</summary>
@@ -109,10 +112,45 @@ public static class GuideQueryBlocks
             i = close;
         }
         foreach (var show in shows)
+        {
             if (!seen.Contains(show.Query))
                 diagnostics.Add(new(GuideBlockDiagnosticKind.UnknownQuery, $"No query has the id \"{show.Query}\".", show.Span,
                     show.Span.StartLine, "query"));
+            else if (show.Columns is { Count: > 0 } && queries.FirstOrDefault(query => query.Id == show.Query) is { } shown &&
+                     QueryRunLine.TryParseRun(shown.Run, out var shownRun, out _) && shownRun.Corpus is { } shownCorpus)
+                ReportUnknown(shownCorpus, show.Columns, "columns", show.Span, show.Span.StartLine, diagnostics);
+        }
         return new GuideBlocks(queries, shows, [.. diagnostics.OrderBy(d => d.Line)]);
+    }
+
+    /// <summary>
+    /// The span of every <c>motif-query</c> and <c>motif-show</c> fence in the Markdown, in order, including those too
+    /// malformed for <see cref="Parse"/> to return as a query or show.
+    /// </summary>
+    public static IReadOnlyList<GuideBlockSpan> Spans(string? markdown)
+    {
+        markdown ??= "";
+        var spans = new List<GuideBlockSpan>();
+        var lines = Lines(markdown);
+        for (var i = 0; i < lines.Count; i++)
+        {
+            if (!TryFence(markdown, lines[i], out var fenceChar, out var fenceLength, out var info)) continue;
+            var close = -1;
+            for (var j = i + 1; j < lines.Count; j++)
+                if (IsClosing(markdown, lines[j], fenceChar, fenceLength)) { close = j; break; }
+            var tag = info.Split([' ', '\t'], 2, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+            var last = close < 0 ? lines.Count - 1 : close;
+            if (tag is GdrTemplate.QueryBlockTag or GdrTemplate.ShowBlockTag)
+            {
+                var bodyEnd = close < 0 ? lines.Count : close;
+                var hasBody = bodyEnd > i + 1;
+                spans.Add(new GuideBlockSpan(lines[i].Start, lines[last].End, i + 1, last + 1,
+                    hasBody ? lines[i + 1].Start : lines[i].End, hasBody ? lines[bodyEnd - 1].End : lines[i].End));
+            }
+            if (close < 0) break;
+            i = close;
+        }
+        return spans;
     }
 
     /// <summary>Replaces one block's text; every char outside the span is kept as it was. A span is valid only for the text it came from, so parse again after each replacement.</summary>
@@ -145,6 +183,10 @@ public static class GuideQueryBlocks
         var run = Value("run");
         if (run.Length > 0 && !QueryRunLine.TryParseRun(run, out _, out var refusal))
             diagnostics.Add(new(GuideBlockDiagnosticKind.InvalidRun, refusal.Message, span, LineOf("run"), "run", refusal.Code));
+        CorpusFormsRequest? corpus = null;
+        if (run.Length > 0 && QueryRunLine.TryParseRun(run, out var parsedRun, out _)) corpus = parsedRun.Corpus;
+        if (corpus is not null && fields.ContainsKey("columns"))
+            ReportUnknown(corpus, Split(Value("columns")), "columns", span, LineOf("columns"), diagnostics);
         GuideSort? sort = null;
         if (fields.ContainsKey("sort"))
         {
@@ -152,9 +194,21 @@ public static class GuideQueryBlocks
             if (parts.Length is 1 or 2 && (parts.Length == 1 || parts[1] is "asc" or "desc"))
                 sort = new GuideSort(parts[0], parts.Length == 2 && parts[1] == "desc");
             else diagnostics.Add(new(GuideBlockDiagnosticKind.MalformedField, "sort is a column, then asc or desc.", span, LineOf("sort"), "sort"));
+            if (corpus is not null && sort is not null) ReportUnknown(corpus, [sort.Column], "sort", span, LineOf("sort"), diagnostics);
         }
         if (id.Length > 0 || run.Length > 0)
             queries.Add(new GuideQueryDefinition(id, Value("title"), run, Split(Value("columns")), sort, span));
+    }
+
+    // A column a v2 corpus query cannot show is a diagnostic on the block, never a crash at render.
+    private static void ReportUnknown(CorpusFormsRequest corpus, IEnumerable<string> names, string field, GuideBlockSpan span, int line,
+        List<GuideBlockDiagnostic> diagnostics)
+    {
+        var unknown = GuideEvidenceTable.Unknown(corpus, names);
+        if (unknown.Count > 0)
+            diagnostics.Add(new(GuideBlockDiagnosticKind.UnknownColumn,
+                $"This query has no column {string.Join(", ", unknown.Select(name => "\"" + name + "\""))}; it has {string.Join(", ", GuideEvidenceTable.ColumnsFor(corpus))}.",
+                span, line, field));
     }
 
     private static void ParseShow(string markdown, List<Line> body, int firstLine, GuideBlockSpan span,

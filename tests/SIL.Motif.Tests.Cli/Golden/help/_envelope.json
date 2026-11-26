@@ -1,0 +1,716 @@
+{
+  "locale": "en",
+  "siteRoot": "https://motif-docs.pages.dev",
+  "verbGroups": [
+    {
+      "group": "baseline",
+      "verbs": [
+        {
+          "name": "baseline capture",
+          "summary": "Reads the saved .fwdata project to create or reuse a file-backed Baseline.",
+          "gate": "Released",
+          "helpTopic": "motif help baseline capture"
+        }
+      ]
+    },
+    {
+      "group": "config",
+      "verbs": [
+        {
+          "name": "config show",
+          "summary": "Reads the project\u0027s Assessment scopes and settings, including declared gate word sets.",
+          "gate": "Released",
+          "helpTopic": "motif help config show"
+        }
+      ]
+    },
+    {
+      "group": "current",
+      "verbs": [
+        {
+          "name": "current get",
+          "summary": "Reads the Current chapter of each Source from this machine\u0027s local file.",
+          "gate": "Advanced AI",
+          "helpTopic": "motif help current get"
+        }
+      ]
+    },
+    {
+      "group": "difference",
+      "verbs": [
+        {
+          "name": "difference produce",
+          "summary": "Compares a completed Trial\u0027s parses with the approved, disapproved and misspelled decisions Field...",
+          "gate": "Advanced AI",
+          "helpTopic": "motif help difference produce"
+        },
+        {
+          "name": "difference show",
+          "summary": "Reads a saved comparison of a Trial with FieldWorks\u0027 recorded decisions: totals, a before and aft...",
+          "gate": "Advanced AI",
+          "helpTopic": "motif help difference show"
+        }
+      ]
+    },
+    {
+      "group": "disposition",
+      "verbs": [
+        {
+          "name": "disposition list",
+          "summary": "Lists the word types that have a disposition in key order, with how many stand in each category,...",
+          "gate": "Released",
+          "helpTopic": "motif help disposition list"
+        },
+        {
+          "name": "disposition show",
+          "summary": "Shows the disposition a word type stands under, who recorded it and why, and the dispositions it...",
+          "gate": "Released",
+          "helpTopic": "motif help disposition show"
+        }
+      ]
+    },
+    {
+      "group": "evidence",
+      "verbs": [
+        {
+          "name": "evidence export",
+          "summary": "Writes every source-validated decision\u0027s evidence as one JSON file, or to standard output, read a...",
+          "gate": "Advanced AI",
+          "helpTopic": "motif help evidence export"
+        },
+        {
+          "name": "evidence list",
+          "summary": "Lists source-validated decisions staged by Applied Proposals, with a count for each tier first an...",
+          "gate": "Advanced AI",
+          "helpTopic": "motif help evidence list"
+        },
+        {
+          "name": "evidence show",
+          "summary": "Reads why a program, not a person, decided about one wordform or analysis: its tier, the cited so...",
+          "gate": "Advanced AI",
+          "helpTopic": "motif help evidence show"
+        }
+      ]
+    },
+    {
+      "group": "forms",
+      "verbs": [
+        {
+          "name": "forms explain",
+          "summary": "Asks PanGloss to generate every form of a root, alone or with the morphemes you list, and shows e...",
+          "gate": "Released",
+          "helpTopic": "motif help forms explain"
+        }
+      ]
+    },
+    {
+      "group": "grammar",
+      "verbs": [
+        {
+          "name": "grammar check",
+          "summary": "Runs the grammar checker against the project\u0027s current Baseline and stores its findings; use warn...",
+          "gate": "Released",
+          "helpTopic": "motif help grammar check"
+        },
+        {
+          "name": "grammar read",
+          "summary": "Reads phonemes, natural classes, environments, parts of speech, inflection features, lexical entr...",
+          "gate": "Advanced AI",
+          "helpTopic": "motif help grammar read"
+        }
+      ]
+    },
+    {
+      "group": "guide",
+      "verbs": [
+        {
+          "name": "guide add",
+          "summary": "Stages a new Grammar Guide item in a Draft: a title, the part or section it goes under, where it...",
+          "gate": "Advanced AI",
+          "helpTopic": "motif help guide add"
+        },
+        {
+          "name": "guide check",
+          "summary": "Checks the Grammar Guide in the current Baseline: morphemes the lexicon lacks, interlinear lines...",
+          "gate": "Autonomous",
+          "helpTopic": "motif help guide check"
+        },
+        {
+          "name": "guide decide",
+          "summary": "Appends one judgement call, written A or B, I am choosing A, because the reason, under the sectio...",
+          "gate": "Autonomous",
+          "helpTopic": "motif help guide decide"
+        },
+        {
+          "name": "guide edit",
+          "summary": "Stages an edit of one existing Grammar Guide section, given as FieldWorks Markdown, in a Draft: t...",
+          "gate": "Advanced AI",
+          "helpTopic": "motif help guide edit"
+        },
+        {
+          "name": "guide list",
+          "summary": "Lists the sections of the project\u0027s Grammar Guide from the current Baseline, each with its GDR-n...",
+          "gate": "Autonomous",
+          "helpTopic": "motif help guide list"
+        },
+        {
+          "name": "guide show",
+          "summary": "Reads one Grammar Guide section from the current Baseline.",
+          "gate": "Released",
+          "helpTopic": "motif help guide show"
+        }
+      ]
+    },
+    {
+      "group": "hand-analysis",
+      "verbs": [
+        {
+          "name": "hand-analysis check",
+          "summary": "Validates a hand-analysis JSON file and resolves its saved FieldWorks identities without changing...",
+          "gate": "Released",
+          "helpTopic": "motif help hand-analysis check"
+        }
+      ]
+    },
+    {
+      "group": "hypothesis",
+      "verbs": [
+        {
+          "name": "hypothesis add",
+          "summary": "Records a rule hypothesis in the ledger from a JSON file: statement, mechanism, change, the neigh...",
+          "gate": "Released",
+          "helpTopic": "motif help hypothesis add"
+        },
+        {
+          "name": "hypothesis answer",
+          "summary": "Records a speaker\u0027s answer to one question queued on a hypothesis.",
+          "gate": "Released",
+          "helpTopic": "motif help hypothesis answer"
+        },
+        {
+          "name": "hypothesis decide",
+          "summary": "Marks a hypothesis passed, failed or superseded with its decision.",
+          "gate": "Released",
+          "helpTopic": "motif help hypothesis decide"
+        },
+        {
+          "name": "hypothesis grade",
+          "summary": "Records the four numbers for a hypothesis once the answer key is known: whether the sealed loop r...",
+          "gate": "Released",
+          "helpTopic": "motif help hypothesis grade"
+        },
+        {
+          "name": "hypothesis link",
+          "summary": "Links a hypothesis to the Proposals that carry its rule change and to the Guide section it change...",
+          "gate": "Released",
+          "helpTopic": "motif help hypothesis link"
+        },
+        {
+          "name": "hypothesis neighbours",
+          "summary": "Asks the ledger whether a hypothesis already exists for a change, environment, host class and slo...",
+          "gate": "Released",
+          "helpTopic": "motif help hypothesis neighbours"
+        },
+        {
+          "name": "hypothesis report",
+          "summary": "Prints the decision record or the speaker-question log, generated from the ledger so nobody write...",
+          "gate": "Released",
+          "helpTopic": "motif help hypothesis report"
+        },
+        {
+          "name": "hypothesis test",
+          "summary": "Records a rule-hypothesis-test result for a hypothesis from the JSON that control_test.py prints,...",
+          "gate": "Released",
+          "helpTopic": "motif help hypothesis test"
+        }
+      ]
+    },
+    {
+      "group": "jobs",
+      "verbs": [
+        {
+          "name": "jobs assessments",
+          "summary": "Lists the Assessments produced by one completed job.",
+          "gate": "Released",
+          "helpTopic": "motif help jobs assessments"
+        },
+        {
+          "name": "jobs cancel",
+          "summary": "Requests cancellation of a queued or running job.",
+          "gate": "Released",
+          "helpTopic": "motif help jobs cancel"
+        },
+        {
+          "name": "jobs list",
+          "summary": "Lists jobs across Known projects in queue order.",
+          "gate": "Released",
+          "helpTopic": "motif help jobs list"
+        },
+        {
+          "name": "jobs move",
+          "summary": "Changes a job\u0027s position in the queue by moving it before another job or to either end.",
+          "gate": "Released",
+          "helpTopic": "motif help jobs move"
+        },
+        {
+          "name": "jobs requeue",
+          "summary": "Queues an eligible job to run again.",
+          "gate": "Released",
+          "helpTopic": "motif help jobs requeue"
+        },
+        {
+          "name": "jobs show",
+          "summary": "Reads the stored status of one durable job.",
+          "gate": "Released",
+          "helpTopic": "motif help jobs show"
+        },
+        {
+          "name": "jobs wait",
+          "summary": "Waits for a job to reach a terminal state and reports its result.",
+          "gate": "Released",
+          "helpTopic": "motif help jobs wait"
+        }
+      ]
+    },
+    {
+      "group": "lexicon",
+      "verbs": [
+        {
+          "name": "lexicon find",
+          "summary": "Lists lexical entries from the current Baseline by form regular expression, form suffix, inflecti...",
+          "gate": "Advanced AI",
+          "helpTopic": "motif help lexicon find"
+        }
+      ]
+    },
+    {
+      "group": "list",
+      "verbs": [
+        {
+          "name": "list hypotheses",
+          "summary": "Lists hypotheses in id order with their tests, Proposals, Guide link and graded numbers, or shows...",
+          "gate": "Released",
+          "helpTopic": "motif help list hypotheses"
+        },
+        {
+          "name": "list requests",
+          "summary": "Lists the Requests the linguist made of an assistant, oldest first, one page at a time, each with...",
+          "gate": "Released",
+          "helpTopic": "motif help list requests"
+        }
+      ]
+    },
+    {
+      "group": "parsimony",
+      "verbs": [
+        {
+          "name": "parsimony dispose",
+          "summary": "Stages a keep, fix, ask, or defer decision from one finding in a stored Parsimony Report.",
+          "gate": "Advanced AI",
+          "helpTopic": "motif help parsimony dispose"
+        },
+        {
+          "name": "parsimony expectations",
+          "summary": "Reads human-confirmed negatives and native Approved and Disapproved readings from the saved Field...",
+          "gate": "Advanced AI",
+          "helpTopic": "motif help parsimony expectations"
+        },
+        {
+          "name": "parsimony latest",
+          "summary": "Names the newest stored Parsimony Report and the bundle it was measured from.",
+          "gate": "Advanced AI",
+          "helpTopic": "motif help parsimony latest"
+        },
+        {
+          "name": "parsimony measures",
+          "summary": "Lists registered grammar checks, their axes, evidence tiers, citations, and fixed views.",
+          "gate": "Advanced AI",
+          "helpTopic": "motif help parsimony measures"
+        },
+        {
+          "name": "parsimony negative confirm",
+          "summary": "Confirms a forbidden surface form or exact reading as a human and stages its Notebook record in a...",
+          "gate": "Advanced AI",
+          "helpTopic": "motif help parsimony negative confirm"
+        },
+        {
+          "name": "parsimony negative retract",
+          "summary": "Withdraws a reviewed negative by naming its exact current revision heads and stages a retraction...",
+          "gate": "Advanced AI",
+          "helpTopic": "motif help parsimony negative retract"
+        },
+        {
+          "name": "parsimony record-types",
+          "summary": "Lists the saved Notebook record types with their portable IDs and readable names.",
+          "gate": "Advanced AI",
+          "helpTopic": "motif help parsimony record-types"
+        },
+        {
+          "name": "parsimony retirement-review",
+          "summary": "Reads the review state for one staged rule-based allomorph retirement Draft.",
+          "gate": "Advanced AI",
+          "helpTopic": "motif help parsimony retirement-review"
+        },
+        {
+          "name": "parsimony retract",
+          "summary": "Stages a withdrawal of a saved Parsimony ruling using its exact current Notebook heads and digests.",
+          "gate": "Advanced AI",
+          "helpTopic": "motif help parsimony retract"
+        },
+        {
+          "name": "parsimony revise",
+          "summary": "Stages a revision to a saved Parsimony ruling using its exact current Notebook heads and digests.",
+          "gate": "Advanced AI",
+          "helpTopic": "motif help parsimony revise"
+        },
+        {
+          "name": "parsimony show",
+          "summary": "Reads a stored Parsimony Report by id.",
+          "gate": "Advanced AI",
+          "helpTopic": "motif help parsimony show"
+        },
+        {
+          "name": "parsimony status",
+          "summary": "Says whether Parsimony has measured a Proposal\u0027s candidate after its Trial: not set up, not yet r...",
+          "gate": "Advanced AI",
+          "helpTopic": "motif help parsimony status"
+        },
+        {
+          "name": "parsimony view",
+          "summary": "Reads a bounded page from a fixed view over one frozen bundle.",
+          "gate": "Advanced AI",
+          "helpTopic": "motif help parsimony view"
+        }
+      ]
+    },
+    {
+      "group": "phonology-examples",
+      "verbs": [
+        {
+          "name": "phonology-examples check",
+          "summary": "Queues an advisory check of one saved Example Set revision against the current Baseline\u0027s grammar...",
+          "gate": "Advanced AI",
+          "helpTopic": "motif help phonology-examples check"
+        },
+        {
+          "name": "phonology-examples list",
+          "summary": "Lists the current revision of each saved advisory phonology Example Set in stable order.",
+          "gate": "Released",
+          "helpTopic": "motif help phonology-examples list"
+        },
+        {
+          "name": "phonology-examples results",
+          "summary": "Reads the stored result of one advisory phonology check as a page of per-example summaries or one...",
+          "gate": "Released",
+          "helpTopic": "motif help phonology-examples results"
+        },
+        {
+          "name": "phonology-examples save",
+          "summary": "Saves underlying forms, expected surface forms and their context, with optional citations, as an...",
+          "gate": "Advanced AI",
+          "helpTopic": "motif help phonology-examples save"
+        },
+        {
+          "name": "phonology-examples show",
+          "summary": "Reads a bounded page from one exact saved Example Set revision, including its citations.",
+          "gate": "Released",
+          "helpTopic": "motif help phonology-examples show"
+        }
+      ]
+    },
+    {
+      "group": "project",
+      "verbs": [
+        {
+          "name": "project create",
+          "summary": "Usage: project create --into \u003Cfolder\u003E --name \u003CProjectName\u003E --vernacular \u003Cbcp47\u003E [--vernacular-nam...",
+          "gate": "Autonomous",
+          "helpTopic": "motif help project create"
+        },
+        {
+          "name": "project initialize",
+          "summary": "Creates Motif\u0027s reserved human judgment field in a FieldWorks project after explicit confirmation.",
+          "gate": "Advanced AI",
+          "helpTopic": "motif help project initialize"
+        },
+        {
+          "name": "project tag",
+          "summary": "Reads the tag Motif stores for this project on this machine.",
+          "gate": "Released",
+          "helpTopic": "motif help project tag"
+        }
+      ]
+    },
+    {
+      "group": "proposal",
+      "verbs": [
+        {
+          "name": "proposal comment add",
+          "summary": "Adds a Comment to an open Proposal, in Markdown.",
+          "gate": "Released",
+          "helpTopic": "motif help proposal comment add"
+        },
+        {
+          "name": "proposal comment delete",
+          "summary": "Deletes a Comment from an open Proposal.",
+          "gate": "Released",
+          "helpTopic": "motif help proposal comment delete"
+        },
+        {
+          "name": "proposal comment edit",
+          "summary": "Replaces the text of a Comment on an open Proposal.",
+          "gate": "Released",
+          "helpTopic": "motif help proposal comment edit"
+        },
+        {
+          "name": "proposal compare",
+          "summary": "Compares two to eight Proposals side by side from each one\u0027s Trial before and after and by the ap...",
+          "gate": "Released",
+          "helpTopic": "motif help proposal compare"
+        },
+        {
+          "name": "proposal rationale",
+          "summary": "Writes or replaces what a Proposal changes and why, in Markdown.",
+          "gate": "Released",
+          "helpTopic": "motif help proposal rationale"
+        },
+        {
+          "name": "proposal review",
+          "summary": "Lists every change in one Proposal in the order to read them: grammar changes first, then word ch...",
+          "gate": "Released",
+          "helpTopic": "motif help proposal review"
+        },
+        {
+          "name": "proposal trial",
+          "summary": "Reads the saved report of a Proposal\u0027s Trial: red flags, incomplete cases, named losses, stopped...",
+          "gate": "Released",
+          "helpTopic": "motif help proposal trial"
+        },
+        {
+          "name": "proposal trial delta",
+          "summary": "Lists the words a Trial lost, gained, changed or doubled by Reading signature, from the evidence...",
+          "gate": "Released",
+          "helpTopic": "motif help proposal trial delta"
+        },
+        {
+          "name": "proposal trial export",
+          "summary": "Finds the retained evidence file for an exact Trial job.",
+          "gate": "Released",
+          "helpTopic": "motif help proposal trial export"
+        },
+        {
+          "name": "proposal why-lost",
+          "summary": "Compares a word\u0027s parse at the Baseline with its parse on a Proposal\u0027s Trial copy and, for each l...",
+          "gate": "Released",
+          "helpTopic": "motif help proposal why-lost"
+        }
+      ]
+    },
+    {
+      "group": "query",
+      "verbs": [
+        {
+          "name": "query corpus forms",
+          "summary": "Reads a plain word list with no project and returns the words that satisfy a query expression, in...",
+          "gate": "Released",
+          "helpTopic": "motif help query corpus forms"
+        },
+        {
+          "name": "query forms",
+          "summary": "Filters and groups forms, stems, uses or objects from available Trial evidence with and, or, not...",
+          "gate": "Released",
+          "helpTopic": "motif help query forms"
+        },
+        {
+          "name": "query pairs",
+          "summary": "Reads a plain word list (a TSV of form and count, or a folder of text files) with no project and...",
+          "gate": "Released",
+          "helpTopic": "motif help query pairs"
+        },
+        {
+          "name": "query values",
+          "summary": "Lists the natural-class and phonological-feature names of a project\u0027s Baseline (--project) or of...",
+          "gate": "Released",
+          "helpTopic": "motif help query values"
+        }
+      ]
+    },
+    {
+      "group": "record",
+      "verbs": [
+        {
+          "name": "record export",
+          "summary": "Writes one record, or every record of a kind, from the saved project as the record file that impo...",
+          "gate": "Advanced AI",
+          "helpTopic": "motif help record export"
+        }
+      ]
+    },
+    {
+      "group": "request",
+      "verbs": [
+        {
+          "name": "request ask-again",
+          "summary": "Makes a new open Request from the Request a declined Proposal answered, with the same target and...",
+          "gate": "Released",
+          "helpTopic": "motif help request ask-again"
+        },
+        {
+          "name": "request create",
+          "summary": "Stores a Request about a word, a Warning or a Compare matrix cell, with an optional note in the l...",
+          "gate": "Released",
+          "helpTopic": "motif help request create"
+        },
+        {
+          "name": "request withdraw",
+          "summary": "Takes back an open Request the linguist no longer wants answered.",
+          "gate": "Released",
+          "helpTopic": "motif help request withdraw"
+        }
+      ]
+    },
+    {
+      "group": "selection",
+      "verbs": [
+        {
+          "name": "selection set-default",
+          "summary": "Saves which project Texts and words Motif should measure by default.",
+          "gate": "Released",
+          "helpTopic": "motif help selection set-default"
+        },
+        {
+          "name": "selection set-limits",
+          "summary": "Changes only the saved Default Selection\u0027s parsing limits when its expected revision still matches.",
+          "gate": "Released",
+          "helpTopic": "motif help selection set-limits"
+        },
+        {
+          "name": "selection set-parsimony",
+          "summary": "Saves the Texts that Parsimony\u0027s Text group reads, apart from the Default Selection.",
+          "gate": "Released",
+          "helpTopic": "motif help selection set-parsimony"
+        },
+        {
+          "name": "selection show",
+          "summary": "Reads the saved Texts, added words, and limits that determine what an Assessment measures when no...",
+          "gate": "Released",
+          "helpTopic": "motif help selection show"
+        }
+      ]
+    },
+    {
+      "group": "setup",
+      "verbs": [
+        {
+          "name": "setup skip",
+          "summary": "Marks first-time Selection setup as skipped for this project.",
+          "gate": "Released",
+          "helpTopic": "motif help setup skip"
+        }
+      ]
+    },
+    {
+      "group": "source",
+      "verbs": [
+        {
+          "name": "source list",
+          "summary": "Lists the Sources the project\u0027s Motif Sources list holds, with their Context and any reason one c...",
+          "gate": "Advanced AI",
+          "helpTopic": "motif help source list"
+        },
+        {
+          "name": "source passage",
+          "summary": "Reads a bounded page of word places from a published Source index: a Paratext chapter or a FieldW...",
+          "gate": "Advanced AI",
+          "helpTopic": "motif help source passage"
+        },
+        {
+          "name": "source show",
+          "summary": "Reads one Source: its Context as book and chapter ranges, how many chapters that is, its folder o...",
+          "gate": "Advanced AI",
+          "helpTopic": "motif help source show"
+        },
+        {
+          "name": "source where",
+          "summary": "Says whether a chapter is in each Source\u0027s Context, is the Current chapter, or comes later.",
+          "gate": "Advanced AI",
+          "helpTopic": "motif help source where"
+        }
+      ]
+    },
+    {
+      "group": "store",
+      "verbs": [
+        {
+          "name": "store backup",
+          "summary": "Writes a consistent copy of the project\u0027s Motif store and the files Motif owns for it into a new...",
+          "gate": "Released",
+          "helpTopic": "motif help store backup"
+        },
+        {
+          "name": "store prune",
+          "summary": "Removes older Assessments that are no longer needed by retained evidence.",
+          "gate": "Released",
+          "helpTopic": "motif help store prune"
+        },
+        {
+          "name": "store relocate",
+          "summary": "After a project and its Motif store are copied or moved together, points the store at the project...",
+          "gate": "Released",
+          "helpTopic": "motif help store relocate"
+        },
+        {
+          "name": "store restore",
+          "summary": "Puts a Motif backup back beside the project after checking every file against its receipt.",
+          "gate": "Released",
+          "helpTopic": "motif help store restore"
+        },
+        {
+          "name": "store upgrade",
+          "summary": "Carries authored work into the current store and keeps a backup of the old store.",
+          "gate": "Released",
+          "helpTopic": "motif help store upgrade"
+        }
+      ]
+    },
+    {
+      "group": "texts",
+      "verbs": [
+        {
+          "name": "texts list",
+          "summary": "Lists Text records from the project\u0027s current Baseline with their identity and interlinearization...",
+          "gate": "Released",
+          "helpTopic": "motif help texts list"
+        }
+      ]
+    },
+    {
+      "group": "wordform",
+      "verbs": [
+        {
+          "name": "wordform dispose",
+          "summary": "Records that word types are names, loans, other-language words, abbreviations, numerals, non-word...",
+          "gate": "Released",
+          "helpTopic": "motif help wordform dispose"
+        },
+        {
+          "name": "wordform undispose",
+          "summary": "Removes the standing disposition of each word type.",
+          "gate": "Released",
+          "helpTopic": "motif help wordform undispose"
+        }
+      ]
+    },
+    {
+      "group": "worker",
+      "verbs": [
+        {
+          "name": "worker stop",
+          "summary": "Ends the background runner that holds a project\u0027s store open, or the one for the current worker r...",
+          "gate": "Released",
+          "helpTopic": "motif help worker stop"
+        }
+      ]
+    }
+  ]
+}

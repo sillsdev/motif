@@ -1,0 +1,9 @@
+{
+  "kind": "term",
+  "code": "parsimony-recommendation",
+  "slug": "parsimony-recommendation",
+  "title": "A specific grammar recommendation",
+  "description": "A Parsimony recommendation names one grammar object or group, its evidence, and a recipe or limitation. Its stable finding identity is separate from the digest of evidence supporting it.",
+  "helpPage": "# Parsimony recommendation\n\nA Parsimony recommendation identifies one grammar object or group worth examining, shows the evidence for it, and gives a recipe or explains what information is missing. Its evidence remains attached to the exact item it concerns.\n",
+  "url": "https://motif-docs.pages.dev/reference/terms/parsimony-recommendation/"
+}

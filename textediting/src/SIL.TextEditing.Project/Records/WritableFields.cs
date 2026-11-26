@@ -17,5 +17,9 @@ namespace SIL.TextEditing.Project
         /// <summary>Whether the host can delete an object of <paramref name="className"/> (its concrete class) from the owned field <paramref name="ownerFieldName"/> declared by
         /// <paramref name="ownerClassName"/>.</summary>
         public abstract bool CanDelete(string ownerClassName, string ownerFieldName, string className);
+
+        /// <summary>Whether the host can create an object of <paramref name="className"/> in that field as part of a new record, which may be wider than <see cref="CanCreate"/>
+        /// because the host builds the whole new record at once. The default is <see cref="CanCreate"/>.</summary>
+        public virtual bool CanCreateInNewRecord(string ownerClassName, string ownerFieldName, string className) => CanCreate(ownerClassName, ownerFieldName, className);
     }
 }

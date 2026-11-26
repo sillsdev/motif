@@ -1,0 +1,9 @@
+{
+  "kind": "ui",
+  "code": "shortcut-previous-row",
+  "slug": "shortcut-previous-row",
+  "title": "Move to the Previous Row",
+  "description": "Focus the previous row.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/controls/shortcut-previous-row/"
+}

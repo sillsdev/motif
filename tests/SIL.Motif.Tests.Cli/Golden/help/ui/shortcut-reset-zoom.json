@@ -1,0 +1,9 @@
+{
+  "kind": "ui",
+  "code": "shortcut-reset-zoom",
+  "slug": "shortcut-reset-zoom",
+  "title": "Reset Zoom",
+  "description": "Return display zoom to its default.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/controls/shortcut-reset-zoom/"
+}

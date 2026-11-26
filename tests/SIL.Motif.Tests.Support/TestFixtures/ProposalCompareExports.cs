@@ -26,6 +26,16 @@ public static class ProposalCompareExports
         public IReadOnlyList<ReadingSignature>? AfterSignatures { get; init; }
     }
 
+    /// <summary>Records the project's current Baseline as the one <see cref="AddTrial"/> measures with the same fill.</summary>
+    public static void RecordCurrentBaseline(MotifDatabase database, ProjectLocator project, char fill = 'a')
+    {
+        var digest = BaselineDigest(fill);
+        new SIL.Motif.Worker.Baselines.BaselineRepository(database).Record(ProjectWorkspaceKey.Compute(project),
+            new SIL.Motif.Worker.Baselines.BaselinePublication(Path.GetTempPath(), Path.Combine(Path.GetTempPath(), "baseline.zip"),
+                new SIL.Motif.Contract.Baselines.BaselineToken("project", digest, "test", "2026-01-01T00:00:00Z", digest)),
+            DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, TestTextWords.Empty);
+    }
+
     public static string BaselineDigest(char fill) => "sha256:" + new string(fill, 64);
 
     public static string ReadingId(int number) => Signature(number).Id;
@@ -34,7 +44,8 @@ public static class ProposalCompareExports
     public static string AddTrial(MotifDatabase database, ProjectLocator project, IEnumerable<FormSpec> forms,
         string? proposalId = null, char baseline = 'a', int minute = 0, bool completed = true,
         string? sample = null, string? wordListDigest = null, int second = 0, string? jobId = null,
-        string? parserBefore = null, string? parserAfter = null, IReadOnlyList<object>? operations = null)
+        string? parserBefore = null, string? parserAfter = null, IReadOnlyList<object>? operations = null,
+        IReadOnlyList<string>? siblings = null, string siblingPattern = "per-form")
     {
         proposalId ??= CanonicalId.Mint("proposal/").Value;
         jobId ??= "job/" + Guid.NewGuid().ToString("D");
@@ -44,7 +55,11 @@ public static class ProposalCompareExports
             contractVersions = operations is null ? new Dictionary<string, string>() : new Dictionary<string, string> { ["lexical"] = "1.0", ["lists"] = "1.0" },
             proposalId, operations = operations ?? (IReadOnlyList<object>)Array.Empty<object>(),
         });
-        var input = new TrialJobInput(proposalJson, null) { Sample = sample, WordListDigest = wordListDigest };
+        var input = new TrialJobInput(proposalJson, null) {
+            Sample = sample, WordListDigest = wordListDigest,
+            Siblings = siblings is null ? null : new TrialSiblingsInput(JobWordLists.Store(database, siblings), siblingPattern, 42, 1000,
+                ["ish"], "abc", siblings.Count + 3, 2),
+        };
         var created = new DateTimeOffset(2026, 1, 1, 0, minute, second, TimeSpan.Zero).ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ");
         new JobRepository(database).RecordInterrupted(jobId, key, "trial", JsonSerializer.Serialize(input, MotifJson.CreateOptions()),
             "{}", created, JobStatus.Failed);

@@ -1,0 +1,9 @@
+{
+  "kind": "ui",
+  "code": "shortcut-next-gap",
+  "slug": "shortcut-next-gap",
+  "title": "Move to the Next Word Without an Approved Analysis",
+  "description": "Move to the next word that is not approved.",
+  "helpPage": null,
+  "url": "https://motif-docs.pages.dev/reference/controls/shortcut-next-gap/"
+}

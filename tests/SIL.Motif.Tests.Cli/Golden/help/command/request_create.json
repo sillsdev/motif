@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "request create",
+  "slug": "request-create",
+  "title": "Ask an assistant to fix this",
+  "description": "Stores a Request about a word, a Warning or a Compare matrix cell, with an optional note in the linguist\u0027s words. An assistant answers it with a Proposal.",
+  "helpPage": "# Ask an assistant to fix this\n\n\u0060request create\u0060 stores a Request: something the linguist wants an assistant to fix, about a word, a Warning or a Compare matrix cell. An assistant answers it with a [Proposal](term:proposal).\n\n## Example\n\n\u0060\u0060\u0060text\nmotif request create --project \u003Cfwdata\u003E --kind word --target \u003Cword\u003E --label \u003Cword\u003E [--note \u0022Please check the plural\u0022]\n\u0060\u0060\u0060\n\n\u0060--kind\u0060 is \u0060word\u0060, \u0060warning\u0060 or \u0060matrix-cell\u0060. \u0060--target\u0060 is the word, Warning or cell as the window names it, and \u0060--label\u0060 is a short name a person can read. The note is optional, at most 2000 characters, and stays the linguist\u0027s own words.\n\nA Request is answered when the Proposal that answers it is finalized. It opens again if that Proposal is withdrawn or replaced before anyone decides, and stays answered if the linguist declines it.\n\n## Related commands\n\n- [List the open Requests](cmd:list%20requests) reads them.\n- [Withdraw a Request](cmd:request%20withdraw) takes one back.\n",
+  "usage": [
+    "Usage: motif request create --project \u003Cfwdata\u003E --kind word|warning|matrix-cell --target \u003Cid\u003E --label \u003Ctext\u003E [--note \u003Ctext\u003E] [--json]"
+  ],
+  "surface": "Released",
+  "url": "https://motif-docs.pages.dev/reference/commands/request-create/"
+}

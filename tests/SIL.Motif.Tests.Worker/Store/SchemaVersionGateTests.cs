@@ -40,7 +40,7 @@ public sealed class SchemaVersionGateTests : IDisposable
             MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema - 1, new Version(1, 0)));
 
         // Naming the generations alone tells a user nothing they can do; the remedy has to be in the text.
-        Assert.Contains("update Motif", refusal.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("install the newer Motif", refusal.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Contains(MotifSchema.CurrentSchema.ToString(), refusal.Message, StringComparison.Ordinal);
     }
 
@@ -91,7 +91,7 @@ public sealed class SchemaVersionGateTests : IDisposable
             command.CommandText = $"PRAGMA user_version = {oldSchema};";
             command.ExecuteNonQuery();
         }
-        Assert.False(MotifDatabase.DeleteIfOtherVersion(path, locator, MotifSchema.CurrentSchema, new Version(1, 0)));
+        Assert.False(MotifDatabase.DeleteIfOtherVersion(path, locator, MotifSchema.CurrentSchema, new Version(1, 0)).Deleted);
         using (MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0))) { }
         Assert.Equal(MotifSchema.CurrentSchema, PragmaUserVersion(path));
         Assert.Equal(oldSchema, PragmaUserVersion(path + $".schema{oldSchema}.bak"));

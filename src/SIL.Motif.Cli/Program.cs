@@ -115,6 +115,8 @@ internal static int Run(
     Func<AssessRequest, CommandOutcome<AssessCommandResponse>>? assess = null)
 {
     using var ambient = AmbientEnvironment.Push(environment);
+    using var storeUpgrades = StoreUpgradeNotices.Begin();
+    void NoteStoreUpgrades() => StoreUpgradeReport.Apply(storeUpgrades.Notices, new CommandResult(1, string.Empty), false, error);
     // A leading --autonomous is the global flag; it moves behind the verb so the verb is still args[0].
     if (args is [CommandSurfacePolicy.AutonomousFlag, var leadingVerb, ..var afterVerb])
         args = [leadingVerb, CommandSurfacePolicy.AutonomousFlag, .. afterVerb];
@@ -1166,7 +1168,7 @@ try
             {
                 return Usage(
                     "Usage: motif trial --project <fwdata> <proposalId> [--scope <name>] " +
-                    "[--words <file>|--all-words] [--touched] [--no-base-sample] [--wait] [--no-background] [--expect-loss <file>] [--json]", asJson);
+                    "[--words <file>|--all-words] [--touched] [--siblings --corpus-types <file> [--siblings-max <n>] [--siblings-pattern <regex>]|--no-siblings] [--no-base-sample] [--wait] [--no-background] [--expect-loss <file>] [--json]", asJson);
             }
             IReadOnlyList<string>? trialWords = null;
             IReadOnlyList<string>? reviewSets = null;
@@ -1206,9 +1208,15 @@ try
             var trialWaitTimeout = JobCommands.DefaultWaitTimeout;
             if (flags.ContainsKey("wait") && ParseWaitTimeout(flags,
                 "Usage: motif trial --project <fwdata> <proposalId> [--scope <name>] " +
-                "[--words <file>|--all-words] [--touched] [--no-base-sample] " +
+                "[--words <file>|--all-words] [--touched] [--siblings --corpus-types <file> [--siblings-max <n>] [--siblings-pattern <regex>]|--no-siblings] [--no-base-sample] " +
                 "--wait [--wait-terminal] [--wait-timeout-ms <ms>] [--no-background] [--expect-loss <file>] [--verbose] [--json]", asJson, out trialWaitTimeout) is { } trialUsage)
                 return trialUsage;
+            var siblingsRequest = TrialSiblingsCli.Read(flags, out var siblingsRefusal);
+            if (siblingsRefusal is not null)
+            {
+                result = RenderCommand(CommandOutcome<JobEnqueuedResponse>.Refused(siblingsRefusal), successAsJson: false);
+                break;
+            }
             var trialResultExit = 0;
             result = RunWithConsoleCancellation(cancellationToken =>
             {
@@ -1218,12 +1226,14 @@ try
                         Words: trialWords, AllWords: flags.ContainsKey("all-words"),
                         NoBackground: flags.ContainsKey("no-background"),
                         NoBaseSample: flags.ContainsKey("no-base-sample"))
-                    { ReviewSetIds = reviewSets, ExpectedLosses = expectedLosses, Touched = flags.ContainsKey("touched") },
+                    { ReviewSetIds = reviewSets, ExpectedLosses = expectedLosses, Touched = flags.ContainsKey("touched"), Siblings = siblingsRequest },
                     ResolveRoot(), null, BaselineMode.BestEffort, cancellationToken);
                 if (!queued.Succeeded)
                     return RenderCommand(CommandOutcome<JobEnqueuedResponse>.Refused(queued.Refusal!), successAsJson: false);
                 if (queued.Value!.Touched is { } touched)
                     error.WriteLine(touched.Describe());
+                if (queued.Value!.Siblings is { } siblingsNote)
+                    error.WriteLine(siblingsNote);
                 if (queued.Value!.BaselineWarning is { } reason)
                     error.WriteLine(
                         "warning: the Trial has no Baseline Assessment, so `difference produce` will refuse it: " + reason);
@@ -1262,6 +1272,7 @@ try
             });
             if (trialResultExit != 0)
             {
+                result = StoreUpgradeReport.Apply(storeUpgrades.Notices, result, asJson, error);
                 var pickedTrial = Picked(result);
                 output.Write(pickedTrial.Output);
                 return pickRefused ? pickedTrial.ExitCode : trialResultExit;
@@ -1276,6 +1287,9 @@ try
                 result = RenderProposal(CommandOutcome<ApplyPendingResult>.Refused(applyAttributionRefusal));
                 break;
             }
+            if (flags.ContainsKey("receipt") && (flags["receipt"] is "true" or "" || flags.ContainsKey("all-pending")))
+                return Usage("--receipt <file> names a Trial receipt and applies to 'apply <proposalId>' and 'apply --proposal' only.", asJson);
+            if (flags.TryGetValue("receipt", out var receiptFlag)) applyAttribution = applyAttribution with { ReceiptPath = receiptFlag };
             if (flags.ContainsKey("all-pending"))
             {
                 if (positionals.Count != 0 || flags.ContainsKey("user") ||
@@ -2098,6 +2112,14 @@ try
                 if (delta is null) return Usage(UsageLineFor("proposal trial delta"), asJson);
                 result = delta;
                 alreadyRendered = true;
+                // A delta that is not green still prints its result on stdout; only its exit code fails the command.
+                if (delta.ExitCode != 0 && delta.Reason is null)
+                {
+                    var projected = Picked(delta with { ExitCode = 0 });
+                    if (pickRefused) return projected.ExitCode;
+                    output.Write(projected.Output);
+                    return delta.ExitCode;
+                }
                 break;
             }
             if (positionals is ["trial", "export", ..])
@@ -2197,6 +2219,35 @@ try
             break;
 
         case "guide":
+            if (flags.TryGetValue("project", out var gdrAddProject) && positionals is ["add"])
+            {
+                bool GdrAddMissingValue(string name)
+                {
+                    var at = Array.IndexOf(args, "--" + name);
+                    return at >= 0 && (at + 1 >= args.Length || args[at + 1].StartsWith("--", StringComparison.Ordinal));
+                }
+                if (!flags.TryGetValue("title", out var gdrAddTitle) || GdrAddMissingValue("title") ||
+                    flags.Keys.Any(key => key is not ("project" or "title" or "parent" or "after" or "from-file" or "ws" or "draft" or "json" or "autonomous")) ||
+                    new[] { "parent", "after", "from-file", "ws", "draft" }.Any(name => flags.ContainsKey(name) && GdrAddMissingValue(name)))
+                    return Usage(UsageLineFor("guide add"), asJson);
+                string? gdrAddBody = null;
+                if (flags.TryGetValue("from-file", out var gdrAddFile))
+                {
+                    try
+                    {
+                        gdrAddBody = gdrAddFile == "-"
+                            ? new StreamReader(Console.OpenStandardInput(), new UTF8Encoding(false)).ReadToEnd()
+                            : File.ReadAllText(gdrAddFile);
+                    }
+                    catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                    {
+                        return Usage($"The --from-file '{gdrAddFile}' cannot be read: {exception.Message}", asJson);
+                    }
+                }
+                result = RenderCommand(GdrAddCommands.Add(new GdrAddRequest(gdrAddProject, gdrAddTitle, flags.GetValueOrDefault("parent"),
+                    flags.GetValueOrDefault("after"), gdrAddBody, flags.GetValueOrDefault("ws"), flags.GetValueOrDefault("draft"))));
+                break;
+            }
             if (flags.TryGetValue("project", out var gdrEditProject) && positionals is ["edit" or "decide", var gdrEditId])
             {
                 var gdrDraft = flags.GetValueOrDefault("draft");
@@ -2239,7 +2290,11 @@ try
                 (positionals[0] is "list" or "check" ? positionals.Count != 1 : positionals[0] != "show" || positionals.Count != 2) ||
                 flags.ContainsKey("as-of") && positionals[0] != "show")
                 return Usage(UsageLineFor("guide list") + " OR " + UsageLineFor("guide show") + " OR " + UsageLineFor("guide check") +
-                    " OR " + UsageLineFor("guide edit") + " OR " + UsageLineFor("guide decide"), asJson);
+                    " OR " + UsageLineFor("guide edit") + " OR " + UsageLineFor("guide add") + " OR " + UsageLineFor("guide decide"), asJson);
+            if (positionals[0] == "check" && (flags.Keys.Any(key => key is not ("project" or "json" or "autonomous" or "no-run" or "timeout" or "format")) ||
+                    flags.GetValueOrDefault("no-run", "true") != "true" || flags.TryGetValue("timeout", out var gdrTimeoutText) &&
+                    (!int.TryParse(gdrTimeoutText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var gdrTimeout) || gdrTimeout < 1)))
+                return Usage(UsageLineFor("guide check"), asJson);
             var gdrAsOf = flags.GetValueOrDefault("as-of");
             if (gdrAsOf == "true") return Usage(UsageLineFor("guide show"), asJson);
             if (flags.TryGetValue("format", out var gdrFormat))
@@ -2255,7 +2310,9 @@ try
             result = positionals[0] switch
             {
                 "list" => RenderCommand(GdrQuery.List(new GdrListRequest(gdrProject))),
-                "check" => RenderCommand(GdrQuery.Check(new GdrCheckRequest(gdrProject))),
+                "check" => RenderCommand(GdrQuery.Check(new GdrCheckRequest(gdrProject, RunBlocks: !flags.ContainsKey("no-run"),
+                    BlockTimeoutSeconds: flags.TryGetValue("timeout", out var gdrBlockTimeout) ? int.Parse(gdrBlockTimeout, CultureInfo.InvariantCulture) : 60),
+                    JobRunnerLaunchOptions.ResolveParserPath())),
                 _ => RenderCommand(GdrQuery.Show(new GdrShowRequest(gdrProject, positionals[1], AsOf: gdrAsOf))),
             };
             break;
@@ -3625,6 +3682,7 @@ try
             return Usage($"Unknown command '{verb}'.", asJson, withUsageBanner: true);
     }
 
+    result = StoreUpgradeReport.Apply(storeUpgrades.Notices, result, asJson, error);
     result = Picked(result);
     if (result.ExitCode == 0)
     {
@@ -3640,6 +3698,7 @@ try
 }
 catch (ProjectWritingSystemsUnavailableException ex)
 {
+    NoteStoreUpgrades();
     // A setup problem the message explains, never an unexpected failure, even outside a project-store command.
     var refusal = ProjectStoreCommand.WritingSystemRefusal(ex, namedProject);
     if (asJson)
@@ -3651,6 +3710,7 @@ catch (ProjectWritingSystemsUnavailableException ex)
 }
 catch (OperationCanceledException ex)
 {
+    NoteStoreUpgrades();
     var message = string.IsNullOrWhiteSpace(ex.Message) ? "The CLI operation was cancelled." : ex.Message;
     if (asJson)
         error.WriteLine(ProjectionJson.Serialize(
@@ -3661,6 +3721,7 @@ catch (OperationCanceledException ex)
 }
 catch (OutOfMemoryException ex)
 {
+    NoteStoreUpgrades();
     // A memory shortage says nothing about the store, so it is a refusal, not the "something broke" bucket.
     var message = string.IsNullOrWhiteSpace(ex.Message) ? "The CLI ran out of memory." : ex.Message;
     if (asJson)
@@ -3672,6 +3733,7 @@ catch (OutOfMemoryException ex)
 }
 catch (Exception ex) when (SqliteConnections.IsBusyInChain(ex))
 {
+    NoteStoreUpgrades();
     // Another process held a store lock past the busy timeout. Nothing is damaged; the same call can be repeated.
     const string message = "Motif's store is locked by another process. Wait a few seconds and repeat the same call.";
     if (asJson)
@@ -3683,6 +3745,7 @@ catch (Exception ex) when (SqliteConnections.IsBusyInChain(ex))
 }
 catch (Exception ex)
 {
+    NoteStoreUpgrades();
     // Nothing decided this; it escaped. That is a bug, not a refusal, and it gets its own code.
     var message = string.IsNullOrWhiteSpace(ex.Message) ? "An unexpected CLI failure occurred." : ex.Message;
     if (asJson)
@@ -4192,7 +4255,7 @@ static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyLis
         if (token.StartsWith("--", StringComparison.Ordinal))
         {
             var name = token[2..];
-            if (name is "latest" or "wait-terminal" or "word-results" or "refresh-report" or "trace" or "md" or "apply" or "bulk" or "effects" or "no-background" or "no-base-sample" or "touched" or "verbose" or "replace" or "skip-refused" or "current" or "tokens" or "strict" or "fold-case" or "split-hyphens" or "thorough" or "with-counts")
+            if (name is "latest" or "wait-terminal" or "word-results" or "refresh-report" or "trace" or "md" or "apply" or "bulk" or "effects" or "no-background" or "no-base-sample" or "touched" or "siblings" or "no-siblings" or "verbose" or "replace" or "skip-refused" or "current" or "tokens" or "strict" or "fold-case" or "split-hyphens" or "thorough" or "with-counts" or "no-run")
             {
                 flags[name] = "true";
                 continue;

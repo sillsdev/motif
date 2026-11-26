@@ -259,6 +259,47 @@ public sealed class GdrSyncCheckerTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public void AnInterlinearBlockIsCheckedAgainstTheLexiconAndForAlignment()
+    {
+        using var cache = pristine.NewScratch();
+        var (rule, entry, _) = SeedGrammar(cache);
+        AddRecord(cache, "GDR-30", "Prefixes", Heading("Examples"),
+            [Prose("Some words:"), Cite("mang-", entry.Guid), Cite("Nasal assimilation", rule.Guid)],
+            [Prose("word: "), Word("mangpalit")],
+            [Prose("morphemes: "), Word("mang-palit")],
+            [Prose("gloss: AV-buy")],
+            [Prose("translation: buy")],
+            [Prose("word: "), Word("a b")],
+            [Prose("morphemes: "), Word("mang")],
+            [Prose("gloss: AV")]);
+
+        var rows = new Rows();
+        var result = GdrSyncChecker.Check(cache, rows, NoLedger);
+
+        var unknown = Assert.Single(result.Findings, item => item.Code == GdrSyncCodes.InterlinearUnknownMorpheme);
+        Assert.Equal(["palit"], unknown.Subjects);
+        Assert.Equal("Examples", unknown.Section);
+        var misaligned = Assert.Single(result.Findings, item => item.Code == GdrSyncCodes.InterlinearMisaligned);
+        Assert.Contains("token", misaligned.Subjects[0], StringComparison.Ordinal);
+        // The morphemes line is not read as example words; the word lines still are.
+        Assert.DoesNotContain(rows.Asked, word => word.Contains('-'));
+        Assert.Contains("mangpalit", rows.Asked);
+    }
+
+    [Fact]
+    public void AnInterlinearBlockWhoseMorphemesAreAllInTheLexiconIsClean()
+    {
+        using var cache = pristine.NewScratch();
+        SeedGrammar(cache);
+        AddRecord(cache, "GDR-31", "Prefixes", Heading("How it works"),
+            [Prose("word: "), Word("mang")], [Prose("morphemes: "), Word("-mang")], [Prose("gloss: AV")]);
+
+        var result = GdrSyncChecker.Check(cache, new Rows(), NoLedger);
+
+        Assert.DoesNotContain(result.Findings, item => item.Code.StartsWith("guide.interlinear", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void AWordThatParsesWithoutTheMorphemesItsRowCitesIsAChangedClaim()
     {
         using var cache = pristine.NewScratch();

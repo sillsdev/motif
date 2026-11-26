@@ -16,12 +16,16 @@ public static class ApplyModes
     public static bool IsKnown(string? mode) => mode is Person or Autonomous;
 }
 
-/// <summary>Who applied and what they said, carried by every Apply request.</summary>
+/// <summary>Who applied, what they said and the receipt Apply must honour.</summary>
 /// <param name="Mode"><see cref="ApplyModes.Person"/> or <see cref="ApplyModes.Autonomous"/>.</param>
 /// <param name="Message">
 /// The message the Receipt records. Required in Autonomous mode; in Person mode <see langword="null"/> means the
 /// Proposal's label.
 /// </param>
 /// <param name="WriteNote">Whether Apply also writes one Notebook record in the same unit of work.</param>
+/// <param name="ReceiptPath">
+/// A passing Trial receipt file Apply must be bound to, or <see langword="null"/> to require none. The receipt must
+/// name this Proposal's current revision and Baseline and the gate code that is running, or Apply stops.
+/// </param>
 public sealed record ApplyAttribution(
-    string Mode = ApplyModes.Person, string? Message = null, bool WriteNote = false);
+    string Mode = ApplyModes.Person, string? Message = null, bool WriteNote = false, string? ReceiptPath = null);

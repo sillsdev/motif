@@ -92,7 +92,8 @@ Review the surfaces that actually changed, with particular attention to LibLCM l
 one atomic Proposal unit of work, exact identity and normalization, the distinction between Dry Run and
 Assessment, CLI and JSON contracts, Avalonia behavior, and the `net10.0` target. Confirm that callers
 own project lifecycle and persistence, and that generated LibLCM Mutation Plans remain output-only.
-Do not add migration or back-compat scaffolding before 1.0. Code is implementation evidence, not
+Do not add back-compat scaffolding before 1.0, but a project store is upgraded across versions after a
+backup (ADR 0023 D7): carry authored data, drop derived data, refuse a newer store. Code is implementation evidence, not
 automatic authority over a normative contract or its tests.
 
 For documentation-only changes, inspect links and names and check Markdown structure and whitespace.
@@ -181,3 +182,5 @@ bugfix discipline. It removes source-repository-specific platform, installer, le
 build-order, and ticket-shape assumptions, and adds Motif's authority, vocabulary, and `net10.0`
 constraints. The source root instructions are context, not binding on Motif. The source checkout and
 SHA are provenance, not a live dependency.
+
+- **macOS runs only in the merge queue** (owner, 2026-11-26). On a pull request the macOS jobs report a placeholder success; enqueue once the Linux job is green, and the queue group runs the real macOS build; the macOS release check runs on main.

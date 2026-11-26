@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "disposition show",
+  "slug": "disposition-show",
+  "title": "Show a word type\u0027s disposition",
+  "description": "Shows the disposition a word type stands under, who recorded it and why, and the dispositions it had before. It reads and never writes.",
+  "helpPage": "# Show a word type\u0027s disposition\n\n\u0060disposition show\u0060 reports the disposition a corpus word type stands under, who recorded it, when, and the evidence, then the dispositions it had before and how each ended (\u0060replaced\u0060 or \u0060cleared\u0060). A type with no disposition answers with none. It reads Motif\u0027s store and never writes. The MCP tool \u0060motif_disposition_show\u0060 takes \u0060form\u0060.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif disposition show Nairobi --project \u003Cfwdata\u003E\nmotif disposition show Nairobi --project \u003Cfwdata\u003E --json\n\u0060\u0060\u0060\n\nThe \u0060scope\u0060 in the JSON is always \u0060word-wide\u0060: a disposition covers every occurrence of the type, and none is kept for a single occurrence. Spellings that differ only in Unicode composition are one type.\n\n## Related commands\n\n- [Give word types a disposition](cmd:wordform%20dispose) records one.\n- [List word type dispositions](cmd:disposition%20list) pages through all of them.\n",
+  "usage": [
+    "Usage: motif disposition show \u003Cform\u003E --project \u003Cfwdata\u003E [--json]"
+  ],
+  "surface": "Released",
+  "url": "https://motif-docs.pages.dev/reference/commands/disposition-show/"
+}

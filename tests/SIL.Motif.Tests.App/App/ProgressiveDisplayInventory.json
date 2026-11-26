@@ -505,6 +505,13 @@
   },
   {
     "view": "Guide/GuideQueryBlock",
+    "name": "GuideEvidenceDisplays",
+    "source": "EvidenceDisplays",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "Guide/GuideQueryBlock",
     "name": "GuideQueryDisplays",
     "source": "Displays",
     "mode": "finite",

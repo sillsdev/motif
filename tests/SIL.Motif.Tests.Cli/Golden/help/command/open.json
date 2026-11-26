@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "open",
+  "slug": "open",
+  "title": "Open a project",
+  "description": "Reads the saved FieldWorks language project and reports its identity and key counts. Use it to confirm a project path before measuring it.",
+  "helpPage": "# Open a project\n\n\u0060open\u0060 reads a private copy of a saved FieldWorks language project and reports its identity and basic counts. It works before a Baseline exists, including while FieldWorks holds the original project, and does not change the original.\n\n## When to use it\n\nUse \u0060open\u0060 to check that a \u0060.fwdata\u0060 path names a readable project before you capture a Baseline or inspect its stored evidence.\n\n## Example\n\n\u0060\u0060\u0060powershell\nmotif open \u0022C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\u0022\n\u0060\u0060\u0060\n\n## What it prints\n\nHuman output summarizes the project. Add \u0060--json\u0060 to get the structured project summary for a script or an AI agent.\n\n## Related commands\n\n- [Capture a Baseline](cmd:baseline%20capture) records the saved project state for later measurements.\n- [Measure a Selection](cmd:assess) runs PanGloss over chosen words.\n",
+  "usage": [
+    "Usage: motif open \u003Cfwdata\u003E [--json]"
+  ],
+  "surface": "Released",
+  "url": "https://motif-docs.pages.dev/reference/commands/open/"
+}

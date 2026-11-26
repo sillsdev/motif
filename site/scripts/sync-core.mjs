@@ -1,4 +1,4 @@
-import { access, copyFile, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { access, copyFile, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { convertXmlDocsToMarkdown } from '../../tools/xml-docs-to-markdown.mjs';
@@ -540,10 +540,24 @@ async function cleanGeneratedPaths(paths) {
 	}
 }
 
+// Reads a Help export: a `help --all --json` file, or the repository's golden folder, where `_envelope.json` holds the
+// top-level fields and each entry is its own `<kind>/<code>.json` file.
+export async function readHelpExport(helpExportPath) {
+	if (!(await stat(helpExportPath)).isDirectory()) return JSON.parse(await readFile(helpExportPath, 'utf8'));
+	const helpExport = JSON.parse(await readFile(path.join(helpExportPath, '_envelope.json'), 'utf8'));
+	helpExport.entries = [];
+	for (const kind of (await readdir(helpExportPath, { withFileTypes: true })).filter((item) => item.isDirectory()).map((item) => item.name).sort()) {
+		for (const file of (await readdir(path.join(helpExportPath, kind))).filter((name) => name.endsWith('.json')).sort()) {
+			helpExport.entries.push(JSON.parse(await readFile(path.join(helpExportPath, kind, file), 'utf8')));
+		}
+	}
+	return helpExport;
+}
+
 export async function syncSiteContent({ repository, site, helpExportPath, walkthroughRoot, docsRoot, apiXmlPath, samplesRoot, samplesOut }) {
 	const contentRoot = path.join(site, 'src', 'content', 'docs');
 	const publicRoot = path.join(site, 'public');
-	const helpExport = JSON.parse(await readFile(helpExportPath, 'utf8'));
+	const helpExport = await readHelpExport(helpExportPath);
 	if (!helpExport.locale || !helpExport.siteRoot || !Array.isArray(helpExport.entries)) throw new Error('Invalid help export.');
 	const localeRoot = helpExport.locale === 'en' ? contentRoot : path.join(contentRoot, helpExport.locale);
 	const generatedPaths = [

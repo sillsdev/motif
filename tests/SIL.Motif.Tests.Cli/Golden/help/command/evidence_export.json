@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "evidence export",
+  "slug": "evidence-export",
+  "title": "Export decision evidence",
+  "description": "Writes every source-validated decision\u0027s evidence as one JSON file, or to standard output, read a page at a time so a large store stays out of memory. An agent reads the same records page by page with a cursor. It changes nothing.",
+  "helpPage": "# Export decision evidence\n\n\u0060evidence export\u0060 writes the evidence behind every decision that programs staged from cited sources through Applied Proposals. It reads Motif\u0027s store only: the FieldWorks project is not opened and nothing is changed.\n\nGive \u0060--out\u0060 a file path to write one JSON file, or leave it out to send the same JSON to standard output. The file holds a \u0060format\u0060 name, then every record under \u0060rows\u0060, then \u0060total\u0060 and \u0060tierCounts\u0060, which come last because they are counted as the records are written. Each record is labelled source-validated and is never a person\u0027s decision. Narrow the export with \u0060--tier\u0060 (for example \u0060misspelled-typo\u0060).\n\nThe export reads a page at a time, 500 records by default, so a large store does not fill memory; \u0060--page-size\u0060 (1 to 500) changes the page and never the result. A file is written beside its final name and moved into place only when the whole export succeeded, so a refused export leaves an earlier file as it was. Standard output cannot be taken back: if a read fails part way, the error is reported and the output is incomplete.\n\nAn agent reads the same records through the evidence export tool, one page at a time (50 records unless it asks for up to 500): each page returns a \u0060next\u0060 cursor to pass as \u0060after\u0060 until \u0060next\u0060 is absent. A cursor remembers the tier filter and how many Applied Proposals there were, so it is refused if you change the tier or if a Proposal is applied part way through; start the export again.\n\n\u0060\u0060\u0060powershell\nmotif evidence export --project \u0022C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\u0022 --out \u0022C:\\Work\\koro-evidence.json\u0022 --tier misspelled-typo\n\u0060\u0060\u0060\n",
+  "usage": [
+    "Usage: motif evidence export --project \u003Cfwdata\u003E [--out \u003Cpath.json\u003E] [--tier \u003Ctier\u003E] [--page-size \u003Cn\u003E] [--json]"
+  ],
+  "surface": "AdvancedAi",
+  "url": "https://motif-docs.pages.dev/reference/commands/evidence-export/"
+}

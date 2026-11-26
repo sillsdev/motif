@@ -73,6 +73,77 @@ public sealed class HelpCommandTests
     }
 
     [Fact]
+    public void EveryVerbGroupInTheCatalogResolvesAsATopicListingItsVerbsWithGates()
+    {
+        Assert.Contains("guide", HelpCommand.VerbGroups.Keys);
+        Assert.Contains("query", HelpCommand.VerbGroups.Keys);
+        var catalog = HelpCatalog.Load();
+        var failures = new System.Collections.Generic.List<string>();
+        foreach (var (group, verbs) in HelpCommand.VerbGroups)
+        {
+            var result = Run(true, true, "help", group);
+            Assert.DoesNotContain("No summary yet", result.Output, StringComparison.Ordinal);
+            if (result.ExitCode != 0) { failures.Add($"{group}: exit {result.ExitCode}"); continue; }
+            if (!result.Output.Contains($"motif help {group} <verb>", StringComparison.Ordinal))
+                failures.Add($"{group}: no pointer to 'motif help {group} <verb>'");
+            foreach (var verb in verbs)
+            {
+                var line = result.Output.Split('\n').FirstOrDefault(l => l.TrimStart().StartsWith(verb + " ", StringComparison.Ordinal));
+                var surface = CommandCatalog.All.First(command => command.Name == verb).Surface;
+                var gate = surface == CommandSurface.AdvancedAi ? "Advanced AI" : surface.ToString();
+                if (line is null || !line.Contains($"[{gate}]", StringComparison.Ordinal))
+                    failures.Add($"{group}: verb '{verb}' missing or without gate [{gate}]");
+            }
+        }
+
+        Assert.Empty(failures);
+    }
+
+    [Fact]
+    public void AVerbGroupTopicHasNoPlaceholderSummaryAndHidesDeveloperVerbsUntilEnabled()
+    {
+        var guide = Run(true, false, "help", "guide");
+        Assert.Equal(0, guide.ExitCode);
+        Assert.DoesNotContain("No summary yet", guide.Output, StringComparison.Ordinal);
+        Assert.Matches(@"guide show\s+\[Released\]", guide.Output);
+        Assert.Matches(@"guide edit\s+\[Advanced AI\]", guide.Output);
+        Assert.Matches(@"guide decide\s+\[Autonomous\]", guide.Output);
+        Assert.Matches(@"guide check\s+\[Autonomous\] \S", guide.Output);
+
+        Assert.DoesNotContain("[Developer]", Run(true, false, "help", "store").Output, StringComparison.Ordinal);
+        Assert.Contains("[Developer]", Run(true, true, "help", "store").Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AVerbGroupTopicHasJsonAndIsListedInTheExport()
+    {
+        var result = Run(true, false, "help", "guide", "--json");
+        Assert.Equal(0, result.ExitCode);
+        using var document = JsonDocument.Parse(result.Output);
+        Assert.Equal("guide", document.RootElement.GetProperty("group").GetString());
+        var verb = document.RootElement.GetProperty("verbs").EnumerateArray()
+            .Single(item => item.GetProperty("name").GetString() == "guide show");
+        Assert.Equal("Released", verb.GetProperty("gate").GetString());
+        Assert.Equal("motif help guide show", verb.GetProperty("helpTopic").GetString());
+        Assert.False(string.IsNullOrWhiteSpace(verb.GetProperty("summary").GetString()));
+
+        using var export = JsonDocument.Parse(Run(false, false, "help", "--all", "--json").Output);
+        Assert.Contains(export.RootElement.GetProperty("verbGroups").EnumerateArray(),
+            item => item.GetProperty("group").GetString() == "guide");
+    }
+
+    [Fact]
+    public void AVerbGroupThatIsAlsoATopicKeepsItsPageAndGainsAVerbsSection()
+    {
+        var result = Run(true, true, "help", "list");
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(HelpCatalog.Load().Find(HelpEntryKind.Command, "list")!.Title, result.Output.Split('\n')[0].TrimEnd('\r'));
+        Assert.Contains("Verbs:", result.Output, StringComparison.Ordinal);
+        Assert.Contains("list requests", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void HelpListsReleasedCommandsWithTitles()
     {
         var result = Run("help");
@@ -467,19 +538,37 @@ public sealed class HelpCommandTests
     {
         var result = Run("help", "--all", "--json");
         var repositoryRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", ".."));
-        var goldenPath = Path.Combine(repositoryRoot, "tests", "SIL.Motif.Tests.Cli", "Golden",
-            "help-all-current.json");
-        var expected = File.ReadAllText(goldenPath);
+        var goldenRoot = Path.Combine(repositoryRoot, "tests", "SIL.Motif.Tests.Cli", "Golden", "help");
+        var expected = Directory.EnumerateFiles(goldenRoot, "*", SearchOption.AllDirectories).ToDictionary(
+            file => Path.GetRelativePath(goldenRoot, file).Replace('\\', '/'),
+            file => NormalizeNewlines(File.ReadAllText(file)),
+            StringComparer.Ordinal);
+        var actual = SplitHelpExport(NormalizeNewlines(result.Output));
 
         Assert.Equal(0, result.ExitCode);
-        Assert.Equal(NormalizeNewlines(expected), NormalizeNewlines(result.Output));
-        using var golden = JsonDocument.Parse(expected);
-        var releasedNames = golden.RootElement.GetProperty("entries").EnumerateArray()
-            .Where(entry => entry.GetProperty("kind").GetString() == "command")
-            .Select(entry => entry.GetProperty("code").GetString()!)
+        Assert.Equal(expected.Keys.Order(StringComparer.Ordinal), actual.Keys.Order(StringComparer.Ordinal));
+        Assert.Empty(actual.Where(file => expected[file.Key] != file.Value).Select(file => file.Key).Order(StringComparer.Ordinal));
+        var releasedNames = actual.Keys.Where(path => path.StartsWith("command/", StringComparison.Ordinal))
+            .Select(path => JsonDocument.Parse(actual[path]).RootElement.GetProperty("code").GetString()!)
             .Order(StringComparer.Ordinal);
         Assert.Equal(releasedNames, CommandCatalog.All.Where(command => command.Surface is CommandSurface.Released or CommandSurface.AdvancedAi)
             .Select(command => command.Name).Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public void HelpAllListsEntriesByKindThenOrdinalCode()
+    {
+        var result = Run("help", "--all", "--json");
+        using var document = JsonDocument.Parse(result.Output);
+        var entries = document.RootElement.GetProperty("entries").EnumerateArray()
+            .Select(entry => (Kind: entry.GetProperty("kind").GetString()!, Code: entry.GetProperty("code").GetString()!)).ToList();
+        string[] kinds = ["command", "ui", "term", "guide"];
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(
+            entries.OrderBy(entry => Array.IndexOf(kinds, entry.Kind)).ThenBy(entry => entry.Code, StringComparer.Ordinal),
+            entries);
+        Assert.DoesNotContain(entries, entry => Array.IndexOf(kinds, entry.Kind) < 0);
     }
 
     [Fact]
@@ -651,6 +740,25 @@ public sealed class HelpCommandTests
         .ToArray();
 
     private sealed record CliRun(int ExitCode, string Output, string Error);
+
+    /// <summary>Splits the Help export into the golden folder's files, as tools/MotifHelpGolden.psm1 does.</summary>
+    private static Dictionary<string, string> SplitHelpExport(string json)
+    {
+        var files = new Dictionary<string, string>(StringComparer.Ordinal);
+        using var document = JsonDocument.Parse(json);
+        var envelope = document.RootElement.EnumerateObject().Where(property => property.Name != "entries")
+            .Select(property => "  " + JsonSerializer.Serialize(property.Name) + ": " + property.Value.GetRawText());
+        files["_envelope.json"] = "{\n" + string.Join(",\n", envelope) + "\n}\n";
+        foreach (var entry in document.RootElement.GetProperty("entries").EnumerateArray())
+        {
+            var path = entry.GetProperty("kind").GetString() + "/" +
+                entry.GetProperty("code").GetString()!.Replace(' ', '_').Replace('/', '~') + ".json";
+            Assert.True(files.Keys.All(existing => !string.Equals(existing, path, StringComparison.OrdinalIgnoreCase)),
+                "Two Help entries share the golden file " + path + ", ignoring case.");
+            files[path] = Regex.Replace(entry.GetRawText(), "^    ", "", RegexOptions.Multiline) + "\n";
+        }
+        return files;
+    }
 
     private static string NormalizeNewlines(string value) => value.Replace("\r\n", "\n", StringComparison.Ordinal);
 }

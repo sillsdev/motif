@@ -607,9 +607,12 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+  # Owner decision 2026-11-26: no macOS runners on PR or feature-branch runs (they starve the merge queue). macOS runs
+  # only for pushes to main, the nightly schedule and manual dispatch (not merge-queue groups: a second macOS runner per group). It is not a required check, and
+  # a skipped non-matrix job keeps its name, so it reports as skipped on a PR.
   release-check-macos:
     needs: [nightly-change]
-    if: needs.nightly-change.outputs.changed == 'true'
+    if: needs.nightly-change.outputs.changed == 'true' && github.event_name != 'pull_request' && (github.event_name != 'push' || github.ref == 'refs/heads/main')
     runs-on: macos-latest
     timeout-minutes: 60
     env:

@@ -85,6 +85,7 @@ public sealed class RefusalDefaultReasonTests
         ["agent.identity-conflict"] = "reason not determinable statically: an operation failure raised in the runner with the code leading its message, which carries no FailureReason",
         ["agent.version-conflict"] = "reason not determinable statically: an operation failure raised in the runner with the code leading its message, which carries no FailureReason",
         ["record-import.change-refused"] = "reason not determinable statically: it is only the code of a listed row in RecordImportRefusal, never a refused outcome, and always reports Refused",
+        ["record-import.create-shape"] = "reason not determinable statically: the code is chosen from a refusal kind or a lowering site and always reports Refused",
         ["record-import.field-uncovered"] = "reason not determinable statically: RecordLoweringRefusal carries the code chosen at each lowering site and always reports Refused",
         ["record-import.not-executable"] = "reason not determinable statically: RecordLoweringRefusal carries the code chosen at each lowering site and always reports Refused",
         ["record-import.shape-unsupported"] = "reason not determinable statically: RecordLoweringRefusal carries the code chosen at each lowering site and always reports Refused",
@@ -236,7 +237,6 @@ public sealed class RefusalDefaultReasonTests
             foreach (var field in type.GetFields(BindingFlags.Public | BindingFlags.Static).Where(f => f.IsLiteral))
                 byName.Add(field.Name, (string)field.GetRawConstantValue()!);
         var registered = byName.Values.ToHashSet(StringComparer.Ordinal);
-        var catalog = Path.Combine("Contract", "Commands", "RefusalCatalog.cs");
         var result = new Dictionary<string, Dictionary<string, int>>(StringComparer.Ordinal);
 
         void Vote(string? code, string reason)
@@ -254,7 +254,7 @@ public sealed class RefusalDefaultReasonTests
         foreach (var file in Directory.EnumerateFiles(src, "*.cs", SearchOption.AllDirectories))
         {
             var sep = Path.DirectorySeparatorChar;
-            if (file.Contains(sep + "obj" + sep) || file.EndsWith(catalog, StringComparison.Ordinal)) continue;
+            if (file.Contains(sep + "obj" + sep) || Path.GetFileName(file).StartsWith("RefusalCatalog", StringComparison.Ordinal)) continue;
             var text = File.ReadAllText(file);
 
             // A code spelled before a reason in the same statement, or a reason followed by `code: ...`.

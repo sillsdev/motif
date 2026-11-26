@@ -1,0 +1,9 @@
+{
+  "kind": "guide",
+  "code": "default-selection",
+  "slug": "default-selection",
+  "title": "Default Selection",
+  "description": "The Default Selection is the set of Texts and added words Motif measures when you run the project without choosing another Selection. Motif saves it with the project. Each parse keeps the exact word list it measured, so changing the Default Selection does not rewrite earlier results.",
+  "helpPage": "# Default Selection\n\nThe [Default Selection](term:default-selection) is the set of Texts and added words Motif measures when you run the project without choosing another Selection. Motif saves it with the project. Each [parse](term:parse-all-words) keeps the exact word list it measured, so changing the Default Selection does not rewrite earlier results.\n\nThe first time you set up a project, choose texts and add any extra words in **What Should Motif Measure Every Time?** Choose **Configure\u2026** from the project menu to edit that choice later. The Selection needs at least one text or added word before Motif can parse. Setup, Settings, and **Analysis Options** in Texts \u2192 Sources edit the same saved parsing policy; see [Settings](guide:settings) for its time-limit choices.\n\nThe Default Selection is not a search query that changes behind your back. Motif resolves the chosen material for each run and records what it measured. After saving in FieldWorks, press **Refresh** to read the saved project, then choose **Parse all words** to measure the current Default Selection again.\n\nThe FieldWorks Text choices in **Texts \u2192 Sources** edit the current Selection. External Source **Context** changes instead stage a Proposal; **Current Chapter** stays local. See [Sources](guide:sources).\n",
+  "url": "https://motif-docs.pages.dev/guide/default-selection/"
+}

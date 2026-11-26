@@ -54,9 +54,17 @@ public static class CorpusQueryCommand
     internal static CommandOutcome<CorpusFormsResponse> Forms(CorpusFormsRequest request, string? parserPath,
         CancellationToken cancellationToken,
         IRealizesIndexBuilder? indexBuilder = null, string? cacheRoot = null, Action<string>? notice = null, MorphCatalog? catalog = null,
-        IRealizesGrammar? realizesGrammar = null, Func<MorphItem, string?>? entryOfForm = null)
+        IRealizesGrammar? realizesGrammar = null, Func<MorphItem, string?>? entryOfForm = null, bool allowIndexBuild = true,
+        IDictionary<string, double>? phases = null)
     {
         ArgumentNullException.ThrowIfNull(request);
+        if (!allowIndexBuild)
+        {
+            var inner = indexBuilder;
+            indexBuilder = new NoBuildIndexBuilder(() => inner ?? RealizesQuery.BatchBuilder(parserPath));
+        }
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        void Phase(string name, double since) { if (phases is not null) phases[name] = Math.Round((phases.TryGetValue(name, out var spent) ? spent : 0) + clock.Elapsed.TotalMilliseconds - since, 1); }
         QueryExpr? where;
         var limit = request.Limit ?? DefaultLimit;
         string segmentTest;
@@ -155,6 +163,7 @@ public static class CorpusQueryCommand
         }
         CorpusWordList corpus;
         IReadOnlyList<CorpusSourceInfo> sources;
+        var loadStart = clock.Elapsed.TotalMilliseconds;
         try
         {
             var segments = request.SegmentsPath is { Length: > 0 } path ? CorpusSegments.Load(path) : CorpusSegments.None;
@@ -165,6 +174,7 @@ public static class CorpusQueryCommand
             return CommandOutcome<CorpusFormsResponse>.Refused(new Refusal(RefusalCodes.QueryCorpusUnreadable, FailureReason.InvalidArgument,
                 exception.Message));
         }
+        Phase("corpus", loadStart);
         RealizesRun? realizes = null;
         if (RealizesLowering.Has(where))
         {
@@ -197,12 +207,14 @@ public static class CorpusQueryCommand
                 string? catalogFailure = null;
                 var loaded = catalog;
                 var formEntries = new Dictionary<string, string?>(StringComparer.Ordinal);
+                var projectStart = clock.Elapsed.TotalMilliseconds;
                 if (needsClasses && loaded is null)
                     loaded = MorphCatalog.TryLoad(request.ProjectPath, request.GrammarPath, out catalogFailure, cache =>
                     {
                         foreach (var item in seqItems.Where(item => item.NeedsLexiconForm))
                             formEntries[item.Kind + ":" + item.Value] = RealizesQuery.Resolve(cache, item.Value, item.Kind == "root" ? true : false).EntryGuid;
                     });
+                Phase("project", projectStart);
                 if (loaded is null && seqItems.FirstOrDefault(item => item.NeedsProject) is { } needy) throw MorphSeqRefusals.NeedsProject(needy, catalogFailure);
                 if (wantsCauses && loaded is null) throw ReadingsIdRefusals.CausesNeedProject(catalogFailure);
                 if (needsEntries.Count > 0 && loaded is null) throw ReadingsRefusals.NeedsProject(needsEntries[0], catalogFailure);
@@ -212,12 +224,14 @@ public static class CorpusQueryCommand
                     if (retire[at].Kind == "id" && catalogUsed is not null && catalogUsed.HasEntry(retire[at].Id)) retire[at] = retire[at] with { Kind = "entry" };
                 var words = corpus.Words.Select(word => word.Form).ToList();
                 (RealizesParseIndex Index, bool Built, double Seconds) built;
+                var indexStart = clock.Elapsed.TotalMilliseconds;
                 try
                 {
                     built = RealizesParseIndexCache.GetOrBuild(cacheRoot ?? RealizesParseIndexCache.DefaultRoot, request.GrammarPath!, words,
                         indexBuilder ?? RealizesQuery.BatchBuilder(parserPath), notice ?? (_ => { }), cancellationToken);
                 }
                 catch (RealizesIndexException failed) { throw RealizesRefusals.IndexFailed(failed.Message); }
+                Phase(built.Built ? "index-build" : "index-load", indexStart);
                 readings = new ParsedReadings(built.Index, catalogUsed);
                 var reported = words;
                 if (twins is not null)
@@ -269,6 +283,7 @@ public static class CorpusQueryCommand
             if (!matcher.Succeeded) return CommandOutcome<CorpusFormsResponse>.Refused(matcher.Refusal!);
             phon = new PhonSession(matcher.Value!, segmentTest: segmentTest);
         }
+        var queryStart = clock.Elapsed.TotalMilliseconds;
         try
         {
             var lowered = OnlyViaLowering.Lower(realizes is null ? where : realizes.Lowered);
@@ -321,6 +336,7 @@ public static class CorpusQueryCommand
             if (request.ByMorph && realizes is not null) byMorph = ByMorphemes(realizes, matchedRows);
             if (readings is not null && retire.Count > 0)
                 whatIf = Retirement.Estimate(readings, [.. matchedRows.Select(row => (row.Form, row.Tokens))], retire, readingsReport!.Complete, limit);
+            Phase("query", queryStart);
             return CommandOutcome<CorpusFormsResponse>.Success(new CorpusFormsResponse(CorpusFormsResponse.SchemaName, summary,
                 printed is null ? null : QueryExprText.Print(printed), matched, [.. rows.Take(limit)], phon is { Ran: true } ? phon.Report : null,
                 realizes?.Sets, readingsReport, causes, whatIf, groups, totals, sample, written, morphSeqs, byMorph, baselineReport));

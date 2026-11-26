@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "code": "parsimony negative confirm",
+  "slug": "parsimony-negative-confirm",
+  "title": "Confirm a reviewed negative",
+  "description": "Confirms a forbidden surface form or exact reading as a human and stages its Notebook record in a Draft Proposal. A negative may have no grammar owner; only Apply writes it to the FieldWorks project.",
+  "helpPage": "# Confirm a reviewed negative\n\n\u0060\u0060\u0060sh\nmotif parsimony negative confirm --project language.fwdata --draft \u003Cname\u003E \\\n  --intent \u0027\u003Cclosed intent JSON\u003E\u0027 \\\n  --confirm \u0022I confirm this form or reading is forbidden in the stated context.\u0022 [--json]\n\u0060\u0060\u0060\n\nThis HumanOnly command stages a human-confirmed surface or exact reading negative as Notebook operations in a Draft Proposal. Supply the Notebook \u0060recordTypeId\u0060, stable \u0060caseId\u0060, vernacular \u0060writingSystem\u0060, \u0060form\u0060, \u0060context\u0060, and a \u0060target\u0060 with discriminator \u0060\u0022type\u0022:\u0022surface\u0022\u0060 or \u0060\u0022type\u0022:\u0022reading\u0022\u0060. A reading target carries an ordered \u0060morphs\u0060 array; each \u0060identity\u0060 names the exact \u0060form\u0060, \u0060msa\u0060, and optional \u0060inflType\u0060 portable IDs. \u0060wordformId\u0060 and \u0060analysisId\u0060 are optional, so the negative can exist without a wordform or grammar owner. \u0060reason\u0060, human actor fields, timestamp, and source \u0060reportId\u0060 are optional.\n\nExample surface target:\n\n\u0060\u0060\u0060json\n{\n  \u0022recordTypeId\u0022: \u0022record-type/\u003C22-character-base64url-id\u003E\u0022,\n  \u0022caseId\u0022: \u0022case_0000000000000000000002\u0022,\n  \u0022writingSystem\u0022: \u0022qaa\u0022,\n  \u0022form\u0022: \u0022example\u0022,\n  \u0022context\u0022: \u0022the stated environment\u0022,\n  \u0022target\u0022: { \u0022kind\u0022: \u0022surface\u0022 }\n}\n\u0060\u0060\u0060\n\nThe command appends the existing Notebook create, description, and reserved-field operations to the Draft. Review the Draft with \u0060dry-run\u0060, then a person uses \u0060apply\u0060 to save the judgment in FieldWorks. Until Apply succeeds, the negative is not part of the saved project. Run \u0060parsimony expectations\u0060 to read it back.\n",
+  "usage": [
+    "Usage: motif parsimony negative confirm --project \u003Cfwdata\u003E --draft \u003Cname\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 --confirm \u0022I confirm this form or reading is forbidden in the stated context.\u0022 [--json]"
+  ],
+  "surface": "AdvancedAi",
+  "url": "https://motif-docs.pages.dev/reference/commands/parsimony-negative-confirm/"
+}

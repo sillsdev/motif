@@ -849,7 +849,7 @@
   },
   {
     "name": "motif_add_phonological_rule",
-    "description": "Author a phonological rule. Research first: motif_guide topic nasal-assimilation or phonological-rules or feature-rules; check best practice. Use only if the project parses with HermitCrab and a regular sound change holds across many morphemes in a context you can state; otherwise use an alternate form for one irregular word. A rule can be limited by category with inputCategories (guide phonological-rules). Stages one regular phonological rule in a Draft, with one or more ordered right-hand sides, each with its own Output, contexts and rule features, and up to eight items in each Input and Output sequence. Output classes allow lexical alternatives; overlapping right-hand sides use the first applicable case, while feature changes preserve other features and alpha variables express agreement or disagreement. Only a person can Apply.\nCommand: compose-author-phonological-rule. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "description": "Author a phonological rule. Research first: motif_guide topic nasal-assimilation or phonological-rules or feature-rules; check best practice. Use only if the project parses with HermitCrab and a regular sound change holds across many morphemes in a context you can state; otherwise use an alternate form for one irregular word. Limit it by category with inputCategories (guide phonological-rules). Stages one regular phonological rule in a Draft, with one or more ordered right-hand sides, each with its own Output, contexts and rule features, and up to eight items in each Input and Output sequence. Output classes allow lexical alternatives; overlapping right-hand sides use the first applicable case, while feature changes preserve other features and alpha variables express agreement or disagreement. Only a person can Apply.\nCommand: compose-author-phonological-rule. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -1407,6 +1407,14 @@
           "description": "Context items in linguistic order, from the outer left to outer right. Each names exactly one reference.",
           "maxItems": 8
         },
+        "inputCategories": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "Category id."
+          },
+          "description": "Single-outcome shorthand only: part-of-speech ids (with their subcategories) the rule applies to, Black 6.1.2.2.1; FieldWorks stores required categories only. Use inputCategories inside rightHandSides for several outcomes."
+        },
         "placement": {
           "type": "object",
           "properties": {
@@ -1464,6 +1472,11 @@
               {
                 "required": [
                   "right"
+                ]
+              },
+              {
+                "required": [
+                  "inputCategories"
                 ]
               }
             ]
@@ -3323,6 +3336,14 @@
                         "description": "Context items in linguistic order, from the outer left to outer right. Each names exactly one reference.",
                         "maxItems": 8
                       },
+                      "inputCategories": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "description": "Category id."
+                        },
+                        "description": "Single-outcome shorthand only: part-of-speech ids (with their subcategories) the rule applies to, Black 6.1.2.2.1; FieldWorks stores required categories only. Use inputCategories inside rightHandSides for several outcomes."
+                      },
                       "placement": {
                         "type": "object",
                         "properties": {
@@ -3374,6 +3395,11 @@
                             {
                               "required": [
                                 "right"
+                              ]
+                            },
+                            {
+                              "required": [
+                                "inputCategories"
                               ]
                             }
                           ]
@@ -8166,6 +8192,13 @@
                           "type": "string"
                         },
                         "description": "Exact set of ids a stem must carry none of; an empty list clears it."
+                      },
+                      "inputCategories": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Exact set of part-of-speech ids (with their subcategories) the rule is limited to; an empty list admits every category. FieldWorks stores required categories only."
                       }
                     },
                     "additionalProperties": false,
@@ -12733,7 +12766,7 @@
   },
   {
     "name": "motif_guide_show",
-    "description": "Read a Grammar Guide section. Reads one Grammar Guide section from the current Baseline. Use format fw-md for the whole record as FieldWorks Markdown, or json for its rich text runs. asOf names a Draft or Proposal whose edits of the section are shown as if applied; available in Advanced AI mode.\nCommand: guide show. Agent class: Read.\nId: The record\u0027s GDR-n abbreviation or its canonical id.\nExpectedBaseline: The required Baseline identity; null accepts the current Baseline.\nAsOf: A Draft name or Proposal id whose edits of this section are shown as if applied; null shows the Baseline.",
+    "description": "Read a Grammar Guide section. Reads one Grammar Guide section from the current Baseline. Use format fw-md for the whole record as FieldWorks Markdown, or json for its rich text runs. asOf names a Draft or Proposal whose edits of the section are shown as if applied.\nCommand: guide show. Agent class: Read.\nId: The record\u0027s GDR-n abbreviation or its canonical id.\nExpectedBaseline: The required Baseline identity; null accepts the current Baseline.\nAsOf: A Draft name or Proposal id whose edits of this section are shown as if applied; null shows the Baseline.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -14366,7 +14399,7 @@
   },
   {
     "name": "motif_edit_phonological_rule_features",
-    "description": "Set rule features. Research first: motif_guide topic suffix-prefix-slots; check best practice. Use only if a rule applies to some stems only, by exception feature or inflection class; otherwise narrow its context, or limit it by category with inputCategories in compose-edit-phonological-rule. Tag stems with compose-tag-stems-by-query (guide suffix-prefix-slots). Sets the exact exception features or inflection classes a phonological rewrite rule requires of a stem, and the ones it excludes. An empty list clears a set. Motif stages a Draft for a person to review and Apply.\nCommand: compose-edit-phonological-rule-features. Agent class: Draft.",
+    "description": "Set rule features. Research first: motif_guide topic suffix-prefix-slots; check best practice. Use only if a rule applies to some stems only, by exception feature, inflection class or category (inputCategories); otherwise narrow its context. Tag stems with compose-tag-stems-by-query (guide suffix-prefix-slots). Sets the exact exception features or inflection classes a phonological rewrite rule requires of a stem, and the ones it excludes, and the categories it is limited to. An empty list clears a set. Motif stages a Draft for a person to review and Apply.\nCommand: compose-edit-phonological-rule-features. Agent class: Draft.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -14391,6 +14424,13 @@
             "type": "string"
           },
           "description": "Exact set of ids a stem must carry none of; an empty list clears it."
+        },
+        "inputCategories": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Exact set of part-of-speech ids (with their subcategories) the rule is limited to; an empty list admits every category. FieldWorks stores required categories only."
         },
         "project": {
           "type": "string",

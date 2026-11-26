@@ -2,6 +2,7 @@ using System.Text.Json;
 using SIL.LCModel;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
+using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Runner.Composers;
 using SIL.Motif.Runner.Operations;
 using SIL.Motif.Tests.Parser;
@@ -79,6 +80,90 @@ public sealed class EditPhonologicalRuleFeaturesComposerTests(PristineProjectFix
         var empty = Assert.Throws<InvalidOperationException>(() => EditPhonologicalRuleFeaturesComposer.Build(cache,
             new(rule)));
         Assert.Contains("requiredFeatures", empty.Message);
+    }
+
+    private static CanonicalId NewCategory(LcmCache cache, string name) =>
+        Created(ApplyOps(cache, AuthorPartOfSpeechComposer.Build(cache,
+            new AuthorPartOfSpeechIntent(name, Anal(cache), name[..1]))), CmPossibilityListPossibilitiesOperationKinds.Create);
+
+    [Fact]
+    public void ACategoryLimitsTheRuleAndAnEmptyListClearsIt()
+    {
+        using var cache = pristine.NewScratch();
+        RealParserProject.PrepareForParsing(cache, "u", "i", "a", "n");
+        var rule = NewRule(cache);
+        var verb = NewCategory(cache, "Verb");
+        var noun = NewCategory(cache, "Noun");
+
+        ApplyOps(cache, EditPhonologicalRuleFeaturesComposer.Build(cache, new(rule, InputCategories: [verb])));
+        var rhs = ((IPhRegularRule)Get<IPhSegmentRule>(cache, rule)).RightHandSidesOS.Single();
+        Assert.Equal([verb.ToGuid()], rhs.InputPOSesRC.Select(p => p.Guid));
+
+        Assert.Empty(EditPhonologicalRuleFeaturesComposer.Build(cache, new(rule, InputCategories: [verb])));
+
+        var swap = EditPhonologicalRuleFeaturesComposer.Build(cache, new(rule, InputCategories: [noun]));
+        Assert.Equal([PhSegRuleRHSInputPOSesOperationKinds.RemoveRefInputPOSes, PhSegRuleRHSInputPOSesOperationKinds.AddRefInputPOSes],
+            swap.Select(op => op.Kind));
+        ApplyOps(cache, swap);
+        Assert.Equal([noun.ToGuid()], rhs.InputPOSesRC.Select(p => p.Guid));
+
+        ApplyOps(cache, EditPhonologicalRuleFeaturesComposer.Build(cache, new(rule, InputCategories: [])));
+        Assert.Empty(rhs.InputPOSesRC);
+
+        Assert.Throws<InvalidOperationException>(() => EditPhonologicalRuleFeaturesComposer.Build(cache,
+            new(rule, InputCategories: [Phoneme(cache, "u")])));
+    }
+
+    [Fact]
+    public void TheSingleOutcomeShorthandCanCarryACategory()
+    {
+        using var cache = pristine.NewScratch();
+        RealParserProject.PrepareForParsing(cache, "u", "i", "a", "n");
+        var verb = NewCategory(cache, "Verb");
+        var rule = Created(ApplyOps(cache, AuthorPhonologicalRuleComposer.Build(cache, new("u becomes i on verbs",
+            PhonologicalRuleDirection.Simultaneous, [new(Phoneme: Phoneme(cache, "u"))],
+            [new(Phoneme: Phoneme(cache, "i"))], [new(Phoneme: Phoneme(cache, "a"))], [new(Phoneme: Phoneme(cache, "n"))],
+            InputCategories: [verb]))), PhPhonDataPhonRulesOperationKinds.Create);
+        var rhs = ((IPhRegularRule)Get<IPhSegmentRule>(cache, rule)).RightHandSidesOS.Single();
+        Assert.Equal([verb.ToGuid()], rhs.InputPOSesRC.Select(p => p.Guid));
+
+        var parsed = AuthorPhonologicalRuleIntentParser.Parse(JsonDocument.Parse(
+            $"{{\"name\":\"r\",\"direction\":\"simultaneous\",\"input\":[],\"output\":[],\"inputCategories\":[\"{verb.Value}\"]}}").RootElement);
+        Assert.Equal([verb], parsed.Outcomes.Single().InputCategories!);
+        Assert.Throws<ContractParseException>(() => AuthorPhonologicalRuleIntentParser.Parse(JsonDocument.Parse(
+            $"{{\"name\":\"r\",\"direction\":\"simultaneous\",\"input\":[],\"rightHandSides\":[{{\"output\":[]}}],\"inputCategories\":[\"{verb.Value}\"]}}").RootElement));
+    }
+
+    [Fact]
+    public void TheShorthandAndTheFullRightHandSideFormStoreTheSameCategoryAndReadBackTheSame()
+    {
+        using var cache = pristine.NewScratch();
+        RealParserProject.PrepareForParsing(cache, "u", "i", "a", "n");
+        var verb = NewCategory(cache, "Verb");
+        var (u, i, a, n) = (Phoneme(cache, "u"), Phoneme(cache, "i"), Phoneme(cache, "a"), Phoneme(cache, "n"));
+        string Item(CanonicalId id) => $"{{\"phoneme\":\"{id.Value}\"}}";
+        string Common(string name) =>
+            $"\"name\":\"{name}\",\"direction\":\"simultaneous\",\"input\":[{Item(u)}]";
+        string Parts() => $"\"output\":[{Item(i)}],\"left\":[{Item(a)}],\"right\":[{Item(n)}]";
+        var shorthand = $"{{{Common("same")},{Parts()},\"inputCategories\":[\"{verb.Value}\"]}}";
+        var full = $"{{{Common("same")},\"rightHandSides\":[{{{Parts()},\"inputCategories\":[\"{verb.Value}\"]}}]}}";
+        var made = new List<CanonicalId>();
+        foreach (var json in new[] { shorthand, full })
+        {
+            var placed = made.Count == 0 ? json : json[..^1] + $",\"placement\":{{\"after\":\"{made[0].Value}\"}}}}";
+            made.Add(Created(ApplyOps(cache, AuthorPhonologicalRuleComposer.Build(cache,
+                AuthorPhonologicalRuleIntentParser.Parse(JsonDocument.Parse(placed).RootElement))), PhPhonDataPhonRulesOperationKinds.Create));
+        }
+
+        // FieldWorks data: the right-hand side's InputPOSes is what the HC loader reads for the rule's category.
+        var categories = made.Select(rule => ((IPhRegularRule)Get<IPhSegmentRule>(cache, rule)).RightHandSidesOS.Single()
+            .InputPOSesRC.Select(p => p.Guid).ToArray()).ToArray();
+        Assert.Equal([verb.ToGuid()], categories[0]);
+        Assert.Equal(categories[0], categories[1]);
+        // Everything Motif reads back about the single outcome (output, contexts, features, categories) is identical.
+        var read = made.Select(rule => JsonSerializer.Serialize(
+            PhonologicalRuleReader.Read(Get<IPhSegmentRule>(cache, rule))!)).ToArray();
+        Assert.Equal(read[0], read[1]);
     }
 
     private static readonly string Rule = CanonicalId.FromGuid(Guid.NewGuid()).Value;

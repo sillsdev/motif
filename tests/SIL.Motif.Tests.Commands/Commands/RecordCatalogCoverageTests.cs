@@ -47,7 +47,7 @@ public sealed class RecordCatalogCoverageTests(ITestOutputHelper output) : IDisp
         var schemaFields = schemas.SelectMany(schema => ReachableFields(schema.Schema)).ToHashSet();
         var lexiconEditFields = LexiconEditFields();
         var rows = schemas.SelectMany(schema => Rows(schema, lexiconEditFields)).Distinct().ToArray();
-        var actual = Render(rows);
+        var actual = Render(rows, RootCreates(schemas));
         using var golden = new StreamReader(typeof(RecordCatalogCoverageTests).Assembly
             .GetManifestResourceStream(GoldenName)!);
         var expected = golden.ReadToEnd().ReplaceLineEndings("\n");
@@ -162,7 +162,17 @@ public sealed class RecordCatalogCoverageTests(ITestOutputHelper output) : IDisp
             .Select(row => (row[0], row[1])).ToHashSet();
     }
 
-    private static string Render(IEnumerable<Row> rows)
+    private static IEnumerable<string> RootCreates(IEnumerable<ProjectRecordSchemaResult> schemas) =>
+        schemas.SelectMany(schema => schema.Schema.Kinds).OrderBy(kind => kind.Name, StringComparer.Ordinal).SelectMany(kind =>
+            kind.Roots.Select(root => kind.Name == RecordChangeSetLowerer.EntryKind
+                ? $"# Root create\t{kind.Name}\t{root.Name}\tCovered\tlowered through AuthorLexicalEntryComposer and AuthorVariantEntryComposer; a complex form has no operation yet"
+                : kind.Name == "notebook/record"
+                    ? $"# Root create\t{kind.Name}\t{root.Name}\tUncovered\tno lowering yet"
+                    : kind.Name == "lists/item"
+                        ? $"# Root create\t{kind.Name}\t{root.Name}\tUncovered\tADR 0033 D1: never invents list items"
+                        : $"# Root create\t{kind.Name}\t{root.Name}\tUncovered\tcompose-author-phonological-rule"));
+
+    private static string Render(IEnumerable<Row> rows, IEnumerable<string> rootCreates)
     {
         var header = new[]
         {
@@ -184,7 +194,7 @@ public sealed class RecordCatalogCoverageTests(ITestOutputHelper output) : IDisp
         var body = rows.OrderBy(row => row.Group).ThenBy(row => row.Class, StringComparer.Ordinal)
             .ThenBy(row => row.Field, StringComparer.Ordinal).ThenBy(row => row.Verb)
             .Select(row => $"{row.Group}\t{row.Class}\t{row.Field}\t{row.ModelField}\t{row.Verb}\t{row.Kind}\t{row.Reason}\t{row.Classification}");
-        return string.Join('\n', header.Concat(body).Concat(CatalogDeclarations())) + "\n";
+        return string.Join('\n', header.Concat(body).Concat(rootCreates).Concat(CatalogDeclarations())) + "\n";
     }
 
     private static IEnumerable<string> CatalogDeclarations()

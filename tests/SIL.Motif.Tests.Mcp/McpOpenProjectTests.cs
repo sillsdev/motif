@@ -113,60 +113,6 @@ public sealed class McpOpenProjectTests
     }
 
     [Fact]
-    public async Task McpRequestsDoNotUpgradeAnOlderProjectStore()
-    {
-        var root = Path.Combine(Path.GetTempPath(), "motif-mcp-upgrade-" + Guid.NewGuid().ToString("N"));
-        var projectRoot = Path.Combine(root, "project");
-        var workerRoot = Path.Combine(root, "worker");
-        Directory.CreateDirectory(projectRoot);
-        Directory.CreateDirectory(workerRoot);
-        try
-        {
-            var project = CreateBlankProject(projectRoot);
-            var locator = new ProjectLocator(Path.GetFullPath(project), Path.GetFileNameWithoutExtension(project));
-            var store = ProjectDatabaseCatalog.DatabasePathFor(locator);
-            using (MotifDatabase.OpenOwned(store, locator, MotifSchema.CurrentSchema, new Version(1, 0))) { }
-            using (var connection = new SqliteConnection($"Data Source={store};Pooling=False"))
-            {
-                connection.Open();
-                using var command = connection.CreateCommand();
-                command.CommandText = $"PRAGMA user_version = {MotifSchema.CurrentSchema - 1};";
-                command.ExecuteNonQuery();
-            }
-            var preference = Path.Combine(workerRoot, "advanced-ai-mode.json");
-            new FileAdvancedAiModePreferenceStore(preference).SetEnabled(true);
-            await using var client = await StartClient(workerRoot, preference);
-            var opened = await client.CallToolAsync("motif_open", new Dictionary<string, object?> { ["path"] = project });
-            Assert.True(opened.IsError != true, ErrorText(opened));
-            var storeBytes = File.ReadAllBytes(store);
-            var projectBytes = File.ReadAllBytes(project);
-            var result = await client.CallToolAsync("motif_proposals", new Dictionary<string, object?> { ["project"] = project });
-            Assert.True(result.IsError, ErrorText(result));
-            Assert.Equal("store.other-version", result.StructuredContent!.Value.GetProperty("code").GetString());
-            Assert.Equal(store, result.StructuredContent.Value.GetProperty("facts").GetProperty("storePath").GetString());
-            Assert.Equal("true", result.StructuredContent.Value.GetProperty("facts").GetProperty("storeUpgradable").GetString());
-            var older = MotifSchema.CurrentSchema - 1;
-            var text = ErrorText(result);
-            Assert.Contains($"schema {older}", text);
-            Assert.Contains($".schema{older}.bak", text);
-            Assert.Contains("motif store upgrade", text);
-            Assert.DoesNotContain("recreate", text);
-            Assert.Equal(storeBytes, File.ReadAllBytes(store));
-            Assert.Equal(projectBytes, File.ReadAllBytes(project));
-            Assert.False(File.Exists(store + $".schema{MotifSchema.CurrentSchema - 1}.bak"));
-            using var check = new SqliteConnection($"Data Source={store};Mode=ReadOnly;Pooling=False");
-            check.Open();
-            using var version = check.CreateCommand();
-            version.CommandText = "PRAGMA user_version;";
-            Assert.Equal((long)MotifSchema.CurrentSchema - 1, version.ExecuteScalar());
-        }
-        finally
-        {
-            if (Directory.Exists(root)) Directory.Delete(root, true);
-        }
-    }
-
-    [Fact]
     public async Task FailedMachineStoreRegistrationIsReturnedAsTypedMcpRefusal()
     {
         var root = Path.Combine(Path.GetTempPath(), "motif-mcp-open-registration-" + Guid.NewGuid().ToString("N"));

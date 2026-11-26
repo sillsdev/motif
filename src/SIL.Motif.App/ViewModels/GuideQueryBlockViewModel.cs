@@ -7,6 +7,7 @@ using SIL.Motif.App.Services;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Gdr;
+using SIL.Motif.Contract.Query;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -23,12 +24,15 @@ public sealed partial class GuideQueryBlockViewModel : ObservableObject
     private CancellationTokenSource? _running;
     private int _generation;
     private readonly string? _saveUnavailable;
+    private readonly Func<string, string, CancellationToken, Task<GuideEvidenceResult>>? _evidence;
 
     internal GuideQueryBlockViewModel(string id, string title, string body, IReadOnlyList<GuideShowDirective> shows,
         GuideQueryContext context, Func<string?> projectPath,
         Func<GuideQueryRunRequest, CancellationToken, Task<CommandOutcome<FormsQueryResponse>>> run, Func<string, string, Task<string?>>? save,
-        Action<string>? openWord, GuideSort? sort, string? saveUnavailable = null)
+        Action<string>? openWord, GuideSort? sort, string? saveUnavailable = null,
+        Func<string, string, CancellationToken, Task<GuideEvidenceResult>>? evidence = null)
     {
+        _evidence = evidence;
         _saveUnavailable = saveUnavailable;
         Id = id;
         Title = title.Length > 0 ? title : id;
@@ -41,6 +45,9 @@ public sealed partial class GuideQueryBlockViewModel : ObservableObject
         if (shows.Count == 0) Displays.Add(Display(new GuideQueryDisplayViewModel(GuideShowKind.Table, null, context.BothSides, openWord), sort));
         foreach (var show in shows)
             Displays.Add(Display(new GuideQueryDisplayViewModel(show.Show, show.Limit, context.BothSides, openWord), sort));
+        if (shows.Count == 0) EvidenceDisplays.Add(new GuideEvidenceDisplayViewModel(GuideShowKind.Table, null, null, sort));
+        foreach (var show in shows) EvidenceDisplays.Add(new GuideEvidenceDisplayViewModel(show.Show, show.Limit, show.Columns, sort));
+        IsEvidence = ParsedQuery(body, out _) is { } first && QueryRunLine.TryParseRun(first.Run, out var firstLine, out _) && firstLine.Corpus is not null;
         EditCommand = new RelayCommand(StartEditing, () => !IsEditing);
         CancelCommand = new RelayCommand(StopEditing, () => IsEditing);
         RunCommand = new AsyncRelayCommand(() => RunAsync(CancellationToken.None), () => !IsRunning);
@@ -55,6 +62,17 @@ public sealed partial class GuideQueryBlockViewModel : ObservableObject
 
     /// <summary>The block's body as the section stores it.</summary>
     public string Body { get; private set; }
+
+    /// <summary>The displays of a v2 corpus query: one for each <c>motif-show</c>, or one table when none.</summary>
+    public ObservableCollection<GuideEvidenceDisplayViewModel> EvidenceDisplays { get; } = [];
+
+    /// <summary>Whether the run line is a v2 corpus-forms line; <see cref="EvidenceDisplays"/> shows it.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsRowsQuery))]
+    private bool _isEvidence;
+
+    /// <summary>Whether the block's run line is a v1 query shown by <see cref="Displays"/>.</summary>
+    public bool IsRowsQuery => !IsEvidence;
 
     /// <summary>The displays of the query: one for each <c>motif-show</c> naming it, or one table when none does.</summary>
     public ObservableCollection<GuideQueryDisplayViewModel> Displays { get; } = [];
@@ -174,6 +192,9 @@ public sealed partial class GuideQueryBlockViewModel : ObservableObject
         var (line, refusal) = GuideQueryRunLines.Prepare(query.Run, _context);
         if (line is null) { Fail(refusal!); return; }
         if (_projectPath() is not { } project) { Fail(MotifAppStrings.GuideNoProject); return; }
+        var corpus = QueryRunLine.TryParseRun(query.Run, out var runLine, out _) && runLine.Corpus is not null;
+        IsEvidence = corpus;
+        if (corpus) { await RunEvidenceAsync(query, project, generation, cancellationToken).ConfigureAwait(true); return; }
         var cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         _running = cancellation;
         Notice = "";
@@ -191,6 +212,44 @@ public sealed partial class GuideQueryBlockViewModel : ObservableObject
             var (run, unreadable) = GuideQueryRun.From(response);
             if (run is null) { Fail(unreadable ?? MotifAppStrings.GuideQueryNoAnswer); return; }
             foreach (var display in Displays) display.Show(run);
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
+        finally
+        {
+            if (generation == _generation)
+            {
+                IsRunning = false;
+                OnPropertyChanged(nameof(Status));
+            }
+            if (ReferenceEquals(_running, cancellation)) _running = null;
+            cancellation.Dispose();
+        }
+    }
+
+    // A v2 corpus line gives a table, a refusal with its code, or "parse index not built".
+    private async Task RunEvidenceAsync(GuideQueryDefinition query, string project, int generation, CancellationToken cancellationToken)
+    {
+        if (_evidence is null) { Fail(MotifAppStrings.GuideQueryNoAnswer); return; }
+        var cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        _running = cancellation;
+        Notice = "";
+        IsRunning = true;
+        OnPropertyChanged(nameof(Status));
+        try
+        {
+            var result = await _evidence(project, query.Run, cancellation.Token).ConfigureAwait(true);
+            if (generation != _generation || cancellation.IsCancellationRequested) return;
+            foreach (var display in EvidenceDisplays)
+            {
+                var shaped = result.Shaped(display.Columns ?? (query.Columns.Count > 0 ? query.Columns : null), display.Sort, display.Limit);
+                if (shaped.Table is { } table) display.Show(table);
+                else display.ShowMessage(shaped.Message);
+            }
+            if (result.Status != GuideEvidenceStatus.Ready)
+            {
+                Notice = result.Message;
+                foreach (var display in EvidenceDisplays) display.ShowMessage(result.Message);
+            }
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
         finally
@@ -228,6 +287,7 @@ public sealed partial class GuideQueryBlockViewModel : ObservableObject
         OnPropertyChanged(nameof(Status));
         Notice = string.Format(CultureInfo.CurrentCulture, MotifAppStrings.GuideQueryRefusedFormat, message);
         foreach (var display in Displays) display.Show(null);
+        foreach (var display in EvidenceDisplays) display.Clear();
     }
 
     private async Task SaveAsync()

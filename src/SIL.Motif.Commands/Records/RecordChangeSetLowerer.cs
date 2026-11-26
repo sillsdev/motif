@@ -35,15 +35,18 @@ public sealed record RecordLoweringRefusal(string Code, string Class, string Fie
     }
 }
 
-/// <summary>What a record plan lowers to: operations in the order to apply them, and every change that was refused.</summary>
+/// <summary>What a record plan lowers to: operations in the order to apply them, and the changes that were refused.</summary>
 /// <param name="Operations">The operations, each with an id derived from the plan, so lowering one plan twice gives one intent digest.</param>
 /// <param name="Refusals">The plan's changes that have no operation, each named by (class, field).</param>
 /// <param name="PlanRefusals">The importer's own refusals, passed through untouched.</param>
 /// <param name="OperationChanges">For each operation, the index in the plan's changes of the change it came from; null when not tracked.</param>
 /// <param name="RefusedChanges">The refusal code of each plan change, by its index, that has no operation; null when not tracked.</param>
+/// <param name="WholeFile">Set when the new record cannot be made as FieldWorks makes it; nothing lowers.</param>
+/// <param name="RequiredChanges">The plan changes a new record cannot stand without.</param>
 public sealed record RecordLowering(IReadOnlyList<OperationEnvelope> Operations,
     IReadOnlyList<RecordLoweringRefusal> Refusals, IReadOnlyList<RecordRefusal> PlanRefusals,
-    IReadOnlyList<int>? OperationChanges = null, IReadOnlyDictionary<int, string>? RefusedChanges = null);
+    IReadOnlyList<int>? OperationChanges = null, IReadOnlyDictionary<int, string>? RefusedChanges = null,
+    RecordLoweringRefusal? WholeFile = null, IReadOnlySet<int>? RequiredChanges = null);
 
 /// <summary>
 /// Lowers a planned record-file import to operations through the kinds the Runner catalog declares for each field
@@ -67,9 +70,26 @@ public sealed partial class RecordChangeSetLowerer(ProjectRecordSchemaResult sch
             return new([], [new(RefusalCodes.RecordImportPlanRefused, plan.Kind ?? "", refusal.Field,
                 refusal.ObjectGuid, $"The plan refuses the whole file ({refusal.Kind}): {refusal.Reason}")], set.Refusals);
         }
+        if (plan.BaseVerdict == ProjectRecordBaseVerdict.New)
+            return plan.Kind == EntryKind ? LowerCreatedEntry(cache, plan) : NotYetCreatable(plan);
         var seed = plan.Export?.Base ?? plan.RecordGuid?.ToString("D") ?? "";
         var lowered = LowerChanges(cache, seed, set.Changes);
         return new(lowered.Operations, lowered.Refusals, set.Refusals, lowered.OperationChanges, lowered.RefusedChanges);
+    }
+
+    private static RecordLowering NotYetCreatable(ProjectRecordPlan plan)
+    {
+        var set = plan.ChangeSet;
+        var refused = new Dictionary<int, string>();
+        var rows = new List<RecordLoweringRefusal>();
+        for (var index = 0; index < set.Changes.Count; index++)
+        {
+            var change = set.Changes[index];
+            refused[index] = RefusalCodes.RecordImportCreateKindNotCreatable;
+            rows.Add(new(RefusalCodes.RecordImportCreateKindNotCreatable, change.ObjectType ?? plan.Kind ?? "", change.Field, change.ObjectGuid,
+                "Creating this kind of record from a file is not yet lowered to operations."));
+        }
+        return new([], rows, set.Refusals, [], refused);
     }
 
     /// <summary>Lowers individual changes; <paramref name="seed"/> makes the operation ids, so one seed and one list give one intent digest.</summary>
@@ -94,6 +114,8 @@ public sealed partial class RecordChangeSetLowerer(ProjectRecordSchemaResult sch
         private readonly string _seed = seed;
         private readonly Dictionary<int, CanonicalId> _added = [];
         private readonly HashSet<int> _refused = [];
+        private readonly HashSet<Guid> _created = [];
+        private readonly Dictionary<Guid, string> _classes = [];
         private readonly Dictionary<(Guid Owner, string Field), List<Guid>> _lists = [];
         private List<OperationEnvelope> _pending = [];
 
@@ -230,16 +252,22 @@ public sealed partial class RecordChangeSetLowerer(ProjectRecordSchemaResult sch
                     LowerRuleFormula(change, type);
                 return;
             }
-            var set = change.Kind == RecordChangeKind.Set;
+            SetScalar(change, type, key, target, role, change.Kind == RecordChangeKind.Set, change.New, change.NewTarget);
+        }
+
+        private void SetScalar(RecordChange change, string type, string key, CanonicalId target, string role,
+            bool set, string? text, Guid? reference)
+        {
+            var field = schema.Schema.ObjectType(type)?.Field(key);
             var kind = KindFor(change, type, key, set ? RecordWriteVerb.Set : RecordWriteVerb.Clear);
             object? after = new { };
             if (set)
                 after = field?.Kind switch
                 {
-                    RecordFieldKind.Boolean when bool.TryParse(change.New, out var flag) => new { value = flag },
-                    RecordFieldKind.Integer when int.TryParse(change.New, System.Globalization.NumberStyles.Integer,
+                    RecordFieldKind.Boolean when bool.TryParse(text, out var flag) => new { value = flag },
+                    RecordFieldKind.Integer when int.TryParse(text, System.Globalization.NumberStyles.Integer,
                         System.Globalization.CultureInfo.InvariantCulture, out var number) => new { value = number },
-                    RecordFieldKind.Reference when change.NewTarget is { } to => new { @ref = CanonicalId.FromGuid(to).Value },
+                    RecordFieldKind.Reference when reference is { } to => new { @ref = CanonicalId.FromGuid(to).Value },
                     _ => throw Refuse(RefusalCodes.RecordImportShapeUnsupported, change,
                         $"A {field?.Kind.ToString() ?? "missing"} value has no payload shape for {kind}."),
                 };
@@ -351,6 +379,7 @@ public sealed partial class RecordChangeSetLowerer(ProjectRecordSchemaResult sch
                 LowerParagraphs(change, type, key, binding, target, role, owner, text);
                 return;
             }
+            fresh |= _created.Contains(owner);
             var tsOld = fresh ? null : Current(change, target, binding, ws);
             if (!fresh && old is not null && tsOld is { } held && !SameText(held.Text, PlainText(change, old, ws)))
                 throw Refuse(RefusalCodes.RecordImportValueStale, change, "The project's value is no longer the one the file started from.");
@@ -402,10 +431,11 @@ public sealed partial class RecordChangeSetLowerer(ProjectRecordSchemaResult sch
         }
 
         private void LowerMove(RecordChange change, string type, string key,
-            (string DeclaringClass, string Field, bool IsCustom) binding, CanonicalId target, string role, RecordWriteVerb verb)
+            (string DeclaringClass, string Field, bool IsCustom) binding, CanonicalId target, string role, RecordWriteVerb verb,
+            Guid? contentMember = null)
         {
-            var owner = change.ObjectGuid!.Value;
-            var member = verb == RecordWriteVerb.MoveObject ? change.ItemGuid : change.NewTarget ?? change.OldTarget;
+            var owner = target.ToGuid();
+            var member = contentMember ?? (verb == RecordWriteVerb.MoveObject ? change.ItemGuid : change.NewTarget ?? change.OldTarget);
             if (member is null)
                 throw Refuse(RefusalCodes.RecordImportShapeUnsupported, change, "The change names no member.");
             var list = List(owner, key, binding);
@@ -414,7 +444,7 @@ public sealed partial class RecordChangeSetLowerer(ProjectRecordSchemaResult sch
                 throw Refuse(RefusalCodes.RecordImportValueStale, change, "The project already holds the reference the file adds.");
             if (list is not null && verb != RecordWriteVerb.AddReference && !list.Contains(member.Value))
                 throw Refuse(RefusalCodes.RecordImportValueStale, change, "The project no longer holds the member the file moves.");
-            var placement = list is null ? null : Place(change, list, change.Anchor, verb == RecordWriteVerb.AddReference ? null : member);
+            var placement = list is null || contentMember is not null ? null : Place(change, list, change.Anchor, verb == RecordWriteVerb.AddReference ? null : member);
             var memberClass = change.Subtree?.Class ?? ChildOf(type, key) ?? ClassOf(member.Value);
             var appended = verb == RecordWriteVerb.AddReference && AppendsToTheEnd(type, key, memberClass, placement);
             if (appended)
@@ -448,11 +478,19 @@ public sealed partial class RecordChangeSetLowerer(ProjectRecordSchemaResult sch
             (string DeclaringClass, string Field, bool IsCustom) binding, CanonicalId target, string role)
         {
             var subtree = change.Subtree ?? throw Refuse(RefusalCodes.RecordImportShapeUnsupported, change, "The added object is not in the change.");
+            _added[index] = CreateOwned(change, type, key, binding, target, role, subtree, change.Anchor);
+        }
+
+        /// <summary>Creates an owned object under the target and lowers what it holds.</summary>
+        private CanonicalId CreateOwned(RecordChange change, string type, string key,
+            (string DeclaringClass, string Field, bool IsCustom) binding, CanonicalId target, string role, RecordObject subtree,
+            RecordAnchor? anchor)
+        {
             var child = subtree.Class ?? ChildOf(type, key) ?? throw Refuse(RefusalCodes.RecordImportShapeUnsupported, change,
                 "The added object's class is not named.");
-            var owner = change.ObjectGuid!.Value;
+            var owner = target.ToGuid();
             var list = List(owner, key, binding);
-            var placement = list is null ? null : Place(change, list, change.Anchor, null);
+            var placement = list is null ? null : Place(change, list, anchor, null);
             var kind = KindFor(change, type, key, RecordWriteVerb.AddObject, child, placement);
             var write = OperationHandlerRegistry.FieldWrites(kind).FirstOrDefault(item => item.Verb == RecordWriteVerb.AddObject &&
                 item.DeclaringClass == binding.DeclaringClass && item.Field == binding.Field &&
@@ -463,13 +501,23 @@ public sealed partial class RecordChangeSetLowerer(ProjectRecordSchemaResult sch
             var entity = subtree.Guid is { } given ? CanonicalId.FromGuid(given) : Id(role + ":entity");
             object after = write.CreatePayload == OwningCreatePayload.ClassProperty ? new { @class = child } : new { };
             _pending.Add(Operation(Id(role + ":" + kind), kind, target, after, placement, entity));
-            _added[index] = entity;
-            list?.Insert(placement?.After is { } anchor ? list.IndexOf(anchor.ToGuid()) + 1 : 0, entity.ToGuid());
-            foreach (var (name, value) in subtree.Fields)
-                LowerContent(change, child, name, value, entity, role + ":" + name);
+            _created.Add(entity.ToGuid());
+            _classes[entity.ToGuid()] = child;
+            list?.Insert(placement?.After is { } after1 ? list.IndexOf(after1.ToGuid()) + 1 : 0, entity.ToGuid());
+            LowerFields(change, child, subtree, entity, role);
+            return entity;
         }
 
-        private void LowerContent(RecordChange change, string type, string key, RecordValue value, CanonicalId entity, string role)
+        private void LowerFields(RecordChange change, string type, RecordObject subtree, CanonicalId entity, string role,
+            Func<string, string?, bool>? written = null)
+        {
+            foreach (var (name, value) in subtree.Fields)
+                LowerContent(change, type, name, value, entity, role + ":" + name, written);
+        }
+
+        /// <summary>Lowers one field of a new object, skipping what a composer wrote.</summary>
+        private void LowerContent(RecordChange change, string type, string key, RecordValue value, CanonicalId entity, string role,
+            Func<string, string?, bool>? written = null)
         {
             if (value.IsEmpty)
                 return;
@@ -480,16 +528,45 @@ public sealed partial class RecordChangeSetLowerer(ProjectRecordSchemaResult sch
             switch (value)
             {
                 case RecordAlternatives alternatives when field.Kind != RecordFieldKind.Rich:
-                    foreach (var (ws, text) in alternatives.Items.Where(item => !item.Value.IsEmpty))
+                    foreach (var (ws, text) in alternatives.Items.Where(item => !item.Value.IsEmpty && written?.Invoke(key, item.Key) != true))
                         _pending.Add(Operation(Id(role + ":" + ws), KindFor(change, type, key, RecordWriteVerb.SetAlternative),
                             entity, Named(type, key, new { ws, text = text.Text })));
                     break;
                 case RecordAlternatives alternatives:
-                    foreach (var (ws, text) in alternatives.Items.Where(item => !item.Value.IsEmpty))
+                    foreach (var (ws, text) in alternatives.Items.Where(item => !item.Value.IsEmpty && written?.Invoke(key, item.Key) != true))
                         LowerRich(change, type, key, binding.Value, entity, role + ":" + ws, entity.ToGuid(), null, text.Text, ws, fresh: true);
+                    break;
+                case RecordScalar when written?.Invoke(key, null) == true:
                     break;
                 case RecordScalar scalar when field.Kind == RecordFieldKind.Rich && !field.MultiWritingSystem:
                     LowerRich(change, type, key, binding.Value, entity, role, entity.ToGuid(), null, scalar.Text, null, fresh: true);
+                    break;
+                case RecordScalar scalar when field.Kind is RecordFieldKind.Boolean or RecordFieldKind.Integer or RecordFieldKind.Reference:
+                    SetScalar(change, type, key, entity, role, true, scalar.Text, scalar.Target);
+                    break;
+                case RecordObject owned when field.Kind == RecordFieldKind.Object:
+                    if (written?.Invoke(key, null) != true)
+                        CreateOwned(change, type, key, binding.Value, entity, role, owned, null);
+                    break;
+                case RecordList list when field.Item is { } item:
+                    var members = 0;
+                    foreach (var member in list.Items)
+                    {
+                        var memberRole = role + ":" + members++;
+                        if (member is RecordScalar { Target: { } reference } && item.Kind == RecordFieldKind.Reference)
+                        {
+                            if (written?.Invoke(key, reference.ToString("N")) != true)
+                                LowerMove(change, type, key, binding.Value, entity, memberRole, RecordWriteVerb.AddReference, reference);
+                        }
+                        else if (member is RecordObject ownedMember && item.Kind == RecordFieldKind.Object)
+                        {
+                            if (written?.Invoke(key, ownedMember.Guid?.ToString("N")) != true)
+                                CreateOwned(change, type, key, binding.Value, entity, memberRole, ownedMember, null);
+                        }
+                        else
+                            throw Refuse(RefusalCodes.RecordImportShapeUnsupported, change,
+                                $"The added {type} has a {item.Kind} list item in '{key}' that no operation adds to a new object.");
+                    }
                     break;
                 default:
                     throw Refuse(RefusalCodes.RecordImportShapeUnsupported, change,
@@ -516,8 +593,8 @@ public sealed partial class RecordChangeSetLowerer(ProjectRecordSchemaResult sch
             }
         }
 
-        private string? ClassOf(Guid item) =>
-            cache.ServiceLocator.GetInstance<ICmObjectRepository>().TryGetObject(item, out var found) ? found.ClassName : null;
+        private string? ClassOf(Guid item) => _classes.TryGetValue(item, out var made) ? made
+            : cache.ServiceLocator.GetInstance<ICmObjectRepository>().TryGetObject(item, out var found) ? found.ClassName : null;
 
         private string? ChildOf(string type, string key)
         {
@@ -640,7 +717,7 @@ public sealed partial class RecordChangeSetLowerer(ProjectRecordSchemaResult sch
             var kind = KindFor(change, type, key, verb);
             var flid = cache.MetaDataCacheAccessor.GetFieldId(binding.DeclaringClass, binding.Field, true);
             var data = cache.DomainDataByFlid;
-            var hvo = data.get_ObjectProp(cache.ServiceLocator.GetObject(owner).Hvo, flid);
+            var hvo = _created.Contains(owner) ? 0 : data.get_ObjectProp(cache.ServiceLocator.GetObject(owner).Hvo, flid);
             var held = hvo == 0 ? [] : cache.ServiceLocator.GetObject(hvo) is IStText stText
                 ? stText.ParagraphsOS.OfType<IStTxtPara>().ToArray() : [];
             var field = schema.Schema.ObjectType(type)!.Field(key)!;
