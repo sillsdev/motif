@@ -100,7 +100,7 @@ public sealed class GdrAddCommandsTests(PristineProjectFixture pristine)
     public void AMarkdownBodyThatCannotBeReadStagesNothingAndABlankTitleIsRefused()
     {
         var path = ProjectWithGdrs();
-        var fenced = GdrAddCommands.Add(new GdrAddRequest(path, "x", Markdown: "```motif-query\nid: a\n```"));
+        var fenced = GdrAddCommands.Add(new GdrAddRequest(path, "x", Markdown: "```python\nprint(1)\n```"));
         Assert.False(fenced.Succeeded);
         Assert.Equal(RefusalCodes.GdrMarkdownInvalid, fenced.Refusal!.Code);
         Assert.Equal(RefusalCodes.GdrTitleInvalid, GdrAddCommands.Add(new GdrAddRequest(path, " ")).Refusal!.Code);
