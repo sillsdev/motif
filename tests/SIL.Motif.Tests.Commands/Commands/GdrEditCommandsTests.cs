@@ -170,7 +170,7 @@ public sealed class GdrEditCommandsTests(PristineProjectFixture pristine)
         var first = GdrEditCommands.Edit(new GdrEditRequest(path, "GDR-2", Paragraphs));
         Assert.True(first.Succeeded, first.Refusal?.Message);
 
-        var decided = GdrEditCommands.Decide(new GdrDecideRequest(path, "GDR-2", "a", "b", "e.g. it fits *well*"));
+        var decided = GdrEditCommands.Decide(new GdrDecideRequest(path, "GDR-2", "a", "b", "e.g. it fits \\*well\\*"));
         Assert.True(decided.Succeeded, decided.Refusal?.Message);
 
         var preview = AsOf(path, "GDR-2", decided.Value!.DraftName);
@@ -389,14 +389,62 @@ public sealed class GdrEditCommandsTests(PristineProjectFixture pristine)
     }
 
     [Fact]
-    public void ADecisionKeepsAFullStopAndEscapesMarkdownCharacters()
+    public void ADecisionKeepsAFullStopAndWritesItsPartsAsGivenMarkdown()
     {
-        var entry = GdrEditCommands.Entry(new GdrDecideRequest("p", "GDR-2", "a_b", "[c]", "see e.g."));
+        var entry = GdrEditCommands.Entry(new GdrDecideRequest("p", "GDR-2", "a\\_b", "\\[c\\]", "see e.g."));
 
         Assert.Equal("- a\\_b or \\[c\\], I am choosing a\\_b, because see e.g.", entry);
         var body = "x\n\n### Decisions\n\n```text\n### Decisions\n\n\n- fenced\n```\n\n### Later";
         Assert.Equal("x\n\n### Decisions\n\n```text\n### Decisions\n\n\n- fenced\n```\n\n- new\n\n### Later",
             GdrEditCommands.WithDecision(body, "- new"));
+    }
+
+    [Fact]
+    public void ADecisionPartWithAVernacularSpanStagesAVernacularRunAndShowReExportsTheSpan()
+    {
+        var path = ProjectWithGdrs(HeadingStyles);
+
+        var decided = GdrEditCommands.Decide(new GdrDecideRequest(path, "GDR-2", "accept [alila]{.v}", "reject", "a [word]{.v} test"));
+        Assert.True(decided.Succeeded, decided.Refusal?.Message);
+
+        var shown = GdrQuery.Show(new GdrShowRequest(path, "GDR-2", AsOf: decided.Value!.DraftName)).Value!;
+        var runs = shown.Discussion.SelectMany(paragraph => paragraph.Runs).ToArray();
+        var vernacular = runs.Where(run => run.Text is "alila" or "word").ToArray();
+        Assert.Equal(["alila", "alila", "word"], vernacular.Select(run => run.Text).ToArray());
+        Assert.All(vernacular, run => Assert.Equal(shown.DefaultVernacular, run.WritingSystem));
+        Assert.All(runs.Where(run => run.Text.Contains("because", StringComparison.Ordinal)), run => Assert.NotEqual(shown.DefaultVernacular, run.WritingSystem));
+        var markdown = AsOf(path, "GDR-2", decided.Value.DraftName);
+        Assert.Contains("- accept [alila]{.v} or reject, I am choosing accept [alila]{.v}, because a [word]{.v} test.", markdown, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnEscapedBracketStaysLiteralAndPlainTextIsUnchanged()
+    {
+        var path = ProjectWithGdrs(HeadingStyles);
+
+        var decided = GdrEditCommands.Decide(new GdrDecideRequest(path, "GDR-2", "a \\[b\\]", "c", "plain words"));
+        Assert.True(decided.Succeeded, decided.Refusal?.Message);
+
+        var text = string.Concat(GdrQuery.Show(new GdrShowRequest(path, "GDR-2", AsOf: decided.Value!.DraftName)).Value!
+            .Discussion.SelectMany(paragraph => paragraph.Runs).Select(run => run.Text));
+        Assert.Contains("a [b] or c, I am choosing a [b], because plain words.", text, StringComparison.Ordinal);
+        Assert.Equal("- chosen or other, I am choosing chosen, because it fits the evidence.",
+            GdrEditCommands.Entry(new GdrDecideRequest("p", "GDR-2", "chosen", "other", "it fits the evidence")));
+    }
+
+    [Theory]
+    [InlineData("# heading", "b", "c")]
+    [InlineData("a", "- item", "c")]
+    [InlineData("a", "b", "> quote")]
+    [InlineData("a", "b", "```")]
+    public void ADecisionPartThatWouldBeABlockIsRefused(string chosen, string over, string because)
+    {
+        var path = ProjectWithGdrs(HeadingStyles);
+
+        var refused = GdrEditCommands.Decide(new GdrDecideRequest(path, "GDR-2", chosen, over, because));
+
+        Assert.Equal(RefusalCodes.GdrDecisionInvalid, refused.Refusal!.Code);
+        Assert.Contains("inline", refused.Refusal.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
