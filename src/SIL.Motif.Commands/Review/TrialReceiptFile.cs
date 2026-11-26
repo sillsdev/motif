@@ -125,7 +125,7 @@ internal static class TrialReceiptFile
         if (token is not null && AutonomousTrialGate.LiveMatchesBaseline(live, token)) return null;
         return new Refusal(RefusalCodes.ApplyReceiptStale, FailureReason.Refused,
             "The Trial receipt no longer binds this Apply: the FieldWorks data changed since the Baseline the Trial measured. " +
-            "Capture a new Baseline, run a new Trial and write a new receipt.",
+            "Run `motif baseline capture --project \"" + project.FullFwDataPath + "\"`, then a new Trial, and write a new receipt.",
             new Dictionary<string, string> { ["proposalId"] = record.ProposalId.Value });
     }
 
