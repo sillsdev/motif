@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Host;
 using SIL.Motif.Host.Store;
