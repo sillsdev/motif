@@ -33,7 +33,16 @@ public sealed record TrialSiblings(string Pattern, long Seed, int Max, IReadOnly
     /// <summary>The edited grammar objects that entries use; absent when none.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyList<TrialReferrer>? Referrers { get; init; }
+
+    /// <summary>The referring entries' forms left out because they would select the corpus at large, with why; absent when none were.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<TrialSkippedForm>? SkippedReferrerForms { get; init; }
 }
+
+/// <summary>A form of a referring entry that was not used to select siblings.</summary>
+/// <param name="Form">The form as the entry writes it, with its affix mark.</param>
+/// <param name="Reason">Why: shorter than two characters, or matching over 5% of the corpus types.</param>
+public sealed record TrialSkippedForm(string Form, string Reason);
 
 /// <summary>A grammar object a Proposal edits and the entries that use it, whose forms the siblings are drawn from.</summary>
 /// <param name="Target">The object's canonical id.</param>

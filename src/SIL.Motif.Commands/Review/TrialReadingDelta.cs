@@ -215,6 +215,7 @@ public static class TrialReadingDelta
             {
                 ReferrerForms = input.ReferrerForms,
                 Referrers = input.Referrers,
+                SkippedReferrerForms = input.SkippedReferrerForms,
             };
             return (block, mine.Length < sampled.Count
                 ? $"{sampled.Count - mine.Length} of {sampled.Count} sampled siblings were not measured on both sides, so the delta cannot be held to the expectations."

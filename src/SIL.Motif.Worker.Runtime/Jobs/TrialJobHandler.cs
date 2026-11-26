@@ -135,6 +135,10 @@ public sealed record TrialSiblingsInput(
     /// <summary>The edited grammar objects that entries use; null when none.</summary>
     [JsonPropertyName("referrers"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyList<TrialReferrer>? Referrers { get; init; }
+
+    /// <summary>The referring entries' forms left out as too common or too short; null when none were.</summary>
+    [JsonPropertyName("skippedReferrerForms"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<TrialSkippedForm>? SkippedReferrerForms { get; init; }
 }
 
 /// <summary>Identifies the words and parser for one observed Baseline batch dispatch.</summary>

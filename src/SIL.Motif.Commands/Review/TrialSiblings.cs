@@ -45,10 +45,14 @@ internal sealed record TrialSiblingSample(IReadOnlyList<string> Words, string Pa
     /// <summary>The edited grammar objects that entries use; null when none.</summary>
     public IReadOnlyList<TrialReferrer>? Referrers { get; init; }
 
+    /// <summary>The referring entries' forms left out as too short or too common; null when none were.</summary>
+    public IReadOnlyList<TrialSkippedForm>? SkippedReferrerForms { get; init; }
+
     /// <summary>The line the CLI prints on standard error.</summary>
     public string Describe() => $"siblings: added {Words.Count} word(s) of {Candidates} corpus candidate(s) " +
         $"({ParsedCandidates} parsed) sharing {Forms.Count} touched form(s)" +
         (ReferrerForms is > 0 ? $" and {ReferrerForms} form(s) of the entries that use {Referrers!.Count} edited grammar object(s)" : "") +
+        (SkippedReferrerForms is { Count: > 0 } ? $" ({SkippedReferrerForms.Count} referrer form(s) skipped as too short or too common)" : "") +
         $"; seed {Seed}, cap {Max}" +
         (Warning is null ? "" : "; warning: " + Warning);
 }
@@ -67,6 +71,12 @@ internal static class TrialSiblingSampler
 
     /// <summary>The largest corpus-types file read, 256 MiB.</summary>
     public const long MaxCorpusBytes = 256L << 20;
+
+    /// <summary>The referrer group may take this fraction of the cap: one over this number.</summary>
+    internal const int ReferrerShareDivisor = 4;
+
+    /// <summary>The most skipped referrer forms listed in the record.</summary>
+    internal const int MaxSkippedShown = 50;
 
     private static readonly string[] UnparsedStates = ["open", "disposition", ""];
 
@@ -172,7 +182,7 @@ internal static class TrialSiblingSampler
             else if (ch == '"' && quoted && cell.Length == 0) inQuotes = true;
             else if (ch == '\t') EndCell();
             else if (ch == '\n') EndRow();
-            else if (ch == '\r' && index + 1 < text.Length && text[index + 1] == '\n') { }
+            else if (ch == '\r' && (index + 1 == text.Length || text[index + 1] == '\n')) { }
             else cell.Append(ch);
         }
         if (inQuotes) return null;
@@ -192,11 +202,12 @@ internal static class TrialSiblingSampler
     {
         var keys = forms.Select(Key).Where(form => form.Length > 0).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
         var seed = Seed(revision, keys);
-        var referrers = (referrerForms ?? []).Select(Key).Where(form => form.Length > 0).Distinct(StringComparer.Ordinal)
-            .Order(StringComparer.Ordinal).ToArray();
         var types = corpus.GroupBy(type => Key(type.Word), StringComparer.Ordinal)
             .Select(group => new CorpusType(group.Key, group.Any(type => type.Parsed)))
             .Where(type => !already.Contains(type.Word)).ToArray();
+        var matcher = pattern is null && referrerForms is { Count: > 0 }
+            ? ReferrerFormMatcher.Create(referrerForms, [.. types.Select(type => type.Word)])
+            : null;
         List<CorpusType>[] groups;
         string label;
         if (pattern is not null)
@@ -222,7 +233,7 @@ internal static class TrialSiblingSampler
         else
         {
             groups = [.. keys.Select(form => types.Where(type => type.Word.Contains(form, StringComparison.OrdinalIgnoreCase)).ToList())];
-            if (referrers.Length > 0) groups = [.. groups, ContainingAny(types, referrers)];
+            if (matcher is { Count: > 0 }) groups = [.. groups, types.Where(type => matcher.Matches(type.Word)).ToList()];
             label = PerForm;
         }
         var candidates = groups.SelectMany(group => group).Select(type => type.Word).Distinct(StringComparer.Ordinal).Count();
@@ -233,16 +244,21 @@ internal static class TrialSiblingSampler
         var picked = new List<string>();
         var taken = new HashSet<string>(StringComparer.Ordinal);
         var cursors = new int[ordered.Length];
+        // A quarter of the cap at most, so referring entries cannot crowd out the touched forms.
+        var limits = Enumerable.Repeat(int.MaxValue, ordered.Length).ToArray();
+        var drawn = new int[ordered.Length];
+        if (matcher is { Count: > 0 }) limits[^1] = Math.Max(1, max / ReferrerShareDivisor);
         while (picked.Count < max)
         {
             var progressed = false;
             for (var group = 0; group < ordered.Length && picked.Count < max; group++)
             {
-                while (cursors[group] < ordered[group].Length)
+                while (cursors[group] < ordered[group].Length && drawn[group] < limits[group])
                 {
                     var word = ordered[group][cursors[group]++].Word;
                     if (!taken.Add(word)) continue;
                     picked.Add(word);
+                    drawn[group]++;
                     progressed = true;
                     break;
                 }
@@ -255,29 +271,10 @@ internal static class TrialSiblingSampler
                     : "Every corpus type that shares a touched form is already in the word list") +
                 ", so there is no sibling to measure. Next: pass --siblings-pattern <regex> to name the forms, or leave --siblings out."))
             : CommandOutcome<TrialSiblingSample>.Success(new TrialSiblingSample(picked, label, seed, max, keys, corpusSha256,
-                candidates, parsedCandidates) { ReferrerForms = pattern is null && referrers.Length > 0 ? referrers.Length : null });
-    }
-
-    // The types that contain any form, by substring lookup, so the cost is independent of the form count.
-    private static List<CorpusType> ContainingAny(IEnumerable<CorpusType> types, string[] forms)
-    {
-        var set = new HashSet<string>(forms, StringComparer.Ordinal);
-        var lookup = set.GetAlternateLookup<ReadOnlySpan<char>>();
-        var lengths = forms.Select(form => form.Length).Distinct().Order().ToArray();
-        var found = new List<CorpusType>();
-        foreach (var type in types)
-        {
-            var word = type.Word.AsSpan();
-            var hit = false;
-            foreach (var length in lengths)
-            {
-                for (var start = 0; start + length <= word.Length && !hit; start++)
-                    hit = lookup.Contains(word.Slice(start, length));
-                if (hit) break;
-            }
-            if (hit) found.Add(type);
-        }
-        return found;
+                candidates, parsedCandidates) {
+                    ReferrerForms = matcher is { Count: > 0 } ? matcher.Count : null,
+                    SkippedReferrerForms = matcher is { Skipped.Count: > 0 } ? matcher.Skipped.Take(MaxSkippedShown).ToArray() : null,
+                });
     }
 
     /// <summary>The form as the corpus keys it: NFC, lower case, with the affix and clitic marks a lexicon writes removed from its ends.</summary>
@@ -413,7 +410,7 @@ internal static class TrialSiblingResolver
             if (operation.Kind.Contains("wordform", StringComparison.OrdinalIgnoreCase) ||
                 operation.Kind.Contains("/lexPronunciation/", StringComparison.Ordinal) ||
                 operation.Kind.Contains("/lexEtymology/", StringComparison.Ordinal) ||
-                !Regex.IsMatch(name, "^(create|set).*(Form|Allomorph)", RegexOptions.IgnoreCase) || operation.After is not { } after)
+                !Regex.IsMatch(name, "^(create|set)[A-Za-z]*(Form|Allomorph)[A-Za-z]*$") || operation.After is not { } after)
                 continue;
             foreach (var text in FormStrings(after)) yield return text;
         }

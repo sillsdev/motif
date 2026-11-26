@@ -23,6 +23,7 @@ public sealed class TrialSiblingRequestTests
             Operation("lexical/lexEntry/createLexemeForm", new { nested = new { form = "kwa" } }),
             Operation("lexical/lexEntry/setCitationForm", new { text = "cit" }),
             Operation("grammar/moForm/setForm", new { ws = "x", text = "-ni" }),
+            Operation("lexical/lexEntry/setInformation", new { text = "not-a-form-name" }),
             Operation("lexical/lexPronunciation/setForm", new { text = "not-a-form" }),
             Operation("lexical/lexEtymology/setForm", new { text = "not-a-form-either" }),
             Operation("grammar/moForm/clearForm", new { ws = "x", text = "not-written" }),
