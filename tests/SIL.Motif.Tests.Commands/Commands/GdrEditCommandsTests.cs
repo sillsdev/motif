@@ -433,6 +433,48 @@ public sealed class GdrEditCommandsTests(PristineProjectFixture pristine)
     }
 
     [Theory]
+    [InlineData("*a", "b*", "c")]
+    [InlineData("a", "*b", "c*")]
+    [InlineData("_a", "b_", "c")]
+    [InlineData("`a", "b`", "c")]
+    [InlineData("[a", "b](x)", "c")]
+    [InlineData("[a", "b", "c]{.v}")]
+    [InlineData("a\\", "*b", "c*")]
+    [InlineData("[a]{.v", "b", "c}")]
+    public void AnUnbalancedMarkerInOnePartCannotPairWithAnotherPart(string chosen, string over, string because)
+    {
+        var path = ProjectWithGdrs(HeadingStyles);
+
+        var decided = GdrEditCommands.Decide(new GdrDecideRequest(path, "GDR-2", chosen, over, because));
+
+        Assert.False(decided.Succeeded, "staged a line whose markers pair across parts");
+        Assert.Equal(RefusalCodes.GdrDecisionInvalid, decided.Refusal!.Code);
+    }
+
+    [Theory]
+    [InlineData("a", "_b", "c")]
+    [InlineData("a", "b", "*c")]
+    [InlineData("a", "<b", "c>")]
+    public void AMarkerThatPairsWithNothingStaysLiteralAndIsAccepted(string chosen, string over, string because)
+    {
+        var path = ProjectWithGdrs(HeadingStyles);
+
+        var decided = GdrEditCommands.Decide(new GdrDecideRequest(path, "GDR-2", chosen, over, because));
+
+        Assert.True(decided.Succeeded, decided.Refusal?.Message);
+    }
+
+    [Fact]
+    public void BalancedMarkersInEachPartAreStillAccepted()
+    {
+        var path = ProjectWithGdrs(HeadingStyles);
+
+        var decided = GdrEditCommands.Decide(new GdrDecideRequest(path, "GDR-2", "*a* and **x**", "_b_ \\* [c]{.v}", "**d**"));
+
+        Assert.True(decided.Succeeded, decided.Refusal?.Message);
+    }
+
+    [Theory]
     [InlineData("# heading", "b", "c")]
     [InlineData("a", "- item", "c")]
     [InlineData("a", "b", "> quote")]

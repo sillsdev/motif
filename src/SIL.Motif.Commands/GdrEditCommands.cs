@@ -4,6 +4,7 @@ using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Gdr;
 using SIL.Motif.Host.RichText;
+using SIL.Motif.Runner.Operations;
 using SIL.TextEditing;
 using SIL.TextEditing.Markdown;
 
@@ -44,7 +45,7 @@ public static class GdrEditCommands
         if (!shown.Succeeded) return CommandOutcome<GdrEditResponse>.Refused(WithAddSectionHint(shown.Refusal!));
         if (BlockPart(request, shown.Value!, Path.GetFileNameWithoutExtension(request.ProjectPath)) is { } block)
             return CommandOutcome<GdrEditResponse>.Refused(new Refusal(RefusalCodes.GdrDecisionInvalid, FailureReason.InvalidArgument,
-                block + " Write a literal [ as \\[ ."));
+                block + " Write a literal marker such as [ or * as \\[ or \\* ."));
         var named = string.IsNullOrWhiteSpace(request.Draft) ? null : request.Draft.Trim();
         var current = GdrQuery.Show(new GdrShowRequest(request.ProjectPath, request.Id, AsOf: named ?? PendingChanges.DraftName));
         if (!current.Succeeded && (named is not null || current.Refusal!.Code != "draft.not-found"))
@@ -55,14 +56,20 @@ public static class GdrEditCommands
     }
 
     /// <summary>The judgement call as one list item with its parts as given inline Markdown, or null when a part is blank or spans lines.</summary>
-    internal static string? Entry(GdrDecideRequest request)
+    internal static string? Entry(GdrDecideRequest request) => Parts(request) is { } parts ? "- " + parts.Sentence : null;
+
+    private sealed record DecisionParts(string Chosen, string Over, string Because)
+    {
+        public string Sentence => $"{Chosen} or {Over}, I am choosing {Chosen}, because {Because}";
+    }
+
+    private static DecisionParts? Parts(GdrDecideRequest request)
     {
         string[] parts = [request.Choosing, request.Over, request.Because];
         if (parts.Any(part => string.IsNullOrWhiteSpace(part) || part.Contains('\n') || part.Contains('\r'))) return null;
-        var chosen = request.Choosing.Trim();
         var because = request.Because.Trim();
         if (!because.EndsWith('.') && !because.EndsWith('!') && !because.EndsWith('?')) because += ".";
-        return $"- {chosen} or {request.Over.Trim()}, I am choosing {chosen}, because {because}";
+        return new DecisionParts(request.Choosing.Trim(), request.Over.Trim(), because);
     }
 
     /// <summary>Why the first part is not inline Markdown (it would be a block), else null.</summary>
@@ -76,7 +83,44 @@ public static class GdrEditCommands
             if (error is not null) return $"{name} is not inline Markdown: {error.Message}";
             if (read.Paragraphs.Count != 1) return $"{name} must be inline Markdown with no block (heading, list, quote or fence).";
         }
-        return null;
+        return PairsAcrossParts(request, form);
+    }
+
+    /// <summary>Why a part has a marker left open, else null.</summary>
+    private const string Open = "A part has a marker (* _ ` < [ { or \\) that is not closed within that part, so on the joined line it would pair with another part.";
+
+    private static string? PairsAcrossParts(GdrDecideRequest request, FieldWorksMarkdownSourceForm form)
+    {
+        if (Parts(request) is not { } parts) return null;
+        var alone = new Dictionary<string, IReadOnlyList<TextRun>>();
+        foreach (var text in new[] { parts.Chosen, parts.Over, parts.Because })
+            alone[text] = GdrMarkdownImport.Runs(form.Read(text, true).Paragraphs[0]);
+        var plainWs = GdrMarkdownImport.Runs(form.Read("x", true).Paragraphs[0])[0].Ws;
+        TextRun Plain(string text) => new(text, plainWs);
+        var expected = alone[parts.Chosen].Append(Plain(" or ")).Concat(alone[parts.Over]).Append(Plain(", I am choosing "))
+            .Concat(alone[parts.Chosen]).Append(Plain(", because ")).Concat(alone[parts.Because]);
+        var joinedRead = form.Read(parts.Sentence, true);
+        if (joinedRead.HasErrors || joinedRead.Paragraphs.Count != 1) return Open;
+        var joined = GdrMarkdownImport.Runs(joinedRead.Paragraphs[0]);
+        if (Shape(expected).SequenceEqual(Shape(joined))) return null;
+        return Open;
+    }
+
+    // Adjacent runs that differ in nothing but their text are one run, however the reader split them.
+    private static IEnumerable<string> Shape(IEnumerable<TextRun> runs)
+    {
+        string? key = null;
+        var text = new System.Text.StringBuilder();
+        foreach (var run in runs)
+        {
+            var next = string.Join("|", run.Ws, run.CharacterStyle, run.ObjData,
+                string.Join(",", (run.Props ?? TextProps.None).Ints.OrderBy(pair => pair.Key).Select(pair => $"{pair.Key}={pair.Value}")),
+                string.Join(",", (run.Props ?? TextProps.None).Strings.OrderBy(pair => pair.Key).Select(pair => $"{pair.Key}={pair.Value}")));
+            if (key is not null && key != next) { yield return key + "\n" + text; text.Clear(); }
+            key = next;
+            text.Append(run.Text);
+        }
+        if (key is not null) yield return key + "\n" + text;
     }
 
     /// <summary>
