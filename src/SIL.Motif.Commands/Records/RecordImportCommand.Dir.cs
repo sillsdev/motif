@@ -2,12 +2,14 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using SIL.LCModel;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
+using SIL.Motif.Runner.Operations;
 using SIL.TextEditing.Markdown.Records;
 using SIL.TextEditing.Project;
 
@@ -416,18 +418,22 @@ public static partial class RecordImportCommand
     private static void RefuseBatchCycles(IReadOnlyList<DirFile> files, IReadOnlyDictionary<Guid, string> creators)
     {
         var byPath = files.Where(file => file.Status is CreatedStatus or UpdatedStatus).ToDictionary(file => file.Input.Path, StringComparer.Ordinal);
-        var edges = byPath.ToDictionary(pair => pair.Key, pair => ComponentTargets(pair.Value, creators).Where(byPath.ContainsKey).Distinct().ToList(),
-            StringComparer.Ordinal);
-        foreach (var group in StronglyConnected(edges).Where(group => group.Count > 1 || edges[group[0]].Contains(group[0])))
-            foreach (var path in group)
-                byPath[path].Refuse(RefusalCodes.RecordImportBatchCycle, "These files are variants or complex forms of each other in a loop (" +
-                    ListOf(group.Order(StringComparer.Ordinal)) + "), which FieldWorks does not allow. Break the loop in one of them.");
+        // Variant links and complex-form links are separate graphs: an entry may be a variant of one that is its complex form.
+        foreach (var kind in new[] { VariantRefCreateOperationKinds.Create, ComplexFormRefCreateOperationKinds.Create })
+        {
+            var edges = byPath.ToDictionary(pair => pair.Key,
+                pair => ComponentTargets(pair.Value, creators, kind).Where(byPath.ContainsKey).Distinct().ToList(), StringComparer.Ordinal);
+            foreach (var group in StronglyConnected(edges).Where(group => group.Count > 1 || edges[group[0]].Contains(group[0])))
+                foreach (var path in group)
+                    byPath[path].Refuse(RefusalCodes.RecordImportBatchCycle, "These files are variants or complex forms of each other in a loop (" +
+                        ListOf(group.Order(StringComparer.Ordinal)) + "), which FieldWorks does not allow. Break the loop in one of them.");
+        }
     }
 
     /// <summary>The files whose new records a file's variant or complex-form links name as components.</summary>
-    private static IEnumerable<string> ComponentTargets(DirFile file, IReadOnlyDictionary<Guid, string> creators)
+    private static IEnumerable<string> ComponentTargets(DirFile file, IReadOnlyDictionary<Guid, string> creators, string kind)
     {
-        foreach (var operation in file.Lowering!.Operations)
+        foreach (var operation in file.Lowering!.Operations.Where(item => item.Kind == kind))
         {
             if (operation.After is not { ValueKind: JsonValueKind.Object } after) continue;
             var named = new List<string?>();

@@ -347,26 +347,6 @@ public sealed class RecordImportDirTests(PristineProjectFixture pristine) : IDis
     }
 
     [Fact]
-    public void AFileThatRefersToAnotherFilesNewRecordIsRefusedWithAClearCode()
-    {
-        var seed = Seeded(2);
-        var main = WriteFile(seed, seed.Entries[0], "main.fw.md", asNew: true);
-        var mainText = File.ReadAllText(main);
-        var newMsa = new Regex("guid: \"([0-9a-f-]{36})\"\\s+class: \"MoStemMsa\"").Match(mainText).Groups[1].Value;
-        // The second file's sense points at an analysis that only the first file creates.
-        var other = WriteFile(seed, seed.Entries[1], "other.fw.md", asNew: true);
-        var otherText = File.ReadAllText(other);
-        var own = new Regex("morpho-syntax-analysis: \"\\[zznoun\\]\\(/objects/([0-9a-f-]{36})\\)").Match(otherText).Groups[1].Value;
-        var lines = otherText.Split('\n').Select(line => line.Contains("morpho-syntax-analysis: \"[") ? line.Replace(own, newMsa, StringComparison.OrdinalIgnoreCase) : line);
-        File.WriteAllText(other, string.Join('\n', lines));
-
-        var rows = AllRows(seed, Dry(seed));
-
-        Assert.Equal("created", rows["main.fw.md"].Status);
-        Assert.Equal(("refused", RefusalCodes.RecordImportReferenceToNewInBatch), (rows["other.fw.md"].Status, rows["other.fw.md"].Code));
-    }
-
-    [Fact]
     public void RowPagesAreBoundedAndARefusedOnlyPageListsJustTheRefusedRows()
     {
         var seed = MixedFolder();

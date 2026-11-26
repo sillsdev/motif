@@ -252,16 +252,19 @@ public sealed class RecordCreateEntryTests(PristineProjectFixture pristine) : ID
     }
 
     [Fact]
-    public void AComplexFormIsRefusedWholeBecauseNoOperationCreatesItsLink()
+    public void AComplexFormIsStagedAppliedAndReadsBackAsTheFile()
     {
         var seed = Seeded();
-        var file = NewFile(seed, seed.Complex);
+        var file = NewFile(seed, seed.Complex, document => Ref(document)["show-complex-forms-in"] = Ref(document)["primary-lexemes"]);
+        var created = RecordFileReader.Read(File.ReadAllText(file), Exported(new FwDataProjectLoader().LoadCache(seed.Project), seed.Main).Schema.Schema,
+            default).Document!.Data.Guid!.Value;
 
-        var outcome = RecordImportCommand.Run(new(seed.Project, file, DraftName));
+        StageFinalizeApply(seed.Project, file);
 
-        Assert.False(outcome.Succeeded);
-        Assert.Equal(RefusalCodes.RecordImportCreateKindNotCreatable, outcome.Refusal!.Code);
-        Assert.Equal(0, ProposalCommands.List(new(seed.Project, Version)).Value?.Proposals.Count ?? 0);
+        using var reopened = new FwDataProjectLoader().LoadCache(seed.Project);
+        var schema = ProjectRecordSchema.Generate(reopened, ProjectRecordSchema.LexiconEntryOverlay);
+        var exporter = new ProjectRecordExporter(reopened, schema);
+        Assert.Equal(Normalized(File.ReadAllText(file), schema, exporter), Normalized(exporter.Export(created).Text!, schema, exporter));
     }
 
     [Fact]
