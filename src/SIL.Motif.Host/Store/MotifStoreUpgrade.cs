@@ -88,16 +88,43 @@ public static class MotifStoreUpgrade
     public sealed record UnreadableRevision(string ProposalId, string IntentDigest, string Error);
 
     /// <summary>Counts and diagnostic information for one store upgrade.</summary>
+    /// <param name="SourceSchema">The schema the store was at.</param>
+    /// <param name="TargetSchema">The schema it was upgraded to.</param>
+    /// <param name="BackupPath">The original store file, kept beside the new one so an interrupted swap can finish.</param>
+    /// <param name="Carried">Each authored table carried, with its rows.</param>
+    /// <param name="Dropped">Each derived table dropped.</param>
+    /// <param name="UnreadableRevisions">Revisions current code cannot parse; their bytes are kept.</param>
+    /// <param name="BackupDirectory">The <c>store backup</c> folder taken before the upgrade, which <c>store restore</c> takes.</param>
+    /// <param name="BackupReceiptPath">That backup's <c>motif-backup.json</c>.</param>
+    /// <param name="DroppedCounts">Each dropped table with the rows it held, so the receipt says what was lost.</param>
     public sealed record Report(int SourceSchema, int TargetSchema, string? BackupPath,
         Dictionary<string, long> Carried, List<string> Dropped,
-        List<UnreadableRevision> UnreadableRevisions);
+        List<UnreadableRevision> UnreadableRevisions, string? BackupDirectory = null,
+        string? BackupReceiptPath = null, Dictionary<string, long>? DroppedCounts = null);
 
     /// <summary>Copies an immutable source into a new output and writes a JSON report beside it.</summary>
     public static Report Copy(string source, string output) => Build(source, output, null, true, null);
 
+    /// <summary>The rows one derived table of the old store held, so the report says what was dropped.</summary>
+    private static Dictionary<string, long> CountDropped(SqliteConnection destination, SqliteTransaction transaction,
+        List<string> dropped, bool carriesSummaries)
+    {
+        var counts = new Dictionary<string, long>(StringComparer.Ordinal);
+        foreach (var table in dropped)
+            counts[table] = Scalar(destination, $"SELECT COUNT(*) FROM old.{Quote(table)};", transaction);
+        // Summaries of undecided Proposals are not carried, and are dropped like any derived row.
+        if (carriesSummaries)
+        {
+            var notCarried = Scalar(destination, "SELECT COUNT(*) FROM old.ProposalDifferences;", transaction) -
+                Scalar(destination, "SELECT COUNT(*) FROM main.ProposalDifferences;", transaction);
+            if (notCarried > 0) counts["ProposalDifferences"] = notCarried;
+        }
+        return counts;
+    }
+
     internal static Report Build(string source, string output, ProjectLocator? expected, bool immutable, string? backup,
         Version? worker = null, Action<SqliteConnection, bool>? onOpen = null,
-        int firstSummarySchema = FirstSummarySchema)
+        int firstSummarySchema = FirstSummarySchema, StoreSafetyBackup? safetyBackup = null)
     {
         source = Path.GetFullPath(source);
         output = Path.GetFullPath(output);
@@ -196,6 +223,7 @@ public static class MotifStoreUpgrade
                 if (metadataColumns.Contains(column))
                     Execute(destination, $"UPDATE MotifMetadata SET {Quote(column)} = (SELECT {Quote(column)} FROM old.MotifMetadata WHERE Id=1);", transaction);
             var dropped = tables.Where(IsDerived).Order(StringComparer.Ordinal).ToList();
+            var droppedCounts = CountDropped(destination, transaction, dropped, carriesSummaries);
             var unreadable = CheckRevisions(destination, transaction);
             using (var check = destination.CreateCommand())
             {
@@ -213,7 +241,8 @@ public static class MotifStoreUpgrade
                     throw new InvalidDataException(StoreUpgradeMessages.Get("IntegrityFailed"));
             }
             transaction.Commit();
-            var report = new Report(version, MotifSchema.CurrentSchema, backup, carried, dropped, unreadable);
+            var report = new Report(version, MotifSchema.CurrentSchema, backup, carried, dropped, unreadable,
+                safetyBackup?.Directory, safetyBackup?.ReceiptPath, droppedCounts);
             File.WriteAllText(temporaryReport, JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true }));
             File.Move(temporaryReport, output + ".upgrade.json");
             return report;

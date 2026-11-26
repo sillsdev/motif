@@ -52,7 +52,17 @@ internal sealed class MotifSqliteStoreDescriptor
     /// <summary>Enables incremental reclamation when creating a new database.</summary>
     public bool IncrementalVacuum { get; init; }
 
-    public Action<string, int, string>? Upgrade { get; init; }
+    /// <summary>
+    /// Builds the upgraded copy at the first path from a store at the given schema, naming where the original will be
+    /// kept and the backup taken first. Null when this database is never upgraded.
+    /// </summary>
+    public Func<string, int, string, StoreSafetyBackup, MotifStoreUpgrade.Report>? Upgrade { get; init; }
+
+    /// <summary>
+    /// Backs the store up for a caller holding it exclusively, for the reason named (<c>pre-upgrade</c> or
+    /// <c>pre-reset</c>), refusing a store that is not this project's before any file is written.
+    /// </summary>
+    public Func<string, StoreSafetyBackup>? BackUp { get; init; }
 }
 
 /// <summary>
@@ -251,6 +261,7 @@ internal sealed class MotifSqliteStore : IDisposable
             MoveSidecars(path, report.BackupPath);
             File.Move(pending, path);
             File.Move(reportFile, path + ".upgrade.json", true);
+            Announce(path, report);
             return;
         }
         int schema;
@@ -263,7 +274,10 @@ internal sealed class MotifSqliteStore : IDisposable
                 var report = System.Text.Json.JsonSerializer.Deserialize<MotifStoreUpgrade.Report>(
                     File.ReadAllText(pending + ".upgrade.json"));
                 if (report?.BackupPath is not null && File.Exists(report.BackupPath))
+                {
                     File.Move(pending + ".upgrade.json", path + ".upgrade.json", true);
+                    Announce(path, report);
+                }
             }
             if (schema == 0 || schema >= descriptor.CurrentSchema) return;
             if (PragmaInt(connection, "application_id") != descriptor.ApplicationId)
@@ -273,16 +287,74 @@ internal sealed class MotifSqliteStore : IDisposable
             throw new MotifStoreVersionException(path,
                 StoreUpgradeMessages.Format("OlderStore", descriptor.Name, Path.GetFileName(path), schema, descriptor.CurrentSchema))
             { Upgradable = true };
-        var backup = path + ".schema" + schema + ".bak";
-        if (File.Exists(backup)) throw new IOException(StoreUpgradeMessages.Get("BackupExists"));
-        foreach (var suffix in new[] { "", "-journal", "-wal", "-shm", ".upgrade.json" })
-            if (File.Exists(pending + suffix)) File.Delete(pending + suffix);
-        descriptor.Upgrade!(pending, schema, backup);
-        File.Move(path, backup);
-        MoveSidecars(path, backup);
-        File.Move(pending, path);
-        File.Move(pending + ".upgrade.json", path + ".upgrade.json", true);
+        var next = descriptor.CurrentSchema;
+        StoreSafetyBackup safety;
+        try
+        {
+            safety = descriptor.BackUp!(StoreBackups.PreUpgrade);
+        }
+        catch (Exception exception) when (IsUpgradeFailure(exception))
+        {
+            throw new MotifStoreUpgradeFailedException(path, MotifStoreUpgradeFailedException.BackupStep, schema, next, null, exception);
+        }
+        Step("backed-up");
+        var backup = FreeBackupPath(path, schema);
+        MotifStoreUpgrade.Report built;
+        try
+        {
+            foreach (var suffix in new[] { "", "-journal", "-wal", "-shm", ".upgrade.json" })
+                if (File.Exists(pending + suffix)) File.Delete(pending + suffix);
+            built = descriptor.Upgrade!(pending, schema, backup, safety);
+        }
+        catch (Exception exception) when (IsUpgradeFailure(exception))
+        {
+            throw new MotifStoreUpgradeFailedException(path, MotifStoreUpgradeFailedException.BuildStep, schema, next, safety, exception);
+        }
+        Step("built");
+        try
+        {
+            File.Move(path, backup);
+            Step("original-moved");
+            MoveSidecars(path, backup);
+            Step("sidecars-moved");
+            File.Move(pending, path);
+            Step("store-swapped");
+            File.Move(pending + ".upgrade.json", path + ".upgrade.json", true);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            throw new MotifStoreUpgradeFailedException(path, MotifStoreUpgradeFailedException.SwapStep, schema, next, safety, exception);
+        }
+        Announce(path, built);
     }
+
+    /// <summary>Where an upgrade or reset is, for tests that stop it between steps as a crash would.</summary>
+    [ThreadStatic]
+    internal static Action<string>? StepHook;
+
+    private static void Step(string name) => StepHook?.Invoke(name);
+
+    // A held lock, a project mismatch and a too-old worker are their own refusals, not a failed upgrade.
+    private static bool IsUpgradeFailure(Exception exception) => exception switch
+    {
+        MotifStoreLockException or MotifStoreUpgradeFailedException or MotifStoreVersionException => false,
+        InvalidDataException => !StoreProjectMismatch.TryRead(exception, out _, out _),
+        IOException or UnauthorizedAccessException or SqliteException => true,
+        _ => false,
+    };
+
+    // The first free name: an earlier upgrade of this schema, or a restored copy of it, may hold the file.
+    private static string FreeBackupPath(string path, int schema)
+    {
+        var name = path + ".schema" + schema + ".bak";
+        for (var n = 2; File.Exists(name) || File.Exists(name + "-wal") || File.Exists(name + "-shm"); n++)
+            name = path + ".schema" + schema + ".bak" + n;
+        return name;
+    }
+
+    private static void Announce(string path, MotifStoreUpgrade.Report report) =>
+        StoreUpgradeNotices.Record(new StoreUpgradeNotice(path, report.SourceSchema, report.TargetSchema,
+            report.BackupDirectory, report.BackupReceiptPath, report.DroppedCounts ?? new Dictionary<string, long>()));
 
     private static void MoveSidecars(string path, string backup)
     {
@@ -304,25 +376,25 @@ internal sealed class MotifSqliteStore : IDisposable
     /// Deletes the store if <see cref="Open"/> would refuse it with a <see cref="MotifStoreVersionException"/>,
     /// deciding and deleting under the creation lock, the one lock that orders against the store's creation.
     /// </summary>
-    /// <returns><c>true</c> when the file was deleted; <c>false</c> when it is absent, empty, or usable.</returns>
+    /// <returns>Whether the file was deleted (not when it is absent, empty, or usable), and the backup taken first.</returns>
     /// <exception cref="MotifStoreVersionException">The store is newer (<see cref="MotifStoreVersionException.Newer"/>), so it is never deleted.</exception>
-    public static bool DeleteIfOtherVersion(string path, MotifSqliteStoreDescriptor descriptor,
+    public static StoreDeletion DeleteIfOtherVersion(string path, MotifSqliteStoreDescriptor descriptor,
         TimeSpan? ownershipPatience = null, Action? onWaitingForOwnership = null, Action<string>? resetArtifacts = null)
     {
         ArgumentNullException.ThrowIfNull(descriptor);
         var fullPath = Path.GetFullPath(path);
         using var ownership = AcquireOwnership(fullPath, ownershipPatience ?? DefaultOwnershipPatience,
             onWaitingForOwnership);
-        if (!File.Exists(fullPath)) return false;
+        if (!File.Exists(fullPath)) return new StoreDeletion(false, null);
         MotifStoreVersionException? refused = null;
         try
         {
             using var connection = OpenInspectionConnection(fullPath);
             var schema = PragmaInt(connection, "user_version");
             if (descriptor.Upgrade is not null && schema > 0 && schema < descriptor.CurrentSchema &&
-                PragmaInt(connection, "application_id") == descriptor.ApplicationId) return false;
+                PragmaInt(connection, "application_id") == descriptor.ApplicationId) return new StoreDeletion(false, null);
             if (Inspect(connection, descriptor, fullPath) != 0) ValidateExisting(connection, descriptor);
-            return false;
+            return new StoreDeletion(false, null);
         }
         catch (MotifStoreVersionException version)
         {
@@ -340,9 +412,19 @@ internal sealed class MotifSqliteStore : IDisposable
         using var useLease = AcquireExclusiveUseLease(fullPath);
         // A newer store is never deleted; the lease first, so a held store still reports busy.
         if (refused is { Newer: true }) throw refused;
+        // The backup comes first; one that fails leaves the store and everything beside it as they were.
+        StoreSafetyBackup backup;
+        try
+        {
+            backup = (descriptor.BackUp ?? throw new InvalidOperationException("A reset needs a backup.")).Invoke(StoreBackups.PreReset);
+        }
+        catch (Exception exception) when (IsUpgradeFailure(exception))
+        {
+            throw new StoreBackupFailedException(fullPath, exception);
+        }
         resetArtifacts?.Invoke(fullPath);
         File.Delete(fullPath);
-        return true;
+        return new StoreDeletion(true, backup);
     }
 
     /// <summary>

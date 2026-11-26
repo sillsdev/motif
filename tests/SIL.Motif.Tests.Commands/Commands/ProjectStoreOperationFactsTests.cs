@@ -88,7 +88,7 @@ public sealed class ProjectStoreOperationFactsTests : IDisposable
     {
         Assert.Contains($"schema {olderSchema}", message);
         Assert.Contains($"schema {MotifSchema.CurrentSchema}", message);
-        Assert.Contains($".schema{olderSchema}.bak", message);
+        Assert.Contains("backing it up first", message);
         Assert.Contains("motif store upgrade", message);
         Assert.Contains("--source", message);
         Assert.Contains("--out", message);

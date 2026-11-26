@@ -29,6 +29,12 @@ public static class RefusalFactNames
     /// <summary>Present, as "true", on a store.other-version refusal whose store a newer Motif made: never reset or deleted; install the newer Motif or restore a pre-upgrade backup.</summary>
     public const string StoreNewer = "storeNewer";
 
+    /// <summary>The backup folder taken before an upgrade, on a <see cref="RefusalCodes.StoreUpgradeFailed"/> refusal; <c>motif store restore</c> takes it.</summary>
+    public const string BackupPath = "backupPath";
+
+    /// <summary>Where a <see cref="RefusalCodes.StoreUpgradeFailed"/> refusal stopped: <c>backup</c>, <c>build</c> or <c>swap</c>.</summary>
+    public const string FailedStep = "failedStep";
+
     /// <summary>Fact key for the parser refusal code on a grammarcheck.not-run refusal.</summary>
     public const string LastParserRefusalCode = "lastParserRefusalCode";
 

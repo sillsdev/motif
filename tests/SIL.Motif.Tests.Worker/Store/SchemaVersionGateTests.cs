@@ -91,7 +91,7 @@ public sealed class SchemaVersionGateTests : IDisposable
             command.CommandText = $"PRAGMA user_version = {oldSchema};";
             command.ExecuteNonQuery();
         }
-        Assert.False(MotifDatabase.DeleteIfOtherVersion(path, locator, MotifSchema.CurrentSchema, new Version(1, 0)));
+        Assert.False(MotifDatabase.DeleteIfOtherVersion(path, locator, MotifSchema.CurrentSchema, new Version(1, 0)).Deleted);
         using (MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0))) { }
         Assert.Equal(MotifSchema.CurrentSchema, PragmaUserVersion(path));
         Assert.Equal(oldSchema, PragmaUserVersion(path + $".schema{oldSchema}.bak"));
