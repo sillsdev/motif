@@ -143,6 +143,24 @@ say so. Reference geometry stays as supplied: a full-size board beside a thin ca
 design, while responsive validation still comes from the actual size matrix. The same option works
 with `-NoRun`.
 
+## Landing through the merge queue
+
+`main` takes squash merges through the GitHub merge queue (ruleset `main-protect`). Enqueue a pull request
+only after its own checks are green, and read the failure before acting on any red run.
+
+Standing orders from the owner (2026-11-26). The landing lead acts on these without asking:
+
+- **Keep the queue moving.** Cancel CI runs whose `gh-readonly-queue/*` branch no longer exists (the live set
+  is `git ls-remote origin 'refs/heads/gh-readonly-queue/*'`). Dequeue and requeue an entry that is
+  UNMERGEABLE or was dropped. Rebase your own pull-request branches and push with `--force-with-lease`;
+  never force-push another team's branch, tell its owner instead.
+- **A Windows-only failure does not stop merging.** If only the Windows job failed, and in a test outside the
+  pull request's diff, requeue the entry and fix the Windows failure separately, in its own issue and pull
+  request. The same holds for a known flake on any platform.
+- **A failure in a file the pull request touches is that pull request's to fix.** Don't requeue it.
+- **Flakes get an issue and a root-cause fix**, not a retry in the test. Give each eviction's run id in the
+  issue so the fix can be checked against it.
+
 ## Jira and external systems
 
 When a Jira issue is named, read it first through the installed `atlassian-readonly-skills` skill and
