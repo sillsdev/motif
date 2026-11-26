@@ -161,7 +161,7 @@ internal sealed class StyleCreateHandler : IOperationHandler
         var before = Read(cache, entityId, definition);
 
         var style = cache.ServiceLocator.GetInstance<IStStyleFactory>().Create(cache, entityId.ToGuid());
-        if (style.Owner is null) throw new InvalidOperationException($"'{Kind}': the new style has no owner.");
+        cache.LangProject.StylesOC.Add(style);
         style.IsBuiltIn = true;
         style.IsModified = false;
         style.Name = definition.Name;
