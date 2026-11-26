@@ -236,7 +236,8 @@ public sealed partial class MotifDatabase : IDisposable
         }
         catch (SqliteException exception)
         {
-            throw new InvalidDataException(StoreUpgradeMessages.Get("MissingMetadata"), exception);
+            throw new InvalidDataException(StoreUpgradeMessages.Get("MissingMetadata"), exception)
+            { Data = { [MotifSqliteStore.SourceInvalidKey] = true } };
         }
         EnsureLocatorMatches(metadata.Project, project, path);
         if (workerVersion < metadata.MinimumWorkerVersion)

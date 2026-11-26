@@ -132,6 +132,52 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public async Task McpUpgradesAnOlderStoreAfterABackupAndOnlyTheFirstResultSaysSo()
+    {
+        using var project = new WalkthroughProject(pristine);
+        var store = Path.ChangeExtension(project.FwDataPath, ".motif.db");
+        var older = MotifSchema.CurrentSchema - 1;
+        using (var database = ProjectMotifDatabase.Open(project.FwDataPath))
+        using (var connection = database.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = $"PRAGMA user_version = {older};";
+            command.ExecuteNonQuery();
+        }
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions(), openStore: false);
+        var arguments = new Dictionary<string, object?> { ["project"] = project.FwDataPath, ["id"] = "GDR-1" };
+
+        var first = await session.Client.CallToolAsync("motif_guide_show", arguments);
+
+        var text = string.Join("\n", first.Content.OfType<ModelContextProtocol.Protocol.TextContentBlock>().Select(block => block.Text));
+        Assert.Contains($"Your Motif project store was upgraded from schema {older} to {MotifSchema.CurrentSchema}; a backup is at ", text);
+        Assert.Contains("these derived results were dropped:", text);
+        var upgrade = first.StructuredContent!.Value.GetProperty("storeUpgrades")[0];
+        Assert.Equal(older, upgrade.GetProperty("fromSchema").GetInt32());
+        var backup = upgrade.GetProperty("backupPath").GetString()!;
+        Assert.True(File.Exists(Path.Combine(backup, "motif-backup.json")));
+        using (var original = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={Path.Combine(backup, "store.sqlite")};Mode=ReadOnly;Pooling=False"))
+        {
+            original.Open();
+            using var version = original.CreateCommand();
+            version.CommandText = "PRAGMA user_version;";
+            Assert.Equal((long)older, version.ExecuteScalar());
+        }
+        using (var current = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={store};Mode=ReadOnly;Pooling=False"))
+        {
+            current.Open();
+            using var version = current.CreateCommand();
+            version.CommandText = "PRAGMA user_version;";
+            Assert.Equal((long)MotifSchema.CurrentSchema, version.ExecuteScalar());
+        }
+
+        var second = await session.Client.CallToolAsync("motif_guide_show", arguments);
+        Assert.DoesNotContain("was upgraded from schema", string.Join("\n",
+            second.Content.OfType<ModelContextProtocol.Protocol.TextContentBlock>().Select(block => block.Text)));
+        Assert.False(second.StructuredContent!.Value.TryGetProperty("storeUpgrades", out _));
+    }
+
+    [Fact]
     public async Task GdrShowDoesNotInitializeAnEmptyStoreForTheNotice()
     {
         using var project = new WalkthroughProject(pristine);

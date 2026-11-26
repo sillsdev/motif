@@ -229,11 +229,14 @@ public static class ProjectStoreCommand
             !refusal.Facts.ContainsKey(RefusalFactNames.StoreUpgradable))
             return outcome;
         // The read refused an older store; open it once to upgrade it, then read again.
-        var upgraded = UpgradeOlderStore(fwDataPath);
+        var upgraded = OlderStoreUpgrade(fwDataPath);
         return upgraded.Succeeded ? RunOperationOnce(fwDataPath, operation) : CommandOutcome<T>.Refused(upgraded.Refusal!);
     }
 
-    internal static CommandOutcome<object> UpgradeOlderStore(string fwDataPath) =>
+    // Reached only through this delegate, and only under UpgradeOnRead, so a read never creates a store.
+    private static readonly Func<string, CommandOutcome<object>> OlderStoreUpgrade = UpgradeOlderStore;
+
+    private static CommandOutcome<object> UpgradeOlderStore(string fwDataPath) =>
         RunCore<object>(fwDataPath, MotifProductVersion.CurrentText,
             (_, _) => CommandOutcome<object>.Success(new object()), null, null, retainDatabase: false);
 

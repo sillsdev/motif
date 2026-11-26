@@ -90,7 +90,15 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
             };
         }
         DismissStoreUpgradeNoticeCommand = new RelayCommand(() => StoreUpgradeMessage = null);
-        StoreUpgradeNotices.Upgraded += OnStoreUpgraded;
+        var self = new WeakReference<WorkspaceShellViewModel>(this);
+        Action<StoreUpgradeNotice>? subscription = null;
+        subscription = notice =>
+        {
+            if (self.TryGetTarget(out var shell)) shell.OnStoreUpgraded(notice);
+            else StoreUpgradeNotices.Upgraded -= subscription;
+        };
+        _storeUpgradeSubscription = subscription;
+        StoreUpgradeNotices.Upgraded += subscription;
         OpenRecentProjectFolderCommand = new AsyncRelayCommand<string>(OpenRecentProjectFolderAsync,
             CanOpenRecentProjectFolder);
         Context = new WorkspaceContext(selection, assess, new ChangesViewModel(commandClient), commandClient, folderPicker,
@@ -218,6 +226,8 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
 
     /// <summary>Hides the store upgrade notice.</summary>
     public IRelayCommand DismissStoreUpgradeNoticeCommand { get; }
+
+    private readonly Action<StoreUpgradeNotice> _storeUpgradeSubscription;
 
     private void OnStoreUpgraded(StoreUpgradeNotice notice)
     {
@@ -1005,7 +1015,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     public async ValueTask DisposeAsync()
     {
         _isDisposed = true;
-        StoreUpgradeNotices.Upgraded -= OnStoreUpgraded;
+        StoreUpgradeNotices.Upgraded -= _storeUpgradeSubscription;
         Interlocked.Increment(ref _projectOpenGeneration);
         await Context.StopProjectWorkAsync().ConfigureAwait(true);
         if (_knownProjectsRefreshTask is { } refresh) await refresh.ConfigureAwait(true);

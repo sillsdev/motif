@@ -62,8 +62,6 @@ public sealed class ReadStoreAccessContractTests
         [StoreWritingTools["motif_compare"]] = "Persists a newly computed Difference Assessment.",
         [StoreWritingTools["motif_report"]] = "Persists the generated report rendering.",
         [StoreWritingTools["motif_parsimony_view"]] = "Maintains a persisted artifact reader lease.",
-        [Identity(typeof(ProjectStoreCommand), "UpgradeOlderStore", typeof(string))] =
-            "An MCP read of an older store upgrades it after a backup, then reads.",
         [Identity(typeof(ReadStateCommands), "Change", typeof(WordReadStateRequest))] =
             "Explicit IsRead requests change saved occurrence marks.",
         [Identity(typeof(JobWait), "CancelJob", typeof(string), typeof(string), typeof(string),

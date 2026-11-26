@@ -335,10 +335,13 @@ internal sealed class MotifSqliteStore : IDisposable
     private static void Step(string name) => StepHook?.Invoke(name);
 
     // A held lock, a project mismatch and a too-old worker are their own refusals, not a failed upgrade.
+    /// <summary>Marks an InvalidDataException that says the source itself is unusable, not that the upgrade failed.</summary>
+    internal const string SourceInvalidKey = "SourceInvalid";
+
     private static bool IsUpgradeFailure(Exception exception) => exception switch
     {
         MotifStoreLockException or MotifStoreUpgradeFailedException or MotifStoreVersionException => false,
-        InvalidDataException => !StoreProjectMismatch.TryRead(exception, out _, out _),
+        InvalidDataException => !StoreProjectMismatch.TryRead(exception, out _, out _) && !exception.Data.Contains(SourceInvalidKey),
         IOException or UnauthorizedAccessException or SqliteException => true,
         _ => false,
     };

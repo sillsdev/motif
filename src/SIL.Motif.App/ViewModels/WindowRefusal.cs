@@ -267,6 +267,7 @@ public sealed partial record WindowRefusal
         [C.StatsTimedOut] = () => MotifAppStrings.RefusalStatsTimedOut,
 
         [C.StoreInconsistent] = () => MotifAppStrings.RefusalStoreInconsistent,
+        [C.StoreUpgradeFailed] = () => MotifAppStrings.RefusalStoreUpgradeFailed,
         [C.StoreOtherProject] = () => MotifAppStrings.RefusalStoreOtherProject,
         [C.StoreUnsupported] = () => MotifAppStrings.RefusalStoreUnsupported,
 
