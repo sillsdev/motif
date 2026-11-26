@@ -127,7 +127,8 @@ public static class CorpusRunLine
     {
         ArgumentNullException.ThrowIfNull(request);
         resolved = null;
-        var root = Path.GetFullPath(baseDirectory);
+        var root = Canonical(Path.GetFullPath(baseDirectory));
+        if (root is null) { refusal = Invalid("The project folder could not be resolved.", "project"); return false; }
         var named = new List<(string Flag, string? Path)>();
         named.AddRange(request.CorpusPath.Split(['\n', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(path => ("corpus", (string?)path)));
         named.Add(("grammar", request.GrammarPath));
@@ -137,17 +138,62 @@ public static class CorpusRunLine
         foreach (var (flag, path) in named)
         {
             if (string.IsNullOrWhiteSpace(path)) continue;
-            var relative = Path.IsPathRooted(path) ? null : Path.GetRelativePath(root, Path.GetFullPath(path, root));
-            if (relative is not null && relative != ".." && !relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal) &&
-                !relative.StartsWith("../", StringComparison.Ordinal) && !Path.IsPathRooted(relative)) continue;
+            if (IsInsideFolder(path, root)) continue;
             refusal = new Refusal(RefusalCodes.GuideQueryRunPathOutsideProject, FailureReason.Refused,
-                $"--{flag} {path} is outside the project's folder; a Guide block reads only files inside it, by a relative path.", Facts(flag));
+                $"--{flag} {path} is outside the project's folder. A Guide query reads only files inside the project folder, by a relative path.", Facts(flag));
             return false;
         }
         resolved = Resolve(request, baseDirectory);
         refusal = null;
         return true;
     }
+
+    /// <summary>Whether the path stays in the folder after links resolve; a later link swap is not caught.</summary>
+    private static bool IsInsideFolder(string path, string canonicalRoot)
+    {
+        if (path.Length >= 2 && char.IsAsciiLetter(path[0]) && path[1] == ':') return false;
+        if (path[0] is '/' or '\\' || Path.IsPathRooted(path)) return false;
+        var full = Canonical(Path.Combine(canonicalRoot, path.Replace('\\', '/')));
+        if (full is null) return false;
+        var relative = Path.GetRelativePath(canonicalRoot, full);
+        return relative != ".." && !relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal) &&
+            !relative.StartsWith("../", StringComparison.Ordinal) && !Path.IsPathRooted(relative);
+    }
+
+    private const int MaxLinkHops = 40;
+
+    /// <summary>The path as realpath resolves it; null past <see cref="MaxLinkHops"/> links.</summary>
+    private static string? Canonical(string absolutePath)
+    {
+        var current = Path.GetPathRoot(absolutePath) ?? "";
+        var pending = new Stack<string>(Split(absolutePath[current.Length..]).Reverse());
+        var hops = 0;
+        while (pending.Count > 0)
+        {
+            var part = pending.Pop();
+            if (part == ".") continue;
+            if (part == "..")
+            {
+                current = Path.GetDirectoryName(current) ?? current;
+                continue;
+            }
+            var next = Path.Combine(current, part);
+            FileSystemInfo info = Directory.Exists(next) ? new DirectoryInfo(next) : new FileInfo(next);
+            var target = info.LinkTarget;
+            if (target is null) { current = next; continue; }
+            if (++hops > MaxLinkHops) return null;
+            if (Path.IsPathRooted(target))
+            {
+                current = Path.GetPathRoot(target) ?? "";
+                target = target[current.Length..];
+            }
+            foreach (var step in Split(target).Reverse()) pending.Push(step);
+        }
+        return current;
+    }
+
+    private static string[] Split(string path) =>
+        path.Split([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar], StringSplitOptions.RemoveEmptyEntries);
 
     private static bool TryNumber(Dictionary<string, string> flags, string name, out int? value, [NotNullWhen(false)] out Refusal? refusal)
     {
