@@ -56,4 +56,6 @@ public sealed record GdrLinkToPathRequest(string ProjectPath, string Path, Basel
 /// <param name="ExpectedBaseline">The required Baseline identity; null accepts the current Baseline.</param>
 /// <param name="RunBlocks">Whether to run the Guide's <c>motif-query</c> blocks read-only; false lists them as skipped.</param>
 /// <param name="BlockTimeoutSeconds">The longest one block may run before it is reported as failed.</param>
-public sealed record GdrCheckRequest(string ProjectPath, BaselineToken? ExpectedBaseline = null, bool RunBlocks = true, int BlockTimeoutSeconds = 60);
+/// <param name="BuildIndex">Whether to build the corpus parse index a block needs when it is missing or stale (once per distinct shape); the timeout then bounds the query, not the build.</param>
+public sealed record GdrCheckRequest(string ProjectPath, BaselineToken? ExpectedBaseline = null, bool RunBlocks = true, int BlockTimeoutSeconds = 60,
+    bool BuildIndex = false);

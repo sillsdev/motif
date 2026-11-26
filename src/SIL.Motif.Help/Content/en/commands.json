@@ -16,7 +16,7 @@
   },
   "guide check": {
     "title": "Check the Grammar Guide against the grammar",
-    "description": "Checks the Grammar Guide in the current Baseline: morphemes the lexicon lacks, interlinear lines whose tokens do not pair up, and where the Guide is out of step with the grammar. It runs each motif-query block read-only: ok with a row count, refused with its code, not built with the command that builds the index, or failed. All findings are advisory. no-run skips the blocks; timeout bounds one block. An Autonomous command.",
+    "description": "Checks the Grammar Guide in the current Baseline: morphemes the lexicon lacks, interlinear lines whose tokens do not pair up, and where the Guide is out of step with the grammar. It runs each motif-query block read-only: ok with a row count (and, for a group-by block, its words and tokens), refused with its code, not built with the command that builds the index (motif guide check --build), or failed. All findings are advisory. no-run skips the blocks; timeout bounds one block; build first builds any missing or stale corpus parse index the blocks need, once per distinct shape, which can take many minutes. An Autonomous command.",
     "source": "Hand-written from the Guide check (ADR 0005) and the shared Guide query evaluator."
   },
   "guide edit": {

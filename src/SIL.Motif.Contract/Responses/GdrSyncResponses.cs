@@ -78,10 +78,13 @@ public static class GdrQueryBlockStatus
 /// <param name="Complete">False when <paramref name="Rows"/> is a lower bound ("at least"); null when there is no count.</param>
 /// <param name="Milliseconds">How long the run took; 0 when it did not run.</param>
 /// <param name="BuildCommand">For a not-built block, the exact shell line that builds the parse index.</param>
+/// <param name="Words">For a group-by block, the word types the groups cover (<paramref name="Rows"/> then counts the groups); null otherwise.</param>
+/// <param name="Tokens">The tokens of the matching words, when the run totalled them.</param>
+/// <param name="IndexBuilt">True when this check built the parse index the block needed.</param>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record GdrQueryBlockRun(
     string Id, string? Gdr, string? Section, string Status, string? Code, string Message, long? Rows, bool? Complete, double Milliseconds,
-    string? BuildCommand = null);
+    string? BuildCommand = null, long? Words = null, long? Tokens = null, bool IndexBuilt = false);
 
 /// <summary>One thing out of sync between the Grammar Guide and the grammar.</summary>
 /// <param name="Code">A <see cref="GdrSyncCodes"/> value.</param>

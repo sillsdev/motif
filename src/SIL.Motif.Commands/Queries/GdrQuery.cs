@@ -90,7 +90,7 @@ public static class GdrQuery
         // The blocks run after the store is closed: a v1 line opens it again, and a slow block must not hold it.
         if (!read.Succeeded || read.Value is not { HasBaseline: true } response || sources is null) return read;
         var blocks = GdrQueryBlockCheck.Check(sources, request.ProjectPath, request.RunBlocks,
-            TimeSpan.FromSeconds(Math.Max(1, request.BlockTimeoutSeconds)), parserPath);
+            TimeSpan.FromSeconds(Math.Max(1, request.BlockTimeoutSeconds)), parserPath, request.BuildIndex);
         var findings = blocks.Findings.Count == 0 ? response.Findings : [.. response.Findings, .. blocks.Findings];
         return CommandOutcome<GdrCheckResponse>.Success(response with { Findings = findings, InSync = findings.Count == 0, QueryBlocks = blocks.Runs });
     }

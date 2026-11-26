@@ -53,7 +53,7 @@ public sealed record GuideEvidenceResult(GuideEvidenceStatus Status, GuideEviden
 
 /// <summary>
 /// Runs the <c>run</c> line of a Guide <c>motif-query</c> block (a v2 <c>motif query corpus forms</c> line) through the same read-only
-/// corpus evaluator the CLI uses, and shapes the answer for the block. It never writes, and it never builds a parse index: a cold
+/// corpus evaluator the CLI uses, and shapes the answer for the block. It never writes, and it builds a parse index only when asked (the Guide check's --build): otherwise a cold
 /// index comes back as <see cref="GuideEvidenceStatus.ColdIndex"/> with the command that builds it (the CLI line itself builds, so
 /// running the run line in a terminal warms it). Relative paths in the line resolve against <c>baseDirectory</c>, the folder of the project.
 /// </summary>
@@ -74,9 +74,9 @@ public static class GuideEvidenceRunner
 
     /// <summary>Runs a run line once, shaped with the default columns; shape the result for each display with <see cref="GuideEvidenceResult.Shaped"/>.</summary>
     public static GuideEvidenceResult Evaluate(string runLine, string baseDirectory, string? parserPath = null, CancellationToken cancellationToken = default,
-        string? projectPath = null)
+        string? projectPath = null, bool buildIndex = false)
     {
-        var result = Evaluate(runLine, baseDirectory, parserPath, cancellationToken, null, null);
+        var result = Evaluate(runLine, baseDirectory, parserPath, cancellationToken, null, null, buildIndex);
         return projectPath is null ? result : result with { BaselineId = BaselineIdOf(projectPath) };
     }
 
@@ -85,7 +85,7 @@ public static class GuideEvidenceRunner
         CurrentBaselineQuery.Query(new CurrentBaselineRequest(projectPath)) is { Succeeded: true, Value: { } baseline } ? baseline.Token?.BundleDigest : null;
 
     internal static GuideEvidenceResult Evaluate(string runLine, string baseDirectory,
-        string? parserPath, CancellationToken cancellationToken, IRealizesIndexBuilder? indexBuilder, string? cacheRoot)
+        string? parserPath, CancellationToken cancellationToken, IRealizesIndexBuilder? indexBuilder, string? cacheRoot, bool allowIndexBuild = false)
     {
         ArgumentNullException.ThrowIfNull(runLine);
         ArgumentNullException.ThrowIfNull(baseDirectory);
@@ -101,7 +101,7 @@ public static class GuideEvidenceRunner
         CommandOutcome<CorpusFormsResponse> outcome;
         try
         {
-            outcome = CorpusQueryCommand.Forms(request, parserPath, cancellationToken, indexBuilder, cacheRoot, allowIndexBuild: false, phases: phases);
+            outcome = CorpusQueryCommand.Forms(request, parserPath, cancellationToken, indexBuilder, cacheRoot, allowIndexBuild: allowIndexBuild, phases: phases);
         }
         catch (OperationCanceledException) { throw; }
         catch (Exception exception)

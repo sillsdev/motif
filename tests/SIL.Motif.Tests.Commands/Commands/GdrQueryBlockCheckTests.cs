@@ -101,6 +101,79 @@ public sealed class GdrQueryBlockCheckTests(PristineProjectFixture pristine)
         finally { Directory.Delete(folder, true); }
     }
 
+    private static GdrQueryBlockCheck.Seams Seam(Indexed recorded) => new(
+        Corpus: (line, baseDirectory, token) => GuideEvidenceRunner.Evaluate(line, baseDirectory, null, token, recorded.Builder, recorded.CacheRoot),
+        CorpusBuilding: (line, baseDirectory, token) => GuideEvidenceRunner.Evaluate(line, baseDirectory, null, token, recorded.Builder, recorded.CacheRoot, allowIndexBuild: true));
+
+    [Fact]
+    public void BuildBuildsAColdIndexOnceForBlocksThatShareItAndThenChecksThem()
+    {
+        var folder = Directory.CreateTempSubdirectory("gdr-check-build").FullName;
+        try
+        {
+            var recorded = RecordedIndex(folder, false, warm: false);
+            var result = GdrQueryBlockCheck.Check([Source("a", Corpus), Source("b", Corpus)], Path.Combine(folder, "p.fwdata"), true,
+                TimeSpan.FromSeconds(30), null, Seam(recorded), buildIndex: true);
+            Assert.Equal(1, recorded.Builds);
+            Assert.All(result.Runs, block => Assert.Equal(GdrQueryBlockStatus.Ok, block.Status));
+            Assert.Equal([true, false], result.Runs.Select(block => block.IndexBuilt));
+            Assert.Contains("built the parse index", result.Runs[0].Message, StringComparison.Ordinal);
+            Assert.Equal(2L, result.Runs[0].Rows);
+            Assert.Empty(result.Findings);
+        }
+        finally { Directory.Delete(folder, true); }
+    }
+
+    [Fact]
+    public void WithoutBuildAColdBlockStaysNotBuiltBuildsNothingAndNamesTheGuideCheckBuildCommand()
+    {
+        var folder = Directory.CreateTempSubdirectory("gdr-check-nobuild").FullName;
+        try
+        {
+            var recorded = RecordedIndex(folder, false, warm: false);
+            var result = GdrQueryBlockCheck.Check([Source("q", Corpus)], Path.Combine(folder, "p.fwdata"), true, TimeSpan.FromSeconds(30), null, Seam(recorded));
+            Assert.Equal(GdrQueryBlockStatus.NotBuilt, Assert.Single(result.Runs).Status);
+            Assert.Equal(0, recorded.Builds);
+            Assert.Contains("motif guide check --project '", Assert.Single(result.Findings).Message, StringComparison.Ordinal);
+            Assert.Contains("--build", result.Findings[0].Message, StringComparison.Ordinal);
+        }
+        finally { Directory.Delete(folder, true); }
+    }
+
+    [Fact]
+    public void ABuildThatThrowsIsAFailedBlockAndTheNextBlockStillRuns()
+    {
+        var calls = 0;
+        var cold = new GuideEvidenceResult(GuideEvidenceStatus.ColdIndex, null, "parse index not built: run x", "query.parse-index-cold", "x", 1, new Dictionary<string, double>());
+        var seams = new GdrQueryBlockCheck.Seams(Corpus: (_, _, _) => cold, CorpusBuilding: (_, _, _) => ++calls == 1 ? throw new InvalidOperationException("no parser") : cold);
+        var result = GdrQueryBlockCheck.Check([Source("a", Corpus), Source("b", Corpus)], "p.fwdata", true, TimeSpan.FromSeconds(30), null, seams, buildIndex: true);
+        Assert.Equal(2, calls);
+        Assert.Equal(GdrQueryBlockStatus.Failed, result.Runs[0].Status);
+        Assert.Contains("no parser", result.Runs[0].Message, StringComparison.Ordinal);
+        Assert.Equal(GdrQueryBlockStatus.NotBuilt, result.Runs[1].Status);
+    }
+
+    [Fact]
+    public void AGroupByBlockReportsItsGroupsAsRowsAndItsWordsAndTokensAsEvidenceSize()
+    {
+        var folder = Directory.CreateTempSubdirectory("gdr-check-group").FullName;
+        try
+        {
+            var recorded = RecordedIndex(folder, false, warm: false);
+            var grouped = "motif query corpus forms --corpus words.tsv --grammar grammar.json forms where 'readings > 0' --group-by parse.state";
+            var result = GdrQueryBlockCheck.Check([Source("g", grouped), Source("f", Corpus)], Path.Combine(folder, "p.fwdata"), true,
+                TimeSpan.FromSeconds(30), null, Seam(recorded), buildIndex: true);
+            var group = result.Runs[0];
+            Assert.Equal(GdrQueryBlockStatus.Ok, group.Status);
+            Assert.Equal(2L, group.Words);
+            Assert.Equal(15L, group.Tokens);
+            Assert.True(group.Rows is > 0 and <= 2, $"rows were {group.Rows}");
+            Assert.Null(result.Runs[1].Words);
+            Assert.Equal(15L, result.Runs[1].Tokens);
+        }
+        finally { Directory.Delete(folder, true); }
+    }
+
     [Fact]
     public void ARefusedLineKeepsItsCodeAndDoesNotRun()
     {
