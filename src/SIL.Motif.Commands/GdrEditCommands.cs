@@ -80,30 +80,59 @@ public static class GdrEditCommands
         {
             var read = form.Read(part.Trim(), true);
             var error = read.Diagnostics.FirstOrDefault(item => item.Severity == DiagnosticSeverity.Error);
+            // A lone <NP> reads as a block; in the middle of a line it is raw HTML, which says what to escape.
+            if (error is not null && form.Read("z " + part.Trim() + " z", true).Diagnostics.FirstOrDefault(item => item.Severity == DiagnosticSeverity.Error) is { } inline)
+                error = inline;
             if (error is not null) return $"{name} is not inline Markdown: {error.Message}";
             if (read.Paragraphs.Count != 1) return $"{name} must be inline Markdown with no block (heading, list, quote or fence).";
         }
         return PairsAcrossParts(request, form);
     }
 
-    /// <summary>Why a part has a marker left open, else null.</summary>
-    private const string Open = "A part has a marker (* _ ` < [ { or \\) that is not closed within that part, so on the joined line it would pair with another part.";
-
     private static string? PairsAcrossParts(GdrDecideRequest request, FieldWorksMarkdownSourceForm form)
     {
         if (Parts(request) is not { } parts) return null;
         var alone = new Dictionary<string, IReadOnlyList<TextRun>>();
         foreach (var text in new[] { parts.Chosen, parts.Over, parts.Because })
-            alone[text] = GdrMarkdownImport.Runs(form.Read(text, true).Paragraphs[0]);
+            alone[text] = Isolated(form, text);
         var plainWs = GdrMarkdownImport.Runs(form.Read("x", true).Paragraphs[0])[0].Ws;
         TextRun Plain(string text) => new(text, plainWs);
         var expected = alone[parts.Chosen].Append(Plain(" or ")).Concat(alone[parts.Over]).Append(Plain(", I am choosing "))
             .Concat(alone[parts.Chosen]).Append(Plain(", because ")).Concat(alone[parts.Because]);
         var joinedRead = form.Read(parts.Sentence, true);
-        if (joinedRead.HasErrors || joinedRead.Paragraphs.Count != 1) return Open;
-        var joined = GdrMarkdownImport.Runs(joinedRead.Paragraphs[0]);
-        if (Shape(expected).SequenceEqual(Shape(joined))) return null;
-        return Open;
+        string? cause = null;
+        if (joinedRead.HasErrors || joinedRead.Paragraphs.Count != 1)
+            cause = "The joined line cannot be read as inline Markdown" +
+                (joinedRead.Diagnostics.FirstOrDefault(item => item.Severity == DiagnosticSeverity.Error) is { } error ? ": " + error.Message : "") + ".";
+        else if (!Shape(expected).SequenceEqual(Shape(GdrMarkdownImport.Runs(joinedRead.Paragraphs[0]))))
+            cause = "A marker in one part would pair with a marker in another part on the joined line.";
+        if (cause is null) return null;
+        var open = new List<string>();
+        foreach (var (name, text) in new[] { ("--choosing", parts.Chosen), ("--over", parts.Over), ("--because", parts.Because) })
+            foreach (var marker in UnescapedMarkers(text))
+                open.Add($"{name} has {marker}, written \\{marker} to keep it literal");
+        var twice = UnescapedMarkers(parts.Chosen).Any() ? " --choosing appears twice in the line, so one marker in it can pair with its own copy." : "";
+        return cause + (open.Count == 0 ? "" : " Escape what you mean literally: " + string.Join("; ", open) + ".") + twice;
+    }
+
+    // The part read in the middle of a line, so a tag like <NP> is read as it will be on the joined line.
+    private static IReadOnlyList<TextRun> Isolated(FieldWorksMarkdownSourceForm form, string text)
+    {
+        var runs = GdrMarkdownImport.Runs(form.Read("z " + text + " z", true).Paragraphs[0]).ToList();
+        if (runs.Count == 0) return runs;
+        runs[0] = runs[0] with { Text = runs[0].Text[2..] };
+        runs[^1] = runs[^1] with { Text = runs[^1].Text[..^2] };
+        return runs.Where(run => run.Text.Length != 0).ToArray();
+    }
+
+    private static IEnumerable<char> UnescapedMarkers(string text)
+    {
+        var seen = new HashSet<char>();
+        for (var i = 0; i < text.Length; i++)
+        {
+            if (text[i] == '\\') { i++; continue; }
+            if ("*_`<[{".Contains(text[i]) && seen.Add(text[i])) yield return text[i];
+        }
     }
 
     // Adjacent runs that differ in nothing but their text are one run, however the reader split them.

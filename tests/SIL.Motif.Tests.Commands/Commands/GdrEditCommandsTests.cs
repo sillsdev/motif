@@ -455,6 +455,9 @@ public sealed class GdrEditCommandsTests(PristineProjectFixture pristine)
     [InlineData("a", "_b", "c")]
     [InlineData("a", "b", "*c")]
     [InlineData("a", "<b", "c>")]
+    [InlineData("*goed", "walked", "it is ungrammatical")]
+    [InlineData("1SG_NOM", "3SG_ACC", "the gloss_x label is kept")]
+    [InlineData("[V]", "[N]", "morph [V] and [N] differ")]
     public void AMarkerThatPairsWithNothingStaysLiteralAndIsAccepted(string chosen, string over, string because)
     {
         var path = ProjectWithGdrs(HeadingStyles);
@@ -462,6 +465,59 @@ public sealed class GdrEditCommandsTests(PristineProjectFixture pristine)
         var decided = GdrEditCommands.Decide(new GdrDecideRequest(path, "GDR-2", chosen, over, because));
 
         Assert.True(decided.Succeeded, decided.Refusal?.Message);
+    }
+
+    [Theory]
+    [InlineData("<NP>", "x", "y", "--choosing")]
+    [InlineData("x", "<VP>", "y", "--over")]
+    [InlineData("x", "y", "see <S>", "--because")]
+    [InlineData("NP<sub>", "x", "y", "--choosing")]
+    public void ATagLikeTokenIsRefusedWithThePartAndTheEscapeForLessThan(string chosen, string over, string because, string part)
+    {
+        var path = ProjectWithGdrs(HeadingStyles);
+
+        var refused = GdrEditCommands.Decide(new GdrDecideRequest(path, "GDR-2", chosen, over, because));
+
+        Assert.Equal(RefusalCodes.GdrDecisionInvalid, refused.Refusal!.Code);
+        Assert.Contains(part, refused.Refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("Escape the < as \\<", refused.Refusal.Message, StringComparison.Ordinal);
+        Assert.True(GdrEditCommands.Decide(new GdrDecideRequest(path, "GDR-2", chosen.Replace("<", "\\<", StringComparison.Ordinal),
+            over.Replace("<", "\\<", StringComparison.Ordinal), because.Replace("<", "\\<", StringComparison.Ordinal))).Succeeded);
+    }
+
+    [Fact]
+    public void ARealWritingSystemSpanInEachPartIsAccepted()
+    {
+        var path = ProjectWithGdrs(HeadingStyles);
+        var ws = GdrQuery.Show(new GdrShowRequest(path, "GDR-2")).Value!.DefaultVernacular;
+
+        var decided = GdrEditCommands.Decide(new GdrDecideRequest(path, "GDR-2", $"accept [alila]{{ws={ws}}}", "reject", $"a [word]{{ws={ws}}} test"));
+
+        Assert.True(decided.Succeeded, decided.Refusal?.Message);
+    }
+
+    [Fact]
+    public void ARefusalNamesThePartAndTheEscapeForItsMarker()
+    {
+        var path = ProjectWithGdrs(HeadingStyles);
+
+        var refused = GdrEditCommands.Decide(new GdrDecideRequest(path, "GDR-2", "a", "*NOM", "ACC*"));
+
+        var message = refused.Refusal!.Message;
+        Assert.Contains("--over has *, written \\* ", message, StringComparison.Ordinal);
+        Assert.Contains("--because has *, written \\* ", message, StringComparison.Ordinal);
+        Assert.DoesNotContain("--choosing", message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ARefusalSaysChoosingAppearsTwice()
+    {
+        var path = ProjectWithGdrs(HeadingStyles);
+
+        var refused = GdrEditCommands.Decide(new GdrDecideRequest(path, "GDR-2", "a*b", "c", "d"));
+
+        Assert.Contains("--choosing has *", refused.Refusal!.Message, StringComparison.Ordinal);
+        Assert.Contains("appears twice", refused.Refusal.Message, StringComparison.Ordinal);
     }
 
     [Fact]
