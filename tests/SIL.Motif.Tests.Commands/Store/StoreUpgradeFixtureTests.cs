@@ -150,7 +150,7 @@ public sealed class StoreUpgradeFixtureTests : IDisposable
         Assert.All(report.Dropped, table => Assert.False(report.Carried.ContainsKey(table), table));
     }
 
-    // Whatever the old store held, the upgraded one defines exactly the tables, columns and indexes a new store does.
+    // The upgraded store defines the same tables, columns and indexes as a new one.
     private void AssertSchemaMatchesAFreshStore(SqliteConnection upgraded)
     {
         var fresh = Path.Combine(_root, "fresh", "project.motif.db");
