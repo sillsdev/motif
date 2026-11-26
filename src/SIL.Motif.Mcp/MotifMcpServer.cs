@@ -142,18 +142,32 @@ public static class MotifMcpServer
                     ParsimonyTools.ListResources(includeParsimonyResources)),
                 ListResourceTemplatesHandler = (_, _) => ValueTask.FromResult(includeReviewResources
                     ? ReviewReportResources.Templates(includeReviewDrillDown) : new ListResourceTemplatesResult { ResourceTemplates = [] }),
-                ReadResourceHandler = (request, _) => ValueTask.FromResult(
+                ReadResourceHandler = (request, _) => ValueTask.FromResult(ReadResourceNotingUpgrades(context, () =>
                     request.Params?.Uri is { } uri && uri.StartsWith(ReviewReportResources.Prefix, StringComparison.Ordinal)
                         ? includeReviewResources ? ReviewReportResources.Read(uri, context.ProductVersion, SIL.Motif.Worker.RunnerOptions.ResolveRoot(),
                             includeReviewDrillDown, context.JobParserPath)
                             : throw new McpProtocolException("Report resources are unavailable.", McpErrorCode.InvalidParams)
                         : includeParsimonyResources && request.Params?.Uri == ParsimonyTools.MeasuresResourceUri
                             ? ParsimonyTools.ReadMeasuresResource(string.Empty, MotifProductVersion.CurrentText)
-                            : EncodingGuides.ReadResource(request.Params?.Uri ?? string.Empty)),
+                            : EncodingGuides.ReadResource(request.Params?.Uri ?? string.Empty))),
             },
         }, loggerFactory);
         await using (server)
             await server.RunAsync(cancellation);
+    }
+
+    // A resource read has no result to carry the upgrade notice, so the next tool result does.
+    private static ReadResourceResult ReadResourceNotingUpgrades(ServerContext context, Func<ReadResourceResult> read)
+    {
+        using var upgrades = SIL.Motif.Host.Store.StoreUpgradeNotices.Begin();
+        try
+        {
+            return read();
+        }
+        finally
+        {
+            foreach (var notice in upgrades.Notices) context.PendingUpgrades.Enqueue(notice);
+        }
     }
 
     /// <summary>The tools <paramref name="profile"/> exposes, in a stable order.</summary>
@@ -189,7 +203,10 @@ public static class MotifMcpServer
             outcome = await RunAsync(context, tool, args, cancellation);
             result = outcome.Refusal is { } refusal ? RefusalMapper.ToResult(refusal, tools, args) : Success(tool, outcome, args);
         }
-        result = StoreUpgradedNotice.Apply(upgrades.Notices, result);
+        var told = new List<SIL.Motif.Host.Store.StoreUpgradeNotice>();
+        while (context.PendingUpgrades.TryDequeue(out var pending)) told.Add(pending);
+        told.AddRange(upgrades.Notices);
+        result = StoreUpgradedNotice.Apply(told, result);
         result = OpenRequestsNotice.Apply(context, args, result);
         context.Activity.Record(new ActivityEntry(DateTimeOffset.UtcNow, tool?.Tool.Name ?? name, args,
             result.IsError == true, outcome.Refusal?.Code, ResultBytes(result), clock.ElapsedMilliseconds,
