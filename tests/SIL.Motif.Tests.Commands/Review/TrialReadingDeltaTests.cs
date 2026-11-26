@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.Review;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.HandAnalysis;
@@ -54,6 +55,130 @@ public sealed class TrialReadingDeltaTests
         Assert.Equal(Sig(3).Id, changed.Retired.Single().Id);
         Assert.Equal(Sig(4).Id, changed.Added.Single().Id);
         Assert.StartsWith("case/", changed.CaseKey);
+    }
+
+    [Fact]
+    public void SiblingsAreReportedSeparatelyAndJudgedByTheSameExpectations()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var forms = new[] { Form("gold", [1], [1]), Form("kuish", [2], []), Form("kuishe", [3], [3, 4]), Form("kuishi", [5], [5]) };
+        var proposal = "";
+        var result = ProjectStoreCommand.Run<string>(fixture.Project, MotifProductVersion.CurrentText, (database, located) =>
+        {
+            proposal = ProposalCompareExports.AddTrial(database, located, forms, siblings: ["kuish", "kuishe", "kuishi"]);
+            ProposalCompareExports.RecordCurrentBaseline(database, located);
+            return CommandOutcome<string>.Success("");
+        });
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        var request = new ReadTrialDeltaRequest(fixture.Project, ProposalId: proposal);
+
+        var delta = TrialReadingDelta.Read(request).Value!;
+        var siblings = delta.Siblings!;
+
+        Assert.Equal(3, siblings.Sampled);
+        Assert.Equal(3, siblings.Measured);
+        Assert.Equal(1, siblings.Lost);
+        Assert.Equal(["kuish"], siblings.LostSample);
+        Assert.Equal(1, siblings.Doubled);
+        Assert.Equal(["kuishe"], siblings.DoubledSample);
+        Assert.Equal((42L, 1000, "per-form"), (siblings.Seed, siblings.Max, siblings.Pattern));
+        Assert.Equal(["ish"], siblings.TouchedForms);
+        var directory = Path.Combine(fixture.Root, "manifests");
+        TrialReadingDelta.ReadAndWrite(request, directory);
+        var green = TrialReadingDelta.Check(request, new TrialExpectations(Rows(directory, "expect-retired.jsonl"),
+            Rows(directory, "expect-added.jsonl"))).Value!;
+        Assert.Equal(ReadingExpectationStates.Green, green.Expectations!.State);
+        Assert.Equal(1, green.Siblings!.Lost);
+        // A sibling lost with no manifest row is a mismatch, and no new state is added for it.
+        var lostUndeclared = Rows(directory, "expect-retired.jsonl").Where(line => !line.Contains("\"kuish\"")).ToArray();
+        var gate = TrialReadingDelta.Check(request, new TrialExpectations(lostUndeclared, Rows(directory, "expect-added.jsonl")))
+            .Value!.Expectations!;
+        Assert.Equal(ReadingExpectationStates.Mismatch, gate.State);
+        Assert.Contains(gate.Mismatches, item => item.Word == "kuish");
+        // A doubled sibling counts toward the doubled cap.
+        var capped = TrialReadingDelta.Check(request, new TrialExpectations(Rows(directory, "expect-retired.jsonl"),
+            Rows(directory, "expect-added.jsonl"), MaxDoubled: 0)).Value!.Expectations!;
+        Assert.Equal(ReadingExpectationStates.DoubledOverCap, capped.State);
+    }
+
+    [Fact]
+    public void ALostSiblingNotDeclaredRetiredWritesNoReceiptAndRemovesAnEarlierOne()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var forms = new[] { Form("gold", [1], [1]), Form("kuish", [2], []), Form("kuishi", [5], [5]) };
+        var proposal = "";
+        var stored = ProjectStoreCommand.Run<string>(fixture.Project, MotifProductVersion.CurrentText, (database, located) =>
+        {
+            proposal = ProposalCompareExports.AddTrial(database, located, forms, siblings: ["kuish", "kuishi"]);
+            ProposalCompareExports.RecordCurrentBaseline(database, located);
+            return CommandOutcome<string>.Success("");
+        });
+        Assert.True(stored.Succeeded, stored.Refusal?.Message);
+        var request = new ReadTrialDeltaRequest(fixture.Project, ProposalId: proposal);
+        var directory = Path.Combine(fixture.Root, "manifests");
+        TrialReadingDelta.ReadAndWrite(request, directory);
+        var path = Path.Combine(fixture.Root, "receipt.json");
+        var declared = Declared(directory);
+        Assert.NotNull(TrialReadingDelta.Check(request, declared, receiptPath: path).Value!.Receipt);
+
+        var undeclared = new TrialExpectations([.. declared.RetiredRows!.Where(line => !line.Contains("\"kuish\""))], declared.AddedRows);
+        var result = TrialReadingDelta.Check(request, undeclared, receiptPath: path);
+
+        Assert.Equal(ReadingExpectationStates.Mismatch, result.Value!.Expectations!.State);
+        Assert.Null(result.Value.Receipt);
+        Assert.False(File.Exists(path));
+    }
+
+    private static string TrialWithSiblings(ReviewAcceptanceFixture fixture, string[] sampled, bool purgeList = false)
+    {
+        var proposal = "";
+        var result = ProjectStoreCommand.Run<string>(fixture.Project, MotifProductVersion.CurrentText, (database, located) =>
+        {
+            proposal = ProposalCompareExports.AddTrial(database, located, [Form("gold", [1], [1]), Form("kuish", [2], [2])], siblings: sampled);
+            ProposalCompareExports.RecordCurrentBaseline(database, located);
+            if (purgeList)
+                foreach (var file in Directory.GetFiles(Path.GetFullPath(database.FullPath) + ".job-inputs")) File.Delete(file);
+            return CommandOutcome<string>.Success("");
+        });
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        return proposal;
+    }
+
+    [Fact]
+    public void ASampledSiblingTheTrialDidNotMeasureMakesTheExpectationsUnmeasuredNotGreen()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var request = new ReadTrialDeltaRequest(fixture.Project, ProposalId: TrialWithSiblings(fixture, ["kuish", "absent", "gone"]));
+
+        var delta = TrialReadingDelta.Check(request, new TrialExpectations([], [])).Value!;
+
+        Assert.Equal(ReadingExpectationStates.Unmeasured, delta.Expectations!.State);
+        Assert.Contains("2 of 3 sampled siblings were not measured", delta.Expectations.Reason);
+        Assert.Contains("siblings-unmeasured", delta.Limitations);
+        Assert.Equal(1, delta.Siblings!.Measured);
+    }
+
+    [Fact]
+    public void ASiblingRecordThatCannotBeReadIsReportedNotTakenForNoSiblings()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var request = new ReadTrialDeltaRequest(fixture.Project, ProposalId: TrialWithSiblings(fixture, ["kuish"], purgeList: true));
+
+        var delta = TrialReadingDelta.Check(request, new TrialExpectations([], [])).Value!;
+
+        Assert.Null(delta.Siblings);
+        Assert.Contains("siblings-unreadable", delta.Limitations);
+        Assert.Equal(ReadingExpectationStates.Unmeasured, delta.Expectations!.State);
+        Assert.Contains("record could not be read", delta.Expectations.Reason);
+    }
+
+    [Fact]
+    public void ATrialThatSampledNoSiblingsCarriesNoSiblingsBlock()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var proposal = Publish(fixture.Project, Form("lost", [1], []));
+
+        Assert.Null(TrialReadingDelta.Read(new ReadTrialDeltaRequest(fixture.Project, ProposalId: proposal)).Value!.Siblings);
     }
 
     [Fact]
@@ -427,5 +552,99 @@ public sealed class TrialReadingDeltaTests
         var added = File.ReadAllText(Path.Combine(fixture.Root, "real", "expect-added.jsonl"));
         Assert.DoesNotContain("created:", added);
         Assert.StartsWith("{\"word\": \"Kata\"", added);
+    }
+
+    private static TrialExpectations Declared(string directory) =>
+        new(Rows(directory, "expect-retired.jsonl"), Rows(directory, "expect-added.jsonl"));
+
+    private static Refusal? Verify(string project, string proposal, string receiptPath)
+    {
+        Refusal? refusal = null;
+        Change(project, (database, located) => refusal = TrialReceiptFile.Verify(database, located,
+            new SIL.Motif.Worker.Store.ProposalRepository(database).Get(CanonicalId.Parse(proposal)), receiptPath));
+        return refusal;
+    }
+
+    [Fact]
+    public void AGreenTrialWritesAReceiptThatApplyHonoursUntilTheRevisionOrBaselineMoves()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var proposal = ProposalWithAllClasses(fixture);
+        var directory = Path.Combine(fixture.Root, "manifests");
+        var request = new ReadTrialDeltaRequest(fixture.Project, ProposalId: proposal);
+        Assert.True(TrialReadingDelta.ReadAndWrite(request, directory).Succeeded);
+        var path = Path.Combine(fixture.Root, "receipt.json");
+
+        var result = TrialReadingDelta.Check(request, Declared(directory), receiptPath: path);
+
+        Assert.Equal(ReadingExpectationStates.Green, result.Value!.Expectations!.State);
+        Assert.Equal(Path.GetFullPath(path), result.Value.Receipt!.Path);
+        Assert.Equal(TrialReceiptFile.GateCodeDigest, result.Value.Receipt.GateCodeDigest);
+        Assert.Null(Verify(fixture.Project, proposal, path));
+
+        Change(fixture.Project, (database, located) => ProposalCompareExports.RecordCurrentBaseline(database, located, 'b'));
+        Assert.Equal(RefusalCodes.ApplyReceiptStale, Verify(fixture.Project, proposal, path)?.Code);
+    }
+
+    [Fact]
+    public void AReceiptIsRefusedAfterTheProposalChangesOrTheFileIsEditedOrAnotherBuildIssuedIt()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var proposal = ProposalWithAllClasses(fixture);
+        var directory = Path.Combine(fixture.Root, "manifests");
+        var request = new ReadTrialDeltaRequest(fixture.Project, ProposalId: proposal);
+        Assert.True(TrialReadingDelta.ReadAndWrite(request, directory).Succeeded);
+        var path = Path.Combine(fixture.Root, "receipt.json");
+        Assert.True(TrialReadingDelta.Check(request, Declared(directory), receiptPath: path).Value!.Receipt is not null);
+        var text = File.ReadAllText(path);
+
+        Assert.Equal(RefusalCodes.ApplyReceiptInvalid, Verify(fixture.Project, proposal, Path.Combine(fixture.Root, "absent.json"))?.Code);
+        File.WriteAllText(path, text.Replace("green", "mismatch"));
+        Assert.Equal(RefusalCodes.ApplyReceiptInvalid, Verify(fixture.Project, proposal, path)?.Code);
+        File.WriteAllText(path, "not json");
+        Assert.Equal(RefusalCodes.ApplyReceiptInvalid, Verify(fixture.Project, proposal, path)?.Code);
+
+        var receipt = System.Text.Json.JsonSerializer.Deserialize<TrialReceipt>(text, SIL.Motif.Contract.MotifJson.CreateOptions())!;
+        File.WriteAllText(path, System.Text.Json.JsonSerializer.Serialize(
+            TrialReceiptFile.Seal(receipt with { GateCodeDigest = "other-build" }), SIL.Motif.Contract.MotifJson.CreateOptions()));
+        var otherBuild = Verify(fixture.Project, proposal, path);
+        Assert.Equal(RefusalCodes.ApplyReceiptStale, otherBuild?.Code);
+        Assert.Contains("other-build", otherBuild!.Message);
+
+        File.WriteAllText(path, text);
+        Assert.Null(Verify(fixture.Project, proposal, path));
+        Change(fixture.Project, (database, _) => ProposalCompareExports.SaveProposal(database, proposal,
+            ProposalCompareExports.OtherProposalJson(proposal)));
+        Assert.Equal(RefusalCodes.ApplyReceiptStale, Verify(fixture.Project, proposal, path)?.Code);
+    }
+
+    [Fact]
+    public void ATrialThatIsNotGreenWritesNoReceiptAndRemovesAnEarlierOne()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var proposal = ProposalWithAllClasses(fixture);
+        var request = new ReadTrialDeltaRequest(fixture.Project, ProposalId: proposal);
+        var path = Path.Combine(fixture.Root, "receipt.json");
+        File.WriteAllText(path, "{}");
+
+        var result = TrialReadingDelta.Check(request, new TrialExpectations([], []), receiptPath: path);
+
+        Assert.Equal(ReadingExpectationStates.Mismatch, result.Value!.Expectations!.State);
+        Assert.Null(result.Value.Receipt);
+        Assert.False(File.Exists(path));
+        Assert.Equal(RefusalCodes.TrialDeltaRequestInvalid,
+            TrialReadingDelta.Check(request, new TrialExpectations(), receiptPath: path).Refusal?.Code);
+    }
+
+    [Fact]
+    public void ApplyStopsOnAReceiptThatIsMissingBeforeItReadsAnythingElse()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var proposal = ProposalWithAllClasses(fixture);
+
+        var applied = ProposalCommands.ApplyWithinLease(new ApplyRequest(fixture.Project, MotifProductVersion.CurrentText, proposal,
+            Attribution: new ApplyAttribution(ReceiptPath: Path.Combine(fixture.Root, "absent.json"))));
+
+        Assert.Equal(RefusalCodes.ApplyReceiptInvalid, applied.Refusal?.Code);
     }
 }

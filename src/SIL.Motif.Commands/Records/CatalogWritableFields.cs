@@ -76,6 +76,11 @@ public sealed class CatalogWritableFields : WritableFields
     public override bool CanCreate(string ownerClassName, string ownerFieldName, string className) =>
         Allows(_creates, ownerClassName, ownerFieldName, className);
 
+    /// <summary>A new entry is built whole by the entry composers, so the parts they make are creatable in it: the lexeme form, the analyses, the senses and the entry references.</summary>
+    public override bool CanCreateInNewRecord(string ownerClassName, string ownerFieldName, string className) =>
+        CanCreate(ownerClassName, ownerFieldName, className) || ownerClassName == "LexEntry" &&
+        ownerFieldName is "LexemeForm" or "MorphoSyntaxAnalyses" or "Senses" or "EntryRefs";
+
     /// <inheritdoc />
     public override bool CanDelete(string ownerClassName, string ownerFieldName, string className) =>
         Allows(_deletes, ownerClassName, ownerFieldName, className);

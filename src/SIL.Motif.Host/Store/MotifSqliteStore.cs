@@ -305,6 +305,7 @@ internal sealed class MotifSqliteStore : IDisposable
     /// deciding and deleting under the creation lock, the one lock that orders against the store's creation.
     /// </summary>
     /// <returns><c>true</c> when the file was deleted; <c>false</c> when it is absent, empty, or usable.</returns>
+    /// <exception cref="MotifStoreVersionException">The store is newer (<see cref="MotifStoreVersionException.Newer"/>), so it is never deleted.</exception>
     public static bool DeleteIfOtherVersion(string path, MotifSqliteStoreDescriptor descriptor,
         TimeSpan? ownershipPatience = null, Action? onWaitingForOwnership = null, Action<string>? resetArtifacts = null)
     {
@@ -313,6 +314,7 @@ internal sealed class MotifSqliteStore : IDisposable
         using var ownership = AcquireOwnership(fullPath, ownershipPatience ?? DefaultOwnershipPatience,
             onWaitingForOwnership);
         if (!File.Exists(fullPath)) return false;
+        MotifStoreVersionException? refused = null;
         try
         {
             using var connection = OpenInspectionConnection(fullPath);
@@ -322,8 +324,9 @@ internal sealed class MotifSqliteStore : IDisposable
             if (Inspect(connection, descriptor, fullPath) != 0) ValidateExisting(connection, descriptor);
             return false;
         }
-        catch (MotifStoreVersionException)
+        catch (MotifStoreVersionException version)
         {
+            refused = version;
         }
         catch (SqliteException exception) when (SqliteConnections.IsCorruption(exception))
         {
@@ -335,6 +338,8 @@ internal sealed class MotifSqliteStore : IDisposable
         }
 
         using var useLease = AcquireExclusiveUseLease(fullPath);
+        // A newer store is never deleted; the lease first, so a held store still reports busy.
+        if (refused is { Newer: true }) throw refused;
         resetArtifacts?.Invoke(fullPath);
         File.Delete(fullPath);
         return true;
@@ -366,7 +371,8 @@ internal sealed class MotifSqliteStore : IDisposable
             if (schema > descriptor.CurrentSchema)
                 throw new MotifStoreVersionException(fullPath,
                     $"This {descriptor.Name} is at schema {schema} and this build understands " +
-                    $"{descriptor.CurrentSchema}. Something newer opened it; update Motif and try again.");
+                    $"{descriptor.CurrentSchema}. Something newer opened it; install the newer Motif, or restore a pre-upgrade backup with motif store restore.")
+                    { Newer = true };
             if (schema == descriptor.CurrentSchema) descriptor.ValidateSchema(connection, null);
             using var transaction = connection.BeginTransaction();
             var result = act(connection, transaction, schema);
@@ -622,7 +628,8 @@ internal sealed class MotifSqliteStore : IDisposable
             throw new MotifStoreVersionException(fullPath,
                 $"This {descriptor.Name} is at schema {schema} and this build understands " +
                 $"{descriptor.CurrentSchema}. " +
-                "Something newer opened it; update Motif and try again.");
+                "Something newer opened it; install the newer Motif, or restore a pre-upgrade backup with motif store restore.")
+                { Newer = true };
 
         var hasTables = HasUserTables(connection);
         if (applicationId == 0 && schema != 0)

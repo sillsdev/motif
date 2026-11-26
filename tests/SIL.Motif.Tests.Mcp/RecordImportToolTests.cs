@@ -181,6 +181,30 @@ public sealed class RecordImportToolTests(PristineProjectFixture pristine) : IDi
     }
 
     [Fact]
+    public async Task AFileForANewEntryStagesOneDraftAndAnIncompleteOneIsRefusedWithItsCode()
+    {
+        var (path, file) = CreatedEntryFile.Build(pristine);
+        var incomplete = CreatedEntryFile.Edited(path, file, "incomplete.md", document => document.Data["senses"] = null);
+        using var privateRoot = PrivateManagedRoot.Use(Path.GetDirectoryName(path)!);
+        KnownProjectTestSetup.AssignUniqueTag(RunnerOptions.ResolveRoot(), path, "import-create");
+        var profile = new ToolProfile("import-create", null, null, "concise", [], AllTools: true);
+        var tools = MotifMcpServer.Expose(profile);
+
+        var refused = await MotifMcpServer.CallAsync(Context(path, profile), tools, "motif_import_record",
+            Args(("project", path), ("file", incomplete), ("draft", "bad")), CancellationToken.None);
+        var staged = await MotifMcpServer.CallAsync(Context(path, profile), tools, "motif_import_record",
+            Args(("project", path), ("file", file), ("draft", "new-entry")), CancellationToken.None);
+
+        Assert.False(staged.IsError == true, staged.StructuredContent?.ToString());
+        var result = JsonNode.Parse(staged.StructuredContent!.Value.GetRawText())!["result"]!.AsObject();
+        Assert.Equal("new", result["baseVerdict"]!.GetValue<string>());
+        Assert.True(result["operationCount"]!.GetValue<int>() > 0);
+        Assert.True(refused.IsError == true);
+        Assert.Contains(RefusalCodes.RecordImportCreateShape, refused.StructuredContent?.ToString() ?? "", StringComparison.Ordinal);
+        Assert.Single(ProposalCommands.List(new(path, "0.1.0")).Value!.Proposals);
+    }
+
+    [Fact]
     public async Task CliAndMcpReturnTheSameResponseAndTheMcpOutputConformsToTheSharedSchema()
     {
         Directory.CreateDirectory(_folder);

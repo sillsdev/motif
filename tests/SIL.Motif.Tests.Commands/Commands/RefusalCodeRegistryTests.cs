@@ -100,7 +100,7 @@ public sealed class RefusalCodeRegistryTests
         var window = windowAreas.SelectMany(method => (IEnumerable<string>)method.Invoke(null, null)!).ToList();
         Assert.All(window, code => Assert.Contains(code, RefusalCatalog.Specs.Keys));
         Assert.Equal(window.Count, window.Distinct(StringComparer.Ordinal).Count());
-        Assert.Equal(208, window.Count);
+        Assert.Equal(209, window.Count);
         Assert.Equal(window.Order(StringComparer.Ordinal), RefusalCatalog.Specs.Values.Where(spec => spec.ShownInWindow).Select(spec => spec.Code).Order(StringComparer.Ordinal));
     }
 

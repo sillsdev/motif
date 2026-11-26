@@ -260,6 +260,10 @@ namespace SIL.TextEditing.Project
             {
                 return Whole(file, ProjectRecordBaseVerdict.New, guid, null, read, new[] { Refusal(RecordRefusalKind.UnreadableFile, "The new record cannot be planned: " + e.Message, guid) });
             }
+            var computed = diff.Refusals.Where(r => r.Kind == RecordRefusalKind.ComputedField).ToList();
+            if (computed.Count > 0)
+                return Whole(file, ProjectRecordBaseVerdict.New, guid, null, read, computed.Select(r => Refusal(RecordRefusalKind.CreateComputedField,
+                    r.Field + " is computed by FieldWorks for a new record. Leave it out.", guid, r.Field)).ToList());
             return Check(diff, new CheckRun(this, null, empty, writable, guid, file), ProjectRecordBaseVerdict.New, kind.Name, guid, null, read.Diagnostics);
         }
 
@@ -384,6 +388,7 @@ namespace SIL.TextEditing.Project
             readonly ProjectRecordExport? _export;
             readonly WritableFields? _writable;
             readonly HashSet<Guid> _newGuids = new HashSet<Guid>();
+            readonly Dictionary<Guid, string> _newClasses = new Dictionary<Guid, string>();
             readonly bool _creating;
             readonly HashSet<Guid> _documentGuids = new HashSet<Guid>();
             readonly HashSet<string> _locked = new HashSet<string>(StringComparer.Ordinal);
@@ -398,13 +403,34 @@ namespace SIL.TextEditing.Project
                 _export = export;
                 _writable = writable;
                 _creating = created != null;
-                if (created != null) foreach (var g in Guids(created.Data)) _newGuids.Add(g);
+                if (created != null)
+                {
+                    foreach (var g in Guids(created.Data)) _newGuids.Add(g);
+                    var kind = importer.Schema.Kind(created.Kind);
+                    var root = kind?.Roots.FirstOrDefault(r => r.Name == created.Data.Class) ?? kind?.Root;
+                    CollectClasses(created.Data, root);
+                }
                 _bindings = importer._exporter.Result.Bindings;
                 _metadata = importer._metadata;
                 _cache = importer._cache;
                 _record = record;
                 Collect(baseDocument.Data);
                 if (export != null) foreach (var u in export.Unexported) Lock(u);
+            }
+
+            /// <summary>The class of every new object: its <c>class:</c>, or the one type its field allows.</summary>
+            void CollectClasses(RecordObject o, RecordObjectType? type)
+            {
+                if (o.Guid != null && (o.Class ?? type?.Name) is { } name) _newClasses[o.Guid.Value] = name;
+                if (type == null) return;
+                foreach (var pair in o.Fields)
+                {
+                    var field = type.Field(pair.Key);
+                    if (field == null) continue;
+                    if (pair.Value is RecordObject child && field.Kind == RecordFieldKind.Object) CollectClasses(child, TypeOf(child, field));
+                    else if (pair.Value is RecordList list && field.Item != null && field.Item.Kind == RecordFieldKind.Object)
+                        foreach (var item in list.Items) if (item is RecordObject c) CollectClasses(c, TypeOf(c, field.Item));
+                }
             }
 
             void Collect(RecordObject o)
@@ -471,7 +497,7 @@ namespace SIL.TextEditing.Project
                     if (c.Kind == RecordChangeKind.AddObject)
                     {
                         string created = c.Subtree?.Class ?? leaf.Field.ObjectTypeNames.FirstOrDefault() ?? leaf.Field.Item?.ObjectTypeNames.FirstOrDefault() ?? string.Empty;
-                        if (!_writable.CanCreate(declaring, name, created))
+                        if (!(_creating ? _writable.CanCreateInNewRecord(declaring, name, created) : _writable.CanCreate(declaring, name, created)))
                             return ForChange(RecordRefusalKind.CreateNotWritable, "Motif cannot create a " + created + " in " + declaring + "." + name + ".", c);
                     }
                     else if (c.Kind == RecordChangeKind.RemoveObject)
@@ -543,15 +569,28 @@ namespace SIL.TextEditing.Project
                 wrongClass = false;
                 if (flid < 0) return "The class of a new object holding this reference could not be determined, so the reference cannot be checked.";
                 if (target == null) return "The reference names no object of the project (its link has no guid).";
-                // A new record's own objects are not in the project yet; the host checks their class when it lowers the plan.
-                if (_creating && _newGuids.Contains(target.Value)) return null;
-                if (!_cache.ServiceLocator.ObjectRepository.TryGetObject(target.Value, out var obj)) return "The project has no object " + target.Value.ToString("D") + ".";
-                if (flid == 0) return "The field that holds the reference could not be resolved, so its class cannot be checked.";
+                // A new record's own objects are not in the project yet, so their class is the one the file gives them.
+                string className;
+                if (_creating && _newGuids.Contains(target.Value))
+                {
+                    if (flid == 0 || !_newClasses.TryGetValue(target.Value, out var newClass)) return null;
+                    className = newClass;
+                }
+                else
+                {
+                    if (!_cache.ServiceLocator.ObjectRepository.TryGetObject(target.Value, out var obj)) return "The project has no object " + target.Value.ToString("D") + ".";
+                    if (flid == 0) return "The field that holds the reference could not be resolved, so its class cannot be checked.";
+                    className = obj.ClassName;
+                }
                 int wanted = _metadata.GetDstClsId(flid);
-                int have = _metadata.GetClassId(obj.ClassName);
-                for (int at = have; at != 0; at = _metadata.GetBaseClsId(at)) if (at == wanted) return null;
+                int have = _metadata.GetClassId(className);
+                for (int at = have; ; at = _metadata.GetBaseClsId(at))
+                {
+                    if (at == wanted) return null;
+                    if (at == 0) break;
+                }
                 wrongClass = true;
-                return obj.ClassName + " " + target.Value.ToString("D") + " is not a " + _metadata.GetClassName(wanted) + ", which " + _metadata.GetFieldName(flid) + " holds.";
+                return className + " " + target.Value.ToString("D") + " is not a " + _metadata.GetClassName(wanted) + ", which " + _metadata.GetFieldName(flid) + " holds.";
             }
 
             // ---- an added object

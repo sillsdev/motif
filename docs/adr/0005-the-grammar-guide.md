@@ -4,6 +4,8 @@
 
 **Amended 2026-11-17:** Hand-analysis annotation and its full-fidelity Home boundary.
 
+**Amended 2026-11-25:** The interlinear example block (D10); D8's example-format question is answered.
+
 ## Context
 
 A readable current account of a grammar must travel with its FieldWorks project. Proposals explain changes;
@@ -24,7 +26,7 @@ Passage. Motif's database holds none of the Guide text. It is project data under
 The body's parts, in order, are **How it works**, **Examples**, **Grouping commands**, **Exceptions**, **Decisions**,
 **Open questions** and **In the grammar**. Judgement calls and their reasons go in **Decisions**, not standalone records.
 A part is `#`, a section `##`, and a template part `###`; headings stop at `###`. The template adds no
-operation kinds and no Markdown profile beyond the two fenced block kinds under Grouping commands below. Generic field operations and the shared checker/importer in
+operation kinds and no Markdown profile beyond the two fenced block kinds under Grouping commands below and the interlinear div of D10. Generic field operations and the shared checker/importer in
 [ADR 0006](0006-rich-text-is-fieldworks-markdown-in-the-shared-textediting-field.md) carry the edits. Tables
 use **Table Header**, **Table Row** and **Table Cell Separator**.
 
@@ -145,8 +147,9 @@ templates do not make claims that morpheme rows can test.
 Use each word's newest conclusive `analysed` or `no-analysis` outcome among the newest 25 ParseTime,
 Correctness or ObjectTiming word Assessments. Timed-out, capped and skipped rows are inconclusive, so an
 older conclusive row may answer. With none, report **unverified** and ask the next Trial to include it.
-This check's token convention does not invent a new stored example format; aligning it with generated live
-examples and the current section template remains an Open source-selection question.
+The token convention above is for prose examples. An example that needs its morphemes and glosses shown is
+written as the interlinear block of D10, whose word line is read as a positive example here and whose other lines
+are not read as example words.
 
 ### D9. Hypothesis links and Trial review share the advisory check
 
@@ -166,12 +169,48 @@ The check adds at most one second, O(rules + sections + examples): one pass over
 paragraphs/runs and one batched `(AssessmentId, Word)` lookup capped at 25 Assessments. It never scans the
 ledger text or corpus. Report Baseline-copy open time separately.
 
+### D10. An interlinear example is a labelled fenced div
+
+An interlinear example is a FieldWorks Markdown fenced div with the class `interlinear`, written like the
+`::: {field=... ws=...}` divs of the whole-record view and read and written by the same shared reader and
+`guide edit`:
+
+````text
+::: {.interlinear}
+word: [nilisoma kitabu]{.v}
+morphemes: [ni-li-som-a kitabu]{.v}
+gloss: 1SG-PST-read-FV book
+translation: I read a book.
+:::
+````
+
+Each line is `label: text`. The labels are `word`, `morphemes`, `gloss` and the optional `translation`, in that order,
+lowercase, one line each. The writing system is the line's own: `word` and `morphemes` are vernacular (written as
+`[text]{.v}`, or `[text]{ws=tag}` for another vernacular system), `gloss` and `translation` are analysis text with no
+mark. FieldWorks has no interlinear paragraph, so the project stores the lines as plain paragraphs, one each, labels
+included, each run in its own writing system. FieldWorks shows plain lines and nothing breaks. Motif folds a run of
+paragraphs labelled `word`, `morphemes`, `gloss` (and `translation`) back into the div when it writes Markdown, and
+unfolds the div when it reads it, so `guide show`, `guide edit` and `guide show` again return the same block. A div
+whose lines are not those labels in that order is left as written, and the reader refuses it as an unknown attribute.
+A line that reuses an existing paragraph carrying a property is written inside a styling div, so that run is not folded and
+shows as plain labelled lines; no text is lost.
+
+Alignment is by white-space-separated tokens: the nth token of `word`, of `morphemes` and of `gloss` are one column.
+Within a column, hyphens and equals signs join morphemes and glosses, so `ni-li-som-a` and `1SG-PST-read-FV` pair
+four to four. The window shows the block as a monospace grid, each column as wide as its widest cell; the parser in the
+Contract (`GuideInterlinear`) never throws on bad input and reports what it cannot place.
+
+`guide check` reads each block and reports, advisory as in D9: a `guide.interlinear-unknown-morpheme` finding for
+morphemes that match no form of any lexical entry (compared without hyphens or equals signs and without regard to
+case), and a `guide.interlinear-misaligned` finding for a block whose three lines differ in token count or whose
+morphemes and glosses differ in number within a column. A block is never refused for either; it is stored as written.
+
 ## Open
 
 - Which Payne and PAWS editions fix the outline, crosswalk and numbering, and how are existing IDs and
   links preserved during re-sorting?
 - Which grammar objects and approved analyses supply each section, and what appears when evidence is
-  absent? Align the stored-row check with the template and generated live examples.
+  absent? Generated live examples (#217) are not built.
 - How do skipped and **Not sure** answers map to Draft content and grammar objects?
 
 ## Consequences

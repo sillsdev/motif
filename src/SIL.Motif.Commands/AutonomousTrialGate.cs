@@ -34,8 +34,17 @@ internal static class AutonomousTrialGate
         var sections = ProjectReadCache.ReadSaved(project, (_, cache) => GdrReader.List(cache)
             .Select(item => SIL.Motif.Runner.Operations.OperationSlotRegistry.ByGuid(SIL.Motif.Contract.Ids.CanonicalId.Parse(item.Id)).Value)
             .ToHashSet(StringComparer.Ordinal));
+        // A section the Proposal creates is a Guide section for its own later edits.
+        foreach (var created in operations.Where(operation => operation.Kind == GdrSectionOperationKinds.Create && operation.EntityId is not null))
+            sections.Add(SIL.Motif.Runner.Operations.OperationSlotRegistry.ByGuid(created.EntityId!.Value).Value);
         return GuideNotesOnlyProposal.ExemptionFor(operations, sections) is not null;
     }
+
+    /// <summary>Whether the loaded live project still has the semantic state a Baseline recorded.</summary>
+    internal static bool LiveMatchesBaseline(LcmCache live, SIL.Motif.Contract.Baselines.BaselineToken baseline) =>
+        baseline.ProjectionVersion == BaselineSemanticDigest.ProjectionVersion &&
+        baseline.ProjectIdentity == live.LangProject.Guid.ToString("D") &&
+        baseline.SemanticSnapshotDigest == BaselineSemanticDigest.Compute(live);
 
     internal static Refusal? Check(MotifDatabase database, ProjectLocator project, ProposalRecord proposal, LcmCache? live = null)
     {
@@ -83,9 +92,7 @@ internal static class AutonomousTrialGate
                     var baseline = available.Report.Pins.BaselineToken;
                     var input = TrialJobInput.Parse(job.InputJson);
                     var captured = input.ReviewInputs is { } reference ? ReviewInputArtifacts.Read(database, reference) : null;
-                    if (baseline.ProjectionVersion != BaselineSemanticDigest.ProjectionVersion ||
-                        baseline.ProjectIdentity != live.LangProject.Guid.ToString("D") ||
-                        baseline.SemanticSnapshotDigest != BaselineSemanticDigest.Compute(live) ||
+                    if (!LiveMatchesBaseline(live, baseline) ||
                         captured?.Baseline != baseline || captured.BaselineSidecarDigest is not { } measuredSidecars ||
                         ProgressSourceIdentity.CaptureSidecars(project.FullFwDataPath) is not { } liveSidecars ||
                         measuredSidecars != liveSidecars.Digest)

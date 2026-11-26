@@ -33,6 +33,9 @@ public sealed partial class GuideQueryTablesViewModel : ObservableObject
         _openWord = openWord;
     }
 
+    /// <summary>Runs a v2 corpus line (project path, line) as evidence; null leaves such blocks unable to run.</summary>
+    public Func<string, string, CancellationToken, Task<GuideEvidenceResult>>? EvidenceRun { get; set; }
+
     /// <summary>Stages a query's new body in the section's pending changes (query id, body); returns why not, or null.</summary>
     public Func<string, string, Task<string?>>? SaveBody { get; set; }
 
@@ -71,7 +74,7 @@ public sealed partial class GuideQueryTablesViewModel : ObservableObject
         foreach (var query in blocks.Queries)
             Blocks.Add(new GuideQueryBlockViewModel(query.Id, query.Title, document.BodyOf(query.Span),
                 blocks.Shows.Where(show => show.Query == query.Id).ToArray(), _context, _projectPath, _run, SaveBody is null ? null : Save, _openWord, query.Sort,
-                SaveUnavailableReason));
+                SaveUnavailableReason, EvidenceRun));
         ProblemsText = string.Join("\n", blocks.Diagnostics.Select(item =>
             string.Format(CultureInfo.CurrentCulture, MotifAppStrings.GuideQueryProblemFormat, item.Line, item.Message)));
         HasBlocks = Blocks.Count > 0;

@@ -40,6 +40,15 @@ public sealed record EnqueueTrialRequest(
     /// </summary>
     public bool Touched { get; init; }
 
+    /// <summary>
+    /// Adds to <see cref="Words"/> corpus words that share a form the Proposal touches; needs <see cref="Words"/> and a
+    /// corpus-types file. Null when no siblings were asked for.
+    /// </summary>
+    public SIL.Motif.Commands.Review.TrialSiblingsRequest? Siblings { get; init; }
+
+    /// <summary>The siblings chosen for this Trial, frozen into its input.</summary>
+    internal SIL.Motif.Commands.Review.TrialSiblingSample? SiblingSample { get; init; }
+
     /// <summary>The named review sets to include, or null to include every configured set.</summary>
     public IReadOnlyList<string>? ReviewSetIds { get; init; }
 

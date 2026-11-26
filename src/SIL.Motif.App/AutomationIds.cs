@@ -353,6 +353,7 @@ public static class AutomationIds
     public const string GuideEditorApply = "motif-guide-editor-apply";
     public const string GuideEditorStatus = "motif-guide-editor-status";
     public const string GuideExamples = "motif-guide-examples";
+    public const string GuideInterlinear = "motif-guide-interlinear";
     public const string GuideGrammarNames = "motif-guide-grammar-names";
     public const string GuideHeadings = "motif-guide-headings";
     public const string GuideEdit = "motif-guide-edit";

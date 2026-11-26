@@ -3,6 +3,9 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Gdr;
+using SIL.Motif.Host.RichText;
+using SIL.TextEditing;
+using SIL.TextEditing.Markdown;
 
 namespace SIL.Motif.Commands;
 
@@ -39,6 +42,9 @@ public static class GdrEditCommands
                 "Give the option chosen, the option set aside and the reason, each on one line."));
         var shown = GdrQuery.Show(new GdrShowRequest(request.ProjectPath, request.Id));
         if (!shown.Succeeded) return CommandOutcome<GdrEditResponse>.Refused(WithAddSectionHint(shown.Refusal!));
+        if (BlockPart(request, shown.Value!, Path.GetFileNameWithoutExtension(request.ProjectPath)) is { } block)
+            return CommandOutcome<GdrEditResponse>.Refused(new Refusal(RefusalCodes.GdrDecisionInvalid, FailureReason.InvalidArgument,
+                block + " Write a literal [ as \\[ ."));
         var named = string.IsNullOrWhiteSpace(request.Draft) ? null : request.Draft.Trim();
         var current = GdrQuery.Show(new GdrShowRequest(request.ProjectPath, request.Id, AsOf: named ?? PendingChanges.DraftName));
         if (!current.Succeeded && (named is not null || current.Refusal!.Code != "draft.not-found"))
@@ -48,26 +54,29 @@ public static class GdrEditCommands
         return Stage(request.ProjectPath, shown.Value!, WithDecision(body, entry), request.Draft, null);
     }
 
-    /// <summary>The judgement call as one list item with its Markdown characters escaped, or null when a part is blank or spans lines.</summary>
+    /// <summary>The judgement call as one list item with its parts as given inline Markdown, or null when a part is blank or spans lines.</summary>
     internal static string? Entry(GdrDecideRequest request)
     {
         string[] parts = [request.Choosing, request.Over, request.Because];
         if (parts.Any(part => string.IsNullOrWhiteSpace(part) || part.Contains('\n') || part.Contains('\r'))) return null;
-        var chosen = Escape(request.Choosing.Trim());
-        var because = Escape(request.Because.Trim());
+        var chosen = request.Choosing.Trim();
+        var because = request.Because.Trim();
         if (!because.EndsWith('.') && !because.EndsWith('!') && !because.EndsWith('?')) because += ".";
-        return $"- {chosen} or {Escape(request.Over.Trim())}, I am choosing {chosen}, because {because}";
+        return $"- {chosen} or {request.Over.Trim()}, I am choosing {chosen}, because {because}";
     }
 
-    private static string Escape(string text)
+    /// <summary>Why the first part is not inline Markdown (it would be a block), else null.</summary>
+    private static string? BlockPart(GdrDecideRequest request, GdrShowResponse shown, string projectName)
     {
-        var escaped = new System.Text.StringBuilder(text.Length);
-        foreach (var c in text)
+        var form = new FieldWorksMarkdownSourceForm(GdrMarkdownOptions.For(shown, projectName));
+        foreach (var (name, part) in new[] { ("--choosing", request.Choosing), ("--over", request.Over), ("--because", request.Because) })
         {
-            if (c is '\\' or '*' or '_' or '[' or ']' or '`' or '<' or '>') escaped.Append('\\');
-            escaped.Append(c);
+            var read = form.Read(part.Trim(), true);
+            var error = read.Diagnostics.FirstOrDefault(item => item.Severity == DiagnosticSeverity.Error);
+            if (error is not null) return $"{name} is not inline Markdown: {error.Message}";
+            if (read.Paragraphs.Count != 1) return $"{name} must be inline Markdown with no block (heading, list, quote or fence).";
         }
-        return escaped.ToString();
+        return null;
     }
 
     /// <summary>
@@ -115,7 +124,7 @@ public static class GdrEditCommands
 
     private static Refusal WithAddSectionHint(Refusal refusal) => refusal.Code != RefusalCodes.GdrNotFound ? refusal :
         new Refusal(refusal.Code, refusal.Reason, refusal.Message +
-            " Only existing sections can be edited; the CLI cannot create a section yet, so add the new section in FieldWorks first.", refusal.Facts);
+            " Only sections in the Baseline can be edited. Add a new section with guide add (give its body with --from-file); a section added in a Draft can be edited only after that Draft is applied and a Baseline is captured with baseline capture.", refusal.Facts);
 
     private static CommandOutcome<GdrEditResponse> Stage(string projectPath, GdrShowResponse shown, string markdown, string? draft,
         GdrShowResponse? staged)
@@ -125,13 +134,14 @@ public static class GdrEditCommands
             return CommandOutcome<GdrEditResponse>.Refused(new Refusal(RefusalCodes.GdrMarkdownInvalid, FailureReason.InvalidArgument,
                 "The Markdown cannot be read, so nothing was staged: " + string.Join(" ", read.Errors) +
                 (read.Errors.Any(error => error.Contains("code block", StringComparison.OrdinalIgnoreCase))
-                    ? " Query blocks (motif-query and motif-show) are added in FieldWorks; a block the section already holds can stay as it is, but guide edit cannot add one."
+                    ? " Only motif-query and motif-show blocks may be fenced; other code blocks are not kept in a Guide."
                     : "")));
         var draftName = string.IsNullOrWhiteSpace(draft) ? null : draft.Trim();
-        var result = ProposalCommands.StageGdrMarkdown(projectPath, read.Edits!, draftName);
+        var stylesCreated = new List<string>();
+        var result = ProposalCommands.StageGdrMarkdown(projectPath, read.Edits!, draftName, stylesCreated);
         if (!result.Succeeded) return CommandOutcome<GdrEditResponse>.Refused(result.Refusal!);
         var response = result.Value!.LastOrDefault();
         return CommandOutcome<GdrEditResponse>.Success(new GdrEditResponse(response?.DraftName ?? draftName ?? PendingChanges.DraftName,
-            shown.Record.Id, shown.Record.Abbreviation, read.ChangedFields, result.Value!.Sum(item => item.Operations.Count), read.Warnings));
+            shown.Record.Id, shown.Record.Abbreviation, read.ChangedFields, result.Value!.Sum(item => item.Operations.Count), read.Warnings) { StylesCreated = stylesCreated.ToArray() });
     }
 }

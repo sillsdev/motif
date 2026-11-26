@@ -2542,6 +2542,8 @@ public static class MotifAppStrings
 
     public static string RefusalStoreFromOtherVersion => Text("MotifApp.RefusalStoreFromOtherVersion");
 
+    public static string RefusalStoreNewer => Text("MotifApp.RefusalStoreNewer");
+
     public static string RefusalStoreUpgradable => Text("MotifApp.RefusalStoreUpgradable");
 
     public static string RefusalStoreDamaged => Text("MotifApp.RefusalStoreDamaged");
@@ -4271,6 +4273,7 @@ public static class MotifAppStrings
     public static string GuideOnThisPage => Text("MotifApp.GuideOnThisPage");
     public static string GuideSectionsName => Text("MotifApp.GuideSectionsName");
     public static string GuideExamplesHeading => Text("MotifApp.GuideExamplesHeading");
+    public static string GuideInterlinearHeading => Text("MotifApp.GuideInterlinearHeading");
     public static string GuideStaleNotice => Text("MotifApp.GuideStaleNotice");
     public static string GuideQueriesHeading => Text("MotifApp.GuideQueriesHeading");
     public static string RefusalQueryAsOfUnavailable => Text("MotifApp.RefusalQueryAsOfUnavailable");
@@ -4278,6 +4281,7 @@ public static class MotifAppStrings
     public static string RefusalQueryNoTrialRows => Text("MotifApp.RefusalQueryNoTrialRows");
     public static string RefusalGuideQueryRunInvalid => Text("MotifApp.RefusalGuideQueryRunInvalid");
     public static string RefusalGuideQueryRunNotReadOnly => Text("MotifApp.RefusalGuideQueryRunNotReadOnly");
+    public static string RefusalGuideQueryRunPathOutsideProject => Text("MotifApp.RefusalGuideQueryRunPathOutsideProject");
     public static string ProposalQuerySaveUnsupported => Text("MotifApp.ProposalQuerySaveUnsupported");
     public static string GuideQueryRun => Text("MotifApp.GuideQueryRun");
     public static string GuideQueryEdit => Text("MotifApp.GuideQueryEdit");

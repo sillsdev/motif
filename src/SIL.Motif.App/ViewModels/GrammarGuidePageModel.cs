@@ -33,7 +33,10 @@ public sealed partial class GrammarGuidePageModel : PageModel
         OpenInFieldWorksCommand = new AsyncRelayCommand<Uri>(OpenInFieldWorksAsync,
             uri => uri is not null && Context.UriLauncher is not null);
         Queries = new GuideQueryTablesViewModel(GuideQueryContext.Baseline, () => Context.ProjectPath,
-            (request, token) => Context.Commands.RunGuideQueryAsync(request, token), word => Context.OpenWord(word));
+            (request, token) => Context.Commands.RunGuideQueryAsync(request, token), word => Context.OpenWord(word))
+        {
+            EvidenceRun = (project, line, token) => Context.Commands.RunGuideEvidenceAsync(project, line, token),
+        };
     }
 
     /// <summary>The query tables of the selected section, read from the Baseline: its <c>motif-query</c> blocks run as it is shown.</summary>
@@ -87,6 +90,9 @@ public sealed partial class GrammarGuidePageModel : PageModel
 
     /// <summary>The generated examples block, hidden because no source supplies it yet.</summary>
     public GrammarGuideExamplesViewModel Examples { get; } = new();
+
+    /// <summary>The aligned interlinear examples of the shown section.</summary>
+    public GuideInterlinearViewModel Interlinear { get; } = new();
 
     /// <summary>Whether the selected section was read from a Baseline the live project has been saved after.</summary>
     public bool IsShownStale => ShownRecord?.IsStale == true;
@@ -191,8 +197,9 @@ public sealed partial class GrammarGuidePageModel : PageModel
         OnPropertyChanged(nameof(IsShownStale));
         // No reviewed query joins approved occurrences to this section yet, so there is nothing to supply.
         Examples.Clear();
-        Queries.Show(value is null ? null : GuideQueryDocument.From(value.Discussion
-            .Select(paragraph => string.Concat(paragraph.Runs.Select(run => run.Text))).ToArray()));
+        var texts = value is null ? [] : value.Discussion.Select(paragraph => string.Concat(paragraph.Runs.Select(run => run.Text))).ToArray();
+        Queries.Show(value is null ? null : GuideQueryDocument.From(texts));
+        Interlinear.Show(texts);
     }
 
     partial void OnSelectedRecordChanged(GdrSummary? value)
@@ -224,6 +231,7 @@ public sealed partial class GrammarGuidePageModel : PageModel
         _editStoreProject = null;
         _writingSystemName = null;
         Queries.Clear();
+        Interlinear.Clear();
         SelectedRecord = null;
         Parts.Clear();
         Records.Clear();

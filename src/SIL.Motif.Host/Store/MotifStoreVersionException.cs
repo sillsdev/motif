@@ -7,7 +7,7 @@ namespace SIL.Motif.Host.Store;
 /// <remarks>
 /// It stays a <see cref="NotSupportedException"/> so every caller that already treats an unsupported store
 /// as a refusal keeps doing so. <see cref="StorePath"/> is what the specific type adds: the file a person
-/// deletes so Motif can recreate it.
+/// resets, after a backup, so Motif can recreate it, unless the store is newer.
 /// </remarks>
 public sealed class MotifStoreVersionException : NotSupportedException
 {
@@ -22,4 +22,7 @@ public sealed class MotifStoreVersionException : NotSupportedException
 
     /// <summary>True when the store is older and a normal open would upgrade it, so deleting it is never the advice.</summary>
     public bool Upgradable { get; init; }
+
+    /// <summary>True when a newer Motif made the store, so neither an upgrade nor a reset is offered: install the newer Motif or restore a pre-upgrade backup.</summary>
+    public bool Newer { get; init; }
 }

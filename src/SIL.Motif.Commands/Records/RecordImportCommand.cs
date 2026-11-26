@@ -79,6 +79,9 @@ public static partial class RecordImportCommand
         if (found.Plan.ChangeSet.IsRefusedWhole)
             return CommandOutcome<RecordImportResponse>.Refused(WholeFileRefusal(found));
 
+        if (found.Lowering.WholeFile is { } shape)
+            return CommandOutcome<RecordImportResponse>.Refused(WholeCreateRefusal(found, shape));
+
         var pages = PageCount(found.Lowering.Operations.Count, Refusals(found, found.Lowering).Count,
             found.Plan.ChangeSet.Changes.Count);
         if (request.Page > pages)
@@ -184,13 +187,22 @@ public static partial class RecordImportCommand
             return Refused(RefusalCodes.RecordImportGuidPending, FailureReason.Refused,
                 "Proposal " + pending + " already creates " + guid.ToString("D") + ". Apply or discard it first, or use another GUID.",
                 ("guid", CanonicalId.FromGuid(guid).Value), ("proposal", pending));
+        if (found.Lowering.Operations.Count > 0) return null;
         return Refused(RefusalCodes.RecordImportCreateKindNotCreatable, FailureReason.Refused,
             CreateNotLowered, ("reason", "not-yet-lowered"), ("recordKind", found.Plan.Kind ?? ""),
             ("guid", CanonicalId.FromGuid(guid).Value));
     }
 
+    private static Refusal WholeCreateRefusal(Planned found, RecordLoweringRefusal shape)
+    {
+        var refusal = shape.ToRefusal();
+        var facts = new Dictionary<string, string>(refusal.Facts) { ["baseVerdict"] = found.Plan.BaseVerdict.ToString().ToLowerInvariant() };
+        if (found.Plan.Kind is { } kind) facts["recordKind"] = kind;
+        return new Refusal(refusal.Code, refusal.Reason, Clip(refusal.Message, 600)!, facts);
+    }
+
     internal const string CreateNotLowered =
-        "The file plans a new record, but creating a record from a file is not yet lowered to operations, so nothing was staged. Use the dry run to check the file.";
+        "The file plans a new record of a kind whose creation is not yet lowered to operations, so nothing was staged. Use the dry run to check the file.";
 
     /// <summary>Tests replace the pending scan to make the store unreadable.</summary>
     internal static Func<string, Guid, CommandOutcome<PendingScan>>? PendingScanOverride { get; set; }
@@ -233,6 +245,7 @@ public static partial class RecordImportCommand
             RecordRefusalKind.RecordGone => new Refusal(RefusalCodes.RecordImportRecordGone, FailureReason.Refused, message, facts),
             RecordRefusalKind.GuidInvalid => new Refusal(RefusalCodes.RecordImportGuidInvalid, FailureReason.Refused, message, facts),
             RecordRefusalKind.GuidRetired => new Refusal(RefusalCodes.RecordImportGuidRetired, FailureReason.Refused, message, facts),
+            RecordRefusalKind.CreateComputedField => new Refusal(RefusalCodes.RecordImportCreateComputedField, FailureReason.Refused, message, facts),
             _ => new Refusal(RefusalCodes.RecordImportPlanRefused, FailureReason.Refused, message, facts),
         };
     }

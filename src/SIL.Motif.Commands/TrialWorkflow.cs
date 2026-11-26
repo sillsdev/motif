@@ -23,7 +23,8 @@ public enum BaselineMode
 /// <param name="Job">The queued Trial job.</param>
 /// <param name="BaselineWarning">Null when the Trial carries its Baseline; otherwise why it will have no Difference.</param>
 /// <param name="Touched">The touched words a <c>--touched</c> Trial added; null when it did not ask.</param>
-public sealed record TrialEnqueued(JobEnqueuedResponse Job, string? BaselineWarning, TouchedWords? Touched = null);
+/// <param name="Siblings">The line saying which siblings a <c>--siblings</c> Trial added; null when it did not ask.</param>
+public sealed record TrialEnqueued(JobEnqueuedResponse Job, string? BaselineWarning, TouchedWords? Touched = null, string? Siblings = null);
 
 /// <summary>
 /// Queues a Trial together with its Baseline Assessments: the Trial's words are assessed against the project's
@@ -46,7 +47,8 @@ public static class TrialWorkflow
 
     internal static CommandOutcome<TrialEnqueued> Enqueue(EnqueueTrialRequest request, string managedRoot,
         string? parserPath, BaselineMode mode, CancellationToken cancellationToken, bool requireExplicitRefresh) =>
-        TouchedNeedsWords(request) is { } noWords ? CommandOutcome<TrialEnqueued>.Refused(noWords) :
+        (TouchedNeedsWords(request) ?? SIL.Motif.Commands.Review.TrialSiblingResolver.Check(request)) is { } noWords
+            ? CommandOutcome<TrialEnqueued>.Refused(noWords) :
         EnqueueWithUpdateGate(() => TrialBaselines.WithAdmission(request = request.WithPrequeueClock(), (admission, busy) =>
         {
             TouchedWords? touched = null;
@@ -55,6 +57,13 @@ public static class TrialWorkflow
                 var expanded = ExpandTouched(request);
                 if (!expanded.Succeeded) return CommandOutcome<TrialEnqueued>.Refused(expanded.Refusal!);
                 (request, touched) = (expanded.Value!.Request, expanded.Value.Touched);
+            }
+            string? siblings = null;
+            if (request.Siblings is not null)
+            {
+                var sampled = ExpandSiblings(request);
+                if (!sampled.Succeeded) return CommandOutcome<TrialEnqueued>.Refused(sampled.Refusal!);
+                (request, siblings) = (sampled.Value!.Request, sampled.Value.Note);
             }
             var resolved = JobCommands.ResolveTrialWords(request);
             if (!resolved.Succeeded) return CommandOutcome<TrialEnqueued>.Refused(resolved.Refusal!);
@@ -75,11 +84,25 @@ public static class TrialWorkflow
                         request.NoBackground)
                     : CommandOutcome<AssessCommandResponse>.Refused(busy),
                 mode, parserPath ?? SIL.Motif.Host.Parser.PanGlossExecutable.TryLocate(), admission);
-            return touched is null || !enqueued.Succeeded ? enqueued
-                : CommandOutcome<TrialEnqueued>.Success(enqueued.Value! with { Touched = touched });
+            return (touched is null && siblings is null) || !enqueued.Succeeded ? enqueued
+                : CommandOutcome<TrialEnqueued>.Success(enqueued.Value! with { Touched = touched, Siblings = siblings });
         }));
 
     private sealed record ExpandedTrial(EnqueueTrialRequest Request, TouchedWords Touched);
+
+    private sealed record SampledTrial(EnqueueTrialRequest Request, string Note);
+
+    // The siblings join the caller's list after the touched words, so the caller's order stays first.
+    private static CommandOutcome<SampledTrial> ExpandSiblings(EnqueueTrialRequest request)
+    {
+        var already = request.Words is null ? new HashSet<string>(StringComparer.Ordinal)
+            : request.Words.Select(SIL.Motif.Commands.Review.TrialSiblingSampler.Key).ToHashSet(StringComparer.Ordinal);
+        var sample = SIL.Motif.Commands.Review.TrialSiblingResolver.Resolve(request, already);
+        if (!sample.Succeeded) return CommandOutcome<SampledTrial>.Refused(sample.Refusal!);
+        var words = TrialTouchedWords.Merge(request.Words!, sample.Value!.Words);
+        return CommandOutcome<SampledTrial>.Success(new SampledTrial(
+            request with { Words = words, SiblingSample = sample.Value }, sample.Value.Describe()));
+    }
 
     private static Refusal? TouchedNeedsWords(EnqueueTrialRequest request) =>
         request.Touched && (request.Words is not { Count: > 0 } || request.AllWords)

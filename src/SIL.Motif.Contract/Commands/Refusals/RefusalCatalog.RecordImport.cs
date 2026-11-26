@@ -21,6 +21,8 @@ public static partial class RefusalCatalog
         Spec(RefusalCodes.RecordImportGuidPending, FailureReason.Refused),
         Spec(RefusalCodes.RecordImportGuidPendingUnchecked, FailureReason.Refused),
         Spec(RefusalCodes.RecordImportGuidRetired, FailureReason.Refused),
+        Spec(RefusalCodes.RecordImportCreateShape, FailureReason.Refused),
+        Spec(RefusalCodes.RecordImportCreateComputedField, FailureReason.Refused),
         Spec(RefusalCodes.RecordImportChangedSincePreview, FailureReason.Refused),
         Spec(RefusalCodes.RecordImportStrictRefused, FailureReason.Refused),
         Spec(RefusalCodes.RecordImportStrictNeedsDraft, FailureReason.InvalidArgument),

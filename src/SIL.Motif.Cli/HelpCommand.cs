@@ -85,7 +85,7 @@ public static class HelpCommand
             for (var length = codeParts.Length - 1; length >= 1; length--)
             {
                 var prefix = string.Join(' ', codeParts.Take(length));
-                if (!IsKnownCommand(catalog, prefix)) continue;
+                if (!IsKnownCommand(catalog, prefix) && !IsVerbGroup(prefix, policy)) continue;
                 code = prefix;
                 break;
             }
@@ -104,6 +104,17 @@ public static class HelpCommand
             if (json)
                 return Usage(error);
             PrintAutonomousHelp(output, policy);
+            return 0;
+        }
+
+        if (!code.StartsWith("guide:", StringComparison.Ordinal) && IsVerbGroup(code, policy) && !IsKnownEntry(catalog, code))
+        {
+            if (json)
+            {
+                output.WriteLine(JsonSerializer.Serialize(BuildGroup(code, catalog, policy), JsonOptions));
+                return 0;
+            }
+            PrintVerbGroup(code, catalog, policy, output);
             return 0;
         }
 
@@ -129,6 +140,8 @@ public static class HelpCommand
             foreach (var usage in UsageLines(command.Name))
                 output.WriteLine(NormalizeUsage(usage));
             output.WriteLine(EnablementText(command));
+            if (IsVerbGroup(code, policy))
+                PrintVerbsSection(code, catalog, policy, output);
             return 0;
         }
         if (entry is null)
@@ -148,6 +161,8 @@ public static class HelpCommand
         }
 
         PrintEntry(entry, entryKind, catalog, output);
+        if (entryKind != HelpEntryKind.Guide && IsVerbGroup(entry.Code, policy))
+            PrintVerbsSection(entry.Code, catalog, policy, output);
         if (unavailable)
         {
             output.WriteLine();
@@ -164,6 +179,87 @@ public static class HelpCommand
         return 0;
     }
 
+    /// <summary>
+    /// The verb groups, derived from <see cref="CliVerbCatalog"/>: a first word that heads at least one command whose
+    /// next word is a verb rather than a flag (<c>guide list</c>, <c>query pairs</c>), mapped to those commands.
+    /// </summary>
+    public static IReadOnlyDictionary<string, IReadOnlyList<string>> VerbGroups { get; } = CliVerbCatalog.All
+        .Select(verb => string.Join(' ', verb.CommandName.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .TakeWhile(word => !word.StartsWith('-'))))
+        .Where(name => name.Contains(' ', StringComparison.Ordinal))
+        .Distinct(StringComparer.Ordinal)
+        .GroupBy(name => name[..name.IndexOf(' ', StringComparison.Ordinal)], StringComparer.Ordinal)
+        .ToDictionary(group => group.Key, group => (IReadOnlyList<string>)group.Order(StringComparer.Ordinal).ToArray(),
+            StringComparer.Ordinal);
+
+    // A group is a topic only while it has a verb this call may list: Developer verbs stay hidden unless enabled.
+    private static IReadOnlyList<string> VisibleVerbs(string group, CommandSurfacePolicy policy) =>
+        VerbGroups.TryGetValue(group, out var names)
+            ? names.Where(name => CommandCatalog.All.FirstOrDefault(item => item.Name == name) is { } command
+                && (command.Surface != CommandSurface.Developer || policy.DeveloperCommandsEnabled)).ToArray()
+            : Array.Empty<string>();
+
+    private static bool IsVerbGroup(string code, CommandSurfacePolicy policy) => VisibleVerbs(code, policy).Count > 0;
+
+    private static string GateName(CommandSurface? surface) => surface switch
+    {
+        CommandSurface.Released => "Released",
+        CommandSurface.AdvancedAi => "Advanced AI",
+        CommandSurface.Autonomous => "Autonomous",
+        CommandSurface.Developer => "Developer",
+        _ => "Unlisted",
+    };
+
+    private static object BuildGroup(string group, HelpCatalog catalog, CommandSurfacePolicy policy) => new
+    {
+        group,
+        verbs = VisibleVerbs(group, policy).Select(name => new
+        {
+            name,
+            summary = Summary(catalog, name),
+            gate = GateName(CommandCatalog.All.First(item => item.Name == name).Surface),
+            helpTopic = "motif help " + name,
+        }).ToArray(),
+    };
+
+    private static void PrintVerbGroup(string group, HelpCatalog catalog, CommandSurfacePolicy policy, TextWriter output)
+    {
+        output.WriteLine($"{group} commands");
+        output.WriteLine($"The verbs of 'motif {group}', each with its gate.");
+        PrintVerbsSection(group, catalog, policy, output, leadingBlank: false);
+    }
+
+    private static void PrintVerbsSection(
+        string group, HelpCatalog catalog, CommandSurfacePolicy policy, TextWriter output, bool leadingBlank = true)
+    {
+        var verbs = VisibleVerbs(group, policy);
+        if (leadingBlank)
+            output.WriteLine();
+        output.WriteLine("Verbs:");
+        foreach (var name in verbs)
+        {
+            var surface = CommandCatalog.All.First(item => item.Name == name).Surface;
+            output.WriteLine($"  {name,-34} [{GateName(surface)}] {Summary(catalog, name)}");
+        }
+        output.WriteLine($"Use 'motif help {group} <verb>' for one verb, for example 'motif help {verbs[0]}'.");
+    }
+
+    private static string Summary(HelpCatalog catalog, string name)
+    {
+        var entry = catalog.Find(HelpEntryKind.Command, name);
+        var text = entry?.Description;
+        if (string.IsNullOrWhiteSpace(text)) text = entry?.Title;
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            var usage = CliVerbCatalog.All.Where(verb => verb.CommandName == name)
+                .SelectMany(verb => verb.UsageLines).FirstOrDefault();
+            text = usage is null ? name : "Usage: " + usage.Split(" OR ", StringSplitOptions.TrimEntries)[0];
+        }
+        var end = text.IndexOf(". ", StringComparison.Ordinal);
+        text = (end < 0 ? text : text[..(end + 1)]).Trim();
+        return text.Length <= 100 ? text : text[..97].TrimEnd() + "...";
+    }
+
     // A Command-kind Help page can be a topic with no command behind it, such as lexicon-import.
     private static bool IsCataloguedCommand(string code) => CommandCatalog.All.Any(item => item.Name == code);
 
@@ -178,6 +274,9 @@ public static class HelpCommand
     {
         locale = catalog.Locale,
         siteRoot = HelpCatalog.SiteRoot,
+        verbGroups = VerbGroups.Keys.Order(StringComparer.Ordinal)
+            .Where(group => IsVerbGroup(group, policy))
+            .Select(group => BuildGroup(group, catalog, policy)),
         entries = catalog.Entries
             .Where(entry => IsAvailableHelpEntry(entry, policy))
             .Select(entry => BuildEntry(entry, entry.Kind == HelpEntryKind.Command)),
@@ -262,9 +361,12 @@ public static class HelpCommand
         output.WriteLine();
         output.WriteLine("Grammar Guide: 'guide show <GDR-n> --format fw-md', edit the file, then 'guide edit <GDR-n> --from-file <file>'");
         output.WriteLine("stages it (add --draft <name> to ship it with a rule's Draft; check it with 'guide show <GDR-n> --as-of <name>').");
-        output.WriteLine("Record a judgement call, \"A or B, I am choosing A, because ...\", with 'guide decide <GDR-n> --choosing A --over B --because <reason>'.");
-        output.WriteLine("Only existing sections can be edited; a new section is added in FieldWorks.");
-        output.WriteLine("'guide show' and 'guide edit' need Advanced AI mode ('motif settings advanced-ai on'); 'guide decide' needs --autonomous.");
+        output.WriteLine("Record a judgement call, \"A or B, I am choosing A, because ...\", with 'guide decide <GDR-n> --choosing A --over B --because <reason>';");
+        output.WriteLine("each part is one line of inline Markdown, so a form is written [form]{.v} (a literal [ is \\[), and a heading, list or fence is refused.");
+        output.WriteLine("Only existing sections can be edited; 'guide add --title <text> [--parent <GDR-n>] [--after <GDR-n>] [--from-file <body.md>]' stages a new one.");
+        output.WriteLine("'guide edit' and 'guide add' need Advanced AI mode ('motif settings advanced-ai on'); 'guide show' is a read and needs none; 'guide decide' needs --autonomous.");
+        output.WriteLine("First time on a project: 'guide add --title <text>' (creates the list), apply the pending changes, 'baseline capture --project <fwdata>',");
+        output.WriteLine("then 'guide check'. Guide reads show nothing until a Baseline is captured. The id of each new section is in the 'guide add --json' answer.");
         output.WriteLine("When the Draft already holds an edit of a section, start from 'guide show <GDR-n> --as-of <name> --format fw-md'.");
         output.WriteLine();
         output.WriteLine("Gate rule: Autonomous Apply needs a green Trial gate, except for a Proposal whose every operation edits a Grammar Guide");

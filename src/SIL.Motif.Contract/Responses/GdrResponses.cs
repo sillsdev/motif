@@ -132,5 +132,28 @@ public sealed record GdrShowResponse(GdrSummary Record, IReadOnlyList<GdrParagra
 /// <param name="Fields">The fields the edit changed, such as discussion or title (ws); empty when nothing differed.</param>
 /// <param name="OperationCount">The Draft operations staged for the section.</param>
 /// <param name="Warnings">Findings from reading the Markdown that do not stop the edit.</param>
+/// <remarks><see cref="StylesCreated"/> lists the FieldWorks standard styles the Draft also creates because the project lacks them.</remarks>
 public sealed record GdrEditResponse(
-    string DraftName, string Id, string Abbreviation, IReadOnlyList<string> Fields, int OperationCount, IReadOnlyList<string> Warnings);
+    string DraftName, string Id, string Abbreviation, IReadOnlyList<string> Fields, int OperationCount, IReadOnlyList<string> Warnings)
+{
+    /// <summary>The standard styles the Draft also creates; empty when the project had them all.</summary>
+    public IReadOnlyList<string> StylesCreated { get; init; } = [];
+}
+
+/// <summary>What staging a new Grammar Guide item added to a Draft.</summary>
+/// <param name="DraftName">The Draft the item is staged in.</param>
+/// <param name="Id">The new item's canonical id.</param>
+/// <param name="Abbreviation">The permanent <c>GDR-n</c> number it was given.</param>
+/// <param name="ParentId">The canonical id of the item it goes under, or null at the top of the list.</param>
+/// <param name="ListCreated">Whether the project had no Grammar Guide list, so the Draft also creates it.</param>
+/// <param name="Fields">The fields staged beyond the item itself, such as discussion.</param>
+/// <param name="OperationCount">The Draft operations staged for the item.</param>
+/// <param name="Warnings">Findings from reading the Markdown that do not stop the add.</param>
+/// <remarks><see cref="StylesCreated"/> lists the FieldWorks standard styles the Draft also creates because the project lacks them.</remarks>
+public sealed record GdrAddResponse(
+    string DraftName, string Id, string Abbreviation, string? ParentId, bool ListCreated, IReadOnlyList<string> Fields,
+    int OperationCount, IReadOnlyList<string> Warnings)
+{
+    /// <summary>The standard styles the Draft also creates; empty when the project had them all.</summary>
+    public IReadOnlyList<string> StylesCreated { get; init; } = [];
+}
