@@ -6,16 +6,29 @@
   },
   "guide show": {
     "title": "Read a Grammar Guide section",
-    "description": "Reads one Grammar Guide section from the current Baseline. Use format fw-md for the whole record as FieldWorks Markdown, or json for its rich text runs. asOf names a Draft or Proposal whose edits of the section are shown as if applied; available in Advanced AI mode.",
+    "description": "Reads one Grammar Guide section from the current Baseline. Use format fw-md for the whole record as FieldWorks Markdown, or json for its rich text runs. asOf names a Draft or Proposal whose edits of the section are shown as if applied.",
     "source": "Hand-written from the Grammar Guide read command and shared Markdown view."
   },
   "guide edit": {
     "title": "Edit a Grammar Guide section",
-    "description": "Stages an edit of one existing Grammar Guide section, given as FieldWorks Markdown, in a Draft: the whole record that guide show prints with format fw-md, or the Discussion body alone. Nothing reaches the FieldWorks project until a person applies the Draft; a Guide edit changes no word, so its Trial is exempt from the Autonomous gate. It cannot create a section: a new one is added in FieldWorks first. When the Draft already holds an edit of the section, start from guide show with asOf set to that Draft. Available in Advanced AI mode.",
+    "description": "Stages an edit of one existing Grammar Guide section, given as FieldWorks Markdown, in a Draft: the whole record that guide show prints with format fw-md, or the Discussion body alone. Nothing reaches the FieldWorks project until a person applies the Draft; a Guide edit changes no word, so its Trial is exempt from the Autonomous gate. A new section is added with guide add. When the Draft already holds an edit of the section, start from guide show with asOf set to that Draft. Available in Advanced AI mode.",
     "source": "Hand-written from the Grammar Guide staging path shared with the window.",
     "fields": {
       "id": "The section's GDR-n number or canonical id.",
       "markdown": "The whole record as guide show prints it with format fw-md, or the Discussion body alone, as FieldWorks Markdown.",
+      "draft": "The name of an existing Draft to stage into; omit to stage into the pending changes."
+    }
+  },
+  "guide add": {
+    "title": "Add a Grammar Guide section or part",
+    "description": "Stages a new Grammar Guide item in a Draft: a title, the part or section it goes under, where it goes, and optionally its body as FieldWorks Markdown in the ADR 0005 template. It takes the next permanent GDR-n number. A project with no Grammar Guide list gets the list too. Nothing reaches the FieldWorks project until a person applies the Draft. On a new project the order is guide add, apply, baseline capture, then guide check: the Guide reads see only the Baseline. Available in Advanced AI mode.",
+    "source": "Hand-written from the Grammar Guide staging path shared with the window.",
+    "fields": {
+      "title": "The new item's title, plain text on one line.",
+      "parent": "The GDR-n number or canonical id of the part or section it goes under; omit for the top of the list.",
+      "after": "The GDR-n number or canonical id of the sibling it follows; omit to put it last under its parent.",
+      "markdown": "The Discussion body as FieldWorks Markdown, without front matter; omit for an empty body.",
+      "writingSystem": "The title's writing system tag; omit for the project's default analysis writing system.",
       "draft": "The name of an existing Draft to stage into; omit to stage into the pending changes."
     }
   },

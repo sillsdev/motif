@@ -1716,6 +1716,7 @@ ComputedFields	LexEntry	head-word	LexEntry.HeadWord	ClearRich	none	ComputedField
 # Handler	grammar/phTerminalUnit/createCodes	PhTerminalUnit	Codes	AddObject	RequiredWhenNonempty	-	PhCode	Unspecified	False
 # Handler	grammar/phTerminalUnit/deleteCodes	PhTerminalUnit	Codes	RemoveObject	Forbidden	PhPhoneme	PhCode	Unspecified	False
 # Handler	grammar/phTerminalUnit/setName	PhTerminalUnit	Name	SetAlternative	Forbidden	-		Unspecified	False
+# Handler	guide/section/create	(no direct field edit)
 # Handler	lexical/lexDb/createEntries	(no direct field edit)
 # Handler	lexical/lexEntry/addRefDialectLabels	LexEntry	DialectLabels	AddReference	Forbidden	-		Unspecified	False
 # Handler	lexical/lexEntry/addRefDoNotPublishIn	LexEntry	DoNotPublishIn	AddReference	Forbidden	-		Unspecified	False

@@ -115,7 +115,7 @@ public static class GdrEditCommands
 
     private static Refusal WithAddSectionHint(Refusal refusal) => refusal.Code != RefusalCodes.GdrNotFound ? refusal :
         new Refusal(refusal.Code, refusal.Reason, refusal.Message +
-            " Only existing sections can be edited; the CLI cannot create a section yet, so add the new section in FieldWorks first.", refusal.Facts);
+            " Only sections in the Baseline can be edited. Add a new section with guide add (give its body with --from-file); a section added in a Draft can be edited only after that Draft is applied and a Baseline is captured with baseline capture.", refusal.Facts);
 
     private static CommandOutcome<GdrEditResponse> Stage(string projectPath, GdrShowResponse shown, string markdown, string? draft,
         GdrShowResponse? staged)

@@ -2208,6 +2208,35 @@ try
             break;
 
         case "guide":
+            if (flags.TryGetValue("project", out var gdrAddProject) && positionals is ["add"])
+            {
+                bool GdrAddMissingValue(string name)
+                {
+                    var at = Array.IndexOf(args, "--" + name);
+                    return at >= 0 && (at + 1 >= args.Length || args[at + 1].StartsWith("--", StringComparison.Ordinal));
+                }
+                if (!flags.TryGetValue("title", out var gdrAddTitle) || GdrAddMissingValue("title") ||
+                    flags.Keys.Any(key => key is not ("project" or "title" or "parent" or "after" or "from-file" or "ws" or "draft" or "json" or "autonomous")) ||
+                    new[] { "parent", "after", "from-file", "ws", "draft" }.Any(name => flags.ContainsKey(name) && GdrAddMissingValue(name)))
+                    return Usage(UsageLineFor("guide add"), asJson);
+                string? gdrAddBody = null;
+                if (flags.TryGetValue("from-file", out var gdrAddFile))
+                {
+                    try
+                    {
+                        gdrAddBody = gdrAddFile == "-"
+                            ? new StreamReader(Console.OpenStandardInput(), new UTF8Encoding(false)).ReadToEnd()
+                            : File.ReadAllText(gdrAddFile);
+                    }
+                    catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                    {
+                        return Usage($"The --from-file '{gdrAddFile}' cannot be read: {exception.Message}", asJson);
+                    }
+                }
+                result = RenderCommand(GdrAddCommands.Add(new GdrAddRequest(gdrAddProject, gdrAddTitle, flags.GetValueOrDefault("parent"),
+                    flags.GetValueOrDefault("after"), gdrAddBody, flags.GetValueOrDefault("ws"), flags.GetValueOrDefault("draft"))));
+                break;
+            }
             if (flags.TryGetValue("project", out var gdrEditProject) && positionals is ["edit" or "decide", var gdrEditId])
             {
                 var gdrDraft = flags.GetValueOrDefault("draft");
@@ -2250,7 +2279,7 @@ try
                 (positionals[0] is "list" or "check" ? positionals.Count != 1 : positionals[0] != "show" || positionals.Count != 2) ||
                 flags.ContainsKey("as-of") && positionals[0] != "show")
                 return Usage(UsageLineFor("guide list") + " OR " + UsageLineFor("guide show") + " OR " + UsageLineFor("guide check") +
-                    " OR " + UsageLineFor("guide edit") + " OR " + UsageLineFor("guide decide"), asJson);
+                    " OR " + UsageLineFor("guide edit") + " OR " + UsageLineFor("guide add") + " OR " + UsageLineFor("guide decide"), asJson);
             var gdrAsOf = flags.GetValueOrDefault("as-of");
             if (gdrAsOf == "true") return Usage(UsageLineFor("guide show"), asJson);
             if (flags.TryGetValue("format", out var gdrFormat))

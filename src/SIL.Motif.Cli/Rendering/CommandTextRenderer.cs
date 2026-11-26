@@ -173,6 +173,7 @@ public static class CommandTextRenderer
             GdrShowResponse r => RenderGdrShow(r),
             GdrCheckResponse r => RenderGdrCheck(r),
             GdrEditResponse r => RenderGdrEdit(r),
+            GdrAddResponse r => RenderGdrAdd(r),
             SourcePassageResponse r => SourceTextRenderer.RenderPassage(r),
             SourceListResponse r => SourceTextRenderer.RenderList(r),
             SourceShowResponse r => SourceTextRenderer.RenderShow(r),
@@ -1690,7 +1691,7 @@ public static class CommandTextRenderer
 
     private static string RenderGdrList(GdrListResponse response)
     {
-        if (!response.HasBaseline) return "No Baseline yet. Capture a Baseline to read the Grammar Guide." + Environment.NewLine;
+        if (!response.HasBaseline) return "No Baseline yet. Capture a Baseline to read the Grammar Guide: motif baseline capture --project <fwdata>. A new project's first section is added with guide add." + Environment.NewLine;
         if (response.Records.Count == 0) return "This project has no Grammar Guide." + Environment.NewLine;
         var text = new StringBuilder();
         foreach (var record in response.Records) text.AppendLine($"{record.Abbreviation}  {record.Title}");
@@ -1709,9 +1710,19 @@ public static class CommandTextRenderer
         return text.ToString();
     }
 
+    private static string RenderGdrAdd(GdrAddResponse response)
+    {
+        var text = new StringBuilder();
+        text.AppendLine($"{response.Abbreviation}: staged a new section{(response.ListCreated ? " and the Grammar Guide list" : "")} " +
+            $"in {response.DraftName} ({response.OperationCount} operation(s)); its id is {response.Id}.");
+        foreach (var warning in response.Warnings) text.AppendLine("warning: " + warning);
+        text.AppendLine($"Apply {response.DraftName}, then run 'baseline capture --project <fwdata>'; 'guide show {response.Abbreviation}' and 'guide check' read the Baseline.");
+        return text.ToString();
+    }
+
     private static string RenderGdrCheck(GdrCheckResponse response)
     {
-        if (!response.HasBaseline) return "No Baseline yet. Capture a Baseline to check the Grammar Guide." + Environment.NewLine;
+        if (!response.HasBaseline) return "No Baseline yet. Capture a Baseline to check the Grammar Guide: motif baseline capture --project <fwdata>." + Environment.NewLine;
         var text = new StringBuilder();
         var counts = response.Counts;
         text.AppendLine(response.InSync ? "The Grammar Guide is in sync with the grammar." : $"{response.Findings.Count} Guide warning(s). The Grammar Guide is not in sync with the grammar.");

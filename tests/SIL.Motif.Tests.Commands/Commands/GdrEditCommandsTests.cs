@@ -266,7 +266,7 @@ public sealed class GdrEditCommandsTests(PristineProjectFixture pristine)
 
         var unknown = GdrEditCommands.Edit(new GdrEditRequest(path, "GDR-99", "text"));
         Assert.Equal(RefusalCodes.GdrNotFound, unknown.Refusal!.Code);
-        Assert.Contains("FieldWorks", unknown.Refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("guide add", unknown.Refusal.Message, StringComparison.Ordinal);
 
         var noChange = GdrEditCommands.Edit(new GdrEditRequest(path, "GDR-1", Markdown(path, "GDR-1"), "no-such-draft"));
         Assert.Equal("draft.not-found", noChange.Refusal!.Code);

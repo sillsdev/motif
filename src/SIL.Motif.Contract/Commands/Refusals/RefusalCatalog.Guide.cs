@@ -18,6 +18,8 @@ public static partial class RefusalCatalog
         Spec(RefusalCodes.GdrNotFound, FailureReason.NotFound),
         Spec(RefusalCodes.GdrRecordMoved, FailureReason.Refused),
         Spec(RefusalCodes.GdrMarkdownInvalid, FailureReason.InvalidArgument),
+        Spec(RefusalCodes.GdrTitleInvalid, FailureReason.InvalidArgument),
+        Spec(RefusalCodes.GdrListNotWritable, FailureReason.Refused),
         Spec(RefusalCodes.GdrDecisionInvalid, FailureReason.InvalidArgument),
         Spec(RefusalCodes.GdrStyleCycle, FailureReason.StoreInconsistent),
     ];
