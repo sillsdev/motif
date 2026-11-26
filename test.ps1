@@ -259,6 +259,7 @@ $regressions = @()
 if (-not $Project -and -not $changedClasses) {
     $regressions = @(
         @{ Name = 'offline restore'; Title = 'offline restore regression'; Script = 'OfflineRestore.Tests.ps1' }
+        @{ Name = 'queue keeper regression'; Title = 'queue keeper regression'; Script = 'MotifQueueKeeper.Tests.ps1' }
         @{ Name = 'tool environment regression'; Title = 'tool environment regression'; Script = 'MotifToolEnvironment.Tests.ps1' }
         @{ Name = 'resource sizing regression'; Title = 'node, slot and thread sizing regression'; Script = 'MotifTestResources.Tests.ps1' }
         @{ Name = 'artifact plan regression'; Title = 'test artifact plan regression'; Script = 'Test-MotifTestRunPlan.Tests.ps1' }
