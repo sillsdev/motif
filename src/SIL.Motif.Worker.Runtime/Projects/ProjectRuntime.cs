@@ -69,10 +69,11 @@ public sealed class ProjectRuntime : IDisposable
 
     /// <summary>
     /// Whether the store file is gone or is a different file (another device and inode, or file index) from the one this runtime opened. The pooled connections
-    /// keep the old file open, so a runtime in that state reads and writes a file nobody else sees.
+    /// keep the old file open, so a runtime in that state reads and writes a file nobody else sees. The store id is read
+    /// again only where the file system gave no birth time.
     /// </summary>
     internal bool StoreFileReplaced => _storeIdentity is { } opened &&
-        opened.IsReplacedBy(StoreFileIdentity.Read(Database.FullPath));
+        opened.IsReplacedBy(StoreFileIdentity.Read(Database.FullPath, readStoreId: opened.BirthTicks == 0));
 
     internal static ProjectRuntime Open(ProjectLocator project, string workspaceKey,
         ProjectDatabaseCatalog catalog,
