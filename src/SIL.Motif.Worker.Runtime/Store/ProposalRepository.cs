@@ -1059,12 +1059,38 @@ public sealed class ProposalRepository : IProposalRepository
             EvidenceArtifactRepository.ReleaseClosedProposalPins(connection, transaction, proposalId);
     }
 
+    /// <summary>How long recording an applied Receipt keeps retrying a SQLite BUSY or LOCKED before giving up.</summary>
+    internal static TimeSpan ReceiptBusyBudget { get; set; } = TimeSpan.FromSeconds(45);
+
     /// <inheritdoc />
     public void RecordAppliedReceipt(Receipt receipt)
     {
         ArgumentNullException.ThrowIfNull(receipt);
+        // The project is saved, so busy is retried on a fresh connection; recording is idempotent.
+        var elapsed = System.Diagnostics.Stopwatch.StartNew();
+        for (var attempt = 1; ; attempt++)
+        {
+            var pause = TimeSpan.FromMilliseconds(Math.Min(250 * attempt, 2000));
+            try
+            {
+                CommitAppliedReceipt(receipt);
+                break;
+            }
+            catch (SqliteException failure) when (SqliteConnections.IsBusy(failure) &&
+                elapsed.Elapsed + pause < ReceiptBusyBudget)
+            {
+                Thread.Sleep(pause);
+            }
+        }
+        ReviewRowArtifacts.DeleteReleased(_database, receipt.ProposalId.Value);
+        TrialScratchRetention.DeleteProposal(_database, receipt.ProposalId);
+    }
+
+    // BEGIN IMMEDIATE takes the write lock first, so the busy handler applies.
+    private void CommitAppliedReceipt(Receipt receipt)
+    {
         using var connection = _database.OpenConnection();
-        using var transaction = connection.BeginTransaction();
+        using var transaction = connection.BeginTransaction(deferred: false);
         using var current = connection.CreateCommand();
         current.Transaction = transaction;
         current.CommandText = "SELECT CurrentIntentDigest FROM Proposals WHERE ProposalId = $id;";
@@ -1119,8 +1145,6 @@ public sealed class ProposalRepository : IProposalRepository
             drift.ExecuteNonQuery();
         }
         transaction.Commit();
-        ReviewRowArtifacts.DeleteReleased(_database, receipt.ProposalId.Value);
-        TrialScratchRetention.DeleteProposal(_database, receipt.ProposalId);
     }
 
     // On the caller's own transaction: a second connection cannot see uncommitted rows, leaving a window.

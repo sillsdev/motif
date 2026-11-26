@@ -119,6 +119,80 @@ public sealed class ProposalRepositoryTests : IDisposable
         Assert.Equal("1", Scalar(database, "SELECT CAST(COUNT(*) AS TEXT) FROM ProposalDifferences;"));
     }
 
+    // A deferred read that loses the race to another commit cannot upgrade, and SQLite reports BUSY at once.
+    [Fact]
+    public void ARecordedReceiptRidesOutAWriterThatHoldsTheStoreBriefly()
+    {
+        var project = new ProjectLocator(Path.Combine(_root, "transient.fwdata"), "transient");
+        using var database = MotifDatabase.OpenOwned(Path.Combine(_root, "transient.motif.db"), project,
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        var id = CanonicalId.Mint("proposal/");
+        var repository = new ProposalRepository(database);
+        var digest = "sha256:" + new string('a', 64);
+        repository.SaveRevision(new ProposalRevisionRecord(id, digest, "{}", "proposed", null, null, null));
+
+        using var holder = database.OpenConnection();
+        using var held = holder.BeginTransaction(deferred: false);
+        using (var touch = holder.CreateCommand())
+        {
+            touch.Transaction = held;
+            touch.CommandText = "UPDATE ProgressState SET PendingReceiptId = PendingReceiptId WHERE Id = 1;";
+            touch.ExecuteNonQuery();
+        }
+        const string variable = "MOTIF_TEST_SQLITE_SHORT_TIMEOUT_FOR";
+        var previous = Environment.GetEnvironmentVariable(variable);
+        var release = new Thread(() => { Thread.Sleep(1500); held.Commit(); });
+        release.Start();
+        try
+        {
+            Environment.SetEnvironmentVariable(variable, database.FullPath);
+            repository.RecordAppliedReceipt(ReceiptFor(id, digest));
+        }
+        finally { Environment.SetEnvironmentVariable(variable, previous); }
+        release.Join();
+
+        Assert.Equal("applied", repository.Get(id).Status);
+    }
+
+    [Fact]
+    public void ARecordedReceiptStillFailsBusyWhenTheWriterOutlastsTheRetryBudget()
+    {
+        var project = new ProjectLocator(Path.Combine(_root, "persistent.fwdata"), "persistent");
+        using var database = MotifDatabase.OpenOwned(Path.Combine(_root, "persistent.motif.db"), project,
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        var id = CanonicalId.Mint("proposal/");
+        var repository = new ProposalRepository(database);
+        var digest = "sha256:" + new string('a', 64);
+        repository.SaveRevision(new ProposalRevisionRecord(id, digest, "{}", "proposed", null, null, null));
+
+        using var holder = database.OpenConnection();
+        using var held = holder.BeginTransaction(deferred: false);
+        using (var touch = holder.CreateCommand())
+        {
+            touch.Transaction = held;
+            touch.CommandText = "UPDATE ProgressState SET PendingReceiptId = PendingReceiptId WHERE Id = 1;";
+            touch.ExecuteNonQuery();
+        }
+        const string variable = "MOTIF_TEST_SQLITE_SHORT_TIMEOUT_FOR";
+        var previous = Environment.GetEnvironmentVariable(variable);
+        var previousBudget = ProposalRepository.ReceiptBusyBudget;
+        try
+        {
+            Environment.SetEnvironmentVariable(variable, database.FullPath);
+            ProposalRepository.ReceiptBusyBudget = TimeSpan.FromMilliseconds(600);
+            var failure = Assert.Throws<SqliteException>(() => repository.RecordAppliedReceipt(ReceiptFor(id, digest)));
+            Assert.Equal(5, failure.SqliteErrorCode);
+        }
+        finally
+        {
+            ProposalRepository.ReceiptBusyBudget = previousBudget;
+            Environment.SetEnvironmentVariable(variable, previous);
+        }
+        held.Rollback();
+
+        Assert.Equal("proposed", repository.Get(id).Status);
+    }
+
     private static string Scalar(MotifDatabase database, string sql)
     {
         using var connection = database.OpenConnection();

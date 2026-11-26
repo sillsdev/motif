@@ -463,7 +463,9 @@ release line that still built for `netstandard2.0`.
 assembly and reads the command's JSON rather than Motif's internal stores. On success the JSON is on standard
 output; on failure the FailureEnvelope (`ok: false`, `code`, `reason`, `message`, and `detail` when there is one) is
 on standard error and standard output is empty. A project with an unresolved reconciliation warning is refused with
-`apply.reconciliation-needed` (exit 4) until it is reconciled in Motif.
+`apply.reconciliation-needed` (exit 4) until it is reconciled in Motif. A saved but unrecorded single Apply is
+recovered by running `motif apply <id> --project <p>` again: it records the Receipt only when the project's applied
+log holds the Proposal with a matching intent digest, and refuses, keeping the warning, otherwise.
 
 The JSON response records live in `SIL.Motif.Contract`, which has no LibLCM reference. Their
 `LcmCache`-dependent builders remain in `SIL.Motif.Projection`.

@@ -336,12 +336,86 @@ public sealed class ApplyReconciliationTests(PristineProjectFixture pristine)
             Assert.False(outcome.Succeeded);
             Assert.Equal("apply.reconciliation-needed", outcome.Refusal!.Code);
             Assert.Equal(FailureReason.StoreInconsistent, outcome.Refusal.Reason);
+            Assert.Equal("5", outcome.Refusal.Facts["causeSqliteCode"]);
+            Assert.Contains("SqliteException", outcome.Refusal.Facts["cause"], StringComparison.Ordinal);
+            Assert.Contains("motif apply " + proposalId, outcome.Refusal.Message, StringComparison.Ordinal);
         }
         finally
         {
             Environment.SetEnvironmentVariable("MOTIF_TEST_BUSY_RECEIPT_WRITE_FOR", previous);
         }
         AssertGlossOnDisk(projectPath, seed.FirstSenseId, NewLangProjFixture.AnalysisTag, gloss);
+        Assert.True(ProjectReconciliationMarker.Exists(projectPath));
+        Assert.Equal("proposed", StoredStatus(projectPath, proposalId));
+
+        var recovered = ProposalCommands.Apply(new ApplyRequest(projectPath, "1.0", proposalId, Force: true));
+
+        Assert.True(recovered.Succeeded, recovered.Refusal?.Message);
+        Assert.True(recovered.Value!.AlreadyApplied);
+        Assert.Contains("recorded", recovered.Value.ResultNote, StringComparison.Ordinal);
+        Assert.False(ProjectReconciliationMarker.Exists(projectPath));
+        Assert.Equal("applied", StoredStatus(projectPath, proposalId));
+        AssertGlossOnDisk(projectPath, seed.FirstSenseId, NewLangProjFixture.AnalysisTag, gloss);
+    }
+
+    // A marker that could not be written leaves only the store saying `proposed`; applying again still repairs it.
+    [Fact]
+    public void ApplyingAgainRecordsAnApplyTheStoreNeverHeardOfEvenWithoutAMarker()
+    {
+        var seed = pristine.Seed;
+        var gloss = SeededProject.FirstGloss + " unrecorded no marker";
+        string projectPath;
+        using (var scratch = pristine.NewScratch())
+            projectPath = scratch.ProjectId.Path;
+        var proposalId = CreateMeasuredProposal(projectPath, "unrecorded-no-marker",
+            CanonicalId.FromGuid(seed.FirstSenseId).Value, gloss);
+        Assert.True(ProposalCommands.Apply(new ApplyRequest(projectPath, "1.0", proposalId, Force: true)).Succeeded);
+        using (var database = ProjectMotifDatabase.Open(projectPath))
+        using (var connection = database.OpenConnection())
+        {
+            foreach (var sql in new[] { "DELETE FROM Receipts;", "UPDATE Proposals SET Status = 'proposed';" })
+            {
+                using var command = connection.CreateCommand();
+                command.CommandText = sql;
+                command.ExecuteNonQuery();
+            }
+        }
+        Assert.False(ProjectReconciliationMarker.Exists(projectPath));
+
+        var recovered = ProposalCommands.Apply(new ApplyRequest(projectPath, "1.0", proposalId, Force: true));
+
+        Assert.True(recovered.Succeeded, recovered.Refusal?.Message);
+        Assert.True(recovered.Value!.AlreadyApplied);
+        Assert.Equal("applied", StoredStatus(projectPath, proposalId));
+    }
+
+    // The warning is per project, so another Proposal's Apply is not blocked by it and the warning stays.
+    [Fact]
+    public void AProposalTheLogDoesNotHoldIsAppliedNormallyAndLeavesTheWarning()
+    {
+        var seed = pristine.Seed;
+        var gloss = SeededProject.FirstGloss + " not in log";
+        string projectPath;
+        using (var scratch = pristine.NewScratch())
+            projectPath = scratch.ProjectId.Path;
+        var proposalId = CreateMeasuredProposal(projectPath, "not-in-log",
+            CanonicalId.FromGuid(seed.FirstSenseId).Value, gloss);
+        ProjectReconciliationMarker.Mark(projectPath);
+        try
+        {
+            var outcome = ProposalCommands.Apply(new ApplyRequest(projectPath, "1.0", proposalId, Force: true));
+
+            Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+            Assert.False(outcome.Value!.AlreadyApplied);
+            Assert.True(ProjectReconciliationMarker.Exists(projectPath));
+        }
+        finally { ProjectReconciliationMarker.Clear(projectPath); }
+    }
+
+    private static string StoredStatus(string projectPath, string proposalId)
+    {
+        using var database = ProjectMotifDatabase.Open(projectPath);
+        return new ProposalRepository(database).Get(CanonicalId.Parse(proposalId)).Status;
     }
 
     [Fact]
