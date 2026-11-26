@@ -174,7 +174,6 @@ public sealed class SourceIndexRepositoryTests : IDisposable
 
     public void Dispose()
     {
-        SqliteConnection.ClearAllPools();
         if (Directory.Exists(_root)) Directory.Delete(_root, true);
     }
 }

@@ -2150,6 +2150,9 @@ public static partial class ProposalCommands
                     ApplySaveCheck.RequireOnDisk(project.FullFwDataPath, receipt.AppliedLogEntry.ProposalId);
                 }
 
+                if (IsTestTarget("MOTIF_TEST_DISPOSED_IN_APPLY_FOR", project.FullFwDataPath))
+                    throw new ObjectDisposedException("SQLitePCL.sqlite3");
+
                 try
                 {
                     if (ShouldFailReceiptWriteForTest(project.FullFwDataPath))
@@ -2359,7 +2362,7 @@ public static partial class ProposalCommands
                 "proposal.not-found", FailureReason.NotFound, ex.Message,
                 Fact(("proposalId", proposalId))));
         }
-        catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)
+        catch (Exception ex) when (ex is not (ProjectWritingSystemsUnavailableException or ObjectDisposedException))
         {
             // A failed apply rolled back, not Undo: derived caches may be stale (ADR 0017) -- see the remarks above.
             return CommandOutcome<ApplyProjection>.Refused(new Refusal(

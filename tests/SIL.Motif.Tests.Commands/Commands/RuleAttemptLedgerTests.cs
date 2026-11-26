@@ -25,7 +25,6 @@ public sealed class RuleAttemptLedgerTests : IDisposable
 
     public void Dispose()
     {
-        SqliteConnection.ClearAllPools();
         try { Directory.Delete(_root, true); } catch (IOException) { }
     }
 
