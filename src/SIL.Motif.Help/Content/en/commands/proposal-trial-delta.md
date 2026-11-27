@@ -14,6 +14,15 @@ Each row keeps `caseKey`, the id the report and regression rows use, and lists t
 
 `--write-manifests <dir>` writes `expect-retired.jsonl` and `expect-added.jsonl` there, one row per word and Reading: `{"word": ..., "signature": [...], "count": n}`. The format is the one the grammar lanes write, with the gate's own spellings: words are lower-cased and composed (`--keep-case` keeps them as measured), and ids the Proposal creates are renamed `created:N` in order of first appearance, as the gate renames them (`--alias-created false` keeps real ids). Name the directory; a bare `--write-manifests` is refused. Only the CLI writes files. Together they enumerate the whole delta: a lost word's Readings are in the retired file, and a known non-word that stopped parsing has no row. Review them before use; nothing is accepted automatically. The command refuses when any form was not measured on both sides or has a Reading without a complete identity, because a manifest must not leave part of the delta out. The summary reports Reading and word counts per entry, MSA and allomorph so a reviewer can check the swap names the expected objects.
 
+## Group the changes by cause
+
+`--group-by entry` or `--group-by slot` replaces the per-word rows with one group per cause, so a lane reads which lexical entry or affix slot a change comes from without a script. Each group has `key`, `label`, `retired` and `added` Reading copies, `words` (distinct), `tokens` and up to five `sampleWords`, the most frequent first. Groups are ordered by tokens, most first, then by key, and `--limit` and `--offset` or `--page` page the groups. `--classes` chooses which words count; the class totals stay and their rows are left out. It also works with `--json`, `--write-manifests` and the expectation flags, which still see the whole delta.
+
+- `entry`: the key is the entry's canonical id and the label its headword. A Reading counts toward every entry it names, once.
+- `slot`: the key is the canonical id of an inflectional affix slot of an affix morpheme's analysis, the label its name; an affix whose analysis names no slot goes in `(none)`. Stems are not counted. Slots come from the current Baseline's project copy; if it cannot be opened the command refuses with `trial.delta-group-unsupported`.
+- `rule` is refused with `trial.delta-group-unsupported`: a Reading's identity carries entries, analyses, allomorphs and features but no phonological or compound rule, and the command does not guess one.
+- `tokens` are the word's occurrences in the current Baseline's texts, case folded. When the Baseline holds none, `tokens` is 0 and `limitations` carries `tokens-unavailable`.
+
 ## Hold the delta to what you expected
 
 `--expect-retired <file>` and `--expect-added <file>` name manifests in the format `--write-manifests` writes, and `--max-doubled <n>` and `--max-doubled-frac <0 to 1>` cap the doubled words. Any of them adds `expectations` to the result, the grammar lanes' gate rules over the Trial that already ran:
