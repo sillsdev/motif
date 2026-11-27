@@ -429,6 +429,49 @@ public sealed class RecordImportDirTests(PristineProjectFixture pristine) : IDis
     }
 
     [Fact]
+    public void ShowGroupsAStagedFolderByRecordWithSortAndRefusedFilter()
+    {
+        var seed = MixedFolder();
+        Assert.True(RecordImportCommand.Run(Dry(seed, "grouped")).Succeeded);
+
+        var plain = ProposalCommands.Show(new(seed.Project, Version, "grouped")).Value!;
+        var grouped = ProposalCommands.Show(new(seed.Project, Version, "grouped", Records: new ShowRecordGrouping())).Value!;
+
+        Assert.Empty(grouped.Operations);
+        Assert.Null(grouped.ExtensionsJson);
+        Assert.Equal(plain.Operations.Count, grouped.OperationTotal);
+        Assert.Equal(9, grouped.Records!.Count);
+        Assert.Equal((3, 2, 1, 3), (grouped.Records.Count(row => row.Change == "create"), grouped.Records.Count(row => row.Change == "update"),
+            grouped.Records.Count(row => row.Change == "unchanged"), grouped.Records.Count(row => row.Change == "refused")));
+        Assert.Equal(plain.Operations.Count, grouped.Records.Sum(row => row.Operations ?? 0));
+        Assert.All(grouped.Records.Where(row => row.Change is "create" or "update"), row => Assert.True(row.Operations > 0));
+        Assert.All(grouped.Records, row => Assert.False(row.HasBatchEdges));
+        Assert.Equal(grouped.Records.Count(row => row.Change == "refused"),
+            ProposalCommands.Show(new(seed.Project, Version, "grouped", Records: new ShowRecordGrouping("path", true))).Value!.Records!.Count);
+        var byKind = ProposalCommands.Show(new(seed.Project, Version, "grouped", Records: new ShowRecordGrouping("kind"))).Value!.Records!;
+        Assert.Equal(byKind.OrderBy(row => row.Kind, StringComparer.Ordinal).Select(row => row.Kind), byKind.Select(row => row.Kind));
+        var page = grouped.Window(0, 4);
+        Assert.Equal((4, 9, 4), (page.Records!.Count, page.RecordTotal, page.NextOffset));
+    }
+
+    [Fact]
+    public void ShowByRecordRefusesAProposalThatIsNotARecordImportAndAnUnknownOrder()
+    {
+        var seed = MixedFolder();
+        Assert.True(RecordImportCommand.Run(Dry(seed, "grouped")).Succeeded);
+        Assert.True(ProposalCommands.New(new(seed.Project, Version, "plain", "Not an import")).Succeeded);
+
+        var plain = ProposalCommands.Show(new(seed.Project, Version, "plain", Records: new ShowRecordGrouping()));
+        var order = ProposalCommands.Show(new(seed.Project, Version, "grouped", Records: new ShowRecordGrouping("headword")));
+
+        Assert.Equal(RefusalCodes.ProposalNoRecordImport, plain.Refusal!.Code);
+        Assert.Equal(RefusalCodes.ProposalRecordSortUnknown, order.Refusal!.Code);
+        var ungrouped = ProposalCommands.Show(new(seed.Project, Version, "plain")).Value!;
+        Assert.Null(ungrouped.Records);
+        Assert.DoesNotContain("\"records\"", ProjectionJson.Serialize(ungrouped), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void AFileAndAFolderTogetherOrNeitherAreRefusedAndEmptyAndMissingFoldersHaveTheirOwnCodes()
     {
         var seed = Seeded(1);

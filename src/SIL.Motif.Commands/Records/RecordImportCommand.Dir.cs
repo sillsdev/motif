@@ -242,7 +242,11 @@ public static partial class RecordImportCommand
             if (file.Record is { } record) entry["record"] = CanonicalId.FromGuid(record).Value;
             if (file.Base is not null) entry["base"] = file.Base;
             if (file.Code is not null) entry["code"] = file.Code;
-            if (file.Status is CreatedStatus or UpdatedStatus) entry["text"] = file.Input.Text;
+            if (file.Status is CreatedStatus or UpdatedStatus)
+            {
+                entry["text"] = file.Input.Text;
+                entry["operations"] = file.Operations;
+            }
             entries.Add(entry);
         }
         var node = new JsonObject

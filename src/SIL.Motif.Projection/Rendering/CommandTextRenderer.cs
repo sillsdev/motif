@@ -86,6 +86,20 @@ public static class CommandTextRenderer
             using var extensions = JsonDocument.Parse(projection.ExtensionsJson);
             sb.AppendLine($"  extensions:          {JsonSerializer.Serialize(extensions.RootElement)}");
         }
+        if (projection.Records is { } records)
+        {
+            var recordOffset = projection.OperationOffset ?? 0;
+            sb.AppendLine(projection.RecordTotal is { } recordTotal && projection.OperationOffset is not null
+                ? $"  records (showing {(records.Count == 0 ? 0 : recordOffset + 1):N0}-{recordOffset + records.Count:N0} of {recordTotal:N0}; {projection.OperationTotal:N0} operations):"
+                : $"  records ({records.Count}; {projection.OperationTotal:N0} operations):");
+            foreach (var row in records)
+                sb.AppendLine($"    {row.Path}  {row.Change}  {row.Kind}  {row.Record}  operations {row.Operations?.ToString() ?? "?"}  batchEdges {row.BatchEdges}" +
+                    (row.Code is null ? "" : "  " + row.Code));
+            if (projection.NextOffset is { } nextRecord)
+                sb.AppendLine("  more records: " + (projection.NextStep ?? $"--offset {nextRecord} --limit {records.Count}") + ", or --all or --json for every record");
+        }
+        else
+        {
         sb.AppendLine(projection.OperationTotal is { } operationTotal && projection.OperationOffset is { } operationOffset
             ? (projection.Operations.Count == 0
                 ? $"  operations (none at offset {operationOffset:N0}; {operationTotal:N0} in all):"
@@ -110,6 +124,7 @@ public static class CommandTextRenderer
         if (projection.NextOffset is { } nextOperation)
             sb.AppendLine("  more operations: " + (projection.NextStep ?? $"--offset {nextOperation} --limit {projection.Operations.Count}") +
                 ", or --all or --json for every operation");
+        }
         if (projection.CurrentUnavailable is not null)
             sb.AppendLine($"  currentUnavailable:  {projection.CurrentUnavailable}");
         if (projection.AppliedRecord is { } applied)
