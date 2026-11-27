@@ -118,3 +118,25 @@ Scope: contextual guidance; use the task’s pinned parser and project evidence 
 
 Repository library record: `docs/references/fieldworks/hermitcrab-engine.md`. This locator is provenance only;
 all needed summaries are present here, and no repository filesystem access is required.
+
+## B01: Bantu morphology
+
+Titles below are cited from memory of the literature; publisher, edition and page details are unverified and no licence is established. Confirm before quoting.
+
+- Ashton, E. O. 1944. Swahili Grammar (Including Intonation). London: Longmans, Green.
+- Mohammed, Mohammed Abdulla. 2001. Modern Swahili Grammar. Nairobi: East African Educational Publishers.
+- Hyman, Larry M. 2003. Suffix ordering in Bantu: a morphocentric approach. In Geert Booij and Jaap van Marle (eds.), Yearbook of Morphology 2002, 245-281. Dordrecht: Kluwer. (The CARP template: causative, applicative, reciprocal, passive.)
+- Good, Jeff. 2005. Reconstructing morpheme order in Bantu: the case of causativization and applicativization. Diachronica 22(1). (Volume details unverified.)
+- Schadeberg, Thilo C. 2003. Derivation. In Derek Nurse and Gérard Philippson (eds.), The Bantu Languages. London: Routledge. (Chapter pages unverified.)
+
+Scope: contextual guidance on extension order and verb structure; use project evidence for executable claims.
+
+## D01: Dravidian morphology
+
+Titles below are cited from memory of the literature; publisher, edition and page details are unverified and no licence is established. Confirm before quoting.
+
+- Krishnamurti, Bhadriraju. 2003. The Dravidian Languages. Cambridge: Cambridge University Press.
+- Lehmann, Thomas. 1993. A Grammar of Modern Tamil. 2nd edition. Pondicherry: Pondicherry Institute of Linguistics and Culture. (Edition unverified.)
+- Schiffman, Harold F. 1999. A Reference Grammar of Spoken Tamil. Cambridge: Cambridge University Press.
+
+Scope: contextual guidance on case, tense, clitics and oblique stems; use project evidence for executable claims.

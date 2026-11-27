@@ -45,6 +45,49 @@ public sealed record ReadingDeltaReading(string Id, long Count, JsonElement Sign
 public sealed record ReadingDeltaWord(string Word, string CaseKey, long BeforeCount, long AfterCount,
     IReadOnlyList<ReadingDeltaReading> Retired, IReadOnlyList<ReadingDeltaReading> Added);
 
+/// <summary>The ways a Trial's Reading changes can be grouped by cause.</summary>
+public static class ReadingDeltaGroupings
+{
+    /// <summary>The lexical entry a morpheme belongs to.</summary>
+    public const string Entry = "entry";
+
+    /// <summary>The inflectional affix slot of an affix morpheme's morphosyntactic analysis.</summary>
+    public const string Slot = "slot";
+
+    /// <summary>A phonological or compound rule; a Reading's identity does not carry one, so it cannot be grouped by.</summary>
+    public const string Rule = "rule";
+
+    /// <summary>The key of an inflectional affix whose analysis names no slot.</summary>
+    public const string NoSlot = "(no slot)";
+
+    /// <summary>The key of a derivational affix, which has no slot.</summary>
+    public const string Derivational = "(derivational)";
+
+    /// <summary>The key of an analysis the Baseline copy does not hold.</summary>
+    public const string UnknownMsa = "(unknown msa)";
+
+    /// <summary>The groupings a read can produce.</summary>
+    public static readonly IReadOnlyList<string> Supported = [Entry, Slot];
+}
+
+/// <summary>The Reading changes that share one cause.</summary>
+/// <param name="Key">The cause: an entry's canonical id, a slot's canonical id, <c>(no slot)</c>, <c>(derivational)</c> or <c>(unknown msa)</c>.</param>
+/// <param name="Label">The entry's headword or the slot's name, or null when the Baseline could not name it.</param>
+/// <param name="Retired">Reading copies retired that name this cause.</param>
+/// <param name="Added">Reading copies added that name this cause.</param>
+/// <param name="Words">The distinct words those copies belong to.</param>
+/// <param name="Tokens">The Baseline's occurrences of those words; zero when the Baseline holds none.</param>
+/// <param name="SampleWords">Up to five of the words, the most frequent first.</param>
+public sealed record ReadingDeltaGroup(string Key, string? Label, long Retired, long Added, long Words, long Tokens,
+    IReadOnlyList<string> SampleWords);
+
+/// <summary>A page of cause groups, ordered by tokens then key.</summary>
+/// <param name="By">entry or slot.</param>
+/// <param name="Total">Every group, however many rows the page holds.</param>
+/// <param name="Offset">How many groups precede this page.</param>
+/// <param name="Rows">The page.</param>
+public sealed record ReadingDeltaGroups(string By, long Total, int Offset, IReadOnlyList<ReadingDeltaGroup> Rows);
+
 /// <summary>One class of word: how many, and the page of rows the read asked for.</summary>
 /// <param name="Class">One of <see cref="ReadingDeltaClasses"/>.</param>
 /// <param name="Total">Every word of the class, however many rows the page holds.</param>
@@ -94,6 +137,7 @@ public sealed record ReadingManifestSummary(string Kind, string? Path, long Rows
 /// <param name="Expectations">The delta held to manifests and doubled caps, present only when the read was given any.</param>
 /// <param name="Receipt">The receipt written for a green Trial, present only when the read was asked to write one and it earned one.</param>
 /// <param name="Siblings">The sibling words the Trial measured beside its own list and how they fared, present only when it sampled any.</param>
+/// <param name="Groups">The changed Readings grouped by cause, present only when the read asked for a grouping; the class rows are then left out.</param>
 public sealed record ReadingDelta(int SchemaVersion, string JobId, string ProposalRevision, ReadingDeltaCounts Counts,
     IReadOnlyList<ReadingDeltaClass> Classes, IReadOnlyList<ReadingManifestSummary> Manifests,
     IReadOnlyList<string> Limitations,
@@ -102,7 +146,9 @@ public sealed record ReadingDelta(int SchemaVersion, string JobId, string Propos
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     TrialReceiptSummary? Receipt = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    TrialSiblings? Siblings = null)
+    TrialSiblings? Siblings = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    ReadingDeltaGroups? Groups = null)
 {
     /// <summary>The current version of this shape.</summary>
     public const int Version = 1;

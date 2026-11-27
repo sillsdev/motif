@@ -104,6 +104,19 @@ public sealed class CommandsRefusalsTests : IDisposable
         Assert.Equal(before, ReadDraftJson("d"));
     }
 
+    [Fact]
+    public void AddSetGloss_GuidTarget_StoresTheCanonicalIdOfTheSameObject()
+    {
+        New("g", null);
+        var guid = CanonicalId.Parse(_target).ToGuid().ToString("D");
+
+        var result = AddSetGloss("g", guid, "en", "text");
+
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        Assert.Contains(_target, ReadDraftJson("g"), StringComparison.Ordinal);
+        Assert.DoesNotContain(guid, ReadDraftJson("g"), StringComparison.Ordinal);
+    }
+
     // --- AddDeleteLexemeForm ---
 
     [Fact]

@@ -25,7 +25,7 @@ public static class TrialWorkComparison
     public static bool AreCompatible(AssessmentRecord? baseline, AssessmentRecord trial) =>
         AreCompatible(baseline, trial, baseline?.BaselineToken == trial.BaselineToken);
 
-    private static bool AreCompatible(AssessmentRecord? baseline, AssessmentRecord trial, bool sameBaseline)
+    internal static bool AreCompatible(AssessmentRecord? baseline, AssessmentRecord trial, bool sameBaseline)
     {
         var before = baseline?.Invocation;
         var after = trial.Invocation;

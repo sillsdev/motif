@@ -34,6 +34,21 @@ public sealed class LexicalEntryArgvTests(PristineProjectFixture pristine) : IDi
         Assert.True(bare.ExitCode == FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument), bare.Error);
     }
 
+    [Fact]
+    public async Task AGuidReadsTheSameEntryAsTheCanonicalId()
+    {
+        Directory.CreateDirectory(_root);
+        var path = pristine.CopyProjectFile();
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), _root).Succeeded);
+
+        var json = await CliProcess.RunAsync(_root, null, false, "lexical-entry", "--project", path,
+            pristine.Seed.FirstSenseId.ToString("D"), "--json");
+
+        Assert.True(json.ExitCode == 0, json.Error);
+        var lookup = Assert.Single(ProjectionJson.Deserialize<LexicalEntryResponse>(json.Output)!.Lookups);
+        Assert.Equal((true, SeededProject.FirstForm), (lookup.Found, lookup.Headword));
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_root)) Directory.Delete(_root, recursive: true);

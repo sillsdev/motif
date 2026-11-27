@@ -10,6 +10,10 @@ readings. Examples are SYNTHETIC EXAMPLE, loosely Bantu-like; they are not proje
   an edit to it is inert. Before adding an allomorph, list the affix's allomorphs in order and check that no
   earlier one without an environment already matches. Example: a passive `-w` allomorph with no
   environment listed before `-lew` hides `-lew`. Motif does not warn yet (sillsdev/PanGloss#469).
+- **An environment added to an unconditioned allomorph removes its elsewhere role.** The allomorph now
+  applies only where the environment holds, so words that relied on it elsewhere stop parsing. A large loss
+  after such an edit means this; give the elsewhere cases their own unconditioned allomorph before blaming
+  the engine.
 - **Stem alternates are not ordered this way.** A lane saw 15 new stem alternates gain nothing, even with no
   environment; the cause is unconfirmed. Do not assume shadowing there; diagnose with a Trial on one word.
 - **An alternate with an environment blocks the unconditioned form where that environment holds.** To keep
@@ -35,12 +39,21 @@ readings. Examples are SYNTHETIC EXAMPLE, loosely Bantu-like; they are not proje
 - **Retire a lexicalised derived stem** only when both hold:
   1. the derivation is semantically right;
   2. the grammar can build every attested form of it.
-- **Repeated suffixes can't be built yet.** Motif never sets HermitCrab's `multipleApplication` (default 1),
-  so a derivational affix applies once, and templates refuse a repeated slot (sillsdev/PanGloss#468,
-  sillsdev/motif#436). Example: a causative applied twice (`-ish-ish-`) still needs its lexicalised stem.
+- **A repeated suffix needs a per-affix repeat count.** HermitCrab applies a derivational affix once
+  (`multipleApplication`, default 1). Set the count with `compose-set-affix-max-apps` (stored as
+  `HC/AffixRules/AffixRule[@guid][@maxApps]`; sillsdev/motif#436). `maxApps` is a whole number from 1 to 3
+  (1 removes the setting); a value outside the range is refused (`affix-max-apps.invalid-count`), and
+  `expectedMaxApps` must match the current count. PanGloss honours it from v0.35.0; FLEx's own parser does not
+  read it yet and still parses the affix once. Templates still refuse a repeated slot. Example: a causative
+  applied twice (`-ish-ish-`) needs a count of 2 on the causative, or its lexicalised stem stays.
 - **Before retiring, scan the corpus forms of the root** for chains the grammar can't build: repeated
   suffixes, forms after a passive or auxiliary, stems with their own tense alternates.
-- **Otherwise keep the stem and block the nonsense chain** with an ad hoc prohibition.
+- **Otherwise keep the stem, and block a chain only after an inflection-class or feature restriction has been
+  tried** (mechanism ladder rungs 3-4,
+  [mechanism-ladder.md](../../../../plugin/skills/grammar-discovery-loop/references/mechanism-ladder.md)). An ad hoc prohibition is the last rung. When the derivation is right,
+  retire the duplicate lexicalised entry instead of protecting it with a block.
+- **A lost word whose only reading is junk is a disposition, not a loss.** Class the reading as junk, name the
+  word in the expected losses, and return it to Open. Do not keep a rule only because junk parses rely on it.
 
 ## Measuring a change
 
@@ -49,8 +62,11 @@ readings. Examples are SYNTHETIC EXAMPLE, loosely Bantu-like; they are not proje
 - **Count words that gain extra readings**, not only words that change. A change can report few changed
   words and still double hundreds.
 - The gate that does this lives outside Motif for now; its upstreaming is sillsdev/motif#435.
-- **Don't impose an affix order untested.** Try both orders against the corpus first. Example: if
-  applicative and stative can each follow the other in the corpus, a fixed order loses words.
+- **Test each pair of extensions and encode the attested order.** Free order is not the default. Try both
+  orders of every pair against the corpus. Example: if applicative and stative each follow the other, leave
+  them free; if the causative never follows the applicative, encode that order, or every causative parses twice.
+- **Check a negative against the corpus before it counts.** A spelling the grammar should reject can be a real
+  word; several negatives of one language were attested words. Query the corpus for the spelling first.
 
 ## Running
 

@@ -4,6 +4,8 @@
   "stderr": {
     "code": "apply.reconciliation-needed",
     "detail": {
+      "boundary": "\u003Cstring\u003E",
+      "cause": "\u003Cstring\u003E",
       "proposalId": "\u003Cstring\u003E"
     },
     "message": "\u003Cstring\u003E",

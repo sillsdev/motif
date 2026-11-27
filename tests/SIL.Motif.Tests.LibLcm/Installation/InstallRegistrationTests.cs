@@ -165,4 +165,11 @@ public sealed class InstallRegistrationTests
     {
         Assert.False(MotifInstallLifecycle.ShouldRunVelopack([], installedPackage: false));
     }
+
+    [Fact]
+    public void NoInstalledVelopackVersionIsReportedWithoutThrowingWhenNoLocatorWasSet()
+    {
+        Assert.False(Velopack.Locators.VelopackLocator.IsCurrentSet);
+        Assert.False(MotifInstallLifecycle.HasInstalledVelopackVersion());
+    }
 }

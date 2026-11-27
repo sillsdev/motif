@@ -147,7 +147,7 @@ public static class MotifStoreUpgrade
             var carriesSummaries = plan.CarriesSummaries;
             var kept = plan.Kept;
             bool IsDerived(string name) => plan.IsDerived(name);
-            var unknown = tables.Except(kept, StringComparer.Ordinal).Where(name => name != "MotifMetadata" && !IsDerived(name)).ToArray();
+            var unknown = tables.Except(kept, StringComparer.Ordinal).Where(name => name is not ("MotifMetadata" or "MotifStoreIdentity") && !IsDerived(name)).ToArray();
             if (unknown.Length != 0) throw new InvalidDataException(StoreUpgradeMessages.Format("UnknownTable", string.Join(", ", unknown)));
             var carried = kept.ToDictionary(table => table, _ => 0L, StringComparer.Ordinal);
             carried["MotifMetadata"] = 1;

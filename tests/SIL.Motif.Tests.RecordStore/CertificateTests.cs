@@ -37,6 +37,25 @@ public sealed partial class DeletionSafetyTests
         command.ExecuteNonQuery();
     }
 
+    /// <summary>Flips one RecordContent row's last byte, never a no-op.</summary>
+    private void DamageOneContentRow()
+    {
+        const string pick = "SELECT Id FROM RecordContent WHERE substr(Data, 1, 1) = x'00' AND length(Data) > 4 ORDER BY Id LIMIT 1";
+        using var connection = Raw();
+        string Hex(string sql)
+        {
+            using var read = connection.CreateCommand();
+            read.CommandText = sql;
+            return Convert.ToHexString((byte[])read.ExecuteScalar()!);
+        }
+        var before = Hex($"SELECT Data FROM RecordContent WHERE Id = ({pick})");
+        using var update = connection.CreateCommand();
+        update.CommandText = $"UPDATE RecordContent SET Data = substr(Data, 1, length(Data) - 1) || CASE WHEN substr(Data, length(Data), 1) = x'01' THEN x'00' ELSE x'01' END WHERE Id = ({pick})";
+        Assert.Equal(1, update.ExecuteNonQuery());
+        var after = Hex($"SELECT Data FROM RecordContent WHERE Id = ({pick})");
+        Assert.NotEqual(before, after);
+    }
+
     private async Task<(string Revision, JsonElement Value)> Current(Store store, Guid entry)
     {
         var revision = (await store.ReferencesAsync()).Revision;
@@ -139,14 +158,14 @@ public sealed partial class DeletionSafetyTests
     [InlineData("state", "UPDATE RecordStoreState SET SnapshotDigest = 'damaged'", "RecordStoreState")]
     [InlineData("certificate", "UPDATE RecordStoreCertificate SET SnapshotDigest = 'damaged'", "RecordStoreCertificate")]
     [InlineData("change", "UPDATE ChangeEntities SET EntityId = randomblob(16) WHERE rowid = (SELECT min(rowid) FROM ChangeEntities)", "ChangeEntities")]
-    [InlineData("content", "UPDATE RecordContent SET Data = substr(Data, 1, length(Data) - 1) || CASE WHEN substr(Data, length(Data), 1) = x'01' THEN x'02' ELSE x'01' END WHERE Id = (SELECT Id FROM RecordContent WHERE substr(Data, 1, 1) = x'00' AND length(Data) > 4 LIMIT 1)", "RecordContent")]
+    [InlineData("content", "", "RecordContent")]
     public async Task DamageToAnyOneTableRefusesAndVerifyNamesIt(string kind, string damage, string table)
     {
         await Import();
         await using (var store = new Store(Database))
         {
             await store.VerifyAsync();
-            Run(damage);
+            if (kind == "content") DamageOneContentRow(); else Run(damage);
             var failure = await Assert.ThrowsAsync<InvalidDataException>(() => store.VerifyAsync());
             Assert.Contains(table, failure.Message);
         }

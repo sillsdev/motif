@@ -11,7 +11,9 @@ public static class GdrMarkdownOptions
     {
         ArgumentNullException.ThrowIfNull(response);
         var catalog = new ResponseCatalog(response);
-        return MotifMarkdownOptions.Create(catalog, catalog, projectName: projectName);
+        var options = MotifMarkdownOptions.Create(catalog, catalog, projectName: projectName);
+        options.StyleNames.Code = MotifMarkdownStyles.Code;
+        return options;
     }
 
     private sealed class ResponseCatalog(GdrShowResponse response) : IWritingSystemMapper, IKnownWritingSystems, IStyleCatalog, IKnownStyles

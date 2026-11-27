@@ -46,6 +46,47 @@ public sealed class TrialDeltaArgvTests
     }
 
     [Fact]
+    public async Task GroupByEntryPrintsOneGroupPerEntryAndRuleIsRefusedWithItsCode()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var proposal = "";
+        var published = ProjectStoreCommand.Run<string>(fixture.Project, MotifProductVersion.CurrentText, (database, project) =>
+        {
+            proposal = ProposalCompareExports.AddTrial(database, project,
+            [
+                new("a", [], []) { BeforeSignatures = [Sig(1)], AfterSignatures = [] },
+                new("b", [], []) { BeforeSignatures = [Sig(1)], AfterSignatures = [] },
+                new("swap", [], []) { BeforeSignatures = [Sig(2)], AfterSignatures = [Sig(3)] },
+            ]);
+            return CommandOutcome<string>.Success("");
+        });
+        Assert.True(published.Succeeded, published.Refusal?.Message);
+        var runnerRoot = Directory.CreateDirectory(Path.Combine(fixture.Root, "worker")).FullName;
+
+        var grouped = await CliProcess.RunAsync(runnerRoot, null, false, "proposal", "trial", "delta", "--project", fixture.Project,
+            "--proposal", proposal, "--group-by", "entry", "--classes", "lost", "--json");
+        var text = await CliProcess.RunAsync(runnerRoot, null, false, "proposal", "trial", "delta", "--project", fixture.Project,
+            "--proposal", proposal, "--group-by", "entry");
+        var rule = await CliProcess.RunAsync(runnerRoot, null, false, "proposal", "trial", "delta", "--project", fixture.Project,
+            "--proposal", proposal, "--group-by", "rule", "--json");
+
+        Assert.True(grouped.ExitCode == 0, grouped.Error);
+        using var json = JsonDocument.Parse(grouped.Output);
+        var rows = json.RootElement.GetProperty("groups").GetProperty("rows");
+        Assert.Equal(1, rows.GetArrayLength());
+        Assert.Equal(Id(1), rows[0].GetProperty("key").GetString());
+        Assert.Equal(2, rows[0].GetProperty("retired").GetInt32());
+        Assert.Equal(2, rows[0].GetProperty("words").GetInt32());
+        Assert.Contains("By entry: 3 groups", text.Output);
+        var unknown = await CliProcess.RunAsync(runnerRoot, null, false, "proposal", "trial", "delta", "--project", fixture.Project,
+            "--proposal", proposal, "--group-by", "word", "--json");
+        Assert.NotEqual(0, rule.ExitCode);
+        Assert.Contains("trial.delta-group-unsupported", rule.Output + rule.Error);
+        Assert.NotEqual(0, unknown.ExitCode);
+        Assert.Contains("trial.delta-request-invalid", unknown.Output + unknown.Error);
+    }
+
+    [Fact]
     public async Task ExpectationsExitZeroWhenGreenAndSixWhenAManifestOrACapFails()
     {
         using var fixture = new ReviewAcceptanceFixture();

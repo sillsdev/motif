@@ -184,6 +184,9 @@ public static class CommandCatalog
         // ConfigCommands
         new CommandDescriptor("config show", typeof(ShowConfigRequest), typeof(ProjectConfigurationProjection), CommandSurface.Released, AgentClass.Read),
 
+        // IdConvertCommand
+        new CommandDescriptor("id convert", typeof(IdConvertRequest), typeof(IdConvertResponse), CommandSurface.Released, AgentClass.Read),
+
         // ReportCommands — one verb, two handlers (see remarks)
         new CommandDescriptor("report", typeof(ProduceReportRequest), typeof(ReportResponse), CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("report --list-kinds", typeof(ListReportKindsRequest), typeof(ReportKindListResponse), CommandSurface.Released, AgentClass.Read),

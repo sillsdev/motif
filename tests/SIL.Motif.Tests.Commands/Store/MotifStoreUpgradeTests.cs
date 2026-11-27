@@ -53,7 +53,8 @@ public sealed class MotifStoreUpgradeTests : IDisposable
         var tables = new HashSet<string>(StringComparer.Ordinal);
         while (rows.Read()) tables.Add(rows.GetString(0));
         var report = MotifStoreUpgrade.Copy(Source, Path.Combine(_root, "copy.db"));
-        Assert.Empty(tables.Except(report.Carried.Keys.Concat(report.Dropped), StringComparer.Ordinal));
+        // The store id is neither carried nor dropped data: the new file makes its own.
+        Assert.Empty(tables.Except(report.Carried.Keys.Concat(report.Dropped).Append("MotifStoreIdentity"), StringComparer.Ordinal));
     }
 
     [Fact]
@@ -73,7 +74,8 @@ public sealed class MotifStoreUpgradeTests : IDisposable
         CreateCurrentSchemaAsOld();
         using var connection = Connect(Source);
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name <> 'MotifMetadata';";
+        // The optional store-identity table is created on open and never carried by an upgrade, so no step names it.
+        command.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT IN ('MotifMetadata', 'MotifStoreIdentity');";
         using var rows = command.ExecuteReader();
         var tables = new HashSet<string>(StringComparer.Ordinal);
         while (rows.Read()) tables.Add(rows.GetString(0));
@@ -514,6 +516,21 @@ public sealed class MotifStoreUpgradeTests : IDisposable
         Assert.True(row.IsDBNull(0));
         Assert.True(row.IsDBNull(1));
         Assert.Equal("2020", row.GetString(2));
+    }
+
+    [Fact]
+    public void AnUpgradedStoreIsANewFileWithItsOwnFreshStoreId()
+    {
+        CreateSchema49();
+        var output = Path.Combine(_root, "copy.db");
+        MotifStoreUpgrade.Copy(Source, output);
+
+        var id = MotifDatabase.TryReadStoreId(output);
+        Assert.Matches("^[0-9a-f]{32}$", id);
+        Assert.Null(MotifDatabase.TryReadStoreId(Source));
+        var second = Path.Combine(_root, "second.db");
+        MotifStoreUpgrade.Copy(Source, second);
+        Assert.NotEqual(id, MotifDatabase.TryReadStoreId(second));
     }
 
     [Fact]

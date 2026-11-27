@@ -1,9 +1,14 @@
 {
-  "SIL.Motif.Tests.App": 4775,
-  "SIL.Motif.Tests.Cli": 3747,
-  "SIL.Motif.Tests.Commands": 1111,
-  "SIL.Motif.Tests.Contract": 155,
-  "SIL.Motif.Tests.LibLcm": 3388,
-  "SIL.Motif.Tests.Mcp": 259,
-  "SIL.Motif.Tests.Worker": 605
+  "SIL.Motif.Tests.App": 1027,
+  "SIL.Motif.Tests.App.Lifetime": 19,
+  "SIL.Motif.Tests.Cli": 926,
+  "SIL.Motif.Tests.Commands": 760,
+  "SIL.Motif.Tests.Contract": 8,
+  "SIL.Motif.Tests.LibLcm": 391,
+  "SIL.Motif.Tests.ListCrdt": 4,
+  "SIL.Motif.Tests.ListCrdt.Loro": 3,
+  "SIL.Motif.Tests.Mcp": 112,
+  "SIL.Motif.Tests.RecordStore": 143,
+  "SIL.Motif.Tests.Scripture": 5,
+  "SIL.Motif.Tests.Worker": 251
 }

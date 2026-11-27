@@ -150,6 +150,14 @@ namespace SIL.TextEditing.Markdown.Reader
                         Add("|", fmt);
                         pending.Push(new KeyValuePair<Inline?, Fmt>(pipe.FirstChild, fmt));
                         break;
+                    case CodeInline code when _options.StyleNames.Code is { } codeStyle:
+                    {
+                        var inner = fmt.Clone();
+                        inner.Cs = CsState.Explicit;
+                        inner.CsName = codeStyle;
+                        Add(code.Content.Replace('\t', ' '), inner);
+                        break;
+                    }
                     case CodeInline code:
                         Unsupported(code.Span.Start, code.Span.End, "A code span is not supported. Escape the backtick as \\`.");
                         Add(Source(code.Span.Start, code.Span.End), fmt);

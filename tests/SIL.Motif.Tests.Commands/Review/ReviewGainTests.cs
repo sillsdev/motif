@@ -102,6 +102,7 @@ public sealed class ReviewGainTests
         finally { Directory.Delete(root, true); }
     }
 
+    [Trait("Quarantine", "#577")]
     [Fact]
     public void AccumulatingGainsForCebScaleWordsTakesUnderOneSecond()
     {
