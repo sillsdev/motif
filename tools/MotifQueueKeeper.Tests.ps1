@@ -96,4 +96,30 @@ Assert-True ($d.Action -eq 'Skip') 'A PR not based on main must be left alone.'
 $ev2 = [pscustomobject]@{ __typename = 'RemovedFromMergeQueueEvent'; reason = 'merge_conflict'; createdAt = '2026-11-27T10:00:00Z' }
 Assert-True ((Get-LatestEviction -Events @($ev2)).reason -eq 'merge_conflict') 'Get-LatestEviction must return the trailing removal.'
 
+# Required-checks result parsing and the cheap-first ordering.
+$r = ConvertFrom-RequiredChecksResult -ExitCode 0 -Stdout '[{"name":"a","bucket":"pass"}]'
+Assert-True ($r.Ok -and $r.Buckets.Count -eq 1 -and $r.Buckets[0] -eq 'pass') 'All-pass JSON must parse.'
+$r = ConvertFrom-RequiredChecksResult -ExitCode 1 -Stdout '[{"name":"a","bucket":"fail"}]'
+Assert-True ($r.Ok -and $r.Buckets -contains 'fail') 'Exit 1 with JSON must parse and carry the failed bucket.'
+$d = Get-PushedSinceEvictionDecision -EvictedAt $evicted -HeadCommittedAt $newer -Mergeable MERGEABLE -CheckBuckets $r.Buckets
+Assert-True ($d.Action -eq 'Skip') 'A failed bucket must skip.'
+$r = ConvertFrom-RequiredChecksResult -ExitCode 8 -Stdout '[{"name":"a","bucket":"pending"}]'
+$d = Get-PushedSinceEvictionDecision -EvictedAt $evicted -HeadCommittedAt $newer -Mergeable MERGEABLE -CheckBuckets $r.Buckets
+Assert-True ($r.Ok -and $d.Action -eq 'Wait') 'Exit 8 with a pending bucket must wait.'
+$r = ConvertFrom-RequiredChecksResult -ExitCode 0 -Stdout '[]'
+$d = Get-PushedSinceEvictionDecision -EvictedAt $evicted -HeadCommittedAt $newer -Mergeable MERGEABLE -CheckBuckets $r.Buckets
+Assert-True ($r.Ok -and $r.Buckets.Count -eq 0 -and $d.Action -eq 'Wait') 'An empty list must wait, not requeue.'
+$r = ConvertFrom-RequiredChecksResult -ExitCode 0 -Stdout "warning: something`n[{`"name`":`"a`",`"bucket`":`"pass`"}]"
+Assert-True ($r.Ok -and $r.Buckets[0] -eq 'pass') 'A warning before valid JSON must not break parsing.'
+Assert-True (-not (ConvertFrom-RequiredChecksResult -ExitCode 4 -Stdout '[]').Ok) 'An unexpected exit code must not parse.'
+Assert-True (-not (ConvertFrom-RequiredChecksResult -ExitCode 1 -Stdout 'no required checks').Ok) 'Exit 1 without JSON must not parse.'
+$d = Get-PushedSinceEvictionDecision -EvictedAt $evicted -HeadCommittedAt $newer -Mergeable MERGEABLE
+Assert-True ($d.Action -eq 'NeedChecks') 'Checks must be fetched only after the cheap tests pass.'
+$d = Get-PushedSinceEvictionDecision -EvictedAt $evicted -HeadCommittedAt ([datetime]'2026-11-27T09:00:00Z') -Mergeable MERGEABLE
+Assert-True ($d.Action -eq 'Skip') 'A PR not pushed since must skip before any check fetch.'
+# A manual dequeue is never requeued: only merge_conflict and failed_checks are handled by the keeper.
+$manual = [pscustomobject]@{ __typename = 'RemovedFromMergeQueueEvent'; reason = 'manual'; createdAt = '2026-11-27T10:00:00Z' }
+Assert-True (-not (Test-RequeueableEvictionReason -Reason (Get-LatestEviction -Events @($manual)).reason)) 'A manual dequeue must never be requeued.'
+Assert-True (Test-RequeueableEvictionReason -Reason 'merge_conflict') 'merge_conflict must be requeueable.'
+
 Write-Host 'MotifQueueKeeper tests passed'

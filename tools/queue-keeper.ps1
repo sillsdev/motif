@@ -93,21 +93,35 @@ query($o:String!,$n:String!){repository(owner:$o,name:$n){
         $eviction = Get-LatestEviction -Events @($pr.timelineItems.nodes)
         if (-not $eviction) { continue }
         $reason = [string]$eviction.reason
-        if ($reason -notin 'failed_checks', 'merge_conflict') { Log "- #$number left alone: evicted for $reason"; continue }
+        if (-not (Test-RequeueableEvictionReason -Reason $reason)) { Log "- #$number left alone: evicted for $reason"; continue }
         try {
             # A push after the eviction supersedes the old failure: requeue once the required checks on the new head are green.
-            $headDate = @($pr.commits.nodes | Select-Object -Last 1).ForEach({ $_.commit.committedDate })
-            $pushed = Get-PushedSinceEvictionDecision -State ([string]$pr.state) -IsDraft ([bool]$pr.isDraft) -BaseRef ([string]$pr.baseRefName) `
-                -EvictedAt $eviction.createdAt -HeadCommittedAt ($headDate | Select-Object -First 1) -Mergeable ([string]$pr.mergeable) -CheckBuckets @(
-                    if ($pr.mergeable -eq 'MERGEABLE') {
-                        $c = & gh pr checks $number -R $Repo --required --json bucket 2>&1
-                        if ($LASTEXITCODE -notin 0, 8) { throw "gh pr checks failed: $c" }
-                        (($c | Out-String) | ConvertFrom-Json) | ForEach-Object { $_.bucket }
-                    })
+            # Push time is approximated by the head commit's committedDate (a rebase or amend rewrites it); a plain push of an
+            # older commit would not look newer.
+            $headDate = $null
+            $lastCommit = @($pr.commits.nodes | Select-Object -Last 1)
+            if ($lastCommit.Count -gt 0) { $headDate = $lastCommit[0].commit.committedDate }
+            $pushArgs = @{ State = [string]$pr.state; IsDraft = [bool]$pr.isDraft; BaseRef = [string]$pr.baseRefName
+                EvictedAt = $eviction.createdAt; HeadCommittedAt = $headDate; Mergeable = [string]$pr.mergeable }
+            $pushed = Get-PushedSinceEvictionDecision @pushArgs
+            if ($pushed.Action -eq 'NeedChecks') {
+                $errFile = [System.IO.Path]::GetTempFileName()
+                try {
+                    $c = & gh pr checks $number -R $Repo --required --json name,bucket 2>$errFile
+                    $code = $LASTEXITCODE
+                } finally { Remove-Item -LiteralPath $errFile -ErrorAction SilentlyContinue }
+                $parsed = ConvertFrom-RequiredChecksResult -ExitCode $code -Stdout ($c | Out-String)
+                if (-not $parsed.Ok) { throw $parsed.Error }
+                $pushed = Get-PushedSinceEvictionDecision @pushArgs -CheckBuckets $parsed.Buckets
+            }
             if ($pushed.Action -eq 'Wait') { Log "- #$number $($pushed.Reason) (evicted for $reason, pushed since)"; continue }
             if ($pushed.Action -eq 'Requeue') {
+                $markerTimes = Get-Lines (Invoke-Api @("repos/$Repo/issues/$number/comments", '--paginate', '--jq', '.[] | select(.body | contains("queue-keeper:requeue")) | .created_at'))
+                $todayCount = @($markerTimes | Where-Object { ([datetime]$_).ToUniversalTime().Date -eq $today }).Count
+                if ($todayCount -ge $MaxRequeuesPerDay) { Log "- #$number left alone: already requeued $todayCount time(s) today"; continue }
                 if ($DryRun) { Log "- #$number would be requeued: $($pushed.Reason) (evicted for $reason)"; continue }
-                # Enqueue directly: auto-merge is lost on eviction and cannot be re-enabled here.
+                # The marker comes first so the cap can be counted. Enqueue directly: auto-merge is lost on eviction and cannot be re-enabled here.
+                Invoke-Api @('-X', 'POST', "repos/$Repo/issues/$number/comments", '-f', "body=$marker`nQueue keeper is requeueing this PR after a $reason eviction: $($pushed.Reason).") | Out-Null
                 Invoke-Graphql 'mutation($id:ID!){enqueuePullRequest(input:{pullRequestId:$id}){mergeQueueEntry{position}}}' @{ id = $pr.id } | Out-Null
                 Log "- #$number requeued: $($pushed.Reason) (evicted for $reason)"
                 continue
