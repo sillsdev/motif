@@ -26,7 +26,7 @@ public sealed class AssessWordsFileToolTests
     [InlineData("motif_trial")]
     public void TheToolTakesAWordsFileInCamelCase(string tool)
     {
-        var exposed = MotifMcpServer.Expose(ToolProfile.Builtin).Single(entry => entry.Name == tool);
+        var exposed = MotifMcpServer.Expose(ToolProfile.Load("full")).Single(entry => entry.Name == tool);
 
         var properties = exposed.Tool.InputSchema["properties"]!.AsObject();
         Assert.Equal("string", properties["wordsFile"]!["type"]!.GetValue<string>());
@@ -35,7 +35,7 @@ public sealed class AssessWordsFileToolTests
     [Fact]
     public void TheAssessToolPagesAStoredAssessmentWithOffsetAndAssessment()
     {
-        var exposed = MotifMcpServer.Expose(ToolProfile.Builtin).Single(entry => entry.Name == "motif_assess");
+        var exposed = MotifMcpServer.Expose(ToolProfile.Load("full")).Single(entry => entry.Name == "motif_assess");
 
         var properties = exposed.Tool.InputSchema["properties"]!.AsObject();
         Assert.True(properties.ContainsKey("assessment"));
@@ -84,7 +84,7 @@ public sealed class AssessWordsFileToolTests
                     new ProjectLocator(project, "project")), project, DateTimeOffset.UtcNow);
             var context = new ServerContext(project, "1.0", new NoRunnerLauncher(
                 new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(),
-                ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
+                ToolProfile.Load("full"), TextWriter.Null, advancedAiModeEnabled: true);
             var arguments = new Dictionary<string, JsonElement>
             {
                 ["project"] = JsonSerializer.SerializeToElement(project),
@@ -93,7 +93,7 @@ public sealed class AssessWordsFileToolTests
             if (inline is not null) arguments["words"] = JsonSerializer.SerializeToElement(new[] { "baga" });
             if (tool == "motif_trial") arguments["proposal"] = JsonSerializer.SerializeToElement("proposal/x");
 
-            var result = await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Builtin),
+            var result = await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Load("full")),
                 tool, arguments, CancellationToken.None);
 
             Assert.True(result.IsError);
@@ -222,7 +222,7 @@ public sealed class AssessWordsFileIngressTests(PristineProjectFixture pristine)
     private static ServerContext Context(string projectPath, string parser)
     {
         var runner = new NoRunnerLauncher(new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), parser));
-        return new ServerContext(projectPath, "1.0", runner, new ActivityLog(), ToolProfile.Builtin,
+        return new ServerContext(projectPath, "1.0", runner, new ActivityLog(), ToolProfile.Load("full"),
             TextWriter.Null, advancedAiModeEnabled: true, parserPath: parser);
     }
 
@@ -248,7 +248,7 @@ public sealed class AssessWordsFileIngressTests(PristineProjectFixture pristine)
     private static async Task<JsonElement> CallAsync(ServerContext context, string tool,
         Dictionary<string, JsonElement> arguments)
     {
-        var response = await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Builtin), tool,
+        var response = await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Load("full")), tool,
             arguments, CancellationToken.None);
         Assert.True(response.IsError != true, $"MCP {tool} returned {response.StructuredContent?.ToString()}");
         var result = response.StructuredContent!.Value;

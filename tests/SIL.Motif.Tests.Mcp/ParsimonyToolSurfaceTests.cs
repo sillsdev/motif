@@ -68,7 +68,7 @@ public sealed class ParsimonyToolSurfaceTests
     }
 
     [Fact]
-    public void ExperimentalParsimonyStaysRestrictedWhileDefaultCanAuthorSlotsAndTemplates()
+    public void ExperimentalParsimonyStaysRestrictedWhileDefaultComposesThroughTheBatchTool()
     {
         foreach (var profileName in new[] { "default", "phonology" })
         {
@@ -78,8 +78,8 @@ public sealed class ParsimonyToolSurfaceTests
             Assert.DoesNotContain(tools, tool => tool.Name == "motif_run_parsimony_measure");
             if (profileName == "default")
             {
-                Assert.Contains(tools, tool => tool.Name == "motif_add_affix_slot");
-                Assert.Contains(tools, tool => tool.Name == "motif_add_affix_template");
+                Assert.Contains(tools, tool => tool.Name == "motif_compose_batch");
+                Assert.Contains(tools, tool => tool.Name == "motif_find_composer");
             }
             else
             {
