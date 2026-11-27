@@ -1639,6 +1639,7 @@ ComputedFields	LexEntry	head-word	LexEntry.HeadWord	ClearRich	none	ComputedField
 # Handler	grammar/partOfSpeech/createInflectionClasses	PartOfSpeech	InflectionClasses	AddObject	Forbidden	-	MoInflClass	Unspecified	False
 # Handler	grammar/partOfSpeech/createStemNames	PartOfSpeech	StemNames	AddObject	Forbidden	-	MoStemName	Unspecified	False
 # Handler	grammar/partOfSpeech/deleteAffixSlots	PartOfSpeech	AffixSlots	RemoveObject	Forbidden	-	MoInflAffixSlot	Unspecified	False
+# Handler	grammar/partOfSpeech/deleteInflectionClasses	(no direct field edit)
 # Handler	grammar/partOfSpeech/moveAffixTemplates	PartOfSpeech	AffixTemplates	MoveObject	Required	-		Unspecified	False
 # Handler	grammar/partOfSpeech/removeRefInflectableFeats	(no direct field edit)
 # Handler	grammar/partOfSpeech/setDefaultInflectionClass	PartOfSpeech	DefaultInflectionClass	Set	Forbidden	-		Unspecified	False

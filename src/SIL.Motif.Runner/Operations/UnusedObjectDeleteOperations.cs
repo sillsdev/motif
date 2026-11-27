@@ -27,6 +27,9 @@ public static class UnusedObjectDeleteOperationKinds
     /// <summary>Deletes an unreferenced natural class.</summary>
     public const string DeleteNaturalClass = "grammar/phPhonData/deleteNaturalClasses";
 
+    /// <summary>Deletes an unreferenced inflection class that has no subclass.</summary>
+    public const string DeleteInflectionClass = "grammar/partOfSpeech/deleteInflectionClasses";
+
     /// <summary>Deletes one Note of a Text Segment.</summary>
     public const string DeleteTextSegmentNote = "texts/segment/deleteNotes";
 
@@ -34,7 +37,7 @@ public static class UnusedObjectDeleteOperationKinds
     [ModuleInitializer]
     internal static void Register()
     {
-        foreach (var kind in new[] { DeleteExceptionFeature, DeleteEnvironment, DeleteNaturalClass, DeleteTextSegmentNote })
+        foreach (var kind in new[] { DeleteExceptionFeature, DeleteEnvironment, DeleteNaturalClass, DeleteInflectionClass, DeleteTextSegmentNote })
         {
             OperationKindRegistry.Register(kind);
             OperationHandlerRegistry.Register(kind, new UnusedObjectDeleteHandler(kind));
@@ -62,7 +65,7 @@ internal sealed class UnusedObjectDeleteHandler(string kind) : IOperationHandler
             if (target is ICmPossibility feature) RemoveWrappers(cache, feature, touchedTargets);
             target.Delete();
         }
-        return new ExpectedEffect(id, Field, before, ReferenceFieldAlternatives.ToAlternatives(null));
+        return new ExpectedEffect(id, Field(target), before, ReferenceFieldAlternatives.ToAlternatives(null));
     }
 
     // What FieldWorks does when an exception feature is deleted: its Phonological Rule Features wrapper goes too.
@@ -78,13 +81,15 @@ internal sealed class UnusedObjectDeleteHandler(string kind) : IOperationHandler
 
     public ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation)
     {
-        var (id, _) = TargetOnly(cache, operation);
+        var (id, target) = TargetOnly(cache, operation);
         var current = ReferenceFieldAlternatives.ToAlternatives(id);
-        return new ExpectedEffect(id, Field, current, current);
+        return new ExpectedEffect(id, Field(target), current, current);
     }
 
-    private string Field => kind switch
+    private string Field(ICmObject target) => kind switch
     {
+        UnusedObjectDeleteOperationKinds.DeleteInflectionClass when target.Owner is IMoInflClass => SnapshotFields.MoInflClassSubclasses,
+        UnusedObjectDeleteOperationKinds.DeleteInflectionClass => SnapshotFields.PartOfSpeechInflectionClasses,
         UnusedObjectDeleteOperationKinds.DeleteExceptionFeature => SnapshotFields.CmPossibilityListPossibilities,
         UnusedObjectDeleteOperationKinds.DeleteEnvironment => SnapshotFields.PhPhonDataEnvironments,
         UnusedObjectDeleteOperationKinds.DeleteNaturalClass => SnapshotFields.PhPhonDataNaturalClasses,
@@ -96,6 +101,7 @@ internal sealed class UnusedObjectDeleteHandler(string kind) : IOperationHandler
         UnusedObjectDeleteOperationKinds.DeleteExceptionFeature => Cast(TargetResolution.Resolve<ICmPossibility>(cache, operation, kind)),
         UnusedObjectDeleteOperationKinds.DeleteEnvironment => Cast(TargetResolution.Resolve<IPhEnvironment>(cache, operation, kind)),
         UnusedObjectDeleteOperationKinds.DeleteNaturalClass => Cast(TargetResolution.Resolve<IPhNaturalClass>(cache, operation, kind)),
+        UnusedObjectDeleteOperationKinds.DeleteInflectionClass => Cast(TargetResolution.Resolve<IMoInflClass>(cache, operation, kind)),
         _ => Cast(TargetResolution.Resolve<INote>(cache, operation, kind)),
     };
 
@@ -110,6 +116,7 @@ internal sealed class UnusedObjectDeleteHandler(string kind) : IOperationHandler
             case ICmPossibility feature: UnusedObjects.RequireUnusedExceptionFeature(cache, feature, id, kind); break;
             case IPhEnvironment environment: UnusedObjects.RequireUnusedEnvironment(environment, id, kind); break;
             case IPhNaturalClass naturalClass: UnusedObjects.RequireUnusedNaturalClass(cache, naturalClass, id, kind); break;
+            case IMoInflClass inflectionClass: UnusedObjects.RequireUnusedInflectionClass(inflectionClass, id, kind); break;
             case INote note: UnusedObjects.RequireSegmentNote(note, id, kind); break;
         }
         return (id, target);
