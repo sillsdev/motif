@@ -32,10 +32,7 @@ public static partial class ProposalCommands
             }
             if (verb == "compose-author-environment" && SpellsWholeWord(intent))
                 advisories.Add(new(ComposeAdvisoryCodes.WholeWordEnvironment,
-                    $"Environment '{Text(intent, "name")}' has a word boundary on both sides and only literal sounds " +
-                    "between, so it fits one word: forms conditioned by it are a stem list. Condition forms by sound " +
-                    "with natural classes (Black, Parsing Conceptual Introduction 3.1.2, 3.1.3); if it marks a " +
-                    "suppletive form, keep it or list the form as a variant.", [index]));
+                    WholeWordEnvironmentMessage(Text(intent, "name")), [index]));
         }
         foreach (var (key, at) in analyses.Where(pair => pair.Value.Count >= RepeatedConditionLimit))
             advisories.Add(new(ComposeAdvisoryCodes.RepeatedCondition,
@@ -49,7 +46,7 @@ public static partial class ProposalCommands
     }
 
     // A word boundary at both outer edges and nothing but phonemes between spells one whole word.
-    private static bool SpellsWholeWord(JsonElement intent)
+    internal static bool SpellsWholeWord(JsonElement intent)
     {
         if (!intent.TryGetProperty("left", out var left) || left.ValueKind != JsonValueKind.Array ||
             !intent.TryGetProperty("right", out var right) || right.ValueKind != JsonValueKind.Array) return false;
@@ -115,9 +112,7 @@ public static partial class ProposalCommands
                 found is not IMoInflClass inflectionClass ||
                 stemClasses.Count(stemClass => Within(stemClass, inflectionClass)) != 1) continue;
             advisories.Add(new(ComposeAdvisoryCodes.OneStemInflectionClass,
-                $"Inflection class '{inflectionClass.Name.BestAnalysisAlternative.Text}' has one stem after these " +
-                "intents. A class groups stems that take the same affix forms (Black 2.1.2.6, 2.1.2.8); one stem is an " +
-                "exception, better a listed form or an exception feature (2.1.6). Keep it if more stems will join.", at));
+                OneStemInflectionClassMessage(inflectionClass.Name.BestAnalysisAlternative.Text, "after these intents"), at));
         }
         return advisories;
     }
@@ -160,6 +155,24 @@ public static partial class ProposalCommands
         item.ValueKind == JsonValueKind.String && CanonicalId.TryParse(item.GetString(), out var id) &&
         cache.ServiceLocator.ObjectRepository.TryGetObject(id.ToGuid(), out var found) &&
         found is IPhEnvironment environment ? environment.StringRepresentation?.Text : null;
+
+    /// <summary>The words of the whole-word-environment advisory, shared by compose-batch and the whole-grammar sweep.</summary>
+    internal static string WholeWordEnvironmentMessage(string name) =>
+        $"Environment '{name}' has a word boundary on both sides and only literal sounds " +
+        "between, so it fits one word: forms conditioned by it are a stem list. Condition forms by sound " +
+        "with natural classes (Black, Parsing Conceptual Introduction 3.1.2, 3.1.3); if it marks a " +
+        "suppletive form, keep it or list the form as a variant.";
+
+    /// <summary>The words of the one-stem-inflection-class advisory, shared by compose-batch and the whole-grammar sweep.</summary>
+    internal static string OneStemInflectionClassMessage(string name, string when) =>
+        $"Inflection class '{name}' has one stem {when}. A class groups stems that take the same affix forms " +
+        "(Black 2.1.2.6, 2.1.2.8); one stem is an exception, better a listed form or an exception feature (2.1.6). " +
+        "Keep it if more stems will join.";
+
+    /// <summary>How many stem analyses sit in <paramref name="inflectionClass"/> or one of its subclasses.</summary>
+    internal static int StemCount(LcmCache cache, IMoInflClass inflectionClass) =>
+        cache.ServiceLocator.GetInstance<IMoStemMsaRepository>().AllInstances()
+            .Count(msa => msa.InflectionClassRA is { } stemClass && Within(stemClass, inflectionClass));
 
     private static bool Within(IMoInflClass candidate, IMoInflClass inflectionClass)
     {

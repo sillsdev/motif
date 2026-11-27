@@ -32,7 +32,7 @@ public sealed class RefusalCodeRegistryTests
     private static readonly Regex NotRefusalCodes = new(
         "^(?:change\\.(?:abstract|at|dropped|gained|left|right)$|letters\\.(?:dropped|gained)$|assess\\.unavailable$|review\\.(?:cursor-invalid|detail-unavailable)$|motif\\.(?:review-word-set|proposal-review-report)$|motif\\.(?:list|block)\\.|proposal\\.(?:rationale|read)$|delta\\.|cgroup\\.|cpu\\.|memory\\.|facts\\.|sil\\.lcmodel$|parse\\.(?:allomorph\\.|state$)|base\\.(?:parse\\.state|readings)$|" +
         "lexicon\\.(?:stem-typed-as-content-word|duplicate-entry|affix-hyphen-on-wrong-side)$|" +
-        "job\\.claim-lost$|grammar\\.(?:compile\\.failed$|empty-lexicon|required-slot-empty|negated-feature-value|derived-stem-keeps-from-class|template-has-no-slots|phoneme-spelling-ambiguous|phoneme-case-alias-missing|phoneme-never-used$|allomorph-environment-ignored-by-parser|allomorph-repeats-environment-material|restricted-solid-blocks-hyphen|stored-analysis\\.)|" +
+        "job\\.claim-lost$|grammar\\.(?:compile\\.failed$|empty-lexicon|orphan-environment|required-slot-empty|negated-feature-value|derived-stem-keeps-from-class|template-has-no-slots|phoneme-spelling-ambiguous|phoneme-case-alias-missing|phoneme-never-used$|allomorph-environment-ignored-by-parser|allomorph-repeats-environment-material|restricted-solid-blocks-hyphen|stored-analysis\\.)|" +
         "compose\\.(?:repeated-condition|whole-word-environment|one-stem-inflection-class)$|" +
         "compare\\.(?:apply-filter|short-matrix-walk)$|context\\.publish-to-pages$|layout\\.(?:arrange|host-measure|measure)$|" +
         "(?:gdr|guide)\\.|panes\\.|results-in-text\\.|review\\.(?:load|rebuild-entries)$|shell\\.(?:raise-freshness|update-notice-band)$|" +
