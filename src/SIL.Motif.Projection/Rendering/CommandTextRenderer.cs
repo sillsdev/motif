@@ -100,26 +100,26 @@ public static class CommandTextRenderer
         }
         else
         {
-        sb.AppendLine(projection.OperationTotal is { } operationTotal && projection.OperationOffset is { } operationOffset
-            ? (projection.Operations.Count == 0
-                ? $"  operations (none at offset {operationOffset:N0}; {operationTotal:N0} in all):"
-                : $"  operations (showing {operationOffset + 1:N0}-{operationOffset + projection.Operations.Count:N0} of {operationTotal:N0}):")
-            : $"  operations ({projection.Operations.Count}):");
-        foreach (var op in projection.Operations)
-        {
-            sb.AppendLine($"    {op.OperationId}  ({op.Kind})");
-            if (op.Target is not null)
-                sb.AppendLine($"      target:    {op.Target}");
-            if (op.EntityId is not null)
-                sb.AppendLine($"      entityId:  {op.EntityId}");
-            if (op.DependsOn.Count > 0)
-                sb.AppendLine($"      dependsOn: {string.Join(", ", op.DependsOn)}");
-            if (op.AfterJson is not null)
-                sb.AppendLine($"      after:     {op.AfterJson}");
-            if (op.Citation is not null)
-                sb.AppendLine($"      cites:     {op.Citation}");
-            foreach (var current in op.Current ?? [])
-                sb.AppendLine($"      current:   {current.Field} {JsonSerializer.Serialize(current.Value)}");
+            sb.AppendLine(projection.OperationTotal is { } operationTotal && projection.OperationOffset is { } operationOffset
+                ? (projection.Operations.Count == 0
+                    ? $"  operations (none at offset {operationOffset:N0}; {operationTotal:N0} in all):"
+                    : $"  operations (showing {operationOffset + 1:N0}-{operationOffset + projection.Operations.Count:N0} of {operationTotal:N0}):")
+                : $"  operations ({projection.Operations.Count}):");
+            foreach (var op in projection.Operations)
+            {
+                sb.AppendLine($"    {op.OperationId}  ({op.Kind})");
+                if (op.Target is not null)
+                    sb.AppendLine($"      target:    {op.Target}");
+                if (op.EntityId is not null)
+                    sb.AppendLine($"      entityId:  {op.EntityId}");
+                if (op.DependsOn.Count > 0)
+                    sb.AppendLine($"      dependsOn: {string.Join(", ", op.DependsOn)}");
+                if (op.AfterJson is not null)
+                    sb.AppendLine($"      after:     {op.AfterJson}");
+                if (op.Citation is not null)
+                    sb.AppendLine($"      cites:     {op.Citation}");
+                foreach (var current in op.Current ?? [])
+                    sb.AppendLine($"      current:   {current.Field} {JsonSerializer.Serialize(current.Value)}");
         }
         if (projection.NextOffset is { } nextOperation)
             sb.AppendLine("  more operations: " + (projection.NextStep ?? $"--offset {nextOperation} --limit {projection.Operations.Count}") +

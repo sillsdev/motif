@@ -368,6 +368,27 @@ public sealed class RecordImportDirTests(PristineProjectFixture pristine) : IDis
     }
 
     [Fact]
+    public void ShowByRecordCountsTheBatchEdgesBetweenFilesOfAStagedFolder()
+    {
+        var seed = Seeded(3);
+        var main = WriteFile(seed, seed.Entries[0], "main.fw.md", asNew: true);
+        var newMsa = new Regex("guid: \"([0-9a-f-]{36})\"\\s+class: \"MoStemMsa\"").Match(File.ReadAllText(main)).Groups[1].Value;
+        var other = WriteFile(seed, seed.Entries[1], "other.fw.md", asNew: true);
+        var otherText = File.ReadAllText(other);
+        var own = new Regex("morpho-syntax-analysis: \"\\[zznoun\\]\\(/objects/([0-9a-f-]{36})\\)").Match(otherText).Groups[1].Value;
+        File.WriteAllText(other, string.Join('\n', otherText.Split('\n').Select(line =>
+            line.Contains("morpho-syntax-analysis: \"[") ? line.Replace(own, newMsa, StringComparison.OrdinalIgnoreCase) : line)));
+        WriteFile(seed, seed.Entries[2], "lone.fw.md", asNew: true);
+        Assert.True(RecordImportCommand.Run(Dry(seed, "edges")).Succeeded);
+
+        var rows = ProposalCommands.Show(new(seed.Project, Version, "edges", Records: new ShowRecordGrouping("batch-edges"))).Value!.Records!;
+
+        Assert.Equal(["other.fw.md", "lone.fw.md", "main.fw.md"], rows.Select(row => row.Path));
+        Assert.Equal((1, true), (rows[0].BatchEdges, rows[0].HasBatchEdges));
+        Assert.All(rows.Skip(1), row => Assert.Equal((0, false), (row.BatchEdges, row.HasBatchEdges)));
+    }
+
+    [Fact]
     public void RowPagesAreBoundedAndARefusedOnlyPageListsJustTheRefusedRows()
     {
         var seed = MixedFolder();
