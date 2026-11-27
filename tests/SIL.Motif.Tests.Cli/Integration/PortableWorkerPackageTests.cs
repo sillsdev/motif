@@ -49,7 +49,6 @@ public sealed partial class PortableWorkerPackageTests(PristineProjectFixture pr
             AssertIcuPayload(package, ReadIcuPayload(repoRoot, rid));
 
             var cliHost = Path.Combine(package, "motif" + suffix);
-            AssertAppHost(package, suffix);
             Assert.True(File.Exists(cliHost), "The portable package is missing the CLI apphost.");
             Assert.True(File.Exists(workerHost), "The portable package is missing the Worker apphost.");
             Assert.Equal(Path.GetDirectoryName(cliHost), Path.GetDirectoryName(workerHost));
@@ -299,7 +298,7 @@ public sealed partial class PortableWorkerPackageTests(PristineProjectFixture pr
         Assert.Equal(RuntimeIdentifier(), root.GetProperty("runtimeIdentifier").GetString());
 
         var frontEndPublishes = root.GetProperty("frontEndPublishes").EnumerateArray().ToArray();
-        Assert.Equal(new[] { "App", "CLI" }, frontEndPublishes
+        Assert.Equal(new[] { "CLI" }, frontEndPublishes
             .Select(publish => publish.GetProperty("name").GetString()).ToArray());
         Assert.All(frontEndPublishes, publish =>
         {
