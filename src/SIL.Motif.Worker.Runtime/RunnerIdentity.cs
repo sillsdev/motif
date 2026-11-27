@@ -93,7 +93,7 @@ public static class RunnerIdentity
         var build = lines[1].Trim();
         if (string.Equals(build, BuildId, StringComparison.Ordinal) || !IsAlive(pid)) return null;
         return $"warning: a SIL.Motif.Worker from a different build (pid {pid}, build {build}) is running on " +
-            $"this root and will claim this build's jobs ({BuildId}); stop it (kill {pid}) so a matching runner " +
+            $"this root and will claim this build's jobs ({BuildId}); stop it with `motif worker stop` (or kill {pid}) so a matching runner " +
             "starts, or its jobs may fail.";
     }
 
