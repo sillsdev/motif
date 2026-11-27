@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="SIL.Motif.Tests.RecordStore" />
+    <InternalsVisibleTo Include="SIL.Motif.RecordStore.Lcm" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../SIL.Motif.Contract/SIL.Motif.Contract.csproj" />
+    <ProjectReference Include="../SIL.ListCrdt/SIL.ListCrdt.csproj" />
+    <ProjectReference Include="../../textediting/src/SIL.TextEditing.Markdown/SIL.TextEditing.Markdown.csproj" SetTargetFramework="TargetFramework=net10.0" />
+    <PackageReference Include="SIL.Harmony" Version="0.2.1-rc.445" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.7" />
+  </ItemGroup>
+</Project>
