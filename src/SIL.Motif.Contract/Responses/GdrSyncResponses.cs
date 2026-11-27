@@ -48,6 +48,9 @@ public static class GdrSyncCodes
     /// <summary>A <c>motif-query</c> block started and did not finish: it threw, or ran past the per-block timeout.</summary>
     public const string QueryFailed = "guide.query-failed";
 
+    /// <summary>A <c>motif-query</c> block's run line is not in NFC, the form Query matches in; Query composes it, but the block should be saved in the corpus's form.</summary>
+    public const string QueryNotNormalized = "guide.query-not-normalized";
+
     /// <summary>A <c>motif-query</c> or <c>motif-show</c> block is malformed (a bad line, key, id or value).</summary>
     public const string QueryBlockInvalid = "guide.query-block-invalid";
 }

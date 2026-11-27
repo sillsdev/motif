@@ -228,7 +228,7 @@ jobs:
         shell: pwsh
         run: |
           $env:MOTIF_PACKAGE_INTERMEDIATE_ROOT = Join-Path $env:RUNNER_TEMP 'runtime-pack-prefetch/obj'
-          dotnet restore src/SIL.Motif.App/SIL.Motif.App.csproj --runtime ${{ matrix.icu_rid }} -p:SelfContained=true -p:MotifPortablePackage=true "-p:MotifBinRoot=$(Join-Path $env:RUNNER_TEMP 'runtime-pack-prefetch/bin/')" --nologo -v q
+          dotnet restore src/SIL.Motif.Cli/SIL.Motif.Cli.csproj --runtime ${{ matrix.icu_rid }} -p:SelfContained=true -p:MotifPortablePackage=true "-p:MotifBinRoot=$(Join-Path $env:RUNNER_TEMP 'runtime-pack-prefetch/bin/')" --nologo -v q
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Test (full suite)
@@ -368,7 +368,7 @@ jobs:
         shell: pwsh
         run: |
           $env:MOTIF_PACKAGE_INTERMEDIATE_ROOT = Join-Path $env:RUNNER_TEMP 'runtime-pack-prefetch/obj'
-          dotnet restore src/SIL.Motif.App/SIL.Motif.App.csproj --runtime ${{ matrix.icu_rid }} -p:SelfContained=true -p:MotifPortablePackage=true "-p:MotifBinRoot=$(Join-Path $env:RUNNER_TEMP 'runtime-pack-prefetch/bin/')" --nologo -v q
+          dotnet restore src/SIL.Motif.Cli/SIL.Motif.Cli.csproj --runtime ${{ matrix.icu_rid }} -p:SelfContained=true -p:MotifPortablePackage=true "-p:MotifBinRoot=$(Join-Path $env:RUNNER_TEMP 'runtime-pack-prefetch/bin/')" --nologo -v q
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Test (quarantined tests only)

@@ -12,22 +12,22 @@ $root = Join-Path ([IO.Path]::GetTempPath()) ("slow-list-" + [guid]::NewGuid().T
 try {
     New-Item -ItemType Directory -Path $root | Out-Null
     $failure = Get-Failure { & $script -ListOnly -TestsRoot $root }
-    if (-not $failure -or $failure -notmatch 'TextsProposalChangesMemoryTests\.A.* \(no such test\)') {
+    if (-not $failure -or $failure -notmatch 'SourcePassageQueryTests\.CebSized.* \(no such test\)') {
         throw "Tests missing from the sources were not named: $failure"
     }
 
     # A test that exists without the trait is reported separately from one that is gone.
     Set-Content (Join-Path $root 'T.cs') @'
-public sealed class ProgressiveDisplayTests
+public sealed class SourceApprovalTests
 {
     [Fact]
-    public void RecentProjectMenuReachesTheLastOfTwoThousandProjects() { }
+    public void TenThousandApprovalsInOneApplyTakeSeconds() { }
 }
 '@
     $failure = Get-Failure { & $script -ListOnly -TestsRoot $root }
-    if ($failure -notmatch 'RecentProjectMenuReachesTheLastOfTwoThousandProjects \(not marked Category=SlowScale\)') {
+    if ($failure -notmatch 'TenThousandApprovalsInOneApplyTakeSeconds \(not marked Category=SlowScale\)') {
         throw "An untagged test was not named: $failure"
     }
-    if ($failure -match 'RecentProjectMenuReachesTheLastOfTwoThousandProjects \(no such test\)') { throw 'An existing test was called missing.' }
+    if ($failure -match 'TenThousandApprovalsInOneApplyTakeSeconds \(no such test\)') { throw 'An existing test was called missing.' }
 } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
 Write-Output 'Assert-SlowScaleRan list regression passed.'

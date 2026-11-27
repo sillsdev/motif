@@ -125,7 +125,7 @@ internal static class QueryEngine
         {
             if (numeric) throw new ArgumentException("Regular expressions require a string column.");
             if (condition.Value.Length > FormQuery.MaximumRegexLength) throw new ArgumentException("Regular expression is too long.");
-            try { regex = new Regex(condition.Value, RegexOptions.NonBacktracking | RegexOptions.CultureInvariant); }
+            try { regex = new Regex(PatternNormalization.Pattern(condition.Value), RegexOptions.NonBacktracking | RegexOptions.CultureInvariant); }
             catch (Exception e) when (e is ArgumentException or NotSupportedException)
             { throw new ArgumentException("Invalid non-backtracking regular expression.", e); }
         }
@@ -143,7 +143,7 @@ internal static class QueryEngine
                 "is" => items.Contains(condition.Value, StringComparer.Ordinal),
                 "not" => !items.Contains(condition.Value, StringComparer.Ordinal),
                 "in" or "has" => items.Any(x => targets.Contains(x, StringComparer.Ordinal)),
-                "~" => items.Any(x => regex!.IsMatch(x)),
+                "~" => items.Any(x => regex!.IsMatch(PatternNormalization.Value(x))),
                 "<" => items.Count > 0 && long.TryParse(items[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out var v) && v < limit,
                 ">" => items.Count > 0 && long.TryParse(items[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out var w) && w > limit,
                 _ => false

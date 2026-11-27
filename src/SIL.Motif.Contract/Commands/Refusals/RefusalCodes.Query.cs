@@ -23,6 +23,8 @@ public static partial class RefusalCodes
     public const string QueryTwinNeedsRegex = "query.twin-needs-regex";
     /// <summary><c>--twin</c> was given with several distinct <c>form ~</c> patterns, or one under <c>or</c>, so the rewrite has no single regex.</summary>
     public const string QueryTwinRegexAmbiguous = "query.twin-regex-ambiguous";
+    /// <summary>A pattern written decomposed cannot be composed to NFC without changing what it matches (a class or range holding a letter and its mark).</summary>
+    public const string QueryPatternNotNormalizable = "query.pattern-not-normalizable";
     /// <summary>A <c>--twin</c> template names a group its regex does not have, or is malformed.</summary>
     public const string QueryTwinGroupUnknown = "query.twin-group-unknown";
     /// <summary><c>realizes(M, attested)</c> was given an id that no morph of the parse and no entry of the project carries.</summary>

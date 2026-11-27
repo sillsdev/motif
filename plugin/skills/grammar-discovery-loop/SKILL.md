@@ -15,14 +15,22 @@ The unit of work is a **hypothesis**: a rule plus the forms it predicts. A packa
 an accepted hypothesis, never a list of unparsed words. Lists are the cheapest thing to pass a gate and
 the thing that grows a grammar without understanding it; the loop forces the broader rule to be tried first.
 
+**Known-language mode.** When a reference grammar exists, cite it in the hypothesis record and test with
+`rule-hypothesis-test` known-language inputs (citation, paradigm, wrong-environment negatives) in place of
+letter-swap controls. The other steps are unchanged.
+
 **Roles.** The person who answers questions is a speaker, who sees words and parses only. Linguists read
 the Grammar Guide and comment on the Proposals that change them (the Guide takes no comments). Rule edits happen behind the scenes; the Guide is the reviewable record.
 
-**Sources.** There is no dictionary or reference grammar. The evidence is the New Testament (split into a
+**Sources.** The default is no dictionary or reference grammar. The evidence is the New Testament (split into a
 discovery set, a held-out set nobody mines, and a small dev set), the live grammar, and speakers.
 
 ## Steps
 
+0. **Orthography and segments (abugidas and other scripts with combining signs).** Settle the segment inventory
+   and one normalisation form before any lexicon import. Done when each vowel sign and conjunct is a named
+   segment and a query in that form returns the same count in NFC and NFD. Until motif#556 lands, normalise the pattern
+   yourself and compare `guide show` output with the corpus (`uconv -x nfc` or Python `unicodedata`).
 1. **Mine** the discovery set, not failures. Cluster the words the grammar does not parse yet (unparsed and Open types); that is where the next rule comes from. Recurring partials and paradigm tables, affix candidates ranked by
    distinct stems, alternation candidates from near-pairs (stem plus affix expected, surface differs by one
    edit at the boundary). Output: a pattern ledger ranked by token mass. No grammar edit. Done when each
@@ -34,9 +42,12 @@ discovery set, a held-out set nobody mines, and a small dev set), the live gramm
 3. **State the hypothesis** using [references/hypothesis-record.md](references/hypothesis-record.md): the
    broadest statement that fits, the mechanism, at least 20 predicted forms beyond the ones that suggested it,
    the falsifier, expected exceptions. Pick the mechanism with the ladder in
-   [references/mechanism-ladder.md](references/mechanism-ladder.md).
+   [references/mechanism-ladder.md](references/mechanism-ladder.md). For a word that attaches to a whole word
+   rather than to a stem, try the clitic rung (Attaches To Categories) before per-category slots. Record the
+   rung used and the rungs tried.
 4. **Test.** Run `rule-hypothesis-test`: held-out hit rate against 5 letter-swap controls, plus a Trial on a
-   rig copy. Done when it returns PASS, FAIL or UNDECIDED with numbers.
+   rig copy. Done when it returns PASS, FAIL or UNDECIDED with numbers. With a reference grammar, use the known-language
+   inputs described above.
 5. **Ask speakers** only what the corpus cannot settle, as word judgements: "Is *X* a word? Does it mean *Y*?",
    minimal pairs ("*A* or *B*, which do you say?"), "these six behave alike; does *Z* belong?". Batches of 5-10, chosen by the
    answer's power to change the rule's scope or polarity, each carrying a private predicted answer. Questions
@@ -57,8 +68,8 @@ discovery set, a held-out set nobody mines, and a small dev set), the live gramm
    Guide section changed in the Proposal itself, with live examples. Read
    [references/black-guidance.md](references/black-guidance.md) before writing the section. Then append the
    hypothesis, tests, verdict and size delta to the ledger (`hypothesis add`, `test`, `link`, `decide`). Done when the
-   Proposal carries the rule change, its Guide change and the ledger row together, Black's guidance was consulted, and the Guide names the
-   mechanism rung chosen and why a lower rung did not do.
+   Proposal carries the rule change, its Guide change and the ledger row together, Black's guidance was consulted, and the Guide and the `decide` record name the
+   mechanism rung chosen, the rungs tried, and why a lower rung did not do.
 8. **Sweep weekly**: disable, Trial, bisect, delete over alternates, variants, one-host features and tags that
    a rule context already implies. Done when removed objects, identical parses and newly opened hypotheses are
    reported.

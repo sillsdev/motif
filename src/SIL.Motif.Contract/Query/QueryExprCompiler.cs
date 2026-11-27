@@ -130,7 +130,7 @@ internal static class QueryExprCompiler
                     long.TryParse(items[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) &&
                     (below ? value < limit : value > limit);
             case QueryOps.Regex or QueryOps.Contains:
-                var pattern = Scalar(field);
+                var pattern = PatternNormalization.Pattern(Scalar(field));
                 if (pattern.Length > FormQuery.MaximumRegexLength) throw new ArgumentException("Regular expression is too long.");
                 var source = field.Op == QueryOps.Regex ? @"\A(?:" + pattern + @")\z" : pattern;
                 Regex regex;
@@ -142,7 +142,7 @@ internal static class QueryExprCompiler
                 }
                 catch (Exception e) when (e is ArgumentException or NotSupportedException)
                 { throw new ArgumentException("Invalid non-backtracking regular expression.", e); }
-                return row => row.Get(column).Any(regex.IsMatch);
+                return row => row.Get(column).Any(item => regex.IsMatch(PatternNormalization.Value(item)));
             case QueryOps.Exists:
                 var wantsValue = field.Value is not false;
                 return row => row.Get(column).Any(item => item.Length > 0) == wantsValue;

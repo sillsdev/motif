@@ -288,7 +288,6 @@ public sealed class ReleaseSurfaceTests : IDisposable
             .GetParameters();
 
         Assert.DoesNotContain(parameters, parameter => parameter.Name == "proposalId");
-        Assert.Null(typeof(SIL.Motif.App.ViewModels.StatisticsViewModel).GetProperty("ProposalId"));
     }
 
     [Fact]
