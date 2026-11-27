@@ -127,6 +127,7 @@ public sealed class HelpCatalogTests
         ["compose-delete-phonological-rule"] = "removes an existing rule, a clean-up rather than a new encoding",
         ["compose-delete-exception-feature"] = "removes an unused exception feature, a clean-up rather than a grammar rule",
         ["compose-delete-environment"] = "removes an unused environment, a sound-inventory clean-up rather than a grammar rule",
+        ["compose-delete-inflection-class"] = "removes an unused inflection class, a clean-up rather than a grammar rule",
         ["compose-delete-natural-class"] = "removes an unused natural class, a sound-inventory clean-up rather than a grammar rule",
         ["compose-delete-text-segment-note"] = "removes a Note of a text segment, a text clean-up rather than a grammar rule",
         ["compose-move-example"] = "moves an example sentence to another sense, a lexical clean-up rather than a grammar rule",

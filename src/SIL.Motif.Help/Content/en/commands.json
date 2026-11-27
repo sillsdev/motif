@@ -1279,6 +1279,21 @@
     ],
     "redirect": "Use only if no form or rule uses the environment any more; otherwise move its users first with compose-edit-allomorph-condition. If you see many literal environments, replace them with one natural-class environment or a phonological rule."
   },
+  "compose-delete-inflection-class": {
+    "title": "Delete an inflection class",
+    "description": "Deletes an inflection class that nothing uses: no subclass, no stem or affix MSA, no affix allomorph list, no category default and no derivational from or to slot refers to it. It refuses otherwise and names each user. Motif stages a Draft for a person to review and Apply.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "inflectionClass": "Id of the inflection class to delete.",
+      "expectedName": "The class's current name, in any writing system."
+    },
+    "goals": [
+      "Delete an inflection class left with no stems",
+      "Clean up classes the compose advisories flag"
+    ],
+    "redirect": "Use only if nothing uses the class; otherwise take it off each user first with compose-edit-affix-inflection-classes, compose-edit-stem-inflection-class or compose-edit-part-of-speech-inflection-class-default. Delete subclasses first."
+  },
   "compose-delete-natural-class": {
     "title": "Delete a natural class",
     "description": "Deletes a natural class that nothing uses: no rule or other class refers to it, and no environment string writes its name or abbreviation in square brackets. It refuses otherwise and names each user. Motif stages a Draft for a person to review and Apply.",

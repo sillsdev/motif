@@ -92,6 +92,35 @@ internal sealed class DeleteNaturalClassDefinition : ComposerDefinition<DeleteNa
         DeleteUnusedObjectsComposer.BuildNaturalClass(context.Cache, intent);
 }
 
+/// <summary>Deletes an inflection class that nothing uses and that has no subclass.</summary>
+internal sealed class DeleteInflectionClassDefinition : ComposerDefinition<DeleteInflectionClassIntent>
+{
+    /// <inheritdoc />
+    public override string Verb => "compose-delete-inflection-class";
+
+    /// <inheritdoc />
+    public override string Composer => "DeleteInflectionClass";
+
+    /// <inheritdoc />
+    public override IReadOnlyList<string> Subjects { get; } = ["inflection-classes"];
+
+    /// <inheritdoc />
+    public override IntentShape Shape { get; } = IntentShape.Of(
+        Field.Id("inflectionClass", IdRole.Target, required: true),
+        Field.Text("expectedName", required: true));
+
+    /// <inheritdoc />
+    public override ComposerExposure Exposure { get; } =
+        new(CommandSurface.AdvancedAi, AgentClass.Draft, ToolName: "motif_delete_inflection_class", AgentTool: false);
+
+    /// <inheritdoc />
+    public override DeleteInflectionClassIntent Parse(JsonElement authored) => DeleteUnusedObjectsIntentParser.ParseInflectionClass(authored);
+
+    /// <inheritdoc />
+    public override IReadOnlyList<OperationEnvelope> Lower(ComposeContext context, DeleteInflectionClassIntent intent) =>
+        DeleteUnusedObjectsComposer.BuildInflectionClass(context.Cache, intent);
+}
+
 /// <summary>Deletes one Note of a Text Segment.</summary>
 internal sealed class DeleteTextSegmentNoteDefinition : ComposerDefinition<DeleteTextSegmentNoteIntent>
 {
