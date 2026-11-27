@@ -18,6 +18,7 @@ public sealed class RecordImportContractTests
     [InlineData("draft")]
     [InlineData("dir-dry-run")]
     [InlineData("dir-draft")]
+    [InlineData("dir-review")]
     public void GoldenConformsToTheClosedSchema(string name)
     {
         var golden = ReadGolden(name);
@@ -76,6 +77,23 @@ public sealed class RecordImportContractTests
         var files = response["files"]!.AsArray();
         for (var index = 0; index < 200; index++) files.Add(files[0]!.DeepClone());
         Assert.False(Schema.Evaluate(JsonSerializer.SerializeToElement(response)).IsValid);
+    }
+
+    [Fact]
+    public void AFolderReviewListsAtMostThreeRowsOfEachKind()
+    {
+        Assert.Equal(3, RecordImportPaging.SummaryReviewRows);
+        var response = ReadGolden("dir-review");
+        var homographs = response["dir"]!["review"]!["firstHomographs"]!.AsArray();
+        Assert.Equal(RecordImportPaging.SummaryReviewRows, homographs.Count);
+        homographs.Add(homographs[0]!.DeepClone());
+        Assert.False(Schema.Evaluate(JsonSerializer.SerializeToElement(response)).IsValid);
+
+        response = ReadGolden("dir-review");
+        response["dir"]!["review"]!["extra"] = 1;
+        Assert.False(Schema.Evaluate(JsonSerializer.SerializeToElement(response)).IsValid);
+
+        Assert.True(System.Text.Encoding.UTF8.GetByteCount(ReadGolden("dir-review").ToJsonString()) < RecordImportPaging.SummaryBytes * 2);
     }
 
     [Fact]

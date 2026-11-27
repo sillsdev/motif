@@ -32,11 +32,14 @@ public sealed class RecordBatchImportTests(PristineProjectFixture pristine) : ID
         catch (IOException) { }
     }
 
-    private sealed record Seed(string Project, Guid Main, Guid Variant, Guid VariantType, Guid Complex);
+    internal sealed record Seed(string Project, Guid Main, Guid Variant, Guid VariantType, Guid Complex);
 
-    private Seed Seeded()
+    private Seed Seeded() => Seeded(pristine, Folder);
+
+    /// <summary>A saved project with a main entry, a variant of it, a complex form of it and the lists they need.</summary>
+    internal static Seed Seeded(PristineProjectFixture pristine, string folder)
     {
-        Directory.CreateDirectory(Folder);
+        Directory.CreateDirectory(folder);
         using var cache = pristine.NewScratch();
         Guid main = default, variant = default, type = default, complex = default;
         NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
@@ -214,6 +217,46 @@ public sealed class RecordBatchImportTests(PristineProjectFixture pristine) : ID
             document => Ref(document)["show-complex-forms-in"] = Ref(document)["primary-lexemes"]);
 
         RoundTrips(seed, ("a-complex.fw.md", complex), ("b-variant.fw.md", variant), ("c-main.fw.md", main));
+    }
+
+    [Fact]
+    public void TheSummaryNamesTheExistingEntriesTheNewOnesRenumberAndPointAtAndCountsTheLinksBetweenFiles()
+    {
+        var seed = Seeded();
+        var main = Write(seed, "c-main.fw.md", seed.Main);
+        Write(seed, "a-variant-of-existing.fw.md", seed.Variant);
+        Write(seed, "b-variant-of-new.fw.md", seed.Variant, text => Replace(text, seed.Main, main));
+
+        var outcome = RecordImportCommand.Run(Dry(seed));
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        var review = outcome.Value!.Dir!.Review!;
+        var existing = SIL.Motif.Contract.Ids.CanonicalId.FromGuid(seed.Main).Value;
+        Assert.Equal(1, review.BatchEdges);
+        Assert.Equal(1, review.BackReferenced);
+        Assert.Equal(new RecordImportBackReferenceRow(existing, 1, 0), Assert.Single(review.FirstBackReferences));
+        Assert.True(review.HomographsRenumbered >= 1);
+        Assert.Contains(review.FirstHomographs, row => row.Entry == existing && row.Before != row.After);
+        Assert.True(ProjectionJson.ToUtf8Bytes(RecordImportCommand.Run(Dry(seed) with { Rows = null }).Value!).Length <= RecordImportPaging.SummaryBytes);
+    }
+
+    [Fact]
+    public void AFolderOfUpdatesOnlyHasNoReview()
+    {
+        var seed = Seeded();
+        Directory.CreateDirectory(Folder);
+        using (var cache = new FwDataProjectLoader().LoadCache(seed.Project))
+        {
+            var (schema, exporter) = Tools(cache);
+            var read = RecordFileReader.Read(exporter.Export(seed.Main).Text!, schema.Schema, exporter.CreateReadOptions());
+            Sense(read.Document!)["gloss"] = new RecordAlternatives().Add("en", new RecordScalar("zzedited"));
+            File.WriteAllText(Path.Combine(Folder, "u.fw.md"), RecordFileWriter.Write(read.Document!, schema.Schema));
+        }
+
+        var outcome = RecordImportCommand.Run(Dry(seed));
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        Assert.Null(outcome.Value!.Dir!.Review);
     }
 
     // liblcm throws on the second add: LexEntryRef.ValidateAddObjectInternal.

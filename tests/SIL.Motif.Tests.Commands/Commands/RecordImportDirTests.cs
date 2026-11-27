@@ -27,6 +27,7 @@ public sealed class RecordImportDirTests(PristineProjectFixture pristine) : IDis
     {
         RecordImportCommand.FileReaderOverride = null;
         RecordImportCommand.ScratchProbe = null;
+        RecordImportCommand.CapsOverride = null;
         try { Directory.Delete(_root, recursive: true); }
         catch (IOException) { }
     }
@@ -432,6 +433,45 @@ public sealed class RecordImportDirTests(PristineProjectFixture pristine) : IDis
 
         Assert.Equal(RefusalCodes.RecordImportBatchTooLarge, outcome.Refusal!.Code);
         Assert.Equal((RecordImportPaging.MaxFiles + 1).ToString(), outcome.Refusal.Facts["files"]);
+    }
+
+    [Fact]
+    public void AFolderAtTheFileCapIsPlannedAndOneFileOverIsRefusedWithTheCapNamed()
+    {
+        var seed = Seeded(3);
+        for (var index = 0; index < 3; index++) WriteFile(seed, seed.Entries[index], $"u{index}.fw.md", Regloss);
+
+        RecordImportCommand.CapsOverride = (3, 1000);
+        var atLimit = RecordImportCommand.Run(Dry(seed));
+        RecordImportCommand.CapsOverride = (2, 1000);
+        var over = RecordImportCommand.Run(Dry(seed));
+
+        Assert.True(atLimit.Succeeded, atLimit.Refusal?.Message);
+        Assert.Equal(3, atLimit.Value!.Dir!.Files);
+        Assert.Equal(RefusalCodes.RecordImportBatchTooLarge, over.Refusal!.Code);
+        Assert.Equal(("3", "2", "files"), (over.Refusal.Facts["files"], over.Refusal.Facts["maxFiles"], over.Refusal.Facts["cap"]));
+    }
+
+    [Fact]
+    public void AFolderAtTheOperationCapIsPlannedAndStagedAndOneOperationOverIsRefusedWithoutADraft()
+    {
+        var seed = Seeded(3);
+        for (var index = 0; index < 3; index++) WriteFile(seed, seed.Entries[index], $"u{index}.fw.md", Regloss);
+        var operations = RecordImportCommand.Run(Dry(seed)).Value!.OperationCount;
+        Assert.True(operations > 1);
+
+        RecordImportCommand.CapsOverride = (1000, operations - 1);
+        var over = RecordImportCommand.Run(Dry(seed));
+        var overStaged = RecordImportCommand.Run(Dry(seed, "capped"));
+        RecordImportCommand.CapsOverride = (1000, operations);
+        var atLimit = RecordImportCommand.Run(Dry(seed, "capped"));
+
+        Assert.Equal(RefusalCodes.RecordImportBatchTooLarge, over.Refusal!.Code);
+        Assert.Equal((operations.ToString(), (operations - 1).ToString(), "operations"),
+            (over.Refusal.Facts["operations"], over.Refusal.Facts["maxOperations"], over.Refusal.Facts["cap"]));
+        Assert.Equal(RefusalCodes.RecordImportBatchTooLarge, overStaged.Refusal!.Code);
+        Assert.True(atLimit.Succeeded, atLimit.Refusal?.Message);
+        Assert.Equal(operations, atLimit.Value!.OperationCount);
     }
 
     [Fact]

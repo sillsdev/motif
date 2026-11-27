@@ -35,6 +35,12 @@ public static partial class RecordImportCommand
     private const string UnchangedStatus = "unchanged";
     private const string RefusedStatus = "refused";
 
+    /// <summary>Tests lower the caps to try them at the limit and one over without making thousands of files.</summary>
+    internal static (int Files, int Operations)? CapsOverride { get; set; }
+
+    private static int MaxFiles => CapsOverride?.Files ?? RecordImportPaging.MaxFiles;
+    private static int MaxOperations => CapsOverride?.Operations ?? RecordImportPaging.MaxOperations;
+
     /// <summary>Tests replace the file reader to make a file unreadable.</summary>
     internal static Func<string, string>? FileReaderOverride { get; set; }
 
@@ -73,6 +79,9 @@ public static partial class RecordImportCommand
     /// <summary>The plan of a whole folder: each file's row and the digest a stage compares.</summary>
     private sealed record BatchPlan(IReadOnlyList<DirFile> Files, string Digest)
     {
+        /// <summary>The existing entries the new ones renumber or point at; null for a plan that was not tried on a scratch copy or creates no entry.</summary>
+        public RecordImportReview? Review { get; init; }
+
         public IEnumerable<DirFile> Staged => Files.Where(file => file.Status is CreatedStatus or UpdatedStatus);
 
         public RecordLowering Lowering => new(Staged.SelectMany(file => file.Lowering!.Operations).ToList(),
@@ -338,7 +347,7 @@ public static partial class RecordImportCommand
             file.Lowering = file.Planned?.Lowering;
             digest.Append(file.Planned?.Digest).Append('\n');
             operations += file.Planned?.Lowering.Operations.Count ?? 0;
-            if (operations > RecordImportPaging.MaxOperations)
+            if (operations > MaxOperations)
                 throw new RecordImportBatchTooLargeException(inputs.Count, operations);
         }
         var result = new BatchPlan(files, Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(digest.ToString()))));
@@ -355,8 +364,10 @@ public static partial class RecordImportCommand
         RefuseReferencesToRefused(files, creators);
         var units = result.Staged.Where(file => file.Lowering!.Operations.Count > 0).ToList();
         DependAcrossFiles(units);
+        var review = new ReviewProbe(units.Where(file => file.Status == CreatedStatus && file.Record is not null)
+            .Select(file => file.Record!.Value).ToList());
         RecordLowering[] validated;
-        try { validated = ValidateOnScratch(cache, units.Select(file => (file.Planned!.Plan, file.Lowering!)).ToList()); }
+        try { validated = ValidateOnScratch(cache, units.Select(file => (file.Planned!.Plan, file.Lowering!)).ToList(), review); }
         catch (RecordImportScratchException exception) when (exception.Unit >= 0)
         {
             throw new RecordImportScratchFileException(units[exception.Unit].Input.Path, exception);
@@ -378,7 +389,8 @@ public static partial class RecordImportCommand
             foreach (var other in DependentsOf(file, files, creators).Where(item => item.Status is CreatedStatus or UpdatedStatus))
                 more.TryAdd(other.Input.Path, RefusedBecause(file, other));
         if (more.Count > 0) throw new RecordImportCascadeException(more);
-        return result;
+        var edges = result.Staged.Sum(file => NamedByFile(file, creators).Distinct().Count());
+        return result with { Review = review.Summary(edges) };
     }
 
     private static Planned?[] PlanFiles(LcmCache cache, IReadOnlyList<DirInput> inputs, SchemaSet schemas, RecordBatch batch,
@@ -595,7 +607,7 @@ public static partial class RecordImportCommand
                         continue;
                     }
                     if (isLink || !entry.Name.EndsWith(".fw.md", StringComparison.OrdinalIgnoreCase)) { ignored++; continue; }
-                    if (++total <= RecordImportPaging.MaxFiles) files.Add((name, entry.FullName));
+                    if (++total <= MaxFiles) files.Add((name, entry.FullName));
                 }
             }
         }
@@ -604,7 +616,7 @@ public static partial class RecordImportCommand
         {
             return DirUnreadable(exception.GetType().Name);
         }
-        if (total > RecordImportPaging.MaxFiles) return CommandOutcome<DirListing>.Refused(TooLarge(total, 0));
+        if (total > MaxFiles) return CommandOutcome<DirListing>.Refused(TooLarge(total, 0));
         if (files.Count == 0)
             return CommandOutcome<DirListing>.Refused(new Refusal(RefusalCodes.RecordImportDirEmpty, FailureReason.InvalidArgument,
                 "The folder has no *.fw.md file.", new Dictionary<string, string> { ["ignored"] = ignored.ToString() }));
@@ -618,11 +630,12 @@ public static partial class RecordImportCommand
 
     private static Refusal TooLarge(int files, int operations) => new(RefusalCodes.RecordImportBatchTooLarge, FailureReason.Refused,
         $"The folder has {files} files and {(operations > 0 ? operations.ToString() : "an unchecked number of")} operations. One Proposal takes at most " +
-        $"{RecordImportPaging.MaxFiles} files and {RecordImportPaging.MaxOperations} operations; split the folder.",
+        $"{MaxFiles} files and {MaxOperations} operations; split the folder.",
         new Dictionary<string, string>
         {
             ["files"] = files.ToString(), ["operations"] = operations.ToString(),
-            ["maxFiles"] = RecordImportPaging.MaxFiles.ToString(), ["maxOperations"] = RecordImportPaging.MaxOperations.ToString(),
+            ["maxFiles"] = MaxFiles.ToString(), ["maxOperations"] = MaxOperations.ToString(),
+            ["cap"] = operations > 0 ? "operations" : "files",
         });
 
     private static DirInput ReadInput(string relative, string full)
@@ -696,27 +709,31 @@ public static partial class RecordImportCommand
         var refusals = plan.Count(RefusedStatus) + plan.RefusedChanges;
         var firstRefused = plan.Files.Where(file => file.Status == RefusedStatus).Take(RecordImportPaging.SummaryRefusedRows).ToList();
         var manifest = Manifest(plan);
-        RecordImportResponse Build(IReadOnlyList<RecordImportFileRow> shown, int length, IReadOnlyList<RecordImportFileRow>? rows) =>
+        RecordImportResponse Build(IReadOnlyList<RecordImportFileRow> shown, int length, IReadOnlyList<RecordImportFileRow>? rows,
+            RecordImportReview? review) =>
             new(mode, null, null, "not-checked", plan.Staged.Sum(file => file.Changes), counted, refusals, page, pages, [], [],
                 draftName, proposalId, null,
                 new RecordImportDirSummary(plan.Files.Count, plan.Count(CreatedStatus), plan.Count(UpdatedStatus),
                     plan.Count(UnchangedStatus), plan.Count(RefusedStatus), ignored, manifest, shown, request.Source, request.Revision,
-                    request.Licence), rows);
+                    request.Licence, review), rows);
         if (request.Rows == true)
         {
             var source = refusedOnly ? plan.Files.Where(file => file.Status == RefusedStatus) : plan.Files;
             var rows = source.Skip((page - 1) * RecordImportPaging.RowsPerPage).Take(RecordImportPaging.RowsPerPage)
                 .Select(file => Row(file, 300)).ToList();
-            return Build([], 0, rows);
+            return Build([], 0, rows, plan.Review);
         }
         // Rows and text are cut until the summary fits, so long names stay within the bound.
+        // The review rows give way before the refused rows do, and the counts stay.
+        var reviews = new[] { plan.Review, plan.Review is { } counts ? counts with { FirstHomographs = [], FirstBackReferences = [] } : null };
         for (var count = firstRefused.Count; count >= 0; count--)
             foreach (var length in new[] { RecordImportPaging.TextLength, 60, 40, 24 })
-            {
-                var response = Build(firstRefused.Take(count).Select(file => Row(file, length)).ToList(), length, null);
-                if (ProjectionJson.ToUtf8Bytes(response).Length <= RecordImportPaging.SummaryBytes) return response;
-            }
-        return Build([], 0, null);
+                foreach (var review in reviews)
+                {
+                    var response = Build(firstRefused.Take(count).Select(file => Row(file, length)).ToList(), length, null, review);
+                    if (ProjectionJson.ToUtf8Bytes(response).Length <= RecordImportPaging.SummaryBytes) return response;
+                }
+        return Build([], 0, null, null);
     }
 
     private static CommandOutcome<RecordImportResponse> Reported(BatchPlan plan, CommandOutcome<RecordImportResponse> outcome) =>
