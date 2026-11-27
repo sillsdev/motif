@@ -124,6 +124,12 @@ public sealed record AssessmentWordResult(
     /// </summary>
     public long? ParserWork { get; init; }
     /// <summary>
+    /// In a Trial, the same word's parser work on the Baseline side, set only when the Baseline and Trial Assessments
+    /// are comparable. Never published: the projection turns it into a share of the Baseline's total work.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public long? BaselineWorkUnits { get; init; }
+    /// <summary>
     /// Which limit ended a stopped word's search, from its outcome and the parser's evidence together:
     /// <see cref="StopLimit.Work"/> for the deterministic step or work cap, <see cref="StopLimit.Time"/> for the
     /// wall-clock safety net, <see cref="StopLimit.Both"/> when both fired, or <see langword="null"/> for a word

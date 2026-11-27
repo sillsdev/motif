@@ -226,6 +226,17 @@
       ]
     },
     {
+      "group": "id",
+      "verbs": [
+        {
+          "name": "id convert",
+          "summary": "Prints each id in both forms: the canonical id a Proposal names and the guid a project file stores.",
+          "gate": "Released",
+          "helpTopic": "motif help id convert"
+        }
+      ]
+    },
+    {
       "group": "jobs",
       "verbs": [
         {
