@@ -74,7 +74,8 @@ public sealed class MotifStoreUpgradeTests : IDisposable
         CreateCurrentSchemaAsOld();
         using var connection = Connect(Source);
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name <> 'MotifMetadata';";
+        // The optional store-identity table is created on open and never carried by an upgrade, so no step names it.
+        command.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT IN ('MotifMetadata', 'MotifStoreIdentity');";
         using var rows = command.ExecuteReader();
         var tables = new HashSet<string>(StringComparer.Ordinal);
         while (rows.Read()) tables.Add(rows.GetString(0));
