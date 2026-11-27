@@ -209,7 +209,7 @@ public sealed partial class RecordStore
     /// <summary>Upgrades an older store to format 7 in the caller's transaction; a rollback undoes it.</summary>
     private async Task UpgradeInTransactionAsync()
     {
-        if (readOnly || format >= StoreFormat || upgrading || format == LegacyStoreFormat) return;
+        if (readOnly || format >= StoreFormat || upgrading) return;
         upgrading = true;
         upgradeFrom = format;
         upgradeClock = System.Diagnostics.Stopwatch.StartNew();

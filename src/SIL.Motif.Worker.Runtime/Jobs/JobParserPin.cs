@@ -10,9 +10,8 @@ namespace SIL.Motif.Worker.Jobs;
 /// </summary>
 /// <remarks>
 /// A Worker claims a pinned job only when its own <see cref="ParserIdentity.Key"/> equals the pin's. A job with
-/// no pin (every job queued before this existed, and any queued with no parser to name) is claimable by any
-/// Worker: refusing it would strand work no enqueuer can re-pin, and it ran before under whichever parser
-/// the Worker had. Pinned by `ALegacyJobWithNoParserIdentityIsClaimedByAnyWorker`.
+/// no pin (a kind that names no parser, such as a source index or a Dry Run) is claimable by any Worker:
+/// those jobs never run a parser. Pinned by `AJobWithNoParserIdentityIsClaimedByAnyWorker`.
 /// </remarks>
 public static class JobParserPin
 {

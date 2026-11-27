@@ -116,10 +116,8 @@ public sealed class StoreCoreTests : IDisposable
         Assert.Equal(3, (await store.ReadAsync()).Count);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task GranularImportRollsBackWhenPublicationFailsAndCanBeRetried(bool legacy)
+    [Fact]
+    public async Task GranularImportRollsBackWhenPublicationFailsAndCanBeRetried()
     {
         var path = Database;
         var target = new GenericRecord { Id = Guid.NewGuid() };
@@ -133,19 +131,13 @@ public sealed class StoreCoreTests : IDisposable
         using var connection = new SqliteConnection(RecordSqlite.ConnectionString(path));
         connection.Open();
         using var command = connection.CreateCommand();
-        if (legacy)
-        {
-            command.CommandText = "PRAGMA user_version=4";
-            command.ExecuteNonQuery();
-        }
         command.CommandText = """
             CREATE TRIGGER refuse_index BEFORE INSERT ON IncomingReferences
             BEGIN SELECT RAISE(ABORT, 'refuse publication'); END
             """;
         command.ExecuteNonQuery();
 
-        Task Import(Store store) => legacy ? store.ImportNativeAsync(records, Guid.NewGuid(), coverage)
-            : store.ImportAsync(records, Guid.NewGuid(), coverage);
+        Task Import(Store store) => store.ImportAsync(records, Guid.NewGuid(), coverage);
 
         await using (var store = new Store(path))
         {

@@ -215,7 +215,7 @@ public static class TraceReadingBuilder
     }
 
     private static string AnalysisSignature(TraceAnalysis analysis) =>
-        $"{analysis.LegacyMorphemes ?? string.Join(" ", analysis.Morphs.Select(morph => morph.Form ?? "?"))}|{analysis.Surface}";
+        $"{string.Join(" ", analysis.Morphs.Select(morph => morph.Form ?? "?"))}|{analysis.Surface}";
 
     private static bool IsFailure(TraceCandidate candidate) => !candidate.Succeeded &&
         candidate.OutcomeStatus != "blocked" && candidate.Steps.LastOrDefault()?.Type != "Blocked" &&
@@ -273,8 +273,7 @@ public static class TraceReadingBuilder
         new(analysis.AnalysisId, analysis.Index, analysis.Surface, analysis.Availability,
             analysis.Morphs.Select((morph, morphIndex) => ToMorph(morph, $"analysis:{index}:morph:{morphIndex}")).ToArray())
         {
-            Signature = $"{analysis.LegacyMorphemes ?? string.Join(" ", analysis.Morphs.Select(morph => morph.Form ?? "?"))}|{analysis.Surface}",
-            LegacyMorphemes = analysis.LegacyMorphemes,
+            Signature = $"{string.Join(" ", analysis.Morphs.Select(morph => morph.Form ?? "?"))}|{analysis.Surface}",
             ProjectionStatus = analysis.ProjectionStatus,
             ProjectionError = analysis.ProjectionError,
             ProjectionErrorCode = analysis.ProjectionErrorCode,

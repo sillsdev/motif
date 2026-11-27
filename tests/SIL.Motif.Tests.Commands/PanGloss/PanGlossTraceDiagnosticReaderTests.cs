@@ -86,8 +86,6 @@ public sealed class PanGlossTraceDiagnosticReaderTests
         Assert.Equal("pangloss.trace-details.v5", result.SchemaVersion);
         Assert.Equal("sagd", result.Word);
         Assert.Equal(2, result.Analyses.Count);
-        Assert.Equal("root+suffix", result.Analyses[0].LegacyMorphemes);
-        Assert.Equal("other", result.Analyses[1].LegacyMorphemes);
         Assert.Equal(9, Assert.Single(result.Details.Categories).Work);
         Assert.Equal(4, result.Root!.Subrule);
         Assert.Contains("\"extension\":{\"keep\":true}", result.RawJson, StringComparison.Ordinal);
@@ -158,7 +156,6 @@ public sealed class PanGlossTraceDiagnosticReaderTests
         Assert.Equal("matinlu", document.Word);
         Assert.Equal(new[] { "analysis-0", "analysis-1" }, document.Analyses.Select(analysis => analysis.AnalysisId));
         Assert.Equal(new int?[] { 0, 1 }, document.Analyses.Select(analysis => analysis.Index));
-        Assert.Equal(new[] { "MA+TIN+LU", "MA+TIN+LU" }, document.Analyses.Select(analysis => analysis.LegacyMorphemes));
         Assert.All(document.Analyses, analysis =>
         {
             Assert.Equal("unavailable", analysis.Availability);
