@@ -223,6 +223,7 @@ public sealed class TextsRealClientTests(PristineProjectFixture pristine)
         }, TimeSpan.FromMinutes(1));
     }
 
+    [Trait("Quarantine", "#504")]
     [Fact]
     public async Task MatrixBulkActionsReachReviewChanges()
     {

@@ -74,7 +74,7 @@ public sealed partial class RecordChangeSetLowerer(ProjectRecordSchemaResult sch
                 refusal.ObjectGuid, $"The plan refuses the whole file ({refusal.Kind}): {refusal.Reason}")], set.Refusals);
         }
         if (plan.BaseVerdict == ProjectRecordBaseVerdict.New)
-            return plan.Kind == EntryKind ? LowerCreatedEntry(cache, plan) : NotYetCreatable(plan);
+            return plan.Kind == EntryKind ? LowerCreatedEntry(cache, plan) : plan.Kind == NotebookKind ? LowerCreatedRecord(cache, plan) : NotYetCreatable(plan);
         var seed = plan.Export?.Base ?? plan.RecordGuid?.ToString("D") ?? "";
         var lowered = LowerChanges(cache, seed, set.Changes);
         return new(lowered.Operations, lowered.Refusals, set.Refusals, lowered.OperationChanges, lowered.RefusedChanges);

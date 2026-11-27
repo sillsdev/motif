@@ -18,8 +18,10 @@ A Proposal whose operations are all Guide-section edits or text-segment Notes ha
 
 Fenced code blocks, including `motif-query` and `motif-show` blocks, cannot be added or changed with this command: a new block is added in FieldWorks, and a file that adds one is refused with nothing staged.
 
-This command cannot create a section (there is no add-section verb yet). Sections that exist in the project's Grammar Guide list can be edited; a new section is added in FieldWorks, and an unknown section is refused as `guide.not-found`.
+An interlinear example is a fenced div, not a code block, so this command stages it: `::: {.interlinear}`, then the lines `word:`, `morphemes:`, `gloss:` and optionally `translation:`, then `:::`. Write the word and morphemes lines as `[text]{.v}` so they are in the vernacular writing system; the gloss and translation are analysis text. The project keeps the lines as plain paragraphs, and `guide show` folds them back into the block. `guide check` reports morphemes the lexicon lacks and lines whose tokens do not pair up.
 
-Availability: `guide edit` and `guide show` need Advanced AI mode (`motif settings advanced-ai on`); `guide decide` needs `--autonomous`. An agent running the whole loop needs both.
+This command edits a section that exists in the project's Grammar Guide list; a new section or part is added with `guide add`, and an unknown section is refused as `guide.not-found`.
+
+Availability: `guide edit` needs Advanced AI mode (`motif settings advanced-ai on`); `guide show` is a read and needs no mode; `guide decide` needs `--autonomous`. An agent running the whole loop needs both.
 
 In Advanced AI mode, the generated `motif_guide_edit` MCP tool takes `id`, `project`, `markdown` and an optional `draft`.

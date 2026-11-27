@@ -3,9 +3,9 @@ using SIL.Motif.Host.Store;
 namespace SIL.Motif.Commands;
 
 /// <summary>Arguments for an explicit project store upgrade.</summary>
-public sealed record ProjectStoreUpgradeRequest(string? Project, string? Source, string? Out);
+public sealed record ProjectStoreUpgradeRequest(string? Project, string? Source, string? Out, bool DryRun = false);
 
-/// <summary>The report produced by an explicit project store upgrade.</summary>
+/// <summary>The report produced by an explicit project store upgrade, or by its dry run.</summary>
 public sealed record ProjectStoreUpgradeResponse(MotifStoreUpgrade.Report Report);
 
 /// <summary>Runs an explicit project store upgrade from an immutable source.</summary>

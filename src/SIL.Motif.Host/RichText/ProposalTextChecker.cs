@@ -5,6 +5,7 @@ using CodeInline = Markdig.Syntax.Inlines.CodeInline;
 using ListBlock = Markdig.Syntax.ListBlock;
 using ParagraphBlock = Markdig.Syntax.ParagraphBlock;
 using SIL.LCModel;
+using SIL.Motif.Contract.Gdr;
 using SIL.Motif.Contract.Responses;
 using SIL.TextEditing;
 using SIL.TextEditing.Markdown;
@@ -23,6 +24,9 @@ public sealed record CheckedProposalText(string Text, IReadOnlyList<TextFinding>
     /// Whether the text needed the project and its Baseline could not be read, so only the markup was checked.
     /// </summary>
     public bool ProjectUnavailable { get; init; }
+
+    /// <summary>What is not wrong enough to refuse the text: a motif-query or motif-show block the block parser found a problem in. The block is stored as written.</summary>
+    public IReadOnlyList<string> Warnings { get; init; } = [];
 }
 
 /// <summary>
@@ -35,6 +39,9 @@ public sealed record CheckedProposalText(string Text, IReadOnlyList<TextFinding>
 /// </summary>
 public static class ProposalTextChecker
 {
+    /// <summary>A <c>motif-query</c> or <c>motif-show</c> fence with no closing fence, which would hide all text after it.</summary>
+    public const string BlockUnclosed = "motif.block.unclosed";
+
     /// <summary>A list that starts on the line after a paragraph line, which FieldWorks reads as part of the paragraph.</summary>
     public const string ListNeedsBlankLine = "motif.list.needs-blank-line";
 
@@ -65,7 +72,7 @@ public static class ProposalTextChecker
     public static bool NeedsProject(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
-        var parsed = MarkdownConverter.Parse(text, Options(null, null));
+        var parsed = MarkdownConverter.Parse(MaskQueryBlocks(text), Options(null, null));
         var codeSpans = CodeSpans(parsed);
         var errors = parsed.Diagnostics
             .Where(diagnostic => diagnostic.Severity == MarkdownSeverity.Error && !InCodeSpan(diagnostic, codeSpans)).ToArray();
@@ -83,7 +90,7 @@ public static class ProposalTextChecker
     {
         ArgumentNullException.ThrowIfNull(text);
         var options = Options(cache, projectName);
-        var parsed = MarkdownConverter.Parse(text, options);
+        var parsed = MarkdownConverter.Parse(MaskQueryBlocks(text), options);
         var codeSpans = CodeSpans(parsed);
         var findings = parsed.Diagnostics
             .Where(diagnostic => IsFinding(diagnostic) && !InCodeSpan(diagnostic, codeSpans))
@@ -93,9 +100,15 @@ public static class ProposalTextChecker
             {
                 Observed = diagnostic.Observed,
                 Replacement = diagnostic.Replacement,
-            }).ToArray();
-        if (findings.Length > 0) return new CheckedProposalText(text, findings);
-        return new CheckedProposalText(Tidied(text, parsed, options), []);
+            }).ToList();
+        var blocks = GuideQueryBlocks.Parse(text).Diagnostics;
+        findings.AddRange(blocks.Where(d => d.Kind == GuideBlockDiagnosticKind.UnclosedBlock).Select(d => new TextFinding(
+            BlockUnclosed, d.Line, 1, $"This block has no closing fence, so it would hide the rest of the text. Close it with ```.")));
+        findings.Sort((a, b) => a.Line != b.Line ? a.Line.CompareTo(b.Line) : a.Column.CompareTo(b.Column));
+        var warnings = blocks.Where(d => d.Kind != GuideBlockDiagnosticKind.UnclosedBlock)
+            .Select(d => $"line {d.Line}: {d.Message} The block is kept as written.").ToArray();
+        if (findings.Count > 0) return new CheckedProposalText(text, findings) { Warnings = warnings };
+        return new CheckedProposalText(Tidied(text, parsed, options), []) { Warnings = warnings };
     }
 
     /// <summary>
@@ -106,6 +119,18 @@ public static class ProposalTextChecker
     {
         ArgumentNullException.ThrowIfNull(diagnostic);
         return diagnostic.Severity == MarkdownSeverity.Error ? !TidyUps.Contains(diagnostic.Id) : AlsoVisible.Contains(diagnostic.Id);
+    }
+
+    // Query and show fences are kept as written; the reader sees same-length filler, so offsets hold.
+    private static string MaskQueryBlocks(string text)
+    {
+        var spans = GuideQueryBlocks.Spans(text);
+        if (spans.Count == 0) return text;
+        var masked = text.ToCharArray();
+        foreach (var span in spans)
+            for (var i = span.Start; i < span.End; i++)
+                if (masked[i] is not ('\n' or '\r')) masked[i] = 'x';
+        return new string(masked);
     }
 
     // Where CommonMark reads a code span: its backticks are plain text (ADR 0006 rule 8), never a finding.
@@ -154,7 +179,7 @@ public static class ProposalTextChecker
         }
         var result = tidied.ToString().Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').TrimEnd();
         if (result.Length == 0 || result == text) return text;
-        var reread = MarkdownConverter.Parse(result, options);
+        var reread = MarkdownConverter.Parse(MaskQueryBlocks(result), options);
         return reread.Diagnostics.Count == parsed.Diagnostics.Count && Same(parsed.Document, reread.Document) ? result : text;
 
         bool NeedsGuid(MarkdownObject link)

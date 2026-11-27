@@ -91,6 +91,10 @@
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Caption}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
   </Style>
+  <Style Selector=":is(TextBlock).guideInterlinear">
+    <Setter Property="FontFamily" Value="{StaticResource Primitive.Font.Mono}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
+  </Style>
   <Style Selector=":is(TextBlock).guideMissing">
     <Setter Property="Foreground" Value="{DynamicResource Intent.Danger.Text}" />
   </Style>

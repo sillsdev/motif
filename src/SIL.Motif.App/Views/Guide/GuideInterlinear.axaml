@@ -1,0 +1,19 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.Guide.GuideInterlinear"
+             x:DataType="vm:GuideInterlinearViewModel"
+             IsVisible="{Binding IsShown}"
+             AutomationProperties.AutomationId="{x:Static app:AutomationIds.GuideInterlinear}"
+             AutomationProperties.Name="{x:Static app:MotifAppStrings.GuideInterlinearHeading}">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/GrammarGuideScoped.axaml" />
+  </UserControl.Styles>
+  <StackPanel Classes="guideBlock">
+    <views:CopyableTextBlock Classes="guideBlockTitle" Text="{x:Static app:MotifAppStrings.GuideInterlinearHeading}" />
+    <views:CopyableTextBlock x:Name="GuideInterlinearGrid" Classes="guideInterlinear" Text="{Binding GridText}" />
+    <views:CopyableTextBlock Classes="guideMeta" Text="{Binding ProblemsText}" IsVisible="{Binding HasProblems}" TextWrapping="Wrap" />
+  </StackPanel>
+</UserControl>

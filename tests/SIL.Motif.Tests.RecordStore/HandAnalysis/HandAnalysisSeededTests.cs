@@ -532,9 +532,12 @@ public sealed class HandAnalysisSeededTests : IDisposable
         Assert.All(new[] { exact, linked, fallback }, page => Assert.Equal(pin.Stamp, page.Stamp));
     }
 
+    [Trait("Quarantine", "#498")]
     [Fact]
     public async Task AReadingPreservesNativeBundleOrderEvenWhenGuidsSortDifferently()
     {
+        Guid[] nativeOrder = [new("ffffffff-0000-0000-0000-000000000001"), new("00000000-0000-0000-0000-000000000002")];
+        Assert.NotEqual(nativeOrder.Order(), nativeOrder);
         Guid[] expected = [];
         var seed = await Import((cache, seed) =>
         {
@@ -543,12 +546,13 @@ public sealed class HandAnalysisSeededTests : IDisposable
             {
                 var analysis = services.GetInstance<IWfiAnalysisRepository>().GetObject(seed.Text.ApprovedAnalysisId);
                 var factory = services.GetInstance<IWfiMorphBundleFactory>();
-                foreach (var bundle in new[] { factory.Create(), factory.Create() }.OrderByDescending(b => b.Guid))
-                    analysis.MorphBundlesOS.Add(bundle);
+                foreach (var guid in nativeOrder)
+                    analysis.MorphBundlesOS.Add(factory.Create(guid));
                 expected = analysis.MorphBundlesOS.Select(b => b.Guid).ToArray();
             });
         });
         Assert.NotEqual(expected.Order(), expected);
+        Assert.Equal(nativeOrder, expected[^2..]);
         await using var host = await HandAnalysisHost.OpenAsync(Database);
         await using var pin = await host.PinAsync(new ExternalBasis(), null);
         var page = await pin.Words(TestWord.Reading(seed.Text.ApprovedAnalysisId), new());

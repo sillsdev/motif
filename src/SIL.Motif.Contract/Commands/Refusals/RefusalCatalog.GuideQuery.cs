@@ -8,11 +8,13 @@ public static partial class RefusalCatalog
     [
         Spec(RefusalCodes.GuideQueryRunInvalid, FailureReason.InvalidArgument),
         Spec(RefusalCodes.GuideQueryRunNotReadOnly, FailureReason.Refused),
+        Spec(RefusalCodes.GuideQueryRunPathOutsideProject, FailureReason.Refused),
     ];
 
     private static IEnumerable<string> WindowCodesGuideQuery() =>
     [
         RefusalCodes.GuideQueryRunInvalid,
         RefusalCodes.GuideQueryRunNotReadOnly,
+        RefusalCodes.GuideQueryRunPathOutsideProject,
     ];
 }

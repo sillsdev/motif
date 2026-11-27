@@ -7,16 +7,21 @@ namespace SIL.Motif.Mcp;
 
 /// <summary>Everything a tool call needs from the server that is not in its arguments.</summary>
 internal sealed class ServerContext(string projectPath, string productVersion, IJobRunnerLauncher runner,
-    ActivityLog activity, ToolProfile profile, TextWriter log, bool advancedAiModeEnabled, string? parserPath = null, SIL.Motif.Commands.Queries.FormsQuerySnapshotCache? queryCache = null)
+    ActivityLog activity, ToolProfile profile, TextWriter log, bool advancedAiModeEnabled, string? parserPath = null, SIL.Motif.Commands.Queries.FormsQuerySnapshotCache? queryCache = null,
+    System.Collections.Concurrent.ConcurrentQueue<SIL.Motif.Host.Store.StoreUpgradeNotice>? pendingUpgrades = null)
 {
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, SemaphoreSlim> Gates = new();
 
     public SIL.Motif.Commands.Queries.FormsQuerySnapshotCache QueryCache { get; } = queryCache ?? new();
 
+    /// <summary>Upgrades done by a resource read, held until the next tool result can tell the person.</summary>
+    public System.Collections.Concurrent.ConcurrentQueue<SIL.Motif.Host.Store.StoreUpgradeNotice> PendingUpgrades { get; } =
+        pendingUpgrades ?? new();
+
     public bool AdvancedAiModeEnabled { get; } = advancedAiModeEnabled;
 
     public ServerContext ForProject(string path) => new(path, ProductVersion, runner, Activity, Profile, Log,
-        AdvancedAiModeEnabled, ParserPath, QueryCache);
+        AdvancedAiModeEnabled, ParserPath, QueryCache, PendingUpgrades);
 
     public string ProjectPath { get; } = projectPath;
 

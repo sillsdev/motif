@@ -32,6 +32,23 @@ public sealed partial class MotifDatabase
         return CopyOnline(fullPath, destination);
     }
 
+    /// <summary>
+    /// Copies the store like <see cref="BackUpExisting"/> for a caller that already holds it exclusively, which the
+    /// shared lease <see cref="BackUpExisting"/> takes would turn away.
+    /// </summary>
+    /// <param name="path">The existing Motif store.</param>
+    /// <param name="destination">The file to create; it must not exist.</param>
+    /// <returns>The copied store's schema version.</returns>
+    /// <exception cref="FileNotFoundException">The store is absent.</exception>
+    /// <exception cref="InvalidDataException">The file is not a Motif store, or is corrupt.</exception>
+    /// <exception cref="IOException">SQLite could not read the store.</exception>
+    public static StoreFileFacts BackUpHeldExclusively(string path, string destination)
+    {
+        var fullPath = Path.GetFullPath(path);
+        if (!File.Exists(fullPath)) throw new FileNotFoundException("The Motif database does not exist.", fullPath);
+        return CopyOnline(fullPath, destination);
+    }
+
     /// <summary>Reads a store file's application id and schema, refusing a file that is not a Motif store.</summary>
     /// <exception cref="InvalidDataException">The file is not a Motif store, or is corrupt.</exception>
     public static StoreFileFacts ReadStoreFileFacts(string path)

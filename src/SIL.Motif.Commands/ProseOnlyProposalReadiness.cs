@@ -8,7 +8,7 @@ using SIL.Motif.Runner.Operations;
 namespace SIL.Motif.Commands;
 
 /// <summary>
-/// Lets a Proposal that only edits prose fields or Guide titles apply without a Correctness Assessment.
+/// Lets a Proposal that only edits prose fields, Guide titles or new Guide sections apply without a Correctness Assessment.
 /// </summary>
 internal static class ProseOnlyProposalReadiness
 {
@@ -39,6 +39,8 @@ internal static class ProseOnlyProposalReadiness
         if (operation.After is not { } after) return null;
         try
         {
+            if (operation.Kind == GdrSectionOperationKinds.Create) return SnapshotFields.GuideSections;
+            if (operation.Kind == StyleCreateOperationKinds.Create) return SnapshotFields.StyleDefinitions;
             if (operation.Kind is CmPossibilityNameOperationKinds.SetName or CmPossibilityNameOperationKinds.ClearName)
                 return isGdrTitle?.Invoke(operation) == true ? SnapshotFields.CmPossibilityName : null;
             if (operation.Kind == TextParagraphsOperationKinds.Set)

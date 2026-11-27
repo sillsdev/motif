@@ -102,8 +102,9 @@ public sealed class EditPhonemeComposerTests(PristineProjectFixture pristine)
         SoundSystemComposerTests.Execute(cache, AuthorEnvironmentComposer.Build(cache,
             new("after t", [new(Phoneme: t)], [new(Phoneme: a)])));
 
-        Assert.StartsWith(EditPhonemeComposer.Referenced,
-            Refusal(() => EditPhonemeComposer.Build(cache, new(t, [], [new("t", "ts")]))));
+        var refusal = Refusal(() => EditPhonemeComposer.Build(cache, new(t, [], [new("t", "ts")])));
+        Assert.StartsWith(EditPhonemeComposer.Referenced, refusal);
+        Assert.Contains("compose-edit-environment", refusal, StringComparison.Ordinal);
         Assert.Contains(EditPhonemeComposer.ReadAffectedUsers(cache, new(t, ["ts"], [])),
             user => user.Kind == "environment" && user.Name == "after t");
         // Adding a spelling leaves the environment's own string valid.

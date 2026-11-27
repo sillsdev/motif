@@ -171,10 +171,10 @@ public static partial class RecordImportCommand
         else
         {
             var staged = StageDir(request, found, inputs, ignored);
-            if (staged.Succeeded && request.ReportPath is not null) return Reported(request.ReportPath, found, staged.Value!.DraftName, staged);
+            if (staged.Succeeded && request.ReportPath is not null) return Reported(found, staged);
             return staged;
         }
-        return request.ReportPath is not null ? Reported(request.ReportPath, found, null, outcome) : outcome;
+        return request.ReportPath is not null ? Reported(found, outcome) : outcome;
     }
 
     private static CommandOutcome<RecordImportResponse> StageDir(RecordImportRequest request, BatchPlan found,
@@ -719,21 +719,9 @@ public static partial class RecordImportCommand
         return Build([], 0, null);
     }
 
-    private static CommandOutcome<RecordImportResponse> Reported(string path, BatchPlan plan, string? draft,
-        CommandOutcome<RecordImportResponse> outcome)
-    {
-        try
+    private static CommandOutcome<RecordImportResponse> Reported(BatchPlan plan, CommandOutcome<RecordImportResponse> outcome) =>
+        CommandOutcome<RecordImportResponse>.Success(outcome.Value! with
         {
-            using var writer = new StreamWriter(path, append: false, new UTF8Encoding(false)) { NewLine = "\n" };
-            foreach (var file in plan.Files) writer.WriteLine(ProjectionJson.SerializeLine(Row(file, 300)));
-            return outcome;
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-        {
-            // A staged Draft stays whether or not the report could be written, so the refusal names it.
-            return Refused(RefusalCodes.RecordExportOutputUnwritable, FailureReason.InvalidArgument,
-                "The report file could not be written" + (draft is null ? "." : "; Draft '" + draft + "' was staged."),
-                ("file", Path.GetFileName(path)));
-        }
-    }
+            ReportRows = plan.Files.Select(file => Row(file, 300)).ToList(),
+        });
 }

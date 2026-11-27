@@ -10,8 +10,46 @@ public static class MotifInstallLifecycle
     /// <param name="args">The current process arguments passed to Velopack hook handling.</param>
     public static void Initialize(string[] args)
     {
-        ConfigureForStartup(VelopackApp.Build(), args).Run();
+        RunVelopackHooks(args);
         CompleteStartup();
+    }
+
+    /// <summary>Runs Velopack's startup hooks only for an installed package.</summary>
+    /// <remarks>
+    /// A development build has no package, and Velopack's run then appends a warning to /tmp/velopack.log on
+    /// every start (issue 516), so it is not run there. A Velopack hook argument always runs it.
+    /// </remarks>
+    /// <param name="args">The current process arguments passed to Velopack hook handling.</param>
+    public static void RunVelopackHooks(string[] args)
+    {
+        ArgumentNullException.ThrowIfNull(args);
+        if (ShouldRunVelopack(args, IsInstalledPackage()))
+            ConfigureForStartup(VelopackApp.Build(), args).Run();
+    }
+
+    /// <summary>Decides whether Velopack's startup hooks run for these arguments.</summary>
+    /// <param name="args">The current process arguments.</param>
+    /// <param name="installedPackage">Whether the process runs from an installed package.</param>
+    public static bool ShouldRunVelopack(IReadOnlyList<string> args, bool installedPackage)
+    {
+        ArgumentNullException.ThrowIfNull(args);
+        return installedPackage || (args.Count > 0 && args[0].StartsWith("--veloapp-", StringComparison.Ordinal));
+    }
+
+    /// <summary>Whether this process runs from an AppImage, a Velopack Windows install or a macOS app bundle.</summary>
+    public static bool IsInstalledPackage()
+    {
+        if (OperatingSystem.IsLinux())
+            return !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("APPIMAGE"));
+        if (OperatingSystem.IsMacOS())
+            return InstallRegistration.IsRunningFromMacAppBundle();
+        if (OperatingSystem.IsWindows())
+        {
+            var parent = Directory.GetParent(Path.TrimEndingDirectorySeparator(AppContext.BaseDirectory))?.FullName;
+            return parent is not null && File.Exists(Path.Combine(parent, "Update.exe"));
+        }
+
+        return false;
     }
 
     /// <summary>Configures the app's Velopack callbacks and returns its builder for the entry point to run.</summary>

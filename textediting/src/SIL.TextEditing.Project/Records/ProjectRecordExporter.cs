@@ -136,6 +136,8 @@ namespace SIL.TextEditing.Project
         /// <summary>The schema the files are written against.</summary>
         public RecordSchema Schema => _result.Schema;
 
+        internal (string DeclaringClass, string Field, bool IsCustom)? FieldBinding(string objectType, string key) => _result.FieldBinding(objectType, key);
+
         /// <summary>Options that read an exported file back against this project: its writing systems, styles and links.</summary>
         public RecordReadOptions CreateReadOptions() => new RecordReadOptions { Markdown = Options(_writingSystems.DefaultAnalysis, _writingSystems.DefaultVernacular) };
 

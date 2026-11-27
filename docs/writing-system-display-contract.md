@@ -44,7 +44,7 @@ The inventory includes Normal, Paragraph, Dictionary-Headword, Dictionary-Vernac
 
 ## Capture and tags
 
-The Baseline summary stores the inventory in the same publication transaction as its words. The writing-systems command, Overview, Text words, open and AnalysisAggregate expose it. Store generation 40 refuses older databases with the delete-and-recreate message; there is no migration or compatibility reader.
+The Baseline summary stores the inventory in the same publication transaction as its words. The writing-systems command, Overview, Text words, open and AnalysisAggregate expose it. Store generation 40 upgrades older databases under ADR 0023 D7: the Baseline is derived, so it is dropped and stays in the pre-upgrade backup; there is no compatibility reader.
 
 Displayed strings retain adjacent writing-system tags even when null: null means composed, non-language or unresolved text. Alternatives use WritingSystemText records. Best-alternative tags come from chosen rich-string runs, never an assumed default. Mixed runs have no single tag. Text words group by form, wordform identity and writing system, retaining same-spelled alternatives in different systems as separate rows.
 

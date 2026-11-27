@@ -378,7 +378,7 @@ public sealed class RecordImportDirTests(PristineProjectFixture pristine) : IDis
     }
 
     [Fact]
-    public void TheReportHoldsEveryRowAsJsonLinesAndIsNotReplaced()
+    public void TheReportRowsAreReturnedForTheHostAndAnExistingReportFileIsNotReplaced()
     {
         var seed = MixedFolder();
         var report = Path.Combine(_root, "report.jsonl");
@@ -386,9 +386,9 @@ public sealed class RecordImportDirTests(PristineProjectFixture pristine) : IDis
         var outcome = RecordImportCommand.Run(Dry(seed, report: report));
 
         Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
-        var lines = File.ReadAllLines(report);
-        Assert.Equal(9, lines.Length);
-        Assert.All(lines, line => Assert.NotNull(ProjectionJson.Deserialize<RecordImportFileRow>(line)));
+        Assert.False(File.Exists(report));
+        Assert.Equal(9, outcome.Value!.ReportRows!.Count);
+        File.WriteAllText(report, "kept");
         Assert.Equal(RefusalCodes.RecordExportOutputUnwritable, RecordImportCommand.Run(Dry(seed, report: report)).Refusal!.Code);
     }
 

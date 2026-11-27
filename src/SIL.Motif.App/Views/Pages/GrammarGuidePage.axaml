@@ -71,6 +71,7 @@
                             AutomationProperties.Name="{x:Static app:MotifAppStrings.GuideDiscussionName}" />
           </Border>
           <ContentControl x:Name="QueriesHost" />
+          <ContentControl x:Name="InterlinearHost" />
           <ContentControl x:Name="ExamplesHost" />
           <ContentControl x:Name="NamesHost" />
         </StackPanel>

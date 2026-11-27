@@ -12,7 +12,7 @@ internal static class TrialDeltaCli
 {
     private static readonly string[] Allowed =
         ["project", "json", "autonomous", "proposal", "job", "classes", "write-manifests", "alias-created", "keep-case", "limit", "offset", "page",
-         "expect-retired", "expect-added", "max-doubled", "max-doubled-frac"];
+         "expect-retired", "expect-added", "max-doubled", "max-doubled-frac", "write-receipt"];
 
     /// <summary>The result, or null with <paramref name="usage"/> set when the flags do not form a request.</summary>
     internal static CommandResult? Run(IReadOnlyDictionary<string, string> flags, bool asJson, out string? usage)
@@ -31,15 +31,18 @@ internal static class TrialDeltaCli
         if (held is not null)
         {
             if (flags.ContainsKey("write-manifests")) return Fail(out usage, "usage");
+            var receiptPath = flags.GetValueOrDefault("write-receipt");
+            if (receiptPath is "true" or "") return Fail(out usage, "usage");
             var alias = flags.GetValueOrDefault("alias-created", "true");
             if (alias is not ("true" or "false")) return Fail(out usage, "usage");
-            var checkedDelta = TrialReadingDelta.Check(request, held, new ManifestOptions(alias == "true", flags.GetValueOrDefault("keep-case") == "true"));
+            var checkedDelta = TrialReadingDelta.Check(request, held, new ManifestOptions(alias == "true", flags.GetValueOrDefault("keep-case") == "true"), receiptPath);
             var printed = CommandTextRenderer.Render(checkedDelta, asJson);
             // A gate that is not green fails the command, so a script reads the exit code; the state is in the result.
             return printed.ExitCode == 0 && checkedDelta.Value?.Expectations is { State: not ReadingExpectationStates.Green } gate
                 ? printed with { ExitCode = FailureEnvelope.TrialLossExitCode }
                 : printed;
         }
+        if (flags.ContainsKey("write-receipt")) return Fail(out usage, "usage");
         if (flags.TryGetValue("write-manifests", out var directory))
         {
             if (directory is "true" or "") return Fail(out usage, "usage");

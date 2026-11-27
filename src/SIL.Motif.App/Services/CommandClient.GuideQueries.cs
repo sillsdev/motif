@@ -22,4 +22,12 @@ public sealed partial class CommandClient
                 parserPath: _options.ParserPath);
         }, CancellationToken.None);
     }
+
+    public Task<GuideEvidenceResult> RunGuideEvidenceAsync(string projectPath, string line, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(projectPath);
+        ArgumentNullException.ThrowIfNull(line);
+        return Task.Run(() => GuideEvidenceRunner.Evaluate(line, GuideEvidenceRun.BaseDirectory(projectPath), _options.ParserPath, cancellationToken, projectPath),
+            CancellationToken.None);
+    }
 }

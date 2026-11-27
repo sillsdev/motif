@@ -1256,6 +1256,27 @@ namespace SIL.TextEditing.Project.Tests
             Assert.NotEmpty(plan.ChangeSet.Changes);
         }
 
+        [Theory]
+        [InlineData("MotifJudgmentId")]
+        [InlineData("MotifJudgmentData")]
+        public void ANewNotebookRecordThatSetsAReservedJudgmentFieldIsRefusedWholeAsCreateReservedField(string reserved)
+        {
+            using var fixture = new ProjectFixture();
+            Build(fixture);
+            AddCustom(fixture.Cache, "RnGenericRec", reserved, CellarPropertyType.Unicode);
+            var exporter = Exporter(fixture, ProjectRecordSchema.NotebookRecordOverlay);
+            string key = exporter.Schema.ObjectType("RnGenericRec")!.Fields.Select(f => f.Name).First(n =>
+                exporter.FieldBinding("RnGenericRec", n) is { IsCustom: true } binding && binding.Field == reserved);
+            var file = new RecordDocument("notebook/record") { Data = new RecordObject { Guid = Guid.NewGuid() } };
+            file.Data["title"] = new RecordScalar("Survey");
+            file.Data[key] = new RecordScalar("zzreserved");
+            var plan = Plan(exporter, RecordFileWriter.Write(file, exporter.Schema));
+            var refusal = Single(plan, RecordRefusalKind.CreateReservedField);
+            Assert.True(refusal.WholeFile);
+            Assert.Equal(key, refusal.Field);
+            Assert.Empty(plan.ChangeSet.Changes);
+        }
+
         [Fact]
         public void AFileWithNoBaseAndNoGuidIsStillUnknownRecord()
         {

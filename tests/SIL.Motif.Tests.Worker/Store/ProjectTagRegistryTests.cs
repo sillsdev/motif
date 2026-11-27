@@ -38,6 +38,24 @@ public sealed class ProjectTagRegistryTests : IDisposable
     }
 
     [Fact]
+    public void AMixedCaseFolderFallbackIsNormalisedAndNumberedWhenItClashes()
+    {
+        using var machine = MachineDatabase.Open(_root);
+        var registry = new KnownProjectRegistry(machine);
+        var seen = new DateTimeOffset(2026, 10, 24, 0, 0, 0, TimeSpan.Zero);
+
+        registry.Record("holder", Project("holder", "tur"), seen);
+        registry.Record("one", Project("a/MotifSyntheticTurkic", "tur"), seen);
+        registry.Record("two", Project("b/MotifSyntheticTurkic", "tur"), seen);
+        registry.Record("three", Project("c/Wolff Dictionary", "tur"), seen);
+
+        Assert.Equal("tur", ReadTag(machine, "holder"));
+        Assert.Equal("motifsynth", ReadTag(machine, "one"));
+        Assert.Equal("motifsynt2", ReadTag(machine, "two"));
+        Assert.Equal("wolff-dict", ReadTag(machine, "three"));
+    }
+
+    [Fact]
     public void RecordingRefusesInvalidOrTakenFolderFallbacksWithoutPersistingRows()
     {
         using var machine = MachineDatabase.Open(_root);
@@ -117,20 +135,20 @@ public sealed class ProjectTagRegistryTests : IDisposable
     }
 
     [Fact]
-    public void ARegistryWithThePreviousMachineSchemaIsRefusedWithoutChangingItsBytes()
+    public void ARegistryWithThePreviousMachineSchemaIsBackedUpThenRebuiltEmpty()
     {
         var path = Path.Combine(_root, "motif.db");
         CreatePreviousRegistry(path);
-        var before = SHA256.HashData(File.ReadAllBytes(path));
+        var before = File.ReadAllBytes(path);
 
-        var refusal = Assert.Throws<MotifStoreVersionException>(() => MachineDatabase.Open(_root));
+        using (MachineDatabase.Open(_root)) { }
+        SqliteConnection.ClearAllPools();
 
         Assert.Equal(TaggedMachineSchema, MachineSchema.CurrentSchema);
-        Assert.Equal($"The Motif machine database at '{Path.GetFileName(path)}' is schema {OriginalMachineSchema}, but this build requires exactly schema {TaggedMachineSchema}. This store cannot be upgraded by this build. Copy 'motif.db' somewhere safe first; only then delete it and let Motif recreate it.",
-            refusal.Message);
-        Assert.Equal(Path.GetFullPath(path), refusal.StorePath);
-        Assert.Equal(before, SHA256.HashData(File.ReadAllBytes(path)));
-        Assert.Equal(OriginalMachineSchema, ReadUserVersion(path));
+        Assert.Equal(TaggedMachineSchema, ReadUserVersion(path));
+        var backup = Assert.Single(Directory.GetDirectories(MachineDatabase.BackupsRoot(_root)));
+        Assert.Equal(OriginalMachineSchema, ReadUserVersion(Path.Combine(backup, "store.sqlite")));
+        Assert.NotEqual(before, File.ReadAllBytes(path));
     }
 
     private string Project(string folder, string vernacular)

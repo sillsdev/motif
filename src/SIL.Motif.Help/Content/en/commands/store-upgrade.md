@@ -13,6 +13,15 @@ motif store upgrade --project "C:\FieldWorks\Projects\Koro\Koro.fwdata"
 Opening a project also upgrades its older store automatically. The upgrade report beside the store lists the
 rows carried, tables discarded, and any Proposal revisions that the current Motif cannot read.
 
+To see what an upgrade would carry and drop, without changing the store, add `--dry-run`. It takes no backup and
+writes nothing beside the store; it prints the report the real upgrade would write, including the declared steps the
+store would cross and the rows of each computed table that would be dropped. A store that is already current says
+`upToDate`.
+
+```powershell
+motif store upgrade --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --dry-run
+```
+
 To inspect an older store without changing it, give an existing source and a new output path:
 
 ```powershell

@@ -78,6 +78,8 @@ internal static class CommandContractCases
         new(typeof(WorkspaceContext), nameof(WorkspaceContext.OpenProjectCommand), typeof(string),
             @"C:\projects\one.fwdata", true,
             "ProjectOpenFailureTests.AFailureWhileOpeningShowsARefusalAndKeepsThePickerUsable"),
+        new(typeof(WorkspaceShellViewModel), nameof(WorkspaceShellViewModel.DismissStoreUpgradeNoticeCommand), null, null, true,
+            "StoreUpgradeNoticeTests.AnAutomaticUpgradeShowsItsNoticeUntilDismissed"),
         new(typeof(WorkspaceShellViewModel), nameof(WorkspaceShellViewModel.OpenRecentProjectFolderCommand),
             typeof(string), null, false,
             "RecentProjectRowTests.TheChooserKeepsTheNewestCopyAndShowsItsStoredFieldsAndFolderLink",

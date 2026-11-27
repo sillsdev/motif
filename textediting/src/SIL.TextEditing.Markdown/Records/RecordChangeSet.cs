@@ -109,6 +109,8 @@ namespace SIL.TextEditing.Markdown.Records
         GuidRetired,
         /// <summary>A new record's file sets a field FieldWorks computes for it. The whole file is refused.</summary>
         CreateComputedField,
+        /// <summary>A new record's file sets a field only Motif's judgment commands write. The whole file is refused.</summary>
+        CreateReservedField,
         /// <summary>A reference names an object that another file of the same batch removes.</summary>
         ReferenceToDeleted,
     }

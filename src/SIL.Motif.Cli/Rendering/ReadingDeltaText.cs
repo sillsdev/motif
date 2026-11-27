@@ -39,6 +39,8 @@ internal static class ReadingDeltaText
             if (gate.MismatchedWords > gate.Mismatches.Count)
                 text.AppendLine(string.Create(CultureInfo.InvariantCulture, $"  {gate.MismatchedWords - gate.Mismatches.Count} more mismatches in the JSON."));
         }
+        if (delta.Receipt is { } receipt)
+            text.AppendLine($"Wrote receipt {receipt.Path} (digest {receipt.ReceiptDigest}, gate code {receipt.GateCodeDigest}).");
         foreach (var limitation in delta.Limitations) text.AppendLine("Limitation: " + limitation);
         return text.ToString();
     }

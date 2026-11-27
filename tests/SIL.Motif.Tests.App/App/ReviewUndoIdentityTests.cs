@@ -249,7 +249,7 @@ public sealed partial class ReviewUndoRealClientTests
     [Theory]
     [InlineData(ChangeKinds.IncorrectSpelling)]
     [InlineData(ChangeKinds.AddCandidate)]
-    public void RefusedStoreDeletionAndReopenRemoveActualPendingHomographs(string kind)
+    public void RefusedNewerStoreIsNeverDeletedAndKeepsActualPendingHomographs(string kind)
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -284,27 +284,16 @@ public sealed partial class ReviewUndoRealClientTests
             fake.CurrentBaselineRefusesWith(workspace.Context.Changes.LastRefusal!);
             await workspace.Baseline.CheckAsync();
             var bytes = File.ReadAllBytes(project.FwDataPath);
-            fake.OnDeleteRefusedStore((request, _) =>
-            {
-                var deleted = ProjectStoreReset.DeleteRefused(request);
-                Assert.True(deleted.Succeeded, deleted.Refusal?.Message);
-                Assert.True(deleted.Value!.Deleted);
-                fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(null, null, false));
-                return Task.FromResult(deleted);
-            });
+            var storeBytes = File.ReadAllBytes(store);
 
-            workspace.DeleteRefusedStoreCommand.Execute(workspace.Baseline.ShownRefusal);
-            Assert.True(workspace.IsConfirmingStoreDeletion);
-            await workspace.ConfirmStoreDeletionCommand.ExecuteAsync(null);
-
-            Assert.Single(fake.DeleteRefusedStoreRequests);
-            Assert.Null(workspace.Context.Changes.LastRefusal);
-            Assert.Empty(workspace.Context.Changes.Items);
-            Assert.Empty(texts.ResultsInText.Texts);
+            // Delete is not offered for a newer store, and the pending homographs stay.
+            Assert.False(workspace.DeleteRefusedStoreCommand.CanExecute(workspace.Baseline.ShownRefusal));
+            Assert.False(workspace.Baseline.ShownRefusal!.OffersStoreDeletion);
+            Assert.Empty(fake.DeleteRefusedStoreRequests);
+            Assert.False(workspace.IsConfirmingStoreDeletion);
+            Assert.Equal(storeBytes, File.ReadAllBytes(store));
             Assert.Equal(bytes, File.ReadAllBytes(project.FwDataPath));
-            var persisted = PendingChanges.Load(new PendingChangesRequest(project.FwDataPath, MotifProductVersion.CurrentText));
-            Assert.True(persisted.Succeeded, persisted.Refusal?.Message);
-            Assert.Empty(persisted.Value!.Changes);
+            AssertHomographMarkers(texts, project.Text.AnalysedWordformId, otherId, true);
         }, TimeSpan.FromMinutes(3));
     }
 

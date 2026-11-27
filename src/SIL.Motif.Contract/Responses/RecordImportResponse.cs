@@ -78,6 +78,7 @@ public sealed record RecordImportDirSummary(int Files, int Created, int Updated,
 /// <param name="Changes">This page of the changes the file makes, with the field and the old and new value of each.</param>
 /// <param name="Dir">For a folder import, the counts and the first refused files; the fields above then hold totals and <c>baseVerdict</c> is <c>not-checked</c>.</param>
 /// <param name="Files">For a folder import asked for by page, that page of file rows.</param>
+/// <param name="ReportRows">For a folder import given a report path, every file row, for the host to write to that file; never serialized.</param>
 public sealed record RecordImportResponse(
     string Mode,
     string? RecordKind,
@@ -94,4 +95,5 @@ public sealed record RecordImportResponse(
     string? ProposalId = null,
     IReadOnlyList<RecordImportChange>? Changes = null,
     RecordImportDirSummary? Dir = null,
-    IReadOnlyList<RecordImportFileRow>? Files = null);
+    IReadOnlyList<RecordImportFileRow>? Files = null,
+    [property: System.Text.Json.Serialization.JsonIgnore] IReadOnlyList<RecordImportFileRow>? ReportRows = null);

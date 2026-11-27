@@ -42,6 +42,7 @@ public sealed partial class GrammarGuidePage : UserControl
         AvaloniaXamlLoader.Load(this);
         _editor = BuildEditor();
         this.FindControl<ContentControl>("ExamplesHost")!.Content = new GuideExamples(model.Examples);
+        this.FindControl<ContentControl>("InterlinearHost")!.Content = new GuideInterlinear(model.Interlinear);
         this.FindControl<ContentControl>("NamesHost")!.Content = new GuideGrammarNames(model);
         this.FindControl<ContentControl>("QueriesHost")!.Content = new GuideQueryTables(model.Queries);
         model.Queries.SaveBody = (id, body) => _editor.ReplaceQueryBodyAsync(id, body);

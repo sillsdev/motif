@@ -642,5 +642,51 @@ namespace SIL.TextEditing.Project.Tests
             Assert.Equal("kept", ((RecordScalar)export.Document.Data["custom-LexEntry-Owner"]!).Text);
             Assert.DoesNotContain(export.Unexported, u => u.Object == entry.Guid && u.Field == "Owner");
         }
+
+        [Fact]
+        public void LeadingSpaceTabNewlineAndAnAbsentValueInPlainFieldsSurviveTheRoundTrip()
+        {
+            using var fixture = new ProjectFixture();
+            var cache = fixture.Cache;
+            int spaced = AddCustom(cache, "LexEntry", "Spaced", CellarPropertyType.Unicode);
+            int broken = AddCustom(cache, "LexEntry", "Broken", CellarPropertyType.Unicode);
+            AddCustom(cache, "LexEntry", "Never", CellarPropertyType.Unicode);
+            ILexEntry entry = null!;
+            fixture.Change(() =>
+            {
+                entry = cache.ServiceLocator.GetInstance<ILexEntryFactory>().Create();
+                Data(cache).SetUnicode(entry.Hvo, spaced, "  leading", "  leading".Length);
+                Data(cache).SetUnicode(entry.Hvo, broken, "a\tb\nc", "a\tb\nc".Length);
+            });
+            var (exporter, _) = Exporter(fixture, ProjectRecordSchema.LexiconEntryOverlay);
+            var export = exporter.Export(entry.Guid);
+
+            ReadsBackClean(exporter, export);
+            Assert.Equal("  leading", ((RecordScalar)export.Document.Data["custom-LexEntry-Spaced"]!).Text);
+            Assert.Equal("a\tb\nc", ((RecordScalar)export.Document.Data["custom-LexEntry-Broken"]!).Text);
+            Assert.Null(export.Document.Data["custom-LexEntry-Never"]);
+        }
+
+        [Fact]
+        public void TheOracleFailsWhenTheProjectNoLongerHoldsWhatTheFileSays()
+        {
+            using var fixture = new ProjectFixture();
+            var cache = fixture.Cache;
+            int remark = AddCustom(cache, "LexEntry", "Remark", CellarPropertyType.Unicode);
+            ILexEntry entry = null!;
+            fixture.Change(() =>
+            {
+                entry = cache.ServiceLocator.GetInstance<ILexEntryFactory>().Create();
+                Data(cache).SetUnicode(entry.Hvo, remark, "before", 6);
+            });
+            var (exporter, result) = Exporter(fixture, ProjectRecordSchema.LexiconEntryOverlay);
+            var export = exporter.Export(entry.Guid);
+            var read = RecordFileReader.Read(export.Text!, exporter.Schema, exporter.CreateReadOptions()).Document!;
+            ExportOracle.Check(cache, result, export, read);
+
+            fixture.Change(() => Data(cache).SetUnicode(entry.Hvo, remark, "after", 5));
+
+            Assert.ThrowsAny<Exception>(() => ExportOracle.Check(cache, result, export, read));
+        }
     }
 }

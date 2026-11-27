@@ -269,6 +269,7 @@ public static partial class RecordImportCommand
             RecordRefusalKind.GuidInvalid => new Refusal(RefusalCodes.RecordImportGuidInvalid, FailureReason.Refused, message, facts),
             RecordRefusalKind.GuidRetired => new Refusal(RefusalCodes.RecordImportGuidRetired, FailureReason.Refused, message, facts),
             RecordRefusalKind.CreateComputedField => new Refusal(RefusalCodes.RecordImportCreateComputedField, FailureReason.Refused, message, facts),
+            RecordRefusalKind.CreateReservedField => new Refusal(RefusalCodes.RecordImportCreateReservedField, FailureReason.Refused, message, facts),
             RecordRefusalKind.ReferenceToDeleted => new Refusal(RefusalCodes.RecordImportReferenceToDeleted, FailureReason.Refused, message, facts),
             _ => new Refusal(RefusalCodes.RecordImportPlanRefused, FailureReason.Refused, message, facts),
         };

@@ -7,9 +7,12 @@ namespace SIL.Motif.Worker.Projects;
 
 /// <summary>
 /// Names the physical file behind a path: device and inode on Linux and macOS, volume serial and file index on
-/// Windows. Deleting and recreating a store gives a new identity even when the timestamps match.
+/// Windows, plus the file system's own birth time where it reports one. A freed inode number is handed out again to the
+/// next file created, so a store deleted and recreated while nothing held the old file open can come back with the
+/// same device and inode; the birth time then tells the two files apart. The birth time is only compared when both
+/// sides have a real one, so a file system without it never reports a false replacement.
 /// </summary>
-internal readonly record struct StoreFileIdentity(ulong Volume, ulong File, long CreatedTicks)
+internal readonly record struct StoreFileIdentity(ulong Volume, ulong File, long CreatedTicks, long BirthTicks = 0)
 {
     /// <summary>Reads the identity of the file at a path, or null when it does not exist.</summary>
     public static StoreFileIdentity? Read(string path)
@@ -18,8 +21,8 @@ internal readonly record struct StoreFileIdentity(ulong Volume, ulong File, long
         var created = System.IO.File.GetCreationTimeUtc(path).Ticks;
         try
         {
-            var (volume, file) = ReadPhysical(path);
-            return new StoreFileIdentity(volume, file, created);
+            var (volume, file, birth) = ReadPhysical(path);
+            return new StoreFileIdentity(volume, file, created, birth);
         }
         catch (Exception exception) when (exception is PlatformNotSupportedException or IOException or
             Win32Exception or EntryPointNotFoundException or DllNotFoundException)
@@ -30,9 +33,11 @@ internal readonly record struct StoreFileIdentity(ulong Volume, ulong File, long
 
     /// <summary>Whether the file now at a path is not the one this identity was read from.</summary>
     public bool IsReplacedBy(StoreFileIdentity? current) => current is not { } now ||
-        (File != 0 && now.File != 0 ? now.Volume != Volume || now.File != File : now.CreatedTicks != CreatedTicks);
+        (File != 0 && now.File != 0
+            ? now.Volume != Volume || now.File != File || (BirthTicks != 0 && now.BirthTicks != 0 && now.BirthTicks != BirthTicks)
+            : now.CreatedTicks != CreatedTicks);
 
-    private static (ulong Volume, ulong File) ReadPhysical(string path)
+    private static (ulong Volume, ulong File, long Birth) ReadPhysical(string path)
     {
         if (OperatingSystem.IsLinux()) return ReadLinux(path);
         if (OperatingSystem.IsMacOS()) return ReadMac(path);
@@ -41,16 +46,19 @@ internal readonly record struct StoreFileIdentity(ulong Volume, ulong File, long
     }
 
     [SupportedOSPlatform("linux")]
-    private static (ulong, ulong) ReadLinux(string path)
+    private static (ulong, ulong, long) ReadLinux(string path)
     {
-        if (LinuxStatx(-100, path, 0, 0x100, out var result) != 0)
+        if (LinuxStatx(-100, path, 0, 0x100 | 0x800, out var result) != 0)
             throw new IOException("Could not read file identity.", new Win32Exception(Marshal.GetLastPInvokeError()));
         if ((result.Mask & 0x100) == 0) throw new PlatformNotSupportedException();
-        return (((ulong)result.DeviceMajor << 32) | result.DeviceMinor, result.Inode);
+        // STATX_BTIME (0x800) is absent from the mask on file systems that keep no birth time.
+        var birth = (result.Mask & 0x800) == 0 ? 0 : DateTime.UnixEpoch.Ticks + result.BirthSeconds * TimeSpan.TicksPerSecond +
+            result.BirthNanoseconds / 100;
+        return (((ulong)result.DeviceMajor << 32) | result.DeviceMinor, result.Inode, birth);
     }
 
     [SupportedOSPlatform("macos")]
-    private static (ulong, ulong) ReadMac(string path)
+    private static (ulong, ulong, long) ReadMac(string path)
     {
         MacStatBuffer result;
         var status = RuntimeInformation.ProcessArchitecture == Architecture.Arm64
@@ -58,17 +66,18 @@ internal readonly record struct StoreFileIdentity(ulong Volume, ulong File, long
             : MacStatIntel(path, out result);
         if (status != 0)
             throw new IOException("Could not read file identity.", new Win32Exception(Marshal.GetLastPInvokeError()));
-        return ((uint)result.Device, result.Inode);
+        return ((uint)result.Device, result.Inode, 0);
     }
 
     [SupportedOSPlatform("windows")]
-    private static (ulong, ulong) ReadWindows(string path)
+    private static (ulong, ulong, long) ReadWindows(string path)
     {
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read,
             FileShare.ReadWrite | FileShare.Delete, bufferSize: 1, FileOptions.None);
         if (!GetFileInformationByHandle(stream.SafeFileHandle, out var result))
             throw new IOException("Could not read file identity.", new Win32Exception(Marshal.GetLastPInvokeError()));
-        return (result.VolumeSerialNumber, ((ulong)result.FileIndexHigh << 32) | result.FileIndexLow);
+        var birth = (long)(((ulong)result.CreationTimeHigh << 32) | result.CreationTimeLow);
+        return (result.VolumeSerialNumber, ((ulong)result.FileIndexHigh << 32) | result.FileIndexLow, birth);
     }
 
     [StructLayout(LayoutKind.Explicit, Size = 256)]
@@ -76,6 +85,8 @@ internal readonly record struct StoreFileIdentity(ulong Volume, ulong File, long
     {
         [FieldOffset(0)] public uint Mask;
         [FieldOffset(32)] public ulong Inode;
+        [FieldOffset(80)] public long BirthSeconds;
+        [FieldOffset(88)] public uint BirthNanoseconds;
         [FieldOffset(136)] public uint DeviceMajor;
         [FieldOffset(140)] public uint DeviceMinor;
     }

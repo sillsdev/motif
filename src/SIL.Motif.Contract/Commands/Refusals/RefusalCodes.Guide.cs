@@ -25,6 +25,10 @@ public static partial class RefusalCodes
     /// <summary>No Grammar Guide section has that id or number.</summary>
     public const string GdrNotFound = "guide.not-found";
     public const string GdrRecordMoved = "guide.record-moved";
+    /// <summary>The title given for a new Grammar Guide section is empty, spans lines or names an unknown writing system.</summary>
+    public const string GdrTitleInvalid = "guide.title-invalid";
+    /// <summary>The project's Guide list still has its old name, which Motif reads but does not add to.</summary>
+    public const string GdrListNotWritable = "guide.list-not-writable";
     /// <summary>The Markdown given for a Grammar Guide section cannot be read.</summary>
     public const string GdrMarkdownInvalid = "guide.markdown-invalid";
     /// <summary>A Grammar Guide judgement call is missing its option or its reason.</summary>

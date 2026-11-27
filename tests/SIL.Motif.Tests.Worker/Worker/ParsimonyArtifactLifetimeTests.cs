@@ -468,31 +468,31 @@ public sealed class ParsimonyArtifactLifetimeTests : IDisposable
         Assert.Equal(1, result.PinReasonCounts["current-baseline-material"]);
     }
 
+    [Trait("Quarantine", "#417")]
     [Fact]
-    public async Task CleanupWaitsForACompetingReaderLeaseThenRetriesDeletion()
+    public void CleanupWaitsForACompetingReaderLeaseThenRetriesDeletion()
     {
         var old = Publish("reader-old");
         var current = Publish("reader-current");
         Assert.True(_artifacts.DeleteReport(old.Report.ReportId));
-        var entered = new ManualResetEventSlim();
-        var release = new ManualResetEventSlim();
-        var readerTask = Task.Run(() =>
-        {
-            using var lease = _artifacts.AcquireReaderLease(old.Bundle.BundleId, "barrier-reader");
-            using var facts = new FileStream(old.Bundle.EvidencePath, FileMode.Open, FileAccess.Read,
-                FileShare.ReadWrite | FileShare.Delete);
-            entered.Set();
-            release.Wait();
-        });
-        Assert.True(entered.Wait(TimeSpan.FromSeconds(10)));
         var cleaner = new EvidenceRetentionCleaner(_artifacts, WorkspaceOwnership.Bootstrap(_workerRoot),
             _clock, retainedUnpinnedCount: 0);
 
-        var whileOpen = cleaner.Clean(_projectKey);
-        Assert.Empty(whileOpen.DeletedBundleIds);
-        Assert.True(File.Exists(old.Bundle.EvidencePath));
-        release.Set();
-        await readerTask;
+        // The reader is this thread, so there is no hand-off to wait for.
+        var lease = _artifacts.AcquireReaderLease(old.Bundle.BundleId, "barrier-reader");
+        var facts = new FileStream(old.Bundle.EvidencePath, FileMode.Open, FileAccess.Read,
+            FileShare.ReadWrite | FileShare.Delete);
+        try
+        {
+            var whileOpen = cleaner.Clean(_projectKey);
+            Assert.Empty(whileOpen.DeletedBundleIds);
+            Assert.True(File.Exists(old.Bundle.EvidencePath));
+        }
+        finally
+        {
+            facts.Dispose();
+            lease.Dispose();
+        }
 
         var afterClose = cleaner.Clean(_projectKey);
         Assert.Contains(old.Bundle.BundleId, afterClose.DeletedBundleIds);

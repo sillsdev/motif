@@ -171,7 +171,7 @@ public static class PendingChangesWorkflow
         if (!released.Succeeded) return CommandOutcome<ApplyPendingResult>.Refused(released.Refusal!);
         if (released.Value!.AlreadyInAppliedLog)
         {
-            var retry = ProposalCommands.ApplyWithinLease(new ApplyRequest(target.ProjectPath, version,
+            var retry = ApplyLeased(new ApplyRequest(target.ProjectPath, version,
                 identity.ProposalId, target.Force, target.Attribution, target.NoBackground));
             return retry.Succeeded
                 ? CommandOutcome<ApplyPendingResult>.Success(ApplyPendingResult.AppliedWith(retry.Value!, identity.Summary!))
@@ -215,7 +215,7 @@ public static class PendingChangesWorkflow
         };
         if (unbound is not null) return ReopenAfterRefusal(target.ProjectPath, identity, unbound);
 
-        var applied = ProposalCommands.ApplyWithinLease(new ApplyRequest(target.ProjectPath, version, proposalId, target.Force,
+        var applied = ApplyLeased(new ApplyRequest(target.ProjectPath, version, proposalId, target.Force,
             target.Attribution, target.NoBackground));
         if (applied.Succeeded)
             return CommandOutcome<ApplyPendingResult>.Success(ApplyPendingResult.AppliedWith(applied.Value!,
@@ -223,6 +223,18 @@ public static class PendingChangesWorkflow
         if (applied.Refusal?.Code == "apply.reconciliation-needed")
             return CommandOutcome<ApplyPendingResult>.Refused(applied.Refusal!);
         return ReopenAfterRefusal(target.ProjectPath, identity, applied.Refusal!);
+    }
+
+    // A store handle used after it closed is a Motif defect; the caller gets the CLI's unexpected-error refusal.
+    private static CommandOutcome<ApplyProjection> ApplyLeased(ApplyRequest request)
+    {
+        try { return ProposalCommands.ApplyWithinLease(request); }
+        catch (ObjectDisposedException ex)
+        {
+            var message = string.IsNullOrWhiteSpace(ex.Message) ? "An unexpected CLI failure occurred." : ex.Message;
+            return CommandOutcome<ApplyProjection>.Refused(new Refusal(HostRefusalCodes.CliUnexpected, FailureReason.StoreInconsistent,
+                message, new Dictionary<string, string> { ["proposalId"] = request.ProposalId }));
+        }
     }
 
     private static CommandOutcome<ApplyIdentity> ReadApplyIdentity(MotifDatabase database, ProjectLocator project,
