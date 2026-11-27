@@ -15,6 +15,7 @@ public static class ProjectReconciliationMarker
     /// <summary>Whether a previous Apply still needs a person to check the project.</summary>
     public static bool Exists(string fwDataPath) => File.Exists(PathFor(fwDataPath));
 
+    private const string Header = "motif-reconciliation-marker v2";
     private const string Text = "Check the FieldWorks project before trying Apply again.";
 
     /// <summary>Writes a marker of unknown boundary without relying on the proposal store.</summary>
@@ -25,7 +26,8 @@ public static class ProjectReconciliationMarker
     {
         var lines = new List<string>();
         if (File.Exists(PathFor(fwDataPath))) lines.AddRange(File.ReadAllLines(PathFor(fwDataPath)));
-        if (lines.Count == 0) lines.Add(Text);
+        // Old text-only content stays under the header and keeps the marker window-only.
+        if (lines.Count == 0 || lines[0] != Header) lines.Insert(0, Header);
         var entry = $"{boundary}:{proposalId}";
         if (!lines.Contains(entry, StringComparer.Ordinal)) lines.Add(entry);
         File.WriteAllLines(PathFor(fwDataPath), lines);
@@ -43,6 +45,7 @@ public static class ProjectReconciliationMarker
         {
             return (entries, true);
         }
+        if (lines.Length == 0 || lines[0] != Header) return (entries, true);
         foreach (var line in lines.Skip(1))
         {
             var split = line.IndexOf(':');

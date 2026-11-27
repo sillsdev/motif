@@ -1776,26 +1776,37 @@ public static partial class ProposalCommands
                     "Refresh in the Motif window to acknowledge the warning, before applying.",
                     Fact(("proposalId", id))));
             }
-            ClearMarkerIfNothingOutstanding(repository, project, markerCache);
-            return recovered;
+            return WithWarning(recovered, ClearMarkerIfNothingOutstanding(repository, project, markerCache));
         }
         finally { markerCache.Dispose(); }
     }
 
-    // Clears the marker only when everything it names is recorded and nothing else is unrecorded.
-    private static void ClearMarkerIfNothingOutstanding(ProposalRepository repository, ProjectLocator project, LcmCache cache)
+    private static CommandOutcome<ApplyProjection> WithWarning(CommandOutcome<ApplyProjection> outcome, string? warning) =>
+        warning is null ? outcome
+            : CommandOutcome<ApplyProjection>.Success(outcome.Value! with { ResultNote = outcome.Value.ResultNote + " " + warning });
+
+    // Clears the marker once everything it names is recorded; a failure here is a warning.
+    private static string? ClearMarkerIfNothingOutstanding(ProposalRepository repository, ProjectLocator project,
+        LcmCache cache)
     {
         var path = project.FullFwDataPath;
-        if (!ProjectReconciliationMarker.Exists(path)) return;
-        if (!ProjectReconciliationMarker.ClearableByCommand(path, out var named)) return;
-        var (_, unresolved) = RecordRemainingUnrecorded(repository, project, cache);
-        if (unresolved > 0) return;
-        foreach (var namedId in named)
+        try
         {
-            try { if (repository.Get(CanonicalId.Parse(namedId)).Status != ManifestStatus.Applied) return; }
-            catch (Exception exception) when (exception is KeyNotFoundException or ArgumentException) { return; }
+            if (!ProjectReconciliationMarker.Exists(path)) return null;
+            if (!ProjectReconciliationMarker.ClearableByCommand(path, out var named)) return null;
+            var (_, unresolved) = RecordRemainingUnrecorded(repository, project, cache);
+            if (unresolved > 0)
+                return "Another saved Apply could not be recorded, so the warning beside the project stays; " +
+                    "run 'motif apply' for it, or inspect the project and choose Refresh in the Motif window.";
+            foreach (var namedId in named)
+                if (repository.Get(CanonicalId.Parse(namedId)).Status != ManifestStatus.Applied) return null;
+            ProjectReconciliationMarker.Clear(path);
+            return null;
         }
-        ProjectReconciliationMarker.Clear(path);
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return "Motif could not finish checking the warning beside the project, so it stays: " + exception.Message;
+        }
     }
 
     private static (int Recorded, int Unresolved) RecordRemainingUnrecorded(ProposalRepository repository,
@@ -1814,6 +1825,12 @@ public static partial class ProposalCommands
                     recorded++;
             }
             catch (AppliedContentMismatchException) { unresolved++; }
+            catch (NeedsReconciliationException)
+            {
+                unresolved++;
+                ProjectReconciliationMarker.Mark(project.FullFwDataPath, ReconciliationBoundary.ReceiptRecording,
+                    listed.ProposalId.Value);
+            }
         }
         return (recorded, unresolved);
     }
@@ -2237,8 +2254,7 @@ public static partial class ProposalCommands
                     RecordAlreadyAppliedFromLog(repository, project, id, envelope, cache) is { } recordedFromLog)
                 {
                     receiptRecorded = true;
-                    ClearMarkerIfNothingOutstanding(repository, project, cache);
-                    return recordedFromLog;
+                    return WithWarning(recordedFromLog, ClearMarkerIfNothingOutstanding(repository, project, cache));
                 }
                 if (attribution.Mode == ApplyModes.Autonomous &&
                     AutonomousTrialGate.Check(database, project, record, cache) is { } liveGateRefusal)

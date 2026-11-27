@@ -1068,6 +1068,12 @@ public sealed class ProposalRepository : IProposalRepository
     /// <summary>Told when tidying after a committed Receipt fails; the Receipt itself is recorded.</summary>
     internal Action<Exception>? CleanupFailed { get; init; }
 
+    /// <summary>Replaces the tidying after a committed Receipt; a test uses it to make that step fail.</summary>
+    internal Action<Receipt>? CleanupStep { get; init; }
+
+    /// <summary>Told as each recording attempt starts, so a test can count them.</summary>
+    internal Action<int>? AttemptStarted { get; init; }
+
     /// <inheritdoc />
     public void RecordAppliedReceipt(Receipt receipt)
     {
@@ -1077,6 +1083,7 @@ public sealed class ProposalRepository : IProposalRepository
         for (var attempt = 1; ; attempt++)
         {
             var pause = TimeSpan.FromMilliseconds(Math.Min(250 * attempt, 2000));
+            AttemptStarted?.Invoke(attempt);
             try
             {
                 CommitAppliedReceipt(receipt);
@@ -1090,8 +1097,12 @@ public sealed class ProposalRepository : IProposalRepository
         }
         try
         {
-            ReviewRowArtifacts.DeleteReleased(_database, receipt.ProposalId.Value);
-            TrialScratchRetention.DeleteProposal(_database, receipt.ProposalId);
+            if (CleanupStep is { } step) step(receipt);
+            else
+            {
+                ReviewRowArtifacts.DeleteReleased(_database, receipt.ProposalId.Value);
+                TrialScratchRetention.DeleteProposal(_database, receipt.ProposalId);
+            }
         }
         catch (Exception exception) when (exception is SqliteException or IOException or UnauthorizedAccessException)
         {
@@ -1103,6 +1114,8 @@ public sealed class ProposalRepository : IProposalRepository
     private void CommitAppliedReceipt(Receipt receipt)
     {
         using var connection = _database.OpenConnection();
+        // The driver repeats busy waits up to its own command timeout; keep one attempt inside its allowance.
+        connection.DefaultTimeout = Math.Max(1, (int)Math.Ceiling(ReceiptAttemptAllowance.TotalSeconds));
         using var transaction = connection.BeginTransaction(deferred: false);
         using var current = connection.CreateCommand();
         current.Transaction = transaction;

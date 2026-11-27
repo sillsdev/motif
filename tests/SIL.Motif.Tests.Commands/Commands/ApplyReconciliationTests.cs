@@ -347,6 +347,10 @@ public sealed class ApplyReconciliationTests(PristineProjectFixture pristine)
         }
         AssertGlossOnDisk(projectPath, seed.FirstSenseId, NewLangProjFixture.AnalysisTag, gloss);
         Assert.True(ProjectReconciliationMarker.Exists(projectPath));
+        var (entries, unknown) = ProjectReconciliationMarker.Read(projectPath);
+        Assert.False(unknown);
+        Assert.Equal((ReconciliationBoundary.ReceiptRecording, proposalId), Assert.Single(entries));
+        Assert.True(ProjectReconciliationMarker.ClearableByCommand(projectPath, out _));
         Assert.Equal("proposed", StoredStatus(projectPath, proposalId));
 
         var recovered = ProposalCommands.Apply(new ApplyRequest(projectPath, "1.0", proposalId, Force: true));
@@ -505,6 +509,48 @@ public sealed class ApplyReconciliationTests(PristineProjectFixture pristine)
         Assert.Equal("applied", StoredStatus(projectPath, first));
         Assert.Equal("applied", StoredStatus(projectPath, second));
         Assert.False(ProjectReconciliationMarker.Exists(projectPath));
+    }
+
+    [Fact]
+    public void AFailureRecordingAnotherProposalLeavesTheFirstAppliedAndTheWarningNamingTheOther()
+    {
+        string projectPath;
+        using (var scratch = pristine.NewScratch())
+            projectPath = scratch.ProjectId.Path;
+        var (first, second) = TwoAppliedButUnrecorded(projectPath);
+        ProjectReconciliationMarker.Mark(projectPath, ReconciliationBoundary.ReceiptRecording, first);
+        using (var database = ProjectMotifDatabase.Open(projectPath))
+        using (var connection = database.OpenConnection())
+        using (var trigger = connection.CreateCommand())
+        {
+            // A Receipt for different content makes recording this Proposal fail without touching the schema.
+            trigger.CommandText = "INSERT INTO Receipts (ReceiptId, ProposalId, IntentDigest, ReceiptJson, RecordedUtc) " +
+                "VALUES ('receipt/injected', '" + second + "', 'sha256:" + new string('0', 64) + "', '{}', 'now');";
+            trigger.ExecuteNonQuery();
+        }
+
+        var outcome = ProposalCommands.Apply(new ApplyRequest(projectPath, "1.0", first, Force: true));
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        Assert.Contains("stays", outcome.Value!.ResultNote, StringComparison.Ordinal);
+        Assert.Equal("applied", StoredStatus(projectPath, first));
+        Assert.Equal("proposed", StoredStatus(projectPath, second));
+        var (entries, _) = ProjectReconciliationMarker.Read(projectPath);
+        Assert.Contains((ReconciliationBoundary.ReceiptRecording, second), entries);
+    }
+
+    [Fact]
+    public void AnOldTextOnlyWarningStaysForTheWindowEvenAfterEntriesAreAppended()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "old-marker-" + Guid.NewGuid().ToString("N") + ".fwdata");
+        try
+        {
+            ProjectReconciliationMarker.Mark(path);
+            ProjectReconciliationMarker.Mark(path, ReconciliationBoundary.ReceiptRecording, "proposal/x");
+
+            Assert.False(ProjectReconciliationMarker.ClearableByCommand(path, out _));
+        }
+        finally { ProjectReconciliationMarker.Clear(path); }
     }
 
     private (string First, string Second) TwoAppliedButUnrecorded(string projectPath)

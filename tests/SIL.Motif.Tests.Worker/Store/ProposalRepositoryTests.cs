@@ -155,6 +155,70 @@ public sealed class ProposalRepositoryTests : IDisposable
     }
 
     [Fact]
+    public void AFailedTidyingAfterTheCommitLeavesTheReceiptRecordedAndIsReported()
+    {
+        var project = new ProjectLocator(Path.Combine(_root, "cleanup.fwdata"), "cleanup");
+        using var database = MotifDatabase.OpenOwned(Path.Combine(_root, "cleanup.motif.db"), project,
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        var id = CanonicalId.Mint("proposal/");
+        var digest = "sha256:" + new string('a', 64);
+        Exception? reported = null;
+        var repository = new ProposalRepository(database)
+        {
+            CleanupStep = _ => throw new IOException("tidy failed"),
+            CleanupFailed = exception => reported = exception,
+        };
+        repository.SaveRevision(new ProposalRevisionRecord(id, digest, "{}", "proposed", null, null, null));
+
+        repository.RecordAppliedReceipt(ReceiptFor(id, digest));
+
+        Assert.Equal("applied", repository.Get(id).Status);
+        Assert.IsType<IOException>(reported);
+    }
+
+    [Theory]
+    [InlineData(2500, 200, true)]
+    [InlineData(100, 200, false)]
+    public void ARetryStartsOnlyWhenItsOwnBusyWaitFitsInTheBudget(int budgetMilliseconds, int allowanceMilliseconds,
+        bool retries)
+    {
+        var project = new ProjectLocator(Path.Combine(_root, "rule.fwdata"), "rule");
+        using var database = MotifDatabase.OpenOwned(Path.Combine(_root, "rule.motif.db"), project,
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        var id = CanonicalId.Mint("proposal/");
+        var digest = "sha256:" + new string('a', 64);
+        var attempts = 0;
+        var repository = new ProposalRepository(database)
+        {
+            ReceiptBusyBudget = TimeSpan.FromMilliseconds(budgetMilliseconds),
+            ReceiptAttemptAllowance = TimeSpan.FromMilliseconds(allowanceMilliseconds),
+            AttemptStarted = attempt => attempts = attempt,
+        };
+        repository.SaveRevision(new ProposalRevisionRecord(id, digest, "{}", "proposed", null, null, null));
+        using var holder = database.OpenConnection();
+        using var held = holder.BeginTransaction(deferred: false);
+        using (var touch = holder.CreateCommand())
+        {
+            touch.Transaction = held;
+            touch.CommandText = "UPDATE ProgressState SET PendingReceiptId = PendingReceiptId WHERE Id = 1;";
+            touch.ExecuteNonQuery();
+        }
+        const string variable = "MOTIF_TEST_SQLITE_SHORT_TIMEOUT_FOR";
+        var previous = Environment.GetEnvironmentVariable(variable);
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        try
+        {
+            Environment.SetEnvironmentVariable(variable, database.FullPath);
+            Assert.Throws<SqliteException>(() => repository.RecordAppliedReceipt(ReceiptFor(id, digest)));
+        }
+        finally { Environment.SetEnvironmentVariable(variable, previous); }
+        held.Rollback();
+
+        Assert.Equal(retries, attempts > 1);
+        Assert.True(clock.ElapsedMilliseconds < budgetMilliseconds + 3000);
+    }
+
+    [Fact]
     public void ARecordedReceiptStillFailsBusyWhenTheWriterOutlastsTheRetryBudget()
     {
         var project = new ProjectLocator(Path.Combine(_root, "persistent.fwdata"), "persistent");
