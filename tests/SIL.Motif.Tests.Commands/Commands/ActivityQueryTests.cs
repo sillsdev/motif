@@ -36,17 +36,15 @@ public sealed class ActivityQueryTests : IDisposable
     }
 
     [Fact]
-    public void ReadSummarizesTheLinesOfAnActivityLogAndSkipsLinesItCannotRead()
+    public void ReadSummarizesTheLinesOfACallLogAndSkipsLinesItCannotRead()
     {
-        var path = Path.Combine(_root, "activity.jsonl");
+        var path = Path.Combine(_root, "calls-2026-01-01.jsonl");
         File.WriteAllLines(path,
         [
-            "{\"at\":\"2026-01-01T00:00:00+00:00\",\"tool\":\"motif_overview\",\"args\":{},\"isError\":true," +
-                "\"code\":\"baseline.missing\",\"resultBytes\":1,\"durationMs\":1,\"jobId\":null,\"profile\":\"builtin\"}",
+            "{\"tool\":\"motif_overview\",\"outcome\":\"user_error\",\"code\":\"baseline.missing\"}",
             "not json",
             string.Empty,
-            "{\"tool\":\"motif_capture_baseline\",\"isError\":false,\"code\":null,\"followedNext\":true," +
-                "\"composers\":[\"compose-author-phoneme\"]}",
+            "{\"tool\":\"motif_capture_baseline\",\"outcome\":\"ok\",\"followedPrev\":true}",
         ]);
 
         var outcome = ActivityQuery.Read(new ActivityRequest(path));
@@ -57,6 +55,15 @@ public sealed class ActivityQueryTests : IDisposable
         Assert.Equal(1, outcome.Value.FollowedNext);
         Assert.Equal(0, outcome.Value.IgnoredNext);
         Assert.Equal(1, outcome.Value.RefusalsByCode["baseline.missing"]);
+    }
+
+    [Fact]
+    public void ReadAcceptsTheFolderOfDayFiles()
+    {
+        File.WriteAllText(Path.Combine(_root, "calls-2026-01-01.jsonl"), "{\"tool\":\"a\",\"outcome\":\"ok\"}\n");
+        File.WriteAllText(Path.Combine(_root, "calls-2026-01-02.jsonl"), "{\"tool\":\"b\",\"outcome\":\"ok\"}\n");
+
+        Assert.Equal(2, ActivityQuery.Read(new ActivityRequest(_root)).Value!.Total);
     }
 
     [Fact]

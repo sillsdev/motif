@@ -19,9 +19,9 @@ public sealed class ActivityCommandTests : IDisposable
         var path = Path.Combine(_root, "activity.jsonl");
         File.WriteAllLines(path,
         [
-            "{\"tool\":\"motif_overview\",\"isError\":true,\"code\":\"baseline.missing\",\"followedNext\":null}",
-            "{\"tool\":\"motif_capture_baseline\",\"isError\":false,\"code\":null,\"followedNext\":true}",
-            "{\"tool\":\"motif_overview\",\"isError\":false,\"code\":null,\"followedNext\":false}",
+            "{\"tool\":\"motif_overview\",\"outcome\":\"user_error\",\"code\":\"baseline.missing\"}",
+            "{\"tool\":\"motif_capture_baseline\",\"outcome\":\"ok\",\"followedPrev\":true}",
+            "{\"tool\":\"motif_overview\",\"outcome\":\"ok\",\"followedPrev\":false}",
         ]);
         return path;
     }

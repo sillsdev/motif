@@ -8,7 +8,6 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.Store;
-using SIL.Motif.Projection.Usage;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
 using Xunit;
@@ -49,7 +48,7 @@ public sealed class CorpusCommandDispatchTests : IDisposable
     }
 
     [Fact]
-    public void CorporaJsonFlagDispatchesToStructuredOutputAndRecordsUsage()
+    public void CorporaJsonFlagDispatchesToStructuredOutputAndRecordsTheCall()
     {
         var (exitCode, output, error) = Run("corpora");
 
@@ -60,11 +59,11 @@ public sealed class CorpusCommandDispatchTests : IDisposable
             output);
         var entry = Assert.Single(ReadUsage());
         Assert.Equal("corpora", entry.Command);
-        Assert.Equal(new[] { "fwDataPath:text" }, entry.ArgumentShape);
+        Assert.Equal(new[] { "json", "project" }, entry.ArgumentShape);
     }
 
     [Fact]
-    public void ShowCorpusJsonFlagDispatchesToStructuredOutputAndRecordsOnlyArgumentShape()
+    public void ShowCorpusJsonFlagDispatchesToStructuredOutputAndRecordsOnlyArgumentNames()
     {
         const string corpusId = "dispatch-corpus";
         const string description = "Private dispatch corpus";
@@ -89,15 +88,11 @@ public sealed class CorpusCommandDispatchTests : IDisposable
 
         var entry = Assert.Single(ReadUsage());
         Assert.Equal("show-corpus", entry.Command);
-        Assert.Equal(new[] { "fwDataPath:text", "corpusId:text" }, entry.ArgumentShape);
+        Assert.Equal(new[] { "$0", "json", "project" }, entry.ArgumentShape);
     }
 
     /// <summary>Reads back what the spawned CLI recorded into this test's isolated machine store.</summary>
-    private IReadOnlyList<UsageLogEntry> ReadUsage()
-    {
-        using var machine = MachineDatabase.Open(_workerRoot);
-        return new MachineUsageLog(machine).ReadAll();
-    }
+    private IReadOnlyList<RecordedCall> ReadUsage() => CallLogReader.ReadAll(_workerRoot);
 
     private (int ExitCode, string Output, string Error) Run(string command)
     {

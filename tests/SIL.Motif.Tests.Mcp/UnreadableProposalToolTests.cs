@@ -66,7 +66,7 @@ public sealed class UnreadableProposalToolTests
             new KnownProjectRegistry(machine).Record(ProjectWorkspaceKey.Compute(
                 new ProjectLocator(project.ProjectPath, "project")), project.ProjectPath, DateTimeOffset.UtcNow);
         var context = new ServerContext(project.ProjectPath, "1.0", new NoRunnerLauncher(
-            new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(null),
+            new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(),
             ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
         var arguments = new Dictionary<string, JsonElement>
         {

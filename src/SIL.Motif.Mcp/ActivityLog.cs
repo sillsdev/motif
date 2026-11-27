@@ -1,5 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host;
 
 namespace SIL.Motif.Mcp;
 
@@ -11,6 +13,7 @@ namespace SIL.Motif.Mcp;
 /// The Composer verbs the call addressed: the verb of a composer tool, or the distinct step verbs of a batch.
 /// Empty for every other tool and for lines written before the field existed.
 /// </param>
+/// <param name="Reason">The refusal's reason, for the call log's outcome class; <see langword="null"/> when the call succeeded.</param>
 /// <param name="FollowedNext">
 /// <see langword="null"/> for the first call of a server's life; otherwise whether the previous call's
 /// <c>next</c> advice, success or refusal, named this call's tool; arguments are not compared.
@@ -18,32 +21,24 @@ namespace SIL.Motif.Mcp;
 internal sealed record ActivityEntry(
     DateTimeOffset At, string Tool, JsonObject Args, bool IsError, string? Code, int ResultBytes, long DurationMs,
     string? JobId, string Profile, JsonObject? FindComposer = null, string[]? Composers = null,
-    bool? FollowedNext = null);
+    bool? FollowedNext = null, FailureReason? Reason = null);
 
 /// <summary>
-/// Remembers every tool call this server answers, in memory for <c>motif_activity</c> and, when a file is
-/// named, one JSON line per call so an evaluation can measure what an agent did without trusting its account.
+/// Remembers every tool call this server answers, in memory for <c>motif_activity</c>, and hands each one to the
+/// daily call log so an evaluation can measure what an agent did without trusting its account.
 /// </summary>
 internal sealed partial class ActivityLog
 {
-    private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web);
-    private readonly string? _path;
     private readonly List<ActivityEntry> _entries = [];
     private readonly object _gate = new();
     private bool _answeredCall;
     private string? _previousNext;
+    private readonly CallLog? _calls;
 
-    public ActivityLog(string? path)
+    /// <param name="calls">The daily call log every call is also written to, or <see langword="null"/> for none.</param>
+    public ActivityLog(CallLog? calls = null)
     {
-        _path = path;
-        if (path is null) return;
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
-        if (!File.Exists(path)) return;
-        foreach (var line in File.ReadLines(path).Where(line => line.Length > 0))
-        {
-            try { _entries.Add(JsonSerializer.Deserialize<ActivityEntry>(line, Options)!); }
-            catch (JsonException) { }
-        }
+        _calls = calls;
     }
 
     public IReadOnlyList<ActivityEntry> Entries
@@ -64,9 +59,18 @@ internal sealed partial class ActivityLog
             _answeredCall = true;
             _previousNext = next;
             _entries.Add(entry);
-            if (_path is not null) File.AppendAllText(_path, JsonSerializer.Serialize(entry, Options) + "\n");
+            var unregistered = entry.Code == "tool.unknown";
+            _calls?.Record(new CallRecord("mcp", unregistered ? "unknown" : entry.Tool, entry.Profile,
+                unregistered ? new Dictionary<string, string>() : ArgumentTexts(entry.Args), entry.Reason,
+                entry.Code, false, null, entry.DurationMs, entry.ResultBytes, entry.JobId,
+                next is null ? null : ToolToken().Match(next) is { Success: true } named ? named.Value : null,
+                entry.FollowedNext, entry.Composers, entry.FindComposer));
         }
     }
+
+    private static Dictionary<string, string> ArgumentTexts(JsonObject args) =>
+        args.ToDictionary(pair => pair.Key, pair => pair.Value is JsonValue { } value && value.TryGetValue<string>(out var text)
+            ? text : pair.Value?.ToJsonString() ?? "null");
 
     private static bool NamesTool(string? next, string tool) =>
         next is not null && ToolToken().Matches(next).Any(match => match.Value == tool);

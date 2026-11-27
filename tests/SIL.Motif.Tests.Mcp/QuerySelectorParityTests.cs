@@ -46,7 +46,7 @@ public sealed class QuerySelectorParityTests
             var cliId = json.RootElement.GetProperty("result").GetProperty("rows")[0].GetProperty("id").GetString();
             var tool = AgentTools.All.Single(t => t.Name == "motif_query");
             var context = new ServerContext(project, "1.0", new NoRunnerLauncher(new JobRunnerLaunchOptions(root, null)),
-                new ActivityLog(null), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
+                new ActivityLog(), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
             var args = new JsonObject { ["from"] = "forms", ["where"] = new JsonArray(
                 new JsonObject { ["col"] = "form", ["op"] = op, ["value"] = value }), ["group"] = new JsonArray() };
             var result = await tool.Run(context, new ToolArgs(args, tool.ArgumentNames), CancellationToken.None);

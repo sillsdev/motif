@@ -4,8 +4,7 @@ namespace SIL.Motif.Host.Store;
 
 /// <summary>Represents one process's connection boundary onto the machine store.</summary>
 /// <remarks>
-/// One machine store exists per logged-in user, in the worker root, holding <c>KnownProjects</c> and
-/// <c>Usage</c> — nothing that belongs to any one project. A thin wrapper over
+/// One machine store exists per logged-in user, in the worker root, holding <c>KnownProjects</c>, nothing that belongs to any one project. A thin wrapper over
 /// <see cref="MotifSqliteStore"/>, sharing its open-and-create ceremony and connection lifecycle with
 /// <see cref="MotifDatabase"/>; this type owns only the <see cref="MachineSchema"/> descriptor and its own
 /// path resolution.
@@ -38,7 +37,7 @@ public sealed class MachineDatabase : IDisposable
             CurrentSchema = MachineSchema.CurrentSchema,
             ValidateSchema = MachineSchema.ValidateSchema,
             Create = MachineSchema.Create,
-            // Rebuilt after a backup; KnownProjects.ProjectTag is authored and carried, Usage is recomputed.
+            // Rebuilt after a backup; KnownProjects.ProjectTag is authored and carried.
             RebuildOlder = true,
             CarryAfterRebuild = CarryKnownProjects,
             CarriedTables = ["KnownProjects"],

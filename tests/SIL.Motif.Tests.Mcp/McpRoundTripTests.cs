@@ -1567,12 +1567,12 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
     public async Task AnAgentMeasuresADraftBeforeFinalizingItsUnchangedContent()
     {
         using var project = new WalkthroughProject(pristine);
-        var activityLog = Path.Combine(project.ManagedRoot, "activity.jsonl");
+        var callLogDirectory = Path.Combine(project.ManagedRoot, "calls");
         Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project.FwDataPath), project.ManagedRoot).Succeeded);
         await using var runner = new InProcessRunnerLauncher(
             new JobRunnerLaunchOptions(project.ManagedRoot, FakeParser.ExecutablePath));
         await using var session = await Session.StartAsync(project.FwDataPath,
-            new McpLaunchOptions(ActivityLogPath: activityLog, Runner: runner));
+            new McpLaunchOptions(Runner: runner, Calls: new SIL.Motif.Host.CallLog(callLogDirectory)));
         var client = session.Client;
 
         var listed = await client.ListToolsAsync();
@@ -1662,7 +1662,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         Assert.Contains(result.GetProperty("proposals").GetProperty("proposals").EnumerateArray(),
             item => item.GetProperty("proposalId").GetString() == proposalId);
         Assert.NotEmpty(result.GetProperty("jobs").EnumerateArray());
-        Assert.True(File.ReadAllLines(activityLog).Length >= 8);
+        Assert.True(Directory.GetFiles(callLogDirectory).SelectMany(File.ReadAllLines).Count() >= 8);
     }
 
     [Fact]

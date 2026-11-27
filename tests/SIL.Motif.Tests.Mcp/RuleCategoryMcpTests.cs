@@ -49,7 +49,7 @@ public sealed class RuleCategoryMcpTests(PristineProjectFixture pristine)
         KnownProjectTestSetup.AssignUniqueTag(RunnerOptions.ResolveRoot(), path, "rule-category");
         Assert.True(ProposalCommands.New(new(path, "1.0", "category", "Category rule")).Succeeded);
         var context = new ServerContext(path, "1.0", new NoRunnerLauncher(new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)),
-            new ActivityLog(null), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
+            new ActivityLog(), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
         var tools = MotifMcpServer.Expose(ToolProfile.Builtin);
         JsonObject Rule() => new()
         {
