@@ -368,6 +368,10 @@
     "why": "Every category must be a part of speech in this project. Read the project's parts of speech and compose the edit again.",
     "source": "Hand-written from the Motif MCP refusal advice."
   },
+  "rule-notation.context-in-use": {
+    "why": "A context this change deletes is also used by another object since the change was composed. Nothing was deleted; read the rule again and compose the change again.",
+    "source": "Hand-written from the Motif record import refusal advice."
+  },
   "clitic-attachment.stale-source": {
     "why": "The clitic's Attaches to Categories changed after this edit was composed. Read the current set and compose the edit again.",
     "source": "Hand-written from the Motif MCP refusal advice."
