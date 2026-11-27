@@ -5,7 +5,7 @@ namespace SIL.Motif.Contract.Ids;
 
 /// <summary>
 /// The one parser for an id a person or agent types to name a project object. It accepts either spelling of the same
-/// identity: the canonical id a Proposal names, or the hyphenated guid a <c>.fwdata</c> file stores. The result is a
+/// identity: the canonical id a Proposal names, or the guid a <c>.fwdata</c> file stores (any form <see cref="Guid.TryParse(string?, out Guid)"/> reads: hyphenated, 32 digits, braced, or the <c>{0x...}</c> form). The result is a
 /// <see cref="CanonicalId"/>, so a caller reads <see cref="CanonicalId.ToGuid"/> or <see cref="CanonicalId.Value"/>.
 /// </summary>
 public static class ObjectId
@@ -21,7 +21,7 @@ public static class ObjectId
     public static bool TryParse(string? text, out CanonicalId id, out string? error)
     {
         var trimmed = text?.Trim();
-        if (trimmed is { Length: 32 or 36 or 38 } && Guid.TryParse(trimmed, out var guid))
+        if (trimmed is not null && Guid.TryParse(trimmed, out var guid))
         {
             id = CanonicalId.FromGuid(guid);
             error = null;

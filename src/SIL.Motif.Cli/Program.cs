@@ -997,6 +997,7 @@ try
             var hasSingleAnalysis = flags.TryGetValue("analysis-id", out var removeAnalysisId);
             var hasAnalysisSelection = flags.TryGetValue("analysis-ids", out var removeAnalysisIdsText);
             var hasAnalysisText = flags.TryGetValue("text-id", out var removeAnalysisTextId);
+            var removeAnalysisTextGuid = Guid.Empty;
             var removeAnalysisIds = hasAnalysisSelection
                 ? removeAnalysisIdsText!.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 : null;
@@ -1006,7 +1007,7 @@ try
                 hasSingleAnalysis && (!flags.ContainsKey("change-id") || !flags.ContainsKey("wordform-id") ||
                     !flags.ContainsKey("word")) ||
                 hasAnalysisSelection && removeAnalysisIds!.Length == 0 ||
-                hasAnalysisText && !TryObjectGuid(removeAnalysisTextId, out _))
+                hasAnalysisText && !TryObjectGuid(removeAnalysisTextId, out removeAnalysisTextGuid))
                 return Usage("Usage: motif remove-analysis --project <fwdata> " +
                     "--expected-revision <revision> (--analysis-id <id> --change-id <id> " +
                     "--wordform-id <id> --word <word> | --analysis-ids <id,id,...> | --text-id <guid>) [--json]",
@@ -1015,24 +1016,25 @@ try
                 removeAnalysisProject, CliProductVersion(), removeAnalysisRevision,
                 flags.GetValueOrDefault("change-id"), flags.GetValueOrDefault("wordform-id"),
                 flags.GetValueOrDefault("word"), removeAnalysisId, removeAnalysisIds,
-                hasAnalysisText ? ObjectGuid(removeAnalysisTextId!) : null)));
+                hasAnalysisText ? removeAnalysisTextGuid : null)));
             break;
 
         case "accept-new-set":
             var hasWordformScope = flags.TryGetValue("wordform-id", out var acceptWordformId);
             var hasTextScope = flags.TryGetValue("text-id", out var acceptTextId);
+            var acceptTextGuid = Guid.Empty;
             var hasSelectionScope = flags.ContainsKey("selection");
             if (!flags.TryGetValue("project", out var acceptProject) ||
                 !flags.TryGetValue("expected-revision", out var acceptRevision) ||
                 !flags.TryGetValue("assessment", out var acceptAssessment) ||
                 (hasWordformScope ? 1 : 0) + (hasTextScope ? 1 : 0) + (hasSelectionScope ? 1 : 0) != 1 ||
-                hasTextScope && !TryObjectGuid(acceptTextId, out _))
+                hasTextScope && !TryObjectGuid(acceptTextId, out acceptTextGuid))
                 return Usage("Usage: motif accept-new-set --project <fwdata> " +
                     "--expected-revision <revision> --assessment <id> " +
                     "(--wordform-id <id> | --text-id <guid> | --selection) [--json]", asJson);
             result = RenderProposal(PendingChanges.AcceptNewSet(new AcceptNewSetRequest(
                 acceptProject, CliProductVersion(), acceptRevision, acceptAssessment,
-                acceptWordformId, hasTextScope ? ObjectGuid(acceptTextId!) : null, hasSelectionScope)));
+                acceptWordformId, hasTextScope ? acceptTextGuid : null, hasSelectionScope)));
             break;
 
         case "remove-pending-change":
@@ -3883,10 +3885,10 @@ static bool TryParseCount(string? text, out int? count)
     return true;
 }
 
-// The one id parser for a typed object id: a guid or a canonical id names the same object (ObjectId).
+// Guid or canonical id (ObjectId); a prefixed id such as an operation id is never a text id.
 static bool TryObjectGuid(string? text, out Guid guid)
 {
-    if (ObjectId.TryParse(text, out var id))
+    if (ObjectId.TryParse(text, out var id) && id.Prefix.Length == 0)
     {
         guid = id.ToGuid();
         return true;
@@ -3894,8 +3896,6 @@ static bool TryObjectGuid(string? text, out Guid guid)
     guid = default;
     return false;
 }
-
-static Guid ObjectGuid(string text) => ObjectId.TryParse(text, out var id) ? id.ToGuid() : Guid.Parse(text);
 
 static bool TryParseGuidList(string? raw, out List<Guid> guids)
 {

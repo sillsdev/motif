@@ -49,4 +49,54 @@ public sealed class ObjectIdTests
 
     [Fact]
     public void NullIsRefused() => Assert.False(ObjectId.TryParse(null, out _));
+
+    [Theory]
+    [InlineData("N")]
+    [InlineData("B")]
+    [InlineData("P")]
+    public void EveryFormGuidParseReadsIsAccepted(string format)
+    {
+        Assert.True(ObjectId.TryParse(Sample.ToString(format), out var id));
+        Assert.Equal(Sample, id.ToGuid());
+    }
+
+    [Fact]
+    public void TheBracedHexFormIsAccepted()
+    {
+        const string braced = "{0x3f2a8c10,0x5b7e,0x4d21,{0x9a,0x63,0x0c,0x1e,0x2f,0x3a,0x4b,0x5c}}";
+
+        Assert.True(ObjectId.TryParse(braced, out var id));
+        Assert.Equal(Sample, id.ToGuid());
+    }
+
+    [Fact]
+    public void AMixedCaseCanonicalIdKeepsItsCaseAndItsIdentity()
+    {
+        var canonical = CanonicalId.FromGuid(Sample).Value;
+        var swapped = new string(canonical.Select(c => char.IsUpper(c) ? char.ToLowerInvariant(c) : char.ToUpperInvariant(c)).ToArray());
+
+        // Base64url is case-sensitive: the swapped spelling is a different, still well-formed id, never the original.
+        Assert.True(ObjectId.TryParse(canonical, out var original));
+        Assert.True(ObjectId.TryParse(swapped, out var other));
+        Assert.Equal(canonical, original.Value);
+        Assert.Equal(swapped, other.Value);
+        Assert.NotEqual(original.ToGuid(), other.ToGuid());
+    }
+
+    [Fact]
+    public void AMalformedBracedStringOf38CharactersIsRefused()
+    {
+        var malformed = "{" + Sample.ToString("D").Replace('a', 'z') + "}";
+        Assert.Equal(38, malformed.Length);
+
+        Assert.False(ObjectId.TryParse(malformed, out _, out var error));
+        Assert.Contains("neither a canonical id", error);
+    }
+
+    [Fact]
+    public void TheRefusalCatalogCarriesTheIdConvertCodes()
+    {
+        Assert.True(SIL.Motif.Contract.Commands.RefusalCatalog.Specs.ContainsKey("id.invalid"));
+        Assert.True(SIL.Motif.Contract.Commands.RefusalCatalog.Specs.ContainsKey("id-convert.invalid-request"));
+    }
 }

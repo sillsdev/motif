@@ -6,7 +6,7 @@
 
 The `.fwdata` file stores an object's id as a hyphenated guid (`3f2a8c10-5b7e-4d21-9a63-0c1e2f3a4b5c`). A Proposal's intent names the same object by its canonical id, an optional prefix and 22 base64url characters. Use this command to turn one into the other. It reads no project, so it works anywhere.
 
-Every command that takes an object id (`lexical-entry`, `grammar read --id`, the `--target` of `add-set-gloss`, `add-delete-lexeme-form` and `promote-gloss`, and the text ids of `progress`, `word read-state`, `remove-analysis` and `accept-new-set`) accepts either form, so converting first is only needed for a Proposal's intent, which stays canonical.
+Every command that takes an object id (`lexical-entry`, `grammar read --id`, the `--target` of `add-set-gloss`, `add-delete-lexeme-form` and `promote-gloss`, the text ids of `progress`, `word read-state`, `remove-analysis` and `accept-new-set`, the `--texts` list of `selection set-default`, `parsimony`, `assess` and `handoff`, and the `--occurrence-*-id` flags) accepts either form, so converting first is only needed for a Proposal's intent, which stays canonical. A text, paragraph or segment id is never prefixed: a canonical id with a prefix, such as an operation id `op-...`, is refused there rather than read as a guid. The guid may be hyphenated, 32 digits, braced, or the `{0x...}` form.
 
 ## Example
 
