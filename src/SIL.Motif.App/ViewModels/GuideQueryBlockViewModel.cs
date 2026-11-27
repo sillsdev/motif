@@ -8,6 +8,7 @@ using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Gdr;
 using SIL.Motif.Contract.Query;
+using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -25,14 +26,17 @@ public sealed partial class GuideQueryBlockViewModel : ObservableObject
     private int _generation;
     private readonly string? _saveUnavailable;
     private readonly Func<string, string, CancellationToken, Task<GuideEvidenceResult>>? _evidence;
+    private readonly Func<string, CancellationToken, Task<CommandOutcome<GdrRefreshTablesResponse>>>? _saveTable;
 
     internal GuideQueryBlockViewModel(string id, string title, string body, IReadOnlyList<GuideShowDirective> shows,
         GuideQueryContext context, Func<string?> projectPath,
         Func<GuideQueryRunRequest, CancellationToken, Task<CommandOutcome<FormsQueryResponse>>> run, Func<string, string, Task<string?>>? save,
         Action<string>? openWord, GuideSort? sort, string? saveUnavailable = null,
-        Func<string, string, CancellationToken, Task<GuideEvidenceResult>>? evidence = null)
+        Func<string, string, CancellationToken, Task<GuideEvidenceResult>>? evidence = null,
+        Func<string, CancellationToken, Task<CommandOutcome<GdrRefreshTablesResponse>>>? saveTable = null)
     {
         _evidence = evidence;
+        _saveTable = saveTable;
         _saveUnavailable = saveUnavailable;
         Id = id;
         Title = title.Length > 0 ? title : id;
@@ -52,6 +56,7 @@ public sealed partial class GuideQueryBlockViewModel : ObservableObject
         CancelCommand = new RelayCommand(StopEditing, () => IsEditing);
         RunCommand = new AsyncRelayCommand(() => RunAsync(CancellationToken.None), () => !IsRunning);
         SaveCommand = new AsyncRelayCommand(SaveAsync, () => CanSave);
+        SaveTableCommand = new AsyncRelayCommand(SaveTableAsync, () => !IsRunning);
     }
 
     /// <summary>The query's id, unique in its section.</summary>
@@ -68,7 +73,7 @@ public sealed partial class GuideQueryBlockViewModel : ObservableObject
 
     /// <summary>Whether the run line is a v2 corpus-forms line; <see cref="EvidenceDisplays"/> shows it.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsRowsQuery))]
+    [NotifyPropertyChangedFor(nameof(IsRowsQuery), nameof(OffersSaveTable))]
     private bool _isEvidence;
 
     /// <summary>Whether the block's run line is a v1 query shown by <see cref="Displays"/>.</summary>
@@ -84,7 +89,7 @@ public sealed partial class GuideQueryBlockViewModel : ObservableObject
 
     /// <summary>Whether the query text is being edited.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsReading), nameof(ShowsQueryText), nameof(ShowsSave), nameof(CanSave), nameof(SaveReason), nameof(HasSaveReason))]
+    [NotifyPropertyChangedFor(nameof(IsReading), nameof(OffersSaveTable), nameof(ShowsQueryText), nameof(ShowsSave), nameof(CanSave), nameof(SaveReason), nameof(HasSaveReason))]
     private bool _isEditing;
 
     /// <summary>Whether a run is under way.</summary>
@@ -137,6 +142,33 @@ public sealed partial class GuideQueryBlockViewModel : ObservableObject
     /// <summary>Runs the query as written, edited or not, and shows its rows.</summary>
     public IAsyncRelayCommand RunCommand { get; }
 
+    /// <summary>Whether the Save table button is shown: a v2 corpus query in a section where the Guide can be edited.</summary>
+    public bool OffersSaveTable => IsEvidence && _saveTable is not null && !IsEditing;
+
+    /// <summary>
+    /// Stages the saved table of this block (a caption and at most ten rows from a live run) in the pending changes. It is the only
+    /// action in the window that writes a table; showing the block never does.
+    /// </summary>
+    public IAsyncRelayCommand SaveTableCommand { get; }
+
+    private async Task SaveTableAsync()
+    {
+        if (_saveTable is null) return;
+        CommandOutcome<GdrRefreshTablesResponse> outcome;
+        try { outcome = await _saveTable(Id, CancellationToken.None).ConfigureAwait(true); }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            Notice = string.Format(CultureInfo.CurrentCulture, MotifAppStrings.GuideQueryTableNotSavedFormat, exception.Message);
+            return;
+        }
+        var table = outcome.Value?.Sections.SelectMany(section => section.Tables).FirstOrDefault(item => item.QueryId == Id);
+        Notice = !outcome.Succeeded ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.GuideQueryTableNotSavedFormat, outcome.Refusal?.Message)
+            : table is null ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.GuideQueryTableNotSavedFormat, MotifAppStrings.GuideQueryNoAnswer)
+            : table.Outcome == "saved" ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.GuideQueryTableSavedFormat, table.RowsSaved, table.RowsInAll)
+            : table.Outcome == "unchanged" ? MotifAppStrings.GuideQueryTableUnchanged
+            : string.Format(CultureInfo.CurrentCulture, MotifAppStrings.GuideQueryTableNotSavedFormat, table.Message);
+    }
+
     /// <summary>Saves the edited query text to the pending changes; no rows are saved.</summary>
     public IAsyncRelayCommand SaveCommand { get; }
 
@@ -151,7 +183,11 @@ public sealed partial class GuideQueryBlockViewModel : ObservableObject
         SaveCommand.NotifyCanExecuteChanged();
     }
 
-    partial void OnIsRunningChanged(bool value) => RunCommand.NotifyCanExecuteChanged();
+    partial void OnIsRunningChanged(bool value)
+    {
+        RunCommand.NotifyCanExecuteChanged();
+        SaveTableCommand.NotifyCanExecuteChanged();
+    }
 
     private void StartEditing()
     {

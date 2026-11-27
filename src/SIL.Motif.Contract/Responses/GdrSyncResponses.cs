@@ -36,6 +36,9 @@ public static class GdrSyncCodes
     /// <summary>A word a section shows as not parsing now parses.</summary>
     public const string ExampleNowParses = "guide.example-now-parses";
 
+    /// <summary>A query block's saved table was made from another Baseline, or its rows differ from a live run of the query.</summary>
+    public const string SavedTableOutOfDate = "guide.saved-table-out-of-date";
+
     /// <summary>No stored Trial or Assessment row settles the word, so the example cannot be checked.</summary>
     public const string ExampleUnverified = "guide.example-unverified";
 

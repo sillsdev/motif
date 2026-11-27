@@ -55,6 +55,7 @@ public static class GdrQuery
     {
         ArgumentNullException.ThrowIfNull(request);
         IReadOnlyList<GdrQueryBlockSource>? sources = null;
+        IReadOnlyList<GdrSavedTableSource>? savedTables = null;
         var read = ProjectStoreCommand.ReadExisting(request.ProjectPath,
             request.ExpectedBaseline is not null ? BaselineChanged<GdrCheckResponse>() : CommandOutcome<GdrCheckResponse>.Success(new(false, true, [], [], new GdrSyncCounts(0, 0, 0, 0, 0, []))),
             (database, project) =>
@@ -75,6 +76,7 @@ public static class GdrQuery
                     .Select(link => new GdrLedgerLink(link.HypothesisId, link.GdrId, link.GdrSection)).ToArray();
                 var checkedResponse = GdrSyncChecker.Check(reader.Cache, new GdrExampleEvidenceRepository(database), ledger);
                 sources = GdrSyncChecker.ReadQueryBlocks(reader.Cache);
+                savedTables = GdrSavedTableReader.Read(reader.Cache);
                 return CommandOutcome<GdrCheckResponse>.Success(checkedResponse with
                 {
                     Baseline = baseline.Token,
@@ -89,10 +91,17 @@ public static class GdrQuery
         });
         // The blocks run after the store is closed: a v1 line opens it again, and a slow block must not hold it.
         if (!read.Succeeded || read.Value is not { HasBaseline: true } response || sources is null) return read;
+        // A saved table is compared with its block's own run: no query runs twice, and --no-run and --timeout hold.
+        var evidence = new Dictionary<string, GuideEvidenceResult>(StringComparer.Ordinal);
         var blocks = GdrQueryBlockCheck.Check(sources, request.ProjectPath, request.RunBlocks,
-            TimeSpan.FromSeconds(Math.Max(1, request.BlockTimeoutSeconds)), parserPath, request.BuildIndex);
-        var findings = blocks.Findings.Count == 0 ? response.Findings : [.. response.Findings, .. blocks.Findings];
-        return CommandOutcome<GdrCheckResponse>.Success(response with { Findings = findings, InSync = findings.Count == 0, QueryBlocks = blocks.Runs });
+            TimeSpan.FromSeconds(Math.Max(1, request.BlockTimeoutSeconds)), parserPath, evidence, request.BuildIndex);
+        Dictionary<string, GuideEvidenceResult> kept;
+        lock (evidence) kept = new(evidence);
+        var advice = request.RunBlocks && savedTables is { Count: > 0 }
+            ? GdrSavedTableAdvice.Findings(savedTables, response.Baseline?.BundleDigest, table => kept.GetValueOrDefault(GdrQueryBlockCheck.EvidenceKey(table.Gdr, table.Query.Id)))
+            : [];
+        var findings = response.Findings.Concat(blocks.Findings).Concat(advice).ToArray();
+        return CommandOutcome<GdrCheckResponse>.Success(response with { Findings = findings, InSync = findings.Length == 0, QueryBlocks = blocks.Runs });
     }
 
     /// <summary>Reads one record's Discussion with the project's styles and writing systems and any others it uses.</summary>

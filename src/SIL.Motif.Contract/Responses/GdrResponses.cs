@@ -157,3 +157,26 @@ public sealed record GdrAddResponse(
     /// <summary>The standard styles the Draft also creates; empty when the project had them all.</summary>
     public IReadOnlyList<string> StylesCreated { get; init; } = [];
 }
+
+/// <summary>What refreshing one query block's saved table did.</summary>
+/// <param name="QueryId">The block's <c>id</c>.</param>
+/// <param name="Outcome"><c>saved</c> (staged), <c>unchanged</c> (the saved table already matches) or <c>skipped</c> (see <paramref name="Message"/>).</param>
+/// <param name="Message">Why a block was skipped, or the headline of what was saved.</param>
+/// <param name="RowsSaved">The rows in the table now; at most 10.</param>
+/// <param name="RowsInAll">The rows the query has in all; 0 when skipped.</param>
+public sealed record GdrRefreshedTable(string QueryId, string Outcome, string Message, int RowsSaved, long RowsInAll);
+
+/// <summary>One section's blocks as refreshed.</summary>
+public sealed record GdrRefreshedSection(string Id, string Abbreviation, IReadOnlyList<GdrRefreshedTable> Tables);
+
+/// <summary>What <c>guide refresh-tables</c> staged.</summary>
+/// <param name="DraftName">The Draft the tables are staged in; null when nothing was staged.</param>
+/// <param name="Sections">Each section with a query block, with its blocks.</param>
+/// <param name="OperationCount">The Draft operations staged.</param>
+/// <param name="Warnings">Findings that do not stop the refresh.</param>
+public sealed record GdrRefreshTablesResponse(
+    string? DraftName, IReadOnlyList<GdrRefreshedSection> Sections, int OperationCount, IReadOnlyList<string> Warnings)
+{
+    /// <summary>The FieldWorks standard styles the Draft also creates because the project lacks them.</summary>
+    public IReadOnlyList<string> StylesCreated { get; init; } = [];
+}

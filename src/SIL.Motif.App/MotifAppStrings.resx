@@ -7772,6 +7772,11 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.GuideQueryRun" xml:space="preserve"><value>Run</value></data>
   <data name="MotifApp.GuideQueryEdit" xml:space="preserve"><value>Edit Query</value></data>
   <data name="MotifApp.GuideQuerySave" xml:space="preserve"><value>Save Query</value></data>
+  <data name="MotifApp.GuideQueryProjectChanged" xml:space="preserve"><value>The project changed before this query finished, so its answer was dropped.</value></data>
+  <data name="MotifApp.GuideQuerySaveTable" xml:space="preserve"><value>Save Table</value></data>
+  <data name="MotifApp.GuideQueryTableSavedFormat" xml:space="preserve"><value>Staged a table of {0} of {1} rows in the pending changes. Apply them and it shows in FieldWorks.</value></data>
+  <data name="MotifApp.GuideQueryTableNotSavedFormat" xml:space="preserve"><value>The table was not saved: {0}</value></data>
+  <data name="MotifApp.GuideQueryTableUnchanged" xml:space="preserve"><value>The saved table already matches this result, so nothing was staged.</value></data>
   <data name="MotifApp.GuideQueryCancel" xml:space="preserve"><value>Cancel Edit</value></data>
   <data name="MotifApp.GuideQueryDraftName" xml:space="preserve"><value>Query text</value></data>
   <data name="MotifApp.GuideQueryRunning" xml:space="preserve"><value>Running the query.</value></data>

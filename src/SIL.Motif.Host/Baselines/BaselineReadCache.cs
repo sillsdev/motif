@@ -24,6 +24,9 @@ public sealed class BaselineReadCache : IDisposable
         Cache = cache;
     }
 
+    /// <summary>The private directory holding this reader's project copy; it is gone once the reader is disposed.</summary>
+    public string CopyDirectory => _root;
+
     /// <summary>The privately owned cache; callers project values and never save it.</summary>
     public LcmCache Cache { get; }
 

@@ -112,6 +112,21 @@ public sealed class ProjectSwitchTests
     }
 
     [UiThreadFact]
+    public async Task TheGuideSessionIsReleasedWhenTheProjectSwitchesAndWhenTheWorkspaceCloses()
+    {
+        var parts = NewWorkspace();
+        await OpenProjectAsync(parts.Workspace, ProjectA);
+        var afterOpen = parts.Fake.GuideSessionReleases;
+
+        await OpenProjectAsync(parts.Workspace, ProjectB);
+        Assert.True(parts.Fake.GuideSessionReleases > afterOpen);
+
+        var beforeClose = parts.Fake.GuideSessionReleases;
+        await parts.Workspace.DisposeAsync();
+        Assert.True(parts.Fake.GuideSessionReleases > beforeClose);
+    }
+
+    [UiThreadFact]
     public async Task ASecondSwitchBeforeTheFirstFinishesShowsOnlyTheSecondProject()
     {
         var parts = NewWorkspace();
