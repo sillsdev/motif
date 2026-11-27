@@ -194,7 +194,7 @@ public sealed partial class DeletionSafetyTests
     public async Task ADamagedContentRowRefusesTheReadOnlyKeyedReadAndTheWritableOpen()
     {
         var seed = await Import();
-        Run("UPDATE RecordContent SET Data = substr(Data, 1, length(Data) - 1) || x'01' WHERE Id = (SELECT Id FROM RecordContent WHERE substr(Data, 1, 1) = x'00' AND length(Data) > 4 LIMIT 1)");
+        DamageOneContentRow();
         Assert.Throws<InvalidDataException>(() => new Store(Database));
         await using var reader = Store.OpenPublishedReader(Database);
         await Assert.ThrowsAsync<InvalidDataException>(() => reader.ReadRecordAsync(seed.FirstEntryId));
