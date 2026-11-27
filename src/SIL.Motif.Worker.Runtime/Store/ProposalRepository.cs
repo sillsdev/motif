@@ -1059,12 +1059,64 @@ public sealed class ProposalRepository : IProposalRepository
             EvidenceArtifactRepository.ReleaseClosedProposalPins(connection, transaction, proposalId);
     }
 
+    /// <summary>The longest recording an applied Receipt may spend retrying a busy store, attempts included.</summary>
+    internal TimeSpan ReceiptBusyBudget { get; init; } = TimeSpan.FromSeconds(60);
+
+    /// <summary>The longest one attempt can wait on the store's busy handler; no attempt starts without room for it.</summary>
+    internal TimeSpan ReceiptAttemptAllowance { get; init; } = TimeSpan.FromMilliseconds(SqliteConnections.BusyTimeoutMilliseconds);
+
+    /// <summary>Told when tidying after a committed Receipt fails; the Receipt itself is recorded.</summary>
+    internal Action<Exception>? CleanupFailed { get; init; }
+
+    /// <summary>Replaces the tidying after a committed Receipt; a test uses it to make that step fail.</summary>
+    internal Action<Receipt>? CleanupStep { get; init; }
+
+    /// <summary>Told as each recording attempt starts, so a test can count them.</summary>
+    internal Action<int>? AttemptStarted { get; init; }
+
     /// <inheritdoc />
     public void RecordAppliedReceipt(Receipt receipt)
     {
         ArgumentNullException.ThrowIfNull(receipt);
+        // The project is saved, so busy is retried on a fresh connection; recording is idempotent.
+        var elapsed = System.Diagnostics.Stopwatch.StartNew();
+        for (var attempt = 1; ; attempt++)
+        {
+            var pause = TimeSpan.FromMilliseconds(Math.Min(250 * attempt, 2000));
+            AttemptStarted?.Invoke(attempt);
+            try
+            {
+                CommitAppliedReceipt(receipt);
+                break;
+            }
+            catch (SqliteException failure) when (SqliteConnections.IsBusy(failure) &&
+                elapsed.Elapsed + pause + ReceiptAttemptAllowance <= ReceiptBusyBudget)
+            {
+                Thread.Sleep(pause);
+            }
+        }
+        try
+        {
+            if (CleanupStep is { } step) step(receipt);
+            else
+            {
+                ReviewRowArtifacts.DeleteReleased(_database, receipt.ProposalId.Value);
+                TrialScratchRetention.DeleteProposal(_database, receipt.ProposalId);
+            }
+        }
+        catch (Exception exception) when (exception is SqliteException or IOException or UnauthorizedAccessException)
+        {
+            CleanupFailed?.Invoke(exception);
+        }
+    }
+
+    // BEGIN IMMEDIATE takes the write lock first, so the busy handler applies.
+    private void CommitAppliedReceipt(Receipt receipt)
+    {
         using var connection = _database.OpenConnection();
-        using var transaction = connection.BeginTransaction();
+        // The driver repeats busy waits up to its own command timeout; keep one attempt inside its allowance.
+        connection.DefaultTimeout = Math.Max(1, (int)Math.Ceiling(ReceiptAttemptAllowance.TotalSeconds));
+        using var transaction = connection.BeginTransaction(deferred: false);
         using var current = connection.CreateCommand();
         current.Transaction = transaction;
         current.CommandText = "SELECT CurrentIntentDigest FROM Proposals WHERE ProposalId = $id;";
@@ -1119,8 +1171,6 @@ public sealed class ProposalRepository : IProposalRepository
             drift.ExecuteNonQuery();
         }
         transaction.Commit();
-        ReviewRowArtifacts.DeleteReleased(_database, receipt.ProposalId.Value);
-        TrialScratchRetention.DeleteProposal(_database, receipt.ProposalId);
     }
 
     // On the caller's own transaction: a second connection cannot see uncommitted rows, leaving a window.

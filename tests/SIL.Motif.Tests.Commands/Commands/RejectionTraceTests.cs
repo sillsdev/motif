@@ -344,7 +344,55 @@ public sealed class RejectionTraceTests
     }
 
     [Fact]
-    public void AWordStoppedAtTheWorkLimitSaysSoWithTheWorkAndTheRecordedLimit()
+    public void AFinishedWordReportsTheWorkItUsedAgainstTheLimit()
+    {
+        var projected = Project(new Trace().Path(0, "accepted").Completed());
+        var response = projected with { Search = projected.Search with { WorkUnits = 5_000_000 } };
+        Assert.False(response.Search.WorkLimitReached);
+
+        var bounded = RejectionTraceQuery.WithLimitNote(response,
+            new ResolvedWorkLimit(SIL.Motif.Contract.Assess.ParserWorkLimit.Default, "default"));
+        Assert.Contains("Traced: used 25% of the work limit.", bounded.Notes);
+        Assert.DoesNotContain(bounded.Notes, n => n.Contains("work units") && n.StartsWith("Traced:", StringComparison.Ordinal));
+
+        var unbounded = RejectionTraceQuery.WithLimitNote(response,
+            new ResolvedWorkLimit(SIL.Motif.Contract.Assess.ParserWorkLimit.Unbounded, "config"));
+        Assert.DoesNotContain(unbounded.Notes, n => n.StartsWith("Traced:", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void TraceJsonAndTextCarryNoWorkCountForAFinishedOrAStoppedWord()
+    {
+        var finished = Project(new Trace { WorkCap = new JsonObject { ["state"] = "bounded", ["value"] = 40 } }
+            .Path(0, "accepted").Completed());
+        var stopped = Project(new Trace
+        {
+            SearchStatus = "stopped", StopReasons = ["work_limit"],
+            WorkCap = new JsonObject { ["state"] = "bounded", ["value"] = 2000 },
+        }.Path(0, "intermediate", parent: null).Path(1, "unresolved").Completed());
+        foreach (var response in new[] { finished, stopped })
+        {
+            var json = SIL.Motif.Contract.Responses.ProjectionJson.Serialize(response);
+            Assert.DoesNotContain("workUnits", json, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("work units", json, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("work units", response.Search.Description, StringComparison.OrdinalIgnoreCase);
+        }
+        Assert.Equal(25d, finished.Search.WorkLimitUsedPercent);
+        Assert.Contains("\"workLimitUsedPercent\": 25", SIL.Motif.Contract.Responses.ProjectionJson.Serialize(finished));
+    }
+
+    [Fact]
+    public void AWordWithNoReportedWorkAddsNoWorkNote()
+    {
+        var response = Project(new Trace().Path(0, "accepted").Completed()) with
+            { Search = Project(new Trace().Path(0, "accepted").Completed()).Search with { WorkUnits = null } };
+        var noted = RejectionTraceQuery.WithLimitNote(response,
+            new ResolvedWorkLimit(SIL.Motif.Contract.Assess.ParserWorkLimit.Default, "default"));
+        Assert.DoesNotContain(noted.Notes, n => n.StartsWith("Traced:", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void AWordStoppedAtTheWorkLimitSaysSoWithAPercentAndNoCount()
     {
         var trace = new Trace
         {
@@ -355,20 +403,20 @@ public sealed class RejectionTraceTests
         var response = Project(trace.Completed());
 
         Assert.True(response.Search.WorkLimitReached);
-        Assert.Equal("work limit reached (10 work units against a limit of 2,000)", response.Search.Description);
+        Assert.Equal("work limit reached (used 100% of the work limit)", response.Search.Description);
         Assert.Equal(new RejectionTraceWorkCap("bounded", 2000), response.Search.WorkCap);
         Assert.Contains(response.Notes, n => n.Contains("stopped this word at its work limit"));
     }
 
     [Fact]
-    public void AWorkLimitStopWithNoRecordedLimitSaysItWasNotRecordedNeverAGuess()
+    public void AWorkLimitStopWithNoRecordedLimitStillGivesNoCount()
     {
         var trace = new Trace { SearchStatus = "stopped", StopReasons = ["work_limit"] }.Path(1, "unresolved");
 
         var response = Project(trace.Completed());
 
         Assert.Null(response.Search.WorkCap);
-        Assert.Equal("work limit reached (10 work units against a limit the parser did not record)", response.Search.Description);
+        Assert.Equal("work limit reached (used 100% of the work limit)", response.Search.Description);
     }
 
     [Fact]

@@ -169,4 +169,71 @@ public sealed class DeleteUnusedObjectsTests(PristineProjectFixture pristine)
         var feature = NewFeature(cache, "Loan stem");
         Assert.ThrowsAny<Exception>(() => DeleteUnusedObjectsComposer.BuildTextSegmentNote(cache, new(feature, "x")));
     }
+
+    [Fact]
+    public void AnEmptyInflectionClassIsDeletedThroughAProposalAndTheDryRunReportsTheEffect()
+    {
+        using var cache = pristine.NewScratch();
+        var noun = AddCategory(cache, "Noun");
+        var empty = AddInflectionClass(cache, noun, "G8");
+        var kept = AddInflectionClass(cache, noun, "G1");
+        var parsed = DeleteUnusedObjectsIntentParser.ParseInflectionClass(System.Text.Json.JsonDocument.Parse(
+            $"{{\"inflectionClass\":\"{empty.Value}\",\"expectedName\":\"G8\"}}").RootElement);
+        var operations = DeleteUnusedObjectsComposer.BuildInflectionClass(cache, parsed);
+        var operation = Assert.Single(operations);
+        Assert.Equal(UnusedObjectDeleteOperationKinds.DeleteInflectionClass, operation.Kind);
+        var dry = ScratchDryRun.Of(cache, Proposal(operations));
+        Assert.Equal(empty, Assert.Single(dry.ExpectedEffects).CanonicalId);
+        Assert.True(Exists(cache, empty));
+        ApplyOps(cache, operations);
+        Assert.False(Exists(cache, empty));
+        Assert.True(Exists(cache, kept));
+        Assert.Single(Get<IPartOfSpeech>(cache, noun).InflectionClassesOC);
+    }
+
+    [Fact]
+    public void AnInflectionClassAStemAndAnAffixAllomorphStillUseIsRefusedNamingThem()
+    {
+        using var cache = pristine.NewScratch();
+        var noun = AddCategory(cache, "Noun");
+        var used = AddInflectionClass(cache, noun, "G3");
+        var stem = AddStem(cache, "kaun", noun, used);
+        var prefix = AddInflectionalPrefix(cache, "wa", noun);
+        ApplyOps(cache, EditAffixInflectionClassesComposer.Build(cache, new(prefix.Form, [], [used])));
+        var message = Refusal(() => DeleteUnusedObjectsComposer.BuildInflectionClass(cache, new(used, "G3")));
+        Assert.Contains("MoStemMsa", message);
+        Assert.Contains(stem.Msa.ToGuid().ToString("D"), message);
+        Assert.Contains("kaun", message);
+        Assert.Contains("MoAffixAllomorph", message);
+        Assert.Contains(prefix.Form.ToGuid().ToString("D"), message);
+        Assert.True(Exists(cache, used));
+        Assert.Contains("not 'G9'", Refusal(() =>
+            DeleteUnusedObjectsComposer.BuildInflectionClass(cache, new(used, "G9"))));
+    }
+
+    [Fact]
+    public void AnInflectionClassWithSubclassesIsRefusedNamingTheSubclass()
+    {
+        using var cache = pristine.NewScratch();
+        var noun = AddCategory(cache, "Noun");
+        var parent = AddInflectionClass(cache, noun, "Parent");
+        var child = Created(ApplyOps(cache, AuthorInflectionClassComposer.Build(cache,
+            new(noun, "Child", Anal(cache), Parent: parent))), MoInflClassSubclassesOperationKinds.Create);
+        var message = Refusal(() => DeleteUnusedObjectsComposer.BuildInflectionClass(cache, new(parent, "Parent")));
+        Assert.Contains("subclass", message);
+        Assert.Contains(child.ToGuid().ToString("D"), message);
+        Assert.True(Exists(cache, parent));
+        // The subclass itself is empty and deletes, leaving the parent.
+        ApplyOps(cache, DeleteUnusedObjectsComposer.BuildInflectionClass(cache, new(child, "Child")));
+        Assert.False(Exists(cache, child));
+        Assert.True(Exists(cache, parent));
+    }
+
+    [Fact]
+    public void AnUnknownInflectionClassIdIsRefused()
+    {
+        using var cache = pristine.NewScratch();
+        Assert.ThrowsAny<Exception>(() => DeleteUnusedObjectsComposer.BuildInflectionClass(cache,
+            new(CanonicalId.Mint(), "G8")));
+    }
 }

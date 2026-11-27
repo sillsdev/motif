@@ -12,7 +12,7 @@ motif guide show --project Koro.fwdata GDR-4 --as-of plural-rule
 
 Without `--draft` the edit joins the pending changes, as an edit in the window does. A named Draft must already exist (`motif new`); stage the Guide edit in the same Draft as the rule it explains, and the section ships with the rule. `--from-file -` reads standard input.
 
-An unchanged paragraph keeps its identity; a changed one is replaced in place, and a section edited in FieldWorks in the meantime is refused at Apply (`text.field-stale`), as for any text edit. Markdown the reader cannot parse is refused as `guide.markdown-invalid` with every finding, and nothing is staged.
+An unchanged paragraph keeps its identity; a changed one is replaced in place, and a section edited in FieldWorks in the meantime is refused at Apply (`text.field-stale`), as for any text edit. An inline code span in backticks is accepted as the `Code` character style, staged in the same Draft when the project lacks it (see `guide add`). Markdown the reader cannot parse is refused as `guide.markdown-invalid` with every finding, and nothing is staged.
 
 A Proposal whose operations are all Guide-section edits or text-segment Notes has no word to lose: Autonomous Apply does not ask for a green Trial gate for it (see `motif help autonomous`). Dry Run still shows every field changed.
 

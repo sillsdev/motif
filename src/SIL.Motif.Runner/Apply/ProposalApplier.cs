@@ -126,14 +126,7 @@ public static class ProposalApplier
         var intentDigestHex = StripSha256Prefix(fullIntentDigest);
 
         // Idempotence first: reading the applied-log needs no unit of work (docs/adr/0017 decision 3).
-        if (ProjectAppliedLog.TryFindByProposalId(cache, proposalGuid, out var existingEntry))
-        {
-            if (!string.Equals(existingEntry!.IntentDigest, intentDigestHex, StringComparison.Ordinal))
-                throw new AppliedContentMismatchException(
-                    $"Proposal {proposal.ProposalId.Value} was applied with different content. " +
-                    "Create a new Proposal for the amended intent.");
-            return BuildAlreadyAppliedReceipt(proposal, fullIntentDigest, existingEntry!);
-        }
+        if (FindAlreadyApplied(cache, proposal) is { } alreadyApplied) return alreadyApplied;
 
         var appliedProposalIds = new HashSet<Guid>(
             ProjectAppliedLog.ReadAll(cache).Select(entry => entry.ProposalId));
@@ -264,6 +257,26 @@ public static class ProposalApplier
             effects,
             effectDigest,
             logEntry);
+    }
+
+    /// <summary>
+    /// Reads the project's applied log for <paramref name="proposal"/> and returns the already-applied Receipt when
+    /// the log holds an entry whose intent digest matches the Proposal's content; <see langword="null"/> when it holds none.
+    /// Mutates nothing and needs no Dry Run.
+    /// </summary>
+    /// <exception cref="AppliedContentMismatchException">The log holds an entry for different content.</exception>
+    public static Receipt? FindAlreadyApplied(LcmCache cache, Proposal proposal)
+    {
+        ArgumentNullException.ThrowIfNull(cache);
+        ArgumentNullException.ThrowIfNull(proposal);
+        var fullIntentDigest = ContractIntentDigest.Compute(proposal);
+        if (!ProjectAppliedLog.TryFindByProposalId(cache, proposal.ProposalId.ToGuid(), out var existingEntry))
+            return null;
+        if (!string.Equals(existingEntry!.IntentDigest, StripSha256Prefix(fullIntentDigest), StringComparison.Ordinal))
+            throw new AppliedContentMismatchException(
+                $"Proposal {proposal.ProposalId.Value} was applied with different content. " +
+                "Create a new Proposal for the amended intent.");
+        return BuildAlreadyAppliedReceipt(proposal, fullIntentDigest, existingEntry);
     }
 
     private static Receipt BuildAlreadyAppliedReceipt(
