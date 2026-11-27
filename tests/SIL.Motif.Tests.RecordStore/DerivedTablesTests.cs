@@ -601,7 +601,7 @@ public sealed class DerivedTablesGenericTests : IDisposable
         Assert.Equal(2000, total);
     }
 
-    public void Dispose() { SqliteConnection.ClearAllPools(); if (Directory.Exists(root)) Directory.Delete(root, true); }
+    public void Dispose() { if (Directory.Exists(root)) Directory.Delete(root, true); }
 }
 
 /// <summary>The private Indonesian copy: chunk sums, the ranged read and verification on a real project.</summary>

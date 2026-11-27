@@ -34,6 +34,9 @@ public static partial class RecordImportCommand
     public static CommandOutcome<RecordImportResponse> Run(RecordImportRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
+        if ((request.FilePath is null) == (request.DirPath is null))
+            return Refused(RefusalCodes.RecordImportFileOrDir, FailureReason.InvalidArgument, "Give --file or --dir, not both.");
+        if (request.DirPath is not null) return RunDir(request);
         if (request.Page < 1)
             return Refused(RefusalCodes.RecordImportInvalidPage, FailureReason.InvalidArgument,
                 "The page must be a whole number from 1.", ("page", request.Page.ToString()));
@@ -43,14 +46,14 @@ public static partial class RecordImportCommand
         string text;
         try
         {
-            text = File.ReadAllText(request.FilePath);
+            text = File.ReadAllText(request.FilePath!);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException
             or NotSupportedException)
         {
             return Refused(RefusalCodes.RecordImportFileUnreadable, FailureReason.InvalidArgument,
                 "The record file could not be read: " + exception.GetType().Name + ".",
-                ("file", Path.GetFileName(request.FilePath)));
+                ("file", Path.GetFileName(request.FilePath!)));
         }
         var located = ProjectStoreCommand.LocateProject(request.ProjectPath);
         if (!located.Succeeded) return CommandOutcome<RecordImportResponse>.Refused(located.Refusal!);
@@ -142,22 +145,39 @@ public static partial class RecordImportCommand
     /// <summary>A planned file, what would be staged, and a digest taken before any refusal.</summary>
     private sealed record Planned(ProjectRecordSchemaResult Schema, ProjectRecordPlan Plan, RecordLowering Lowering, string Digest);
 
-    private static Planned? Plan(LcmCache cache, string text, bool validate)
+    private static Planned? Plan(LcmCache cache, string text, bool validate, SchemaSet? schemas = null)
     {
         var name = KindName(text);
         if (name is null) return null;
-        ProjectRecordSchemaResult? schema = null;
-        foreach (var overlay in Overlays)
+        if ((schemas ?? new SchemaSet(cache)).For(name) is not { } resolved) return null;
+        var plan = resolved.Importer.Plan(text, resolved.Catalog);
+        var full = resolved.Lowerer.Lower(cache, plan);
+        return new(resolved.Schema, plan, validate ? ValidateOnScratch(cache, plan, full) : full, Digest(full.Operations));
+    }
+
+    /// <summary>What one record kind needs to plan and lower a file.</summary>
+    private sealed record KindTools(ProjectRecordSchemaResult Schema, ProjectRecordImporter Importer,
+        CatalogWritableFields Catalog, RecordChangeSetLowerer Lowerer);
+
+    /// <summary>The overlays' schemas, generated on first need and shared by a batch.</summary>
+    private sealed class SchemaSet(LcmCache cache)
+    {
+        private readonly List<KindTools> _generated = [];
+
+        public KindTools? For(string kindName)
         {
-            var candidate = ProjectRecordSchema.Generate(cache, overlay());
-            if (candidate.Schema.Kind(name) is null) continue;
-            schema = candidate;
-            break;
+            foreach (var tools in _generated)
+                if (tools.Schema.Schema.Kind(kindName) is not null) return tools;
+            while (_generated.Count < Overlays.Length)
+            {
+                var schema = ProjectRecordSchema.Generate(cache, Overlays[_generated.Count]());
+                var tools = new KindTools(schema, new ProjectRecordImporter(new ProjectRecordExporter(cache, schema)),
+                    new CatalogWritableFields(schema), new RecordChangeSetLowerer(schema, new RecordWritableFields(schema)));
+                _generated.Add(tools);
+                if (schema.Schema.Kind(kindName) is not null) return tools;
+            }
+            return null;
         }
-        if (schema is null) return null;
-        var plan = ProjectRecordImporter.Plan(cache, schema, text, new CatalogWritableFields(schema));
-        var full = new RecordChangeSetLowerer(schema, new RecordWritableFields(schema)).Lower(cache, plan);
-        return new(schema, plan, validate ? ValidateOnScratch(cache, plan, full) : full, Digest(full.Operations));
     }
 
     /// <summary>The whole unquoted value of the front matter's record: line.</summary>
@@ -246,6 +266,7 @@ public static partial class RecordImportCommand
             RecordRefusalKind.GuidInvalid => new Refusal(RefusalCodes.RecordImportGuidInvalid, FailureReason.Refused, message, facts),
             RecordRefusalKind.GuidRetired => new Refusal(RefusalCodes.RecordImportGuidRetired, FailureReason.Refused, message, facts),
             RecordRefusalKind.CreateComputedField => new Refusal(RefusalCodes.RecordImportCreateComputedField, FailureReason.Refused, message, facts),
+            RecordRefusalKind.CreateReservedField => new Refusal(RefusalCodes.RecordImportCreateReservedField, FailureReason.Refused, message, facts),
             _ => new Refusal(RefusalCodes.RecordImportPlanRefused, FailureReason.Refused, message, facts),
         };
     }
@@ -321,7 +342,7 @@ public static partial class RecordImportCommand
         foreach (var root in roots)
         {
             var prefix = root.EndsWith(Path.DirectorySeparatorChar) ? root : root + Path.DirectorySeparatorChar;
-            if (real.StartsWith(prefix, comparison)) return null;
+            if (string.Equals(real, root, comparison) || real.StartsWith(prefix, comparison)) return null;
         }
         return Unreadable(filePath, forWrite);
     }

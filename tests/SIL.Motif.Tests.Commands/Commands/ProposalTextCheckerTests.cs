@@ -44,6 +44,49 @@ public sealed class ProposalTextCheckerTests
     }
 
     [Theory]
+    [InlineData("```motif-query\nid: forms\ntitle: Forms\nrun: motif query corpus forms\n```")]
+    [InlineData("Intro.\n```motif-show\nquery: forms\n```\nOutro.")]
+    [InlineData("- item\n\n~~~motif-query\nid: a\n~~~\n\n- item")]
+    [InlineData("```motif-query\nnot a key value line\n```")]
+    public void AMotifQueryOrShowFenceIsKeptAsWrittenAndNoFinding(string text)
+    {
+        var checkedText = ProposalTextChecker.Check(text, null, null);
+
+        Assert.Empty(checkedText.Findings);
+        Assert.Equal(text, checkedText.Text);
+        Assert.False(ProposalTextChecker.NeedsProject(text));
+    }
+
+    [Fact]
+    public void AnotherFenceIsStillAFindingAndBesideAQueryBlockKeepsItsLine()
+    {
+        var checkedText = ProposalTextChecker.Check("```motif-query\nid: a\n```\n\n```python\nx\n```", null, null);
+
+        var finding = Assert.Single(checkedText.Findings, f => f.Id == "fwmd.syntax.unsupported-markup");
+        Assert.Equal(5, finding.Line);
+    }
+
+    [Fact]
+    public void AnUnclosedQueryBlockIsAFindingNamingItsLineEvenBeforeAnotherFence()
+    {
+        var checkedText = ProposalTextChecker.Check("Intro.\n\n```motif-query\nid: a\n\n```python\nx", null, null);
+
+        var finding = Assert.Single(checkedText.Findings, f => f.Id == ProposalTextChecker.BlockUnclosed);
+        Assert.Equal(3, finding.Line);
+    }
+
+    [Fact]
+    public void AMalformedButClosedBlockIsAWarningAndKeptAsWritten()
+    {
+        const string Text = "```motif-query\nnot a key value line\n```";
+        var checkedText = ProposalTextChecker.Check(Text, null, null);
+
+        Assert.Empty(checkedText.Findings);
+        Assert.Equal(Text, checkedText.Text);
+        Assert.Contains("line 2", Assert.Single(checkedText.Warnings, w => w.Contains("key: value", StringComparison.Ordinal)));
+    }
+
+    [Theory]
     [InlineData("Some <b>raw</b> HTML.")]
     [InlineData("Above.\n\n---\n\nBelow.")]
     [InlineData("Raw <i>HTML</i> beside a `code span`.")]

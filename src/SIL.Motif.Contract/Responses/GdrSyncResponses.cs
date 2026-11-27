@@ -38,7 +38,53 @@ public static class GdrSyncCodes
 
     /// <summary>No stored Trial or Assessment row settles the word, so the example cannot be checked.</summary>
     public const string ExampleUnverified = "guide.example-unverified";
+
+    /// <summary>A <c>motif-query</c> block has a problem the block parser found, or its run line was refused or failed; the block shows nothing.</summary>
+    public const string QueryRefused = "guide.query-refused";
+
+    /// <summary>A <c>motif-query</c> block needs a parse index that is not built; nothing was built, and the finding names the command that builds it.</summary>
+    public const string QueryNotBuilt = "guide.query-not-built";
+
+    /// <summary>A <c>motif-query</c> block started and did not finish: it threw, or ran past the per-block timeout.</summary>
+    public const string QueryFailed = "guide.query-failed";
+
+    /// <summary>A <c>motif-query</c> or <c>motif-show</c> block is malformed (a bad line, key, id or value).</summary>
+    public const string QueryBlockInvalid = "guide.query-block-invalid";
 }
+
+/// <summary>The status words of <see cref="GdrQueryBlockRun.Status"/>.</summary>
+public static class GdrQueryBlockStatus
+{
+    /// <summary>The query ran and answered.</summary>
+    public const string Ok = "ok";
+    /// <summary>The query was refused, with a code, or the block's run line is not a read-only query line.</summary>
+    public const string Refused = "refused";
+    /// <summary>The query needs a parse index that is not built.</summary>
+    public const string NotBuilt = "not-built";
+    /// <summary>The query threw or timed out.</summary>
+    public const string Failed = "failed";
+    /// <summary>The check was asked not to run blocks.</summary>
+    public const string Skipped = "skipped";
+}
+
+/// <summary>What the Guide check found for one <c>motif-query</c> block.</summary>
+/// <param name="Id">The block's id.</param>
+/// <param name="Gdr">The <c>GDR-n</c> of the record holding it.</param>
+/// <param name="Section">The heading it sits under; null before the first heading.</param>
+/// <param name="Status">A <see cref="GdrQueryBlockStatus"/> value.</param>
+/// <param name="Code">The refusal code, for a refused or not-built block.</param>
+/// <param name="Message">The reason or the headline, in a sentence; for a not-built block, the command that builds the index.</param>
+/// <param name="Rows">The word types (or groups) the query answered; null when it gave no answer.</param>
+/// <param name="Complete">False when <paramref name="Rows"/> is a lower bound ("at least"); null when there is no count.</param>
+/// <param name="Milliseconds">How long the run took; 0 when it did not run.</param>
+/// <param name="BuildCommand">For a not-built block, the exact shell line that builds the parse index.</param>
+/// <param name="Words">For a group-by block, the word types the groups cover (<paramref name="Rows"/> then counts the groups); null otherwise.</param>
+/// <param name="Tokens">The tokens of the matching words, when the run totalled them.</param>
+/// <param name="IndexBuilt">True when this check built the parse index the block needed.</param>
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed record GdrQueryBlockRun(
+    string Id, string? Gdr, string? Section, string Status, string? Code, string Message, long? Rows, bool? Complete, double Milliseconds,
+    string? BuildCommand = null, long? Words = null, long? Tokens = null, bool IndexBuilt = false);
 
 /// <summary>One thing out of sync between the Grammar Guide and the grammar.</summary>
 /// <param name="Code">A <see cref="GdrSyncCodes"/> value.</param>
@@ -90,4 +136,8 @@ public sealed record GdrCheckResponse(
 
     /// <summary>Load and check time; null when the check did not run.</summary>
     public GdrSyncTiming? Timing { get; init; }
+
+    /// <summary>One entry per <c>motif-query</c> block, in Guide order; null when the response did not look at blocks (the Trial advisory).</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<GdrQueryBlockRun>? QueryBlocks { get; init; }
 }

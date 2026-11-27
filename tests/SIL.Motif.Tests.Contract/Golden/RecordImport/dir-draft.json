@@ -1,0 +1,48 @@
+{
+  "mode": "draft",
+  "baseVerdict": "not-checked",
+  "changeCount": 3,
+  "operationCount": 9,
+  "refusalCount": 0,
+  "page": 1,
+  "pageCount": 1,
+  "operations": [],
+  "refusals": [],
+  "draftName": "import-dir-1",
+  "proposalId": "-DDDDDDDDDDDDDDDDDDDDDD",
+  "dir": {
+    "files": 2,
+    "created": 1,
+    "updated": 1,
+    "unchanged": 0,
+    "refused": 0,
+    "ignored": 0,
+    "manifest": "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210",
+    "firstRefused": [],
+    "source": "synthetic",
+    "revision": "r1",
+    "licence": "CC0"
+  },
+  "files": [
+    {
+      "path": "a.fw.md",
+      "kind": "lexicon/entry",
+      "record": "-AAAAAAAAAAAAAAAAAAAAAA",
+      "status": "created",
+      "baseVerdict": "new",
+      "changes": 2,
+      "operations": 6,
+      "refused": 0
+    },
+    {
+      "path": "b.fw.md",
+      "kind": "lexicon/entry",
+      "record": "-CCCCCCCCCCCCCCCCCCCCCC",
+      "status": "updated",
+      "baseVerdict": "fresh",
+      "changes": 1,
+      "operations": 3,
+      "refused": 0
+    }
+  ]
+}

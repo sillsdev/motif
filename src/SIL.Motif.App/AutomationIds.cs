@@ -49,6 +49,7 @@ public static class AutomationIds
     public const string ProjectCardChoose = "motif-project-card-choose";
     public const string ProjectCardSettings = "motif-project-card-settings";
     public const string ProjectCardOpenAnother = "motif-project-card-open-another";
+    public const string StoreUpgradeDismiss = "motif-store-upgrade-dismiss";
     public const string TechDemoGotIt = "motif-tech-demo-got-it";
     /// <summary>The File menu, which holds the project commands the project menu button used to hold.</summary>
     public const string ProjectMenu = "motif-project-menu";

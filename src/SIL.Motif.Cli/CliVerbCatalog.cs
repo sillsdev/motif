@@ -48,7 +48,7 @@ public static class CliVerbCatalog
         new CliVerbDescriptor("Project", "guide", "guide decide",
             new[] { "guide decide --project <fwdata> <GDR-n> --choosing <A> --over <B> --because <reason> [--draft <name>] [--json]" }),
         new CliVerbDescriptor("Project", "guide", "guide check",
-            new[] { "guide check --project <fwdata> [--json]" }),
+            new[] { "guide check --project <fwdata> [--no-run | --build] [--timeout <seconds>] [--json]" }),
         new CliVerbDescriptor("Project", "source", "source list",
             new[] { "source list --project <fwdata> [--all] [--json]" }),
         new CliVerbDescriptor("Project", "source", "source show",
@@ -136,7 +136,12 @@ public static class CliVerbCatalog
             "Commands", "new", "new",
             new[] { "new --project <fwdata> --draft <name> [--label <text>] [--request <requestId>] [--json]" }),
         new CliVerbDescriptor("Commands", "import", "import",
-            new[] { "import --project <fwdata> --file <path> [--draft <name> [--strict]] [--page <n>] [--json]" }),
+            new[]
+            {
+                "import --project <fwdata> --file <path> [--draft <name> [--strict]] [--page <n>] [--json]",
+                "import --project <fwdata> --dir <folder> [--draft <name> [--strict]] [--page <n> [--refused-only]] " +
+                "[--report <file.jsonl>] [--source <text>] [--revision <text>] [--licence <text>] [--json]",
+            }),
         new CliVerbDescriptor("Commands", "record export", "record export",
             new[] { "record export --project <fwdata> --out <path> (--record <guid> | --all) [--kind <kind>] [--json]" }),
         new CliVerbDescriptor("Commands", "pending-changes", "pending-changes",
@@ -466,7 +471,7 @@ public static class CliVerbCatalog
             new[] { "setup skip --project <fwdata> [--json]" }),
         new CliVerbDescriptor(
             "Project", "store", "store upgrade",
-            new[] { "store upgrade --project <fwdata> [--json]", "store upgrade --source <old.db> --out <new.db> [--json]" }),
+            new[] { "store upgrade --project <fwdata> [--dry-run] [--json]", "store upgrade --source <old.db> --out <new.db> [--json]" }),
         new CliVerbDescriptor(
             "Project", "store", "store delete-refused",
             new[] { "store delete-refused --project <fwdata> [--json]" }),

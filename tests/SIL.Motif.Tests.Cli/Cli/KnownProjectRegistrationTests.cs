@@ -72,6 +72,26 @@ public sealed class KnownProjectRegistrationTests : IDisposable
     }
 
     [Fact]
+    public void TwoSameLanguageProjectsInMixedCaseFoldersBothRunWithoutSettingATag()
+    {
+        string Make(string parent)
+        {
+            var path = Path.Combine(_root, parent, "MotifSyntheticTurkic", "MotifSyntheticTurkic.fwdata");
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllText(path, "<languageproject version=\"7000072\"><rt class=\"LangProject\" guid=\"" +
+                Guid.NewGuid().ToString("D") + "\" ownerguid=\"\"><CurVernWss><Uni>tur</Uni></CurVernWss></rt></languageproject>");
+            return path;
+        }
+
+        foreach (var project in new[] { Make("app"), Make("cli"), Make("third") })
+        {
+            var result = Run($"dry-run --project \"{project}\" some-proposal --wait");
+            Assert.DoesNotContain("project tag", result.Error, StringComparison.Ordinal);
+            Assert.DoesNotContain("could not be recorded", result.Error, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
     public void RunningAProjectVerbRecordsTheProjectInKnownProjects()
     {
         var result = Run($"new --project \"{_fwDataPath}\" --draft d");

@@ -4,7 +4,6 @@ using SIL.Motif.Host;
 using SIL.Motif.Host.Installation;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.Walkthroughs;
-using Velopack;
 
 namespace SIL.Motif.App;
 
@@ -13,7 +12,7 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
-        MotifInstallLifecycle.ConfigureForStartup(VelopackApp.Build(), args).Run();
+        MotifInstallLifecycle.RunVelopackHooks(args);
         if (IsVelopackFastExitHook(args))
             return 0;
 

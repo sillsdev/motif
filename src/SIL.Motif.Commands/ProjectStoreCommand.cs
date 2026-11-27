@@ -49,6 +49,46 @@ public static class ProjectStoreCommand
         TimeSpan? ownershipPatience = null, TimeProvider? timeProvider = null) where T : class? =>
         RunCore(fwDataPath, productVersion, act, ownershipPatience, timeProvider, retainDatabase: false);
 
+    /// <summary>Says what upgrading the project's store would do, changing nothing.</summary>
+    /// <param name="fwDataPath">The path to the FieldWorks project data file.</param>
+    /// <param name="productVersion">The worker version used for store compatibility checks.</param>
+    /// <returns>
+    /// The report the real upgrade would write, as JSON; or <c>{"upToDate":true}</c> for a current store, or
+    /// <c>{"storeAbsent":true}</c> when the project has none.
+    /// </returns>
+    public static CommandOutcome<string> DryRunUpgrade(string fwDataPath, string productVersion)
+    {
+        var located = LocateProject(fwDataPath);
+        if (!located.Succeeded) return CommandOutcome<string>.Refused(located.Refusal!);
+        var project = located.Value!;
+        var path = ProjectDatabaseCatalog.DatabasePathFor(project);
+        return RunOperation(fwDataPath, () =>
+        {
+            if (!File.Exists(path)) return CommandOutcome<string>.Success("{\"storeAbsent\":true}");
+            try
+            {
+                var report = MotifDatabase.DryRunUpgrade(path, project, ParseVersion(productVersion));
+                return CommandOutcome<string>.Success(report is null ? "{\"upToDate\":true}" :
+                    System.Text.Json.JsonSerializer.Serialize(report, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+            }
+            catch (MotifStoreVersionException exception)
+            {
+                return CommandOutcome<string>.Refused(new Refusal("store.other-version", FailureReason.Refused,
+                    exception.Message, VersionFacts(exception, fwDataPath)));
+            }
+            catch (MotifStoreLockException exception)
+            {
+                return CommandOutcome<string>.Refused(NamingHolders(
+                    new Refusal("project.busy", FailureReason.Busy, "The project store is in use.",
+                        OperationFacts(fwDataPath, exception)), path));
+            }
+            catch (SqliteException exception)
+            {
+                throw new IOException("The Motif database is unavailable.", exception);
+            }
+        });
+    }
+
     /// <summary>Reads a validated existing project store without creating or upgrading it.</summary>
     /// <typeparam name="T">The successful result type.</typeparam>
     /// <param name="fwDataPath">The path to the FieldWorks project data file.</param>
@@ -179,6 +219,10 @@ public static class ProjectStoreCommand
                 new Refusal("project.busy", FailureReason.Busy, "The project store is in use.",
                     OperationFacts(fwDataPath, exception)), ProjectDatabaseCatalog.DatabasePathFor(project)));
         }
+        catch (MotifStoreUpgradeFailedException exception)
+        {
+            return CommandOutcome<T>.Refused(UpgradeFailedRefusal(exception, fwDataPath));
+        }
         catch (IOException exception)
         {
             return CommandOutcome<T>.Refused(StoreRefusal(exception, "project.store-io", fwDataPath));
@@ -219,6 +263,26 @@ public static class ProjectStoreCommand
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(fwDataPath);
         ArgumentNullException.ThrowIfNull(operation);
+        var outcome = RunOperationOnce(fwDataPath, operation);
+        if (outcome.Succeeded || !StoreUpgradeContext.UpgradesOnRead ||
+            outcome.Refusal is not { Code: RefusalCodes.StoreOtherVersion } refusal ||
+            !refusal.Facts.ContainsKey(RefusalFactNames.StoreUpgradable))
+            return outcome;
+        // The read refused an older store; open it once to upgrade it, then read again.
+        var upgraded = OlderStoreUpgrade(fwDataPath);
+        return upgraded.Succeeded ? RunOperationOnce(fwDataPath, operation) : CommandOutcome<T>.Refused(upgraded.Refusal!);
+    }
+
+    // Reached only through this delegate, and only under UpgradeOnRead, so a read never creates a store.
+    private static readonly Func<string, CommandOutcome<object>> OlderStoreUpgrade = UpgradeOlderStore;
+
+    private static CommandOutcome<object> UpgradeOlderStore(string fwDataPath) =>
+        RunCore<object>(fwDataPath, MotifProductVersion.CurrentText,
+            (_, _) => CommandOutcome<object>.Success(new object()), null, null, retainDatabase: false);
+
+    private static CommandOutcome<T> RunOperationOnce<T>(string fwDataPath,
+        Func<CommandOutcome<T>> operation) where T : class?
+    {
         try
         {
             return operation();
@@ -272,6 +336,10 @@ public static class ProjectStoreCommand
             return CommandOutcome<T>.Refused(new Refusal(RefusalCodes.ProposalUnreadable, FailureReason.Refused,
                 ProposalCommands.UnreadableContentMessage(exception), facts));
         }
+        catch (MotifStoreUpgradeFailedException exception)
+        {
+            return CommandOutcome<T>.Refused(UpgradeFailedRefusal(exception, fwDataPath));
+        }
         catch (IOException exception)
         {
             return CommandOutcome<T>.Refused(StoreRefusal(exception, "project.operation-io", fwDataPath));
@@ -298,6 +366,7 @@ public static class ProjectStoreCommand
     // BUSY, LOCKED and IOERR clear when storage recovers, so a caller may retry them.
     private static Refusal StoreRefusal(Exception exception, string ioCode, string fwDataPath) => exception switch
     {
+        MotifStoreUpgradeFailedException failure => UpgradeFailedRefusal(failure, fwDataPath),
         MotifStoreVersionException version => new Refusal(
             "store.other-version", FailureReason.Refused, version.Message, VersionFacts(version, fwDataPath)),
         IOException { InnerException: Microsoft.Data.Sqlite.SqliteException { SqliteErrorCode: 5 or 6 or 10 } } => new Refusal(
@@ -319,6 +388,26 @@ public static class ProjectStoreCommand
     /// <summary>The store.other-version refusal for <paramref name="version"/>, with its facts.</summary>
     internal static Refusal VersionRefusal(MotifStoreVersionException version, string fwDataPath) =>
         new("store.other-version", FailureReason.Refused, version.Message, VersionFacts(version, fwDataPath));
+
+    /// <summary>The store.upgrade-failed refusal for <paramref name="failure"/>: the store, the step and the backup.</summary>
+    internal static Refusal UpgradeFailedRefusal(MotifStoreUpgradeFailedException failure, string fwDataPath)
+    {
+        var facts = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["fwDataPath"] = fwDataPath,
+            [RefusalFactNames.StorePath] = failure.StorePath,
+            [RefusalFactNames.FailedStep] = failure.Step,
+            ["fromSchema"] = failure.FromSchema.ToString(CultureInfo.InvariantCulture),
+            ["toSchema"] = failure.ToSchema.ToString(CultureInfo.InvariantCulture),
+            ["exceptionDetail"] = failure.InnerException?.Message ?? failure.Message,
+        };
+        if (failure.Backup is { } backup)
+        {
+            facts[RefusalFactNames.BackupPath] = backup.Directory;
+            facts["backupReceiptPath"] = backup.ReceiptPath;
+        }
+        return new Refusal(RefusalCodes.StoreUpgradeFailed, FailureReason.Refused, failure.Message, facts);
+    }
 
     private static Dictionary<string, string> VersionFacts(MotifStoreVersionException version, string fwDataPath)
     {

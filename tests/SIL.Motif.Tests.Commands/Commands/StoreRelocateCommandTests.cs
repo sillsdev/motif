@@ -164,7 +164,7 @@ public sealed class StoreRelocateCommandTests : IDisposable
         var opened = ProjectStoreCommand.Run(Copy, MotifProductVersion.CurrentText,
             (_, project) => CommandOutcome<string>.Success(project.FullFwDataPath));
         Assert.True(opened.Succeeded, opened.Refusal?.Message);
-        Assert.True(File.Exists(StoreOf(Copy) + $".schema{olderSchema}.bak"));
+        Assert.True(File.Exists(SIL.Motif.Tests.TestFixtures.PreUpgradeBackups.StoreOf(StoreOf(Copy))));
         Assert.Equal([$"{Path.GetFullPath(Original)}|{Path.GetFullPath(Copy)}|{at:O}|project-guid"],
             Query(StoreOf(Copy), "SELECT OldFwDataPath, NewFwDataPath, RelocatedUtc, Basis FROM StoreRelocations;"));
     }
@@ -330,7 +330,6 @@ public sealed class StoreRelocateCommandTests : IDisposable
 
     public void Dispose()
     {
-        SqliteConnection.ClearAllPools();
         try { Directory.Delete(_root, recursive: true); } catch (IOException) { }
     }
 

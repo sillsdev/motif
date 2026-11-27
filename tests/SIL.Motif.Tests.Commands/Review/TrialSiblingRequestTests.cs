@@ -15,19 +15,23 @@ public sealed class TrialSiblingRequestTests
         after: after is null ? null : JsonDocument.Parse(JsonSerializer.Serialize(after)).RootElement.Clone());
 
     [Fact]
-    public void OnlyAnEntrysFormWritingOperationsContributeNewFormText()
+    public void OnlyMorphFormWritingOperationsContributeNewFormText()
     {
         var proposal = new Proposal(new Dictionary<string, string> { ["lexical"] = "1.0" }, CanonicalId.Mint("proposal/"), null,
         [
             Operation("lexical/lexEntry/createAlternateForms", new { morphType = "m", ws = "x", text = "-ish" }),
             Operation("lexical/lexEntry/createLexemeForm", new { nested = new { form = "kwa" } }),
             Operation("lexical/lexEntry/setCitationForm", new { text = "cit" }),
+            Operation("grammar/moForm/setForm", new { ws = "x", text = "-ni" }),
+            Operation("lexical/lexEntry/setInformation", new { text = "not-a-form-name" }),
             Operation("lexical/lexPronunciation/setForm", new { text = "not-a-form" }),
+            Operation("lexical/lexEtymology/setForm", new { text = "not-a-form-either" }),
+            Operation("grammar/moForm/clearForm", new { ws = "x", text = "not-written" }),
             Operation("lexical/lexEntry/deleteAlternateForm", new { text = "not-written" }),
             Operation("analysis/langProject/createWordforms", new { ws = "x", text = "word" }),
         ]);
 
-        Assert.Equal(["-ish", "kwa", "cit"], TrialSiblingResolver.NewForms(proposal));
+        Assert.Equal(["-ish", "kwa", "cit", "-ni"], TrialSiblingResolver.NewForms(proposal));
     }
 
     [Theory]

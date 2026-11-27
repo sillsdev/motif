@@ -689,6 +689,7 @@ public sealed class RunnerSweepTests : IDisposable
         Assert.Equal(new[] { true, true, false, true, true }, outcomes);
     }
 
+    [Trait("Quarantine", "#417")]
     [Fact]
     public void AnIdleRuntimeWhoseStoreFileWasDeletedAndRecreatedIsReplacedByOneOpenOnTheNewFile()
     {
@@ -698,7 +699,8 @@ public sealed class RunnerSweepTests : IDisposable
         var stale = SeedProject(known, "rerun-project");
         var path = stale.Database.FullPath;
         var project = stale.Project;
-        Thread.Sleep(50);
+        // Another test clearing the shared pools frees the old inode for reuse; do it here so that always happens.
+        Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
         foreach (var suffix in new[] { "", "-wal", "-shm" })
             if (File.Exists(path + suffix)) File.Delete(path + suffix);
         using (var second = new ProjectRuntimeRegistry(

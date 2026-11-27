@@ -773,7 +773,6 @@ public sealed class StoreBackupCommandTests : IDisposable
     public void Dispose()
     {
         _walHolder?.Dispose();
-        SqliteConnection.ClearAllPools();
         try { Directory.Delete(_root, recursive: true); } catch (IOException) { }
     }
 

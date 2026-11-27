@@ -46,14 +46,14 @@ public sealed class EntryPointStartupTests
         var assembly = LoadAppAssembly();
         var entryPoint = assembly.EntryPoint ?? throw new InvalidOperationException("SIL.Motif.App has no entry point.");
         var calls = CalledMethods(UserCode(entryPoint)).ToArray();
-        var build = Array.FindIndex(calls, IsVelopackBuild);
-        var run = Array.FindIndex(calls, IsVelopackRun);
+        var build = Array.FindIndex(calls, IsVelopackHooks);
+        var run = build;
         var fastExit = Array.FindIndex(calls, IsVelopackFastExitHook);
         var normalStartup = Array.FindIndex(calls, IsAvaloniaStartup);
         var crashDialogs = Array.FindIndex(calls, IsCrashDialogSuppression);
 
         Assert.True(build == 0, "SIL.Motif.App must start Velopack before any other startup work.");
-        Assert.True(run > build, "SIL.Motif.App's entry point must call VelopackApp.Run after Build.");
+        Assert.True(run == build, "SIL.Motif.App's entry point must run Velopack's hooks through MotifInstallLifecycle.");
         Assert.True(fastExit > run && fastExit < normalStartup,
             "SIL.Motif.App must return for Velopack fast-exit hooks before starting Avalonia.");
         Assert.True(crashDialogs > fastExit,
@@ -239,11 +239,9 @@ public sealed class EntryPointStartupTests
         }
     }
 
-    private static bool IsVelopackBuild(MethodBase method) =>
-        method.DeclaringType?.FullName == "Velopack.VelopackApp" && method.Name == "Build";
-
-    private static bool IsVelopackRun(MethodBase method) =>
-        method.DeclaringType?.FullName == "Velopack.VelopackApp" && method.Name == "Run";
+    private static bool IsVelopackHooks(MethodBase method) =>
+        method.DeclaringType?.FullName == "SIL.Motif.Host.Installation.MotifInstallLifecycle" &&
+        method.Name == "RunVelopackHooks";
 
     private static bool IsVelopackFastExitHook(MethodBase method) =>
         method.DeclaringType?.FullName == "SIL.Motif.App.Program" && method.Name == "IsVelopackFastExitHook";

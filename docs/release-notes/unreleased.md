@@ -14,7 +14,7 @@ The Grammar Design Records list is now the Grammar Guide, and its commands are r
 
 ## Stores
 
-- An older project store is upgraded when the project opens. Authored work is carried and derived data (Trials, Assessments, Baselines, Jobs, indexes) is dropped. The original is kept beside the store as `.schemaN.bak`, and `motif store restore` can bring a backup back.
+- An older project store is upgraded when the project opens. Authored work is carried and derived data (Trials, Assessments, Baselines, Jobs, indexes) is dropped. Before it upgrades, Motif takes a verified `motif store backup` (under `<project>.motif-backups`) and tells you where it is and which derived results were dropped, in the CLI, MCP and the app; if the backup fails, nothing changes. The original is also kept beside the store as `.schemaN.bak`, and `motif store restore` brings the backup back. `motif store reset` backs up first too.
 - A store made by a newer Motif is refused with the `storeNewer` fact. The window and `motif store delete-refused` no longer offer or perform a reset for it: install the newer Motif, or restore a backup made before the upgrade.
 
 ## Window

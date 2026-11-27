@@ -58,7 +58,7 @@ public sealed class GdrMarkdownView
             IReadOnlyList<Paragraph> paragraphs)
         {
             var form = new FieldWorksMarkdownSourceForm(GdrMarkdownOptions.For(response, projectName));
-            var copy = paragraphs.Select(paragraph => paragraph.Clone()).ToArray();
+            var copy = paragraphs.Select(paragraph => ShowDirection(paragraph.Clone())).ToArray();
             var (standIns, blocks) = inline ? (copy, []) : GdrQueryBlockMarkdown.LiftParagraphs(copy, shown.DefaultAnalysis);
             var body = form.Write(standIns, inline) ?? throw new InvalidOperationException($"The {name} cannot be shown as Markdown.");
             body = GuideInterlinear.Fold(GdrQueryBlockMarkdown.RestoreFences(body, blocks));
@@ -85,8 +85,26 @@ public sealed class GdrMarkdownView
         };
         foreach (var run in source.Runs)
             paragraph.Runs.Add(new Run { Ws = run.WritingSystem, Text = run.Text, Props = Bag(run.Properties), ObjData = run.ObjData });
-        return paragraph;
+        return ShowDirection(paragraph);
     }).ToArray();
+
+    private const int RightToLeftProperty = 128;
+    private const int EnumVariation = 3;
+
+    /// <summary>
+    /// Spells a stored direction the way the notation writes it, as <c>rightToLeft=N</c>: FieldWorks stores ktptRightToLeft with
+    /// the enum variation, which the notation would otherwise show as <c>p128=N:enum</c>. A paragraph with no stored direction
+    /// stays without one, so a round trip changes nothing.
+    /// </summary>
+    internal static Paragraph ShowDirection(Paragraph paragraph)
+    {
+        if (paragraph.Rtl || paragraph.Props.IntProps.ContainsKey(RightToLeftProperty))
+            paragraph.Props.IntProps[RightToLeftProperty] = new IntPropValue(0, paragraph.Rtl ? 1 : 0);
+        return paragraph;
+    }
+
+    /// <summary>The direction as the project stores it: the enum variation FieldWorks writes, for left to right and right to left.</summary>
+    public static int StoredDirectionVariation => EnumVariation;
 
     private static PropertyBag Bag(GdrTextProperties properties)
     {

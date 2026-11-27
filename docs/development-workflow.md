@@ -143,6 +143,25 @@ say so. Reference geometry stays as supplied: a full-size board beside a thin ca
 design, while responsive validation still comes from the actual size matrix. The same option works
 with `-NoRun`.
 
+## Landing through the merge queue
+
+`main` takes squash merges through the GitHub merge queue (ruleset `main-protect`). Enqueue a pull request
+only after its own checks are green, and read the failure before acting on any red run.
+
+Standing orders from the owner (2026-11-26). The landing lead acts on these without asking:
+
+- **Keep the queue moving.** Cancel CI runs whose `gh-readonly-queue/*` branch no longer exists (the live set
+  is `git ls-remote origin 'refs/heads/gh-readonly-queue/*'`). Dequeue and requeue an entry that is
+  UNMERGEABLE or was dropped. Rebase your own pull-request branches and push with `--force-with-lease`;
+  never force-push another team's branch, tell its owner instead.
+- **A Windows-only failure does not stop merging.** The Windows job runs on every pull request and queue group,
+  but it is not a required check: only the Linux and macOS jobs are (owner, 2026-11-26). A red Windows job is
+  still read. Fix it separately, in its own issue and pull request, but don't hold the queue for it. A known flake
+  on any platform, in a test outside the diff, is requeued and fixed the same way.
+- **A failure in a file the pull request touches is that pull request's to fix.** Don't requeue it.
+- **Flakes get an issue and a root-cause fix**, not a retry in the test. Give each eviction's run id in the
+  issue so the fix can be checked against it.
+
 ## Jira and external systems
 
 When a Jira issue is named, read it first through the installed `atlassian-readonly-skills` skill and
@@ -182,3 +201,6 @@ bugfix discipline. It removes source-repository-specific platform, installer, le
 build-order, and ticket-shape assumptions, and adds Motif's authority, vocabulary, and `net10.0`
 constraints. The source root instructions are context, not binding on Motif. The source checkout and
 SHA are provenance, not a live dependency.
+
+- **macOS runs only in the merge queue** (owner, 2026-11-26). On a pull request the macOS jobs report a placeholder success; enqueue once the Linux job is green, and the queue group runs the real macOS build; the macOS release check runs on main.
+- **Quarantine a flake when it's filed** (owner, 2026-11-26): tag it `[Trait("Quarantine", "#NNN")]`; it runs in the non-required `quarantined-tests` job until its fix PR removes the trait. Never quarantine a test the PR's own diff touches.

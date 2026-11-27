@@ -28,7 +28,6 @@ public sealed class CoverageCommandsTests : IDisposable
 
     public void Dispose()
     {
-        SqliteConnection.ClearAllPools();
         try { Directory.Delete(_root, true); } catch (IOException) { }
     }
 

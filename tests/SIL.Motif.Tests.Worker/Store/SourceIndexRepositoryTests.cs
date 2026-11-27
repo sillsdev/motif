@@ -101,7 +101,7 @@ public sealed class SourceIndexRepositoryTests : IDisposable
         var output = Path.Combine(_root, "copy.motif");
         var report = MotifStoreUpgrade.Copy(path, output);
         Assert.Contains("SourceIndexState", report.Dropped);
-        using var connection = new SqliteConnection("Data Source=" + output);
+        using var connection = new SqliteConnection("Data Source=" + output + ";Pooling=False");
         connection.Open();
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT COUNT(*) FROM SourceIndexState;";
@@ -174,7 +174,6 @@ public sealed class SourceIndexRepositoryTests : IDisposable
 
     public void Dispose()
     {
-        SqliteConnection.ClearAllPools();
         if (Directory.Exists(_root)) Directory.Delete(_root, true);
     }
 }

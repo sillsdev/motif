@@ -80,6 +80,9 @@ namespace SIL.TextEditing.Project
         readonly IFwMetaDataCache _metadata;
         readonly ProjectPathResolver _paths;
 
+        /// <summary>The project's rich-text links, scanned on first need and kept for every plan this importer makes, so a batch of files scans the project once. The project must not change between plans.</summary>
+        Dictionary<Guid, HashSet<Guid>>? _richLinks;
+
         public ProjectRecordImporter(ProjectRecordExporter exporter)
         {
             _exporter = exporter ?? throw new ArgumentNullException(nameof(exporter));
@@ -139,6 +142,7 @@ namespace SIL.TextEditing.Project
             if (export.Text == null)
                 return Whole(file, ProjectRecordBaseVerdict.NotChecked, record, export, read, new[] { Refusal(RecordRefusalKind.ExportFailed, "The project's record could not be written as a file, so the file cannot be compared with it.", record) });
 
+            // A file with no base that already says what the project holds is unchanged: it was never an edit.
             if (file.Base == null && IsUnchanged(file, export, read))
                 return new ProjectRecordPlan(new RecordChangeSet(new List<RecordChange>().AsReadOnly(), new List<RecordRefusal>().AsReadOnly(), file.Root != null), ProjectRecordBaseVerdict.Unchanged, kind.Name, record, export, read.Diagnostics);
             if (file.Base == null)
@@ -228,7 +232,9 @@ namespace SIL.TextEditing.Project
             try
             {
                 var diff = RecordDiffer.Diff(baseRead.Document, file, Schema);
-                return diff.Changes.Count == 0 && diff.Refusals.Count == 0;
+                // A file that creates leaves out what FieldWorks assigns, so those omissions are not edits.
+                return diff.Changes.All(c => c.Kind == RecordChangeKind.Clear && c.Field == "homograph-number") && diff.Refusals.All(r => r.Kind == RecordRefusalKind.ComputedField
+                    && r.Field.IndexOfAny(new[] { '.', '/', '[' }) < 0 && file.Data[r.Field] == null);
             }
             catch (ArgumentException) { return false; }
         }
@@ -264,6 +270,11 @@ namespace SIL.TextEditing.Project
             if (computed.Count > 0)
                 return Whole(file, ProjectRecordBaseVerdict.New, guid, null, read, computed.Select(r => Refusal(RecordRefusalKind.CreateComputedField,
                     r.Field + " is computed by FieldWorks for a new record. Leave it out.", guid, r.Field)).ToList());
+            var reserved = diff.Changes.Where(c => c.ObjectType == "RnGenericRec" && _exporter.FieldBinding("RnGenericRec", c.Field) is { IsCustom: true } binding &&
+                binding.Field is "MotifJudgmentId" or "MotifJudgmentData").Select(c => c.Field).Distinct().ToList();
+            if (reserved.Count > 0)
+                return Whole(file, ProjectRecordBaseVerdict.New, guid, null, read, reserved.Select(field => Refusal(RecordRefusalKind.CreateReservedField,
+                    "A new notebook record may not set " + field + ". Motif judgments are made with the judgment commands.", guid, field)).ToList());
             return Check(diff, new CheckRun(this, null, empty, writable, guid, file), ProjectRecordBaseVerdict.New, kind.Name, guid, null, read.Diagnostics);
         }
 
@@ -696,13 +707,11 @@ namespace SIL.TextEditing.Project
                 return null;
             }
 
-            Dictionary<Guid, HashSet<Guid>>? _richLinks;
-
             /// <summary>For every object GUID that a rich-text link (an object-data run property) names: the GUIDs of the objects whose strings hold such a link. Built on first use by one pass over
             /// every String and MultiString field of every object of the project.</summary>
             Dictionary<Guid, HashSet<Guid>> RichLinks()
             {
-                if (_richLinks != null) return _richLinks;
+                if (_in._richLinks != null) return _in._richLinks;
                 var clock = System.Diagnostics.Stopwatch.StartNew();
                 long read = 0;
                 var found = new Dictionary<Guid, HashSet<Guid>>();
@@ -735,7 +744,7 @@ namespace SIL.TextEditing.Project
                     }
                 }
                 ProjectRecordImporter.LastRichLinkScan = (read, clock.ElapsedMilliseconds);
-                return _richLinks = found;
+                return _in._richLinks = found;
             }
 
             static readonly System.Text.RegularExpressions.Regex GuidText = new System.Text.RegularExpressions.Regex(

@@ -17,10 +17,16 @@ public sealed record ProjectStoreResetRequest(string ProjectPath);
 /// The project's Motif store file, and whether it was deleted. <see cref="Deleted"/> is <c>false</c> when the
 /// file is absent or this version of Motif can use it, so there was nothing to delete.
 /// </summary>
-public sealed record ProjectStoreResetResponse(string StorePath, bool Deleted);
+/// <param name="StorePath">The store file.</param>
+/// <param name="Deleted">Whether the file was deleted.</param>
+/// <param name="BackupPath">The backup taken before the deletion, which <c>motif store restore</c> takes; null when nothing was deleted.</param>
+/// <param name="BackupReceiptPath">That backup's <c>motif-backup.json</c>; null when nothing was deleted.</param>
+public sealed record ProjectStoreResetResponse(string StorePath, bool Deleted, string? BackupPath = null,
+    string? BackupReceiptPath = null);
 
 /// <summary>
-/// Deletes a project's Motif store that this version cannot upgrade, so the next open recreates it. An older
+/// Deletes a project's Motif store that this version cannot upgrade, so the next open recreates it, after a
+/// backup of it that cannot be skipped (there is no <c>--no-backup</c>). An older
 /// store is upgraded on open, not reset, and a newer store is never reset: it is refused with the
 /// <c>storeNewer</c> fact, pinned by `ANewerStoreIsNeverResetAndIsLeftByteForByte`, and the person is pointed to
 /// installing the newer Motif or restoring a pre-upgrade backup.
@@ -40,8 +46,9 @@ public sealed record ProjectStoreResetResponse(string StorePath, bool Deleted);
 /// `NothingIsDeletedWhileAnotherOpenerHoldsTheStoresCreationLock`.
 /// </para>
 /// <para>
-/// Every change not yet applied lives in that store and is lost with it; a caller confirms that with the person
-/// first. A store another Motif process holds open cannot be deleted and is refused as busy, pinned by
+/// The backup is taken under the same exclusive lease as the deletion, pinned by `AResetBacksTheStoreUpFirstAndShowsTheBackup`,
+/// and one that fails leaves the store in place, pinned by `AResetWhoseBackupFailsDeletesNothing`. The backup holds
+/// every change not yet applied, which the reset otherwise loses; a caller confirms the reset with the person first. A store another Motif process holds open cannot be deleted and is refused as busy, pinned by
 /// `AStoreSomethingElseHoldsOpenIsRefusedAndKept`.
 /// </para>
 /// </remarks>
@@ -56,7 +63,12 @@ public static class ProjectStoreReset
     /// <param name="productVersion">The Motif version whose compatibility check decides the refusal.</param>
     /// <param name="ownershipPatience">Maximum wait for the store's creation lock; defaults to 30 seconds.</param>
     public static CommandOutcome<ProjectStoreResetResponse> DeleteRefused(
-        ProjectStoreResetRequest request, string productVersion, TimeSpan? ownershipPatience = null)
+        ProjectStoreResetRequest request, string productVersion, TimeSpan? ownershipPatience = null) =>
+        DeleteRefused(request, productVersion, ownershipPatience, MotifSchema.CurrentSchema);
+
+    /// <summary>Deletes the store unless a worker that supports <paramref name="supportedSchema"/> can use it, after a backup.</summary>
+    internal static CommandOutcome<ProjectStoreResetResponse> DeleteRefused(
+        ProjectStoreResetRequest request, string productVersion, TimeSpan? ownershipPatience, int supportedSchema)
     {
         ArgumentNullException.ThrowIfNull(request);
         ProjectLocator project;
@@ -71,18 +83,24 @@ public static class ProjectStoreReset
         }
 
         var storePath = ProjectDatabaseCatalog.DatabasePathFor(project);
-        var catalog = new ProjectDatabaseCatalog(
-            MotifSchema.CurrentSchema, ProjectStoreCommand.ParseVersion(productVersion));
+        var catalog = new ProjectDatabaseCatalog(supportedSchema, ProjectStoreCommand.ParseVersion(productVersion));
         try
         {
-            var deleted = catalog.DeleteIfOtherVersion(project, ownershipPatience);
-            return CommandOutcome<ProjectStoreResetResponse>.Success(new ProjectStoreResetResponse(storePath, deleted));
+            var deletion = catalog.DeleteIfOtherVersion(project, ownershipPatience);
+            return CommandOutcome<ProjectStoreResetResponse>.Success(new ProjectStoreResetResponse(
+                storePath, deletion.Deleted, deletion.Backup?.Directory, deletion.Backup?.ReceiptPath));
         }
         catch (MotifStoreVersionException exception) when (exception.Newer)
         {
             // A newer store is never reset: install the newer Motif or restore a pre-upgrade backup.
             return CommandOutcome<ProjectStoreResetResponse>.Refused(
                 ProjectStoreCommand.VersionRefusal(exception, request.ProjectPath));
+        }
+        catch (StoreBackupFailedException exception)
+        {
+            // The backup comes first, so a failed one means the store was not touched.
+            return Refused("project.store-io", FailureReason.Refused, exception.Message, request.ProjectPath, storePath,
+                exception.InnerException?.Message);
         }
         catch (MotifStoreLockException exception)
         {

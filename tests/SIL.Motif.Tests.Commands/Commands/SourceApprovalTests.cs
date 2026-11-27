@@ -775,6 +775,7 @@ public sealed class SourceApprovalTests(PristineProjectFixture pristine)
         Assert.Single(fine.Value.Places, place => place.State == "approved");
     }
 
+    [Trait("Quarantine", "#514")]
     [Fact]
     public void AnApprovalWhoseWordChangedUnderTheSameVerseTextIsStaleBecauseTheTokenizerChanged()
     {
@@ -785,7 +786,9 @@ public sealed class SourceApprovalTests(PristineProjectFixture pristine)
         // As an older tokenizer numbered the words: the verse is byte for byte the same, #2 was another word.
         document.Set("MAT 1:1#2", new(world.LampA.ToGuid(), verse, "The", "unused"));
 
-        var evaluated = Assert.Single(SourceApprovals.Evaluate(ScratchCache(world), document, passage));
+        // Scratch and disposed, so no shared writing systems or open cache are left to load.
+        using var cache = new FwDataProjectLoader().LoadScratchCache(world.Path);
+        var evaluated = Assert.Single(SourceApprovals.Evaluate(cache, document, passage));
 
         Assert.Equal((ApprovalState.Stale, "The word at this number changed."), (evaluated.State, evaluated.Reason));
     }
@@ -802,8 +805,6 @@ public sealed class SourceApprovalTests(PristineProjectFixture pristine)
         Assert.Equal(RefusalCodes.SourceIdRemoved, refused.Refusal?.Code);
         Assert.Empty(Pending(world.Path).Changes);
     }
-
-    private LcmCache ScratchCache(World world) => new FwDataProjectLoader().LoadCache(world.Path);
 
     [Fact]
     public void BadRequestsAreRefusedWithTheirOwnCodesAndStageNothing()

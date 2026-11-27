@@ -42,6 +42,23 @@ public static partial class RefusalCodes
     public const string RecordImportCreateShape = "record-import.create-shape";
     /// <summary>A new record's file sets a field FieldWorks computes for it.</summary>
     public const string RecordImportCreateComputedField = "record-import.create-computed-field";
+    /// <summary>A new notebook record's file sets a field only Motif's judgment commands write.</summary>
+    public const string RecordImportCreateReservedField = "record-import.create-reserved-field";
     /// <summary>The page asked for is not a page number from 1.</summary>
     public const string RecordImportInvalidPage = "record-import.invalid-page";
+    /// <summary>Both a file and a folder were given, or neither.</summary>
+    public const string RecordImportFileOrDir = "record-import.file-or-dir";
+    /// <summary>The folder has no <c>*.fw.md</c> file.</summary>
+    public const string RecordImportDirEmpty = "record-import.dir-empty";
+    /// <summary>The folder does not exist or could not be listed.</summary>
+    public const string RecordImportDirUnreadable = "record-import.dir-unreadable";
+    public const string RecordImportOptionInvalid = "record-import.option-invalid";
+    /// <summary>The folder has more files or operations than one Proposal takes.</summary>
+    public const string RecordImportBatchTooLarge = "record-import.batch-too-large";
+    /// <summary>More than one file of the folder is about the same record.</summary>
+    public const string RecordImportRecordTwice = "record-import.record-twice";
+    /// <summary>The same GUID names a new object in more than one file of the folder.</summary>
+    public const string RecordImportGuidDuplicateInBatch = "record-import.guid-duplicate-in-batch";
+    /// <summary>A file refers to a record that another file of the folder creates, which a folder import does not yet link.</summary>
+    public const string RecordImportReferenceToNewInBatch = "record-import.reference-to-new-in-batch";
 }

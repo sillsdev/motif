@@ -23,6 +23,25 @@ public sealed class BeforeAssessmentBindingRepository(MotifDatabase database)
         transaction.Commit();
     }
 
+    /// <summary>Records bindings for several Assessments in one transaction: all of them or none.</summary>
+    public void BindAll(IReadOnlyList<string> assessmentIds, BaselineSemanticIdentity identity)
+    {
+        using var connection = database.OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        var identityJson = JsonSerializer.Serialize(identity);
+        foreach (var assessmentId in assessmentIds)
+        {
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText = "INSERT INTO BeforeAssessmentBinding (AssessmentId, SemanticIdentityJson) VALUES ($id, $identity);";
+            command.Parameters.AddWithValue("$id", assessmentId);
+            command.Parameters.AddWithValue("$identity", identityJson);
+            command.ExecuteNonQuery();
+        }
+        Prune(connection, transaction);
+        transaction.Commit();
+    }
+
     internal static void Prune(SqliteConnection connection, SqliteTransaction transaction)
     {
         using var command = connection.CreateCommand();

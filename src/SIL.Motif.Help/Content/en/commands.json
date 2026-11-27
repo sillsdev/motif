@@ -9,15 +9,15 @@
     "description": "Lists the sections of the project's Grammar Guide from the current Baseline, each with its GDR-n number. Reads nothing until a Baseline is captured. An Autonomous command.",
     "source": "Hand-written from the Grammar Guide read command."
   },
-  "guide check": {
-    "title": "Check the Grammar Guide",
-    "description": "Checks the Grammar Guide in the current Baseline and reports problems, such as morphemes the lexicon lacks, interlinear lines whose tokens do not pair up, and a list still named Grammar Design Records. An Autonomous command.",
-    "source": "Hand-written from the Grammar Guide check command."
-  },
   "guide show": {
     "title": "Read a Grammar Guide section",
     "description": "Reads one Grammar Guide section from the current Baseline. Use format fw-md for the whole record as FieldWorks Markdown, or json for its rich text runs. asOf names a Draft or Proposal whose edits of the section are shown as if applied.",
     "source": "Hand-written from the Grammar Guide read command and shared Markdown view."
+  },
+  "guide check": {
+    "title": "Check the Grammar Guide against the grammar",
+    "description": "Checks the Grammar Guide in the current Baseline: morphemes the lexicon lacks, interlinear lines whose tokens do not pair up, and where the Guide is out of step with the grammar. It runs each motif-query block read-only: ok with a row count (and, for a group-by block, its words and tokens), refused with its code, not built with the command that builds the index (motif guide check --build), or failed. All findings are advisory. no-run skips the blocks; timeout bounds one block; build first builds any missing or stale corpus parse index the blocks need, once per distinct shape, which can take many minutes. An Autonomous command.",
+    "source": "Hand-written from the Guide check (ADR 0005) and the shared Guide query evaluator."
   },
   "guide edit": {
     "title": "Edit a Grammar Guide section",
@@ -79,7 +79,7 @@
   },
   "store upgrade": {
     "title": "Upgrade project store",
-    "description": "Carries authored work into the current store and keeps a backup of the old store. Computed results are discarded and can be recreated.",
+    "description": "Carries authored work into the current store and keeps a backup of the old store. Computed results are discarded and can be recreated. --dry-run reports what an upgrade would carry and drop without changing the store.",
     "source": "Hand-written from the project store upgrade behavior."
   },
   "store relocate": {
@@ -109,7 +109,7 @@
   },
   "project tag": {
     "title": "Read a project tag",
-    "description": "Reads the tag Motif stores for this project on this machine. When its vernacular language code is already used, Motif tries the exact folder name and refuses if that choice is invalid or taken.",
+    "description": "Reads the tag Motif stores for this project on this machine. When its vernacular language code is already used, Motif uses the folder name (lowercased, other characters turned into '-', cut to 10 characters, and numbered when that clashes) and refuses if the folder name is a valid tag already taken or yields no valid tag.",
     "source": "Hand-written from the machine-local project-tag behavior."
   },
   "project tag --set": {
@@ -1243,6 +1243,26 @@
       "Delete a duplicate after merging its uses"
     ],
     "redirect": "Use only if nothing uses the exception feature any more; otherwise use compose-remove-exception-feature, which clears every use in one Proposal."
+  },
+  "compose-edit-environment": {
+    "title": "Edit a phonological environment",
+    "description": "Rewrites the left context, the right context or both of an existing environment in place, so the allomorphs that name it keep their link. It refuses an unknown phoneme or natural class, a stale target, or a kept side that does not read back. Motif stages a Draft for a person to review and Apply.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "environment": "Id of the environment to edit.",
+      "expectedText": "The environment's current string, such as / ா _ #.",
+      "left": "New left context, replacing the whole left side; each item names one phoneme, naturalClass, boundary or boundaryMarker. Leave out to keep it.",
+      "right": "New right context, replacing the whole right side. Leave out to keep it."
+    },
+    "goals": [
+      "Change an environment from a phoneme to a natural class without re-pointing allomorphs",
+      "Fix one side of an environment that a phoneme merge or respelling refused to touch"
+    ],
+    "guides": [
+      "conditioned-allomorphs"
+    ],
+    "redirect": "Use only if an object already uses the environment and one side must change; otherwise condition an allomorph differently with compose-edit-allomorph-condition, and for a family of environments prefer one natural-class environment or a phonological rule."
   },
   "compose-delete-environment": {
     "title": "Delete a phonological environment",

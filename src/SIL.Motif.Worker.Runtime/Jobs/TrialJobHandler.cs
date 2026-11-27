@@ -13,6 +13,7 @@ using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Contract.Review;
 using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Config;
@@ -126,6 +127,18 @@ public sealed record TrialSiblingsInput(
     /// <summary>What the sample could not use; null when nothing was dropped.</summary>
     [JsonPropertyName("warning"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Warning { get; init; }
+
+    /// <summary>How many referring-entry forms the sample drew on; null when none.</summary>
+    [JsonPropertyName("referrerForms"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? ReferrerForms { get; init; }
+
+    /// <summary>The edited grammar objects that entries use; null when none.</summary>
+    [JsonPropertyName("referrers"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<TrialReferrer>? Referrers { get; init; }
+
+    /// <summary>The referring entries' forms left out as too common or too short; null when none were.</summary>
+    [JsonPropertyName("skippedReferrerForms"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<TrialSkippedForm>? SkippedReferrerForms { get; init; }
 }
 
 /// <summary>Identifies the words and parser for one observed Baseline batch dispatch.</summary>

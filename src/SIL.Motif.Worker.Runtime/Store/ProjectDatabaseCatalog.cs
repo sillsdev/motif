@@ -48,7 +48,7 @@ public sealed class ProjectDatabaseCatalog
     /// </summary>
     /// <param name="project">The project locator bound to the sibling database.</param>
     /// <param name="ownershipPatience">Maximum wait for the creation lock; defaults to 30 seconds.</param>
-    public bool DeleteIfOtherVersion(ProjectLocator project, TimeSpan? ownershipPatience = null)
+    public StoreDeletion DeleteIfOtherVersion(ProjectLocator project, TimeSpan? ownershipPatience = null)
     {
         ArgumentNullException.ThrowIfNull(project);
         return MotifDatabase.DeleteIfOtherVersion(DatabasePathFor(project), project, _supportedSchema, _workerVersion,

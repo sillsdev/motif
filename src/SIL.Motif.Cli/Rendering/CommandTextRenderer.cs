@@ -1656,8 +1656,28 @@ public static class CommandTextRenderer
         return text.ToString();
     }
 
+    private static string RenderRecordImportDir(RecordImportResponse r)
+    {
+        var d = r.Dir!;
+        var text = new StringBuilder();
+        text.AppendLine(r.Mode == "draft"
+            ? $"Staged {r.OperationCount:N0} operation(s) from {d.Files:N0} file(s) in Draft {r.DraftName} ({r.ProposalId}). Nothing was applied."
+            : $"Dry run of {d.Files:N0} file(s): {r.OperationCount:N0} operation(s) would be staged. Nothing was written.");
+        text.AppendLine($"  created: {d.Created:N0}; updated: {d.Updated:N0}; unchanged: {d.Unchanged:N0}; refused: {d.Refused:N0}; refused changes: {r.RefusalCount - d.Refused:N0}; ignored: {d.Ignored:N0}");
+        text.AppendLine($"  manifest: {d.Manifest}; row pages: {r.PageCount}");
+        if (d.Source is not null || d.Revision is not null || d.Licence is not null)
+            text.AppendLine($"  source: {d.Source}; revision: {d.Revision}; licence: {d.Licence}");
+        foreach (var row in d.FirstRefused)
+            text.AppendLine($"  refused {row.Path}  {row.Code}: {row.Reason}");
+        if (r.Files is { } rows)
+            foreach (var row in rows) text.AppendLine(ProjectionJson.SerializeLine(row));
+        else if (r.PageCount > 0) text.AppendLine("  Rows: --page <n> lists the file rows, one JSON line each.");
+        return text.ToString();
+    }
+
     private static string RenderRecordImport(RecordImportResponse r)
     {
+        if (r.Dir is not null) return RenderRecordImportDir(r);
         var text = new StringBuilder();
         text.AppendLine(r.Mode == "draft"
             ? $"Staged {r.OperationCount:N0} operation(s) from the {r.RecordKind} file in Draft {r.DraftName} ({r.ProposalId}); {r.RefusalCount:N0} change(s) refused and not staged. Nothing was applied."
@@ -1733,6 +1753,29 @@ public static class CommandTextRenderer
         text.AppendLine($"Read {counts.Records} record(s), {counts.Sections} section(s), {counts.Links} link(s); " +
             $"{counts.ExamplesChecked} of {counts.Examples} example word(s) settled by stored Trial or Assessment rows.");
         foreach (var kind in response.Coverage) text.AppendLine($"  {kind.Kind}: {kind.Covered} of {kind.Objects} have a section");
+        if (response.QueryBlocks is { Count: > 0 } blocks)
+        {
+            text.AppendLine();
+            text.AppendLine($"{blocks.Count} query block(s):");
+            foreach (var block in blocks)
+            {
+                var place = block.Section is { Length: > 0 } ? $"{block.Gdr}, {block.Section}" : block.Gdr;
+                var count = block.Rows is { } rows ? $"{(block.Complete == false ? "at least " : "")}{rows.ToString("N0", CultureInfo.InvariantCulture)} row(s)" : "no count";
+                // A group-by block's rows are groups: the words and tokens beneath them say how much evidence there is.
+                if (block.Words is { } words) count += $", {words.ToString("N0", CultureInfo.InvariantCulture)} word(s)";
+                if (block.Tokens is { } tokens) count += $", {tokens.ToString("N0", CultureInfo.InvariantCulture)} token(s)";
+                if (block.IndexBuilt) count += " (built the parse index)";
+                var detail = block.Status switch
+                {
+                    GdrQueryBlockStatus.Ok => count,
+                    GdrQueryBlockStatus.Skipped => "not run",
+                    GdrQueryBlockStatus.Refused => block.Code ?? "refused",
+                    GdrQueryBlockStatus.NotBuilt => "not built; run motif guide check --build",
+                    _ => "failed",
+                };
+                text.AppendLine($"  {block.Id}  {place}  {block.Status}  {detail}  {block.Milliseconds.ToString("0.#", CultureInfo.InvariantCulture)} ms");
+            }
+        }
         foreach (var finding in response.Findings)
         {
             text.AppendLine();

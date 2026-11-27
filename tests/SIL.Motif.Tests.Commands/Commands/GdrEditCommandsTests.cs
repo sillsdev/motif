@@ -68,6 +68,38 @@ public sealed class GdrEditCommandsTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public void EveryDirectionIsShownAsRightToLeftAndRoundTripsThroughEditApplyAndShow()
+    {
+        var path = ProjectWithGdrs();
+        var markdown = Markdown(path, "GDR-1");
+        Assert.Contains("rightToLeft=1", markdown, StringComparison.Ordinal);
+        Assert.DoesNotContain("p128", markdown, StringComparison.Ordinal);
+        var unchanged = GdrEditCommands.Edit(new GdrEditRequest(path, "GDR-1", markdown));
+        Assert.True(unchanged.Succeeded, unchanged.Refusal?.Message);
+        Assert.Equal(0, unchanged.Value!.OperationCount);
+
+        // Flip the first paragraph's direction and add a right to left one.
+        var body = new GdrMarkdownView(Show(path, "GDR-1"), "p").Fields.Single(field => field.Name == "discussion").Body;
+        Assert.Contains("rightToLeft=1", body, StringComparison.Ordinal);
+        var flipped = body.Replace("rightToLeft=1", "rightToLeft=0", StringComparison.Ordinal)
+            + "\n\n::: {rightToLeft=1}\nnew right to left\n:::";
+        var staged = GdrEditCommands.Edit(new GdrEditRequest(path, "GDR-1", flipped));
+        Assert.True(staged.Succeeded, staged.Refusal?.Message);
+        Assert.True(Apply(path).Succeeded);
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), RootFor(path)).Succeeded);
+
+        var shown = Show(path, "GDR-1");
+        Assert.Equal([false, false, true], shown.Discussion.Select(paragraph => paragraph.RightToLeft));
+        var after = Markdown(path, "GDR-1");
+        Assert.Contains("rightToLeft=1", after, StringComparison.Ordinal);
+        Assert.Contains("rightToLeft=0", after, StringComparison.Ordinal);
+        Assert.DoesNotContain("p128", after, StringComparison.Ordinal);
+        var again = GdrEditCommands.Edit(new GdrEditRequest(path, "GDR-1", after));
+        Assert.True(again.Succeeded, again.Refusal?.Message);
+        Assert.Equal(0, again.Value!.OperationCount);
+    }
+
+    [Fact]
     public void AnUnchangedParagraphKeepsItsKeyAndOnlyTheChangedOneIsStaged()
     {
         var path = ProjectWithGdrs();
@@ -430,6 +462,58 @@ public sealed class GdrEditCommandsTests(PristineProjectFixture pristine)
         Assert.Contains("a [b] or c, I am choosing a [b], because plain words.", text, StringComparison.Ordinal);
         Assert.Equal("- chosen or other, I am choosing chosen, because it fits the evidence.",
             GdrEditCommands.Entry(new GdrDecideRequest("p", "GDR-2", "chosen", "other", "it fits the evidence")));
+    }
+
+    [Theory]
+    [InlineData("*a", "c", "d*", "--choosing and --because has an unbalanced marker", "--over")]
+    [InlineData("a [b", "c", "d](http://x) e", "--choosing and --because has an unbalanced marker", "--over")]
+    [InlineData("a", "_c", "d_", "--over and --because has an unbalanced marker", "--choosing")]
+    [InlineData("`a", "b", "c`", "--choosing has an unbalanced marker", "--over")]
+    [InlineData("a\\", "c", "d", "--choosing has an unbalanced marker", "--over")]
+    [InlineData("a", "c", "[b]{ws=", "--because is not inline Markdown", "--over")]
+    [InlineData("[a", "c", "b]{ws=en}", "--choosing and --because has an unbalanced marker", "--over")]
+    public void AnUnbalancedMarkerThatWouldPairAcrossPartsIsRefusedNamingOnlyThoseParts(string chosen, string over, string because,
+        string named, string notNamed)
+    {
+        var path = ProjectWithGdrs(HeadingStyles);
+
+        var refused = GdrEditCommands.Decide(new GdrDecideRequest(path, "GDR-2", chosen, over, because));
+
+        Assert.Equal(RefusalCodes.GdrDecisionInvalid, refused.Refusal!.Code);
+        Assert.StartsWith(named, refused.Refusal.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(notNamed, refused.Refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("\\<", refused.Refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("a\\*b", "c", "d")]
+    [InlineData("a \\_ b", "c \\` d", "e \\< f \\[ g \\\\ h")]
+    [InlineData("*a*", "_b_", "**c**")]
+    [InlineData("a < b", "<c", "d>")]
+    [InlineData("[x]{.v}", "[y]{.v}", "[z]{.v}")]
+    [InlineData("accept [alila]{ws=en}", "reject", "x")]
+    [InlineData("plain words", "other words", "it fits.")]
+    public void BalancedPartsAreStagedAndReadPartByPart(string chosen, string over, string because)
+    {
+        var path = ProjectWithGdrs(HeadingStyles);
+
+        var decided = GdrEditCommands.Decide(new GdrDecideRequest(path, "GDR-2", chosen, over, because));
+
+        Assert.True(decided.Succeeded, decided.Refusal?.Message);
+    }
+
+    [Fact]
+    public void ALoneMarkerInOnePartMakesNoEmphasisWithAnother()
+    {
+        var path = ProjectWithGdrs(HeadingStyles);
+
+        Assert.False(GdrEditCommands.Decide(new GdrDecideRequest(path, "GDR-2", "*a", "c", "d*")).Succeeded);
+        var escaped = GdrEditCommands.Decide(new GdrDecideRequest(path, "GDR-2", "a \\* b", "c", "d \\* e"));
+        Assert.True(escaped.Succeeded, escaped.Refusal?.Message);
+        var runs = GdrQuery.Show(new GdrShowRequest(path, "GDR-2", AsOf: escaped.Value!.DraftName)).Value!
+            .Discussion.SelectMany(paragraph => paragraph.Runs).ToArray();
+        Assert.Contains("a * b or c, I am choosing a * b, because d * e.", string.Concat(runs.Select(run => run.Text)), StringComparison.Ordinal);
+        Assert.All(runs.Where(run => run.Text.Contains("b or c", StringComparison.Ordinal)), run => Assert.Equal(runs[^1].Properties, run.Properties));
     }
 
     [Theory]
