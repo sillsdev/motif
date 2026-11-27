@@ -22,7 +22,9 @@ public sealed class EvidenceRetentionCleaner
     private readonly IWorkspaceFileSystem _fileSystem;
     private readonly int _retainedUnpinnedCount;
 
-    /// <summary>Creates a cleaner with the recommended twenty unpinned bundles per project.</summary>
+    /// <summary>
+    /// Creates a cleaner that keeps the newest twenty unpinned bundles per project, and none of a closed Proposal's candidates.
+    /// </summary>
     public EvidenceRetentionCleaner(EvidenceArtifactRepository artifacts, IWorkspaceOwnership ownership,
         IJobClock? clock = null, IWorkspaceFileSystem? fileSystem = null, int retainedUnpinnedCount = 20)
     {
@@ -34,9 +36,13 @@ public sealed class EvidenceRetentionCleaner
         _retainedUnpinnedCount = retainedUnpinnedCount;
     }
 
-    /// <summary>Retains current and pinned material plus the newest unpinned bundles up to the configured count.</summary>
+    /// <summary>
+    /// Retains current and pinned material plus the newest unpinned bundles up to the configured count; a candidate
+    /// bundle of a closed Proposal goes whatever the count.
+    /// </summary>
     public EvidenceRetentionResult Clean(string projectKey)
     {
+        _artifacts.ReleasePinsOfClosedProposals();
         var items = _artifacts.ListForRetention(projectKey);
         var deleted = new List<string>();
         var failures = new List<WorkspaceCleanupFailure>();
@@ -50,11 +56,12 @@ public sealed class EvidenceRetentionCleaner
             pinnedBytes = checked(pinnedBytes + DirectoryBytes(item.Bundle.EvidenceDirectory));
         }
 
-        var eligible = items.Where(item => !item.IsCurrent && item.PinReasons.Count == 0)
+        var unpinned = items.Where(item => !item.IsCurrent && item.PinReasons.Count == 0)
             .Where(item => item.Bundle.State is "available" or "deleting")
             .OrderByDescending(item => item.Bundle.CreatedUtc, StringComparer.Ordinal)
-            .ThenByDescending(item => item.Bundle.BundleId, StringComparer.Ordinal)
-            .Skip(_retainedUnpinnedCount).ToArray();
+            .ThenByDescending(item => item.Bundle.BundleId, StringComparer.Ordinal).ToArray();
+        var eligible = unpinned.Where(item => item.OfClosedProposal)
+            .Concat(unpinned.Where(item => !item.OfClosedProposal).Skip(_retainedUnpinnedCount)).ToArray();
         foreach (var item in eligible)
         {
             var bundle = item.Bundle;
@@ -134,8 +141,39 @@ public sealed class EvidenceRetentionCleaner
             if (cleaned) _artifacts.RemoveBuildClaim(claim.BundleId);
         }
         RecoverUnclaimedWorkDirectories(projectKey, publisher, handled, deleted, failures);
+        RecoverUnregisteredBundles(projectKey, publisher, deleted, failures);
         return new WorkspaceCleanupResult(deleted, failures);
     }
+
+    // Reclaims published directories that no row or claim names (ADR 0022).
+    private void RecoverUnregisteredBundles(string projectKey, EvidenceArtifactPublisher publisher,
+        List<string> deleted, List<WorkspaceCleanupFailure> failures)
+    {
+        try
+        {
+            foreach (var directory in publisher.ListFinalBundleDirectories())
+            {
+                try
+                {
+                    if (publisher.DiscardUnreferencedBundle(directory, _clock.UtcNow.UtcDateTime, UnregisteredBundleMinimumAge,
+                            path => _artifacts.IsAccountedBundleDirectory(projectKey, path)))
+                        deleted.Add(directory);
+                }
+                catch (Exception exception)
+                {
+                    failures.Add(new WorkspaceCleanupFailure(directory,
+                        "The unregistered Parsimony bundle directory could not be removed.", exception));
+                }
+            }
+        }
+        catch (Exception exception)
+        {
+            failures.Add(new WorkspaceCleanupFailure(publisher.WorkRoot,
+                "The Parsimony bundle directories could not be listed and were left in place.", exception));
+        }
+    }
+
+    private static readonly TimeSpan UnregisteredBundleMinimumAge = TimeSpan.FromHours(1);
 
     private void RecoverUnclaimedWorkDirectories(string projectKey, EvidenceArtifactPublisher publisher,
         ISet<string> handled, List<string> deleted, List<WorkspaceCleanupFailure> failures)

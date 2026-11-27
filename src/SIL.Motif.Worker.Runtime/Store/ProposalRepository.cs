@@ -1,3 +1,4 @@
+using SIL.Motif.Projection.Store;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
@@ -27,7 +28,22 @@ public enum DraftFinalizationResult
 
     /// <summary>The Draft no longer matches the expected revision, and no store rows changed.</summary>
     DraftChanged,
+
+    /// <summary>The requested follow-up status move was refused, so the Draft was not finalized either.</summary>
+    MoveRefused,
+
+    /// <summary>The Draft's Rationale is no longer the one the caller checked, and no store rows changed.</summary>
+    RationaleChanged,
 }
+
+/// <summary>
+/// The status and Draft name a Proposal had when its new Rationale was checked, which the write needs unchanged, and,
+/// when <paramref name="Rationale"/> is given, the Rationale it replaces, where an empty one stands for none.
+/// </summary>
+public sealed record RationaleWriteExpectation(string Status, string? DraftName, string? Rationale = null);
+
+/// <summary>A status move a finalize performs in its own transaction, so both happen or neither does.</summary>
+public sealed record FinalizeMove(IReadOnlyCollection<string> AllowedFrom, string To, string? Comment = null);
 
 /// <summary>Durable Proposal workflow access through a worker-owned Motif database.</summary>
 public interface IProposalRepository
@@ -62,11 +78,16 @@ public interface IProposalRepository
     /// Writes a Proposal's Rationale (a Draft's or a finalized one's) and stamps it with the Proposal's current intent
     /// digest and the time; a Draft that was never finalized has no digest yet, so the stamp is empty until finalize.
     /// </summary>
-    /// <returns>Whether a Proposal with this id exists.</returns>
-    bool SetRationale(CanonicalId proposalId, string? rationale);
-    /// <summary>Writes, or with <see langword="null"/> clears, the person's note, stamped like the Rationale.</summary>
-    /// <returns>Whether a Proposal with this id exists.</returns>
-    bool SetNote(CanonicalId proposalId, string? note);
+    /// <remarks>
+    /// While the Proposal is open the text is also kept as a revision carrying <paramref name="author"/>, a person with
+    /// no name when omitted; a decided Proposal's revisions are dropped at the decision.
+    /// </remarks>
+    /// <returns>
+    /// Whether it was written: false when no Proposal has this id, or when <paramref name="expected"/> is given and the
+    /// Proposal's status or Draft name is no longer that.
+    /// </returns>
+    bool SetRationale(CanonicalId proposalId, string? rationale, DiscussionAuthor? author = null,
+        RationaleWriteExpectation? expected = null);
     /// <summary>The content of one stored revision of a Proposal, or null when that revision is not stored.</summary>
     Proposal? GetRevisionContent(CanonicalId proposalId, string intentDigest);
     /// <summary>Lists every Draft, ordered by name.</summary>
@@ -83,13 +104,17 @@ public interface IProposalRepository
     /// <param name="proposalJson">The finalized Proposal JSON, stored as the new revision.</param>
     /// <param name="label">The Proposal's short description.</param>
     /// <param name="expectedDraftRevision">The expected Draft content revision, or <see langword="null"/> to skip the check.</param>
+    /// <param name="thenMove">A status move made in the same transaction; if it is refused, nothing is finalized.</param>
     /// <returns>
     /// <see cref="DraftFinalizationResult.Finalized"/> for a first commit,
     /// <see cref="DraftFinalizationResult.Amended"/> for a new revision, or
-    /// <see cref="DraftFinalizationResult.DraftChanged"/> when the expected revision no longer matches and no rows changed.
+    /// <see cref="DraftFinalizationResult.DraftChanged"/> when the expected revision no longer matches and no rows changed, or
+    /// <see cref="DraftFinalizationResult.MoveRefused"/> when <paramref name="thenMove"/> was refused and no rows changed, or
+    /// <see cref="DraftFinalizationResult.RationaleChanged"/> when <paramref name="expectedRationale"/> is given and the
+    /// Draft's Rationale is no longer that, and no rows changed.
     /// </returns>
     DraftFinalizationResult Finalize(string draftName, string intentDigest, string proposalJson, string label,
-        string? expectedDraftRevision = null);
+        string? expectedDraftRevision = null, FinalizeMove? thenMove = null, string? expectedRationale = null);
     /// <summary>
     /// Loads one finalized Proposal, verifying that its recorded revision exists and that the
     /// revision's own embedded id and recomputed digest agree with the pointer that named it.
@@ -177,15 +202,6 @@ public sealed record ProposalRecord(
     /// <summary>When the Rationale was last written, as a round-trip UTC timestamp.</summary>
     public string? RationaleUpdatedUtc { get; init; }
 
-    /// <summary>The person's note in Markdown; only a person writes it.</summary>
-    public string? Note { get; init; }
-
-    /// <summary>The intent digest the note was last written for.</summary>
-    public string? NoteIntentDigest { get; init; }
-
-    /// <summary>When the note was last written, as a round-trip UTC timestamp.</summary>
-    public string? NoteUpdatedUtc { get; init; }
-
     /// <summary>Whether this Proposal holds the pending changes, the window's default staging target.</summary>
     public bool IsPendingChanges => Role == ProposalRoles.PendingChanges;
 }
@@ -209,6 +225,20 @@ public sealed record ProposalRevisionRecord(
 /// <summary>A Draft's content is no longer what the caller read, so the change was refused.</summary>
 public sealed class DraftChangedException(string draftName)
     : InvalidOperationException($"Draft '{draftName}' changed. Reload it and try again.");
+
+/// <summary>Another open Proposal already answers this Request.</summary>
+public sealed class RequestProposalOpenException(string requestId) : InvalidOperationException
+{
+    /// <summary>The Request already answered by an open Proposal.</summary>
+    public string RequestId { get; } = requestId;
+}
+
+/// <summary>A Draft has authored content that automatic cleanup must preserve.</summary>
+internal sealed class DraftAuthoredContentException()
+    : InvalidOperationException("This Draft has a Rationale or Comments or pictures; its authored content is kept.");
+
+/// <summary>A Proposal's identity and label, read without its revision content.</summary>
+public sealed record ProposalListing(CanonicalId ProposalId, string? Label);
 
 /// <summary>Selection options for current Proposal rows.</summary>
 public sealed record ProposalListFilter(string? Status = null, bool IncludeArchived = false);
@@ -251,7 +281,7 @@ public sealed class ProposalRepository : IProposalRepository
             SELECT p.ProposalId, p.CurrentIntentDigest, r.ProposalJson,
                    p.Status, p.Label, p.Rationale, p.SupersededBy,
                    p.AnchorJson, p.ArchivedUtc, p.DraftName, p.DraftJson, p.Role,
-                   p.RationaleIntentDigest, p.RationaleUpdatedUtc, p.Note, p.NoteIntentDigest, p.NoteUpdatedUtc
+                   p.RationaleIntentDigest, p.RationaleUpdatedUtc
             FROM Proposals p LEFT JOIN ProposalRevisions r ON r.ProposalId = p.ProposalId
                 AND r.IntentDigest = p.CurrentIntentDigest
             WHERE ($status IS NULL OR p.Status = $status)
@@ -261,6 +291,27 @@ public sealed class ProposalRepository : IProposalRepository
         var records = new List<ProposalRecord>();
         while (reader.Read()) records.Add(ReadRecord(reader));
         return records;
+    }
+
+    /// <summary>
+    /// Lists the Proposals <see cref="List"/> would, with their label and without any revision content, so a
+    /// caller that wants a few of them loads only those through <see cref="GetFinalized"/>.
+    /// </summary>
+    public IReadOnlyList<ProposalListing> ListWithoutContent(ProposalListFilter filter)
+    {
+        ArgumentNullException.ThrowIfNull(filter);
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        var archived = filter.IncludeArchived ? "" :
+            " AND (p.Status NOT IN ('applied', 'rejected', 'superseded', 'withdrawn') OR p.DraftName IS NOT NULL)";
+        command.CommandText = "SELECT p.ProposalId, p.Label FROM Proposals p WHERE ($status IS NULL OR p.Status = $status)" +
+            archived + " ORDER BY p.ProposalId;";
+        command.Parameters.AddWithValue("$status", (object?)filter.Status ?? DBNull.Value);
+        using var reader = command.ExecuteReader();
+        var listings = new List<ProposalListing>();
+        while (reader.Read())
+            listings.Add(new ProposalListing(CanonicalId.Parse(reader.GetString(0)), reader.IsDBNull(1) ? null : reader.GetString(1)));
+        return listings;
     }
 
     /// <inheritdoc />
@@ -352,6 +403,7 @@ public sealed class ProposalRepository : IProposalRepository
         using var transaction = connection.BeginTransaction(deferred: false);
         ProposalDeletion.Delete(connection, transaction, proposalId);
         transaction.Commit();
+        TrialScratchRetention.DeleteProposal(_database, proposalId);
     }
 
     private static void AddParameters(SqliteCommand command, ProposalRevisionRecord revision, byte[] bytes, string created)
@@ -576,7 +628,7 @@ public sealed class ProposalRepository : IProposalRepository
 
     /// <inheritdoc />
     public DraftFinalizationResult Finalize(string draftName, string intentDigest, string proposalJson, string label,
-        string? expectedDraftRevision = null)
+        string? expectedDraftRevision = null, FinalizeMove? thenMove = null, string? expectedRationale = null)
     {
         if (string.IsNullOrWhiteSpace(intentDigest) || string.IsNullOrWhiteSpace(proposalJson))
             throw new ArgumentException("Finalize requires an intent digest and Proposal content.", nameof(intentDigest));
@@ -598,6 +650,7 @@ public sealed class ProposalRepository : IProposalRepository
         }
         if (expectedDraftRevision is not null && DraftRevision.Compute(draftJson) != expectedDraftRevision)
             return DraftFinalizationResult.DraftChanged;
+
         var bytes = Encoding.UTF8.GetBytes(proposalJson);
         object? stored;
         using (var existing = connection.CreateCommand())
@@ -641,19 +694,30 @@ public sealed class ProposalRepository : IProposalRepository
             commit.CommandText = """
                 UPDATE Proposals SET CurrentIntentDigest = $digest, Status = $status, Label = $label,
                     RationaleIntentDigest = COALESCE(RationaleIntentDigest, $digest),
-                    NoteIntentDigest = CASE WHEN Note IS NULL THEN NULL ELSE COALESCE(NoteIntentDigest, $digest) END,
                     DraftName = NULL, DraftJson = NULL, ArchivedUtc = NULL,
                     AnchorJson = CASE WHEN json_extract(AnchorJson, '$.IntentDigest') = $digest
                         OR json_extract(AnchorJson, '$.intentDigest') = $digest THEN AnchorJson ELSE NULL END
-                WHERE DraftName = $name;
+                WHERE DraftName = $name AND ($expectedRationale IS NULL OR COALESCE(Rationale, '') = $expectedRationale);
                 """;
+            commit.Parameters.AddWithValue("$expectedRationale", (object?)expectedRationale ?? DBNull.Value);
             commit.Parameters.AddWithValue("$digest", intentDigest);
             commit.Parameters.AddWithValue("$status", ProposalLifecycle.ToWire(ProposalStatus.Proposed));
             commit.Parameters.AddWithValue("$label", label);
             commit.Parameters.AddWithValue("$name", draftName);
-            commit.ExecuteNonQuery();
+            if (commit.ExecuteNonQuery() != 1) return DraftFinalizationResult.RationaleChanged;
         }
+        ProposalDiscussionRepository.StampDigest(connection, transaction, proposalId, intentDigest);
+        RequestRepository.AnswerFor(connection, transaction, proposalId, Now());
+        if (thenMove is not null &&
+            !MoveInTransaction(connection, transaction, CanonicalId.Parse(proposalId), thenMove.AllowedFrom,
+                thenMove.To, null, thenMove.Comment).Moved)
+            return DraftFinalizationResult.MoveRefused;
         transaction.Commit();
+        if (thenMove is not null && !ProposalDifferenceRetention.KeepsWordDetail(thenMove.To))
+        {
+            ReviewRowArtifacts.DeleteReleased(_database, proposalId);
+            TrialScratchRetention.TrySweepReviewInputs(_database);
+        }
         return wasAmend ? DraftFinalizationResult.Amended : DraftFinalizationResult.Finalized;
     }
 
@@ -664,7 +728,7 @@ public sealed class ProposalRepository : IProposalRepository
         using var command = connection.CreateCommand();
         command.CommandText = """
             SELECT p.CurrentIntentDigest, r.ProposalJson, p.Status, p.Label, p.Rationale, p.SupersededBy, p.AnchorJson,
-                   p.RationaleIntentDigest, p.RationaleUpdatedUtc, p.Note, p.NoteIntentDigest, p.NoteUpdatedUtc
+                   p.RationaleIntentDigest, p.RationaleUpdatedUtc, p.Role
             FROM Proposals p LEFT JOIN ProposalRevisions r
                 ON r.ProposalId = p.ProposalId AND r.IntentDigest = p.CurrentIntentDigest
             WHERE p.ProposalId = $id AND p.DraftName IS NULL;
@@ -719,10 +783,10 @@ public sealed class ProposalRepository : IProposalRepository
                 $"not the bound '{digest}' (store inconsistency).");
         }
 
-        var record = new ProposalRecord(proposalId, digest, json, status, label, comment, supersededBy, bytes, anchorJson)
+        var record = new ProposalRecord(proposalId, digest, json, status, label, comment, supersededBy, bytes, anchorJson,
+            Role: Text(reader, 9))
         {
             RationaleIntentDigest = Text(reader, 7), RationaleUpdatedUtc = Text(reader, 8),
-            Note = Text(reader, 9), NoteIntentDigest = Text(reader, 10), NoteUpdatedUtc = Text(reader, 11),
         };
         return (record, envelope);
     }
@@ -785,7 +849,7 @@ public sealed class ProposalRepository : IProposalRepository
         using var command = connection.CreateCommand();
         command.CommandText = """
             SELECT Status, Label, Rationale, SupersededBy, CurrentIntentDigest,
-                   RationaleIntentDigest, RationaleUpdatedUtc, Note, NoteIntentDigest, NoteUpdatedUtc
+                   RationaleIntentDigest, RationaleUpdatedUtc
             FROM Proposals WHERE ProposalId = $id AND DraftName IS NULL;
             """;
         command.Parameters.AddWithValue("$id", proposalId.Value);
@@ -807,7 +871,6 @@ public sealed class ProposalRepository : IProposalRepository
             reader.IsDBNull(3) ? null : reader.GetString(3))
         {
             RationaleIntentDigest = Text(reader, 5), RationaleUpdatedUtc = Text(reader, 6),
-            Note = Text(reader, 7), NoteIntentDigest = Text(reader, 8), NoteUpdatedUtc = Text(reader, 9),
         };
     }
 
@@ -815,33 +878,34 @@ public sealed class ProposalRepository : IProposalRepository
         reader.IsDBNull(ordinal) ? null : reader.GetString(ordinal);
 
     /// <inheritdoc />
-    public bool SetRationale(CanonicalId proposalId, string? rationale)
+    public bool SetRationale(CanonicalId proposalId, string? rationale, DiscussionAuthor? author = null,
+        RationaleWriteExpectation? expected = null)
     {
         using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction();
         using var update = connection.CreateCommand();
+        update.Transaction = transaction;
         update.CommandText = """
             UPDATE Proposals SET Rationale = $text, RationaleIntentDigest = CurrentIntentDigest,
-                RationaleUpdatedUtc = $now WHERE ProposalId = $id;
+                RationaleUpdatedUtc = $now WHERE ProposalId = $id
+                AND ($expected = 0 OR (Status IS $status AND DraftName IS $draftName))
+                AND ($replaces = 0 OR COALESCE(Rationale, '') = $replaced);
             """;
+        update.Parameters.AddWithValue("$replaces", expected?.Rationale is null ? 0 : 1);
+        update.Parameters.AddWithValue("$replaced", (object?)expected?.Rationale ?? DBNull.Value);
+        update.Parameters.AddWithValue("$expected", expected is null ? 0 : 1);
+        update.Parameters.AddWithValue("$status", (object?)expected?.Status ?? DBNull.Value);
+        update.Parameters.AddWithValue("$draftName", (object?)expected?.DraftName ?? DBNull.Value);
+        var now = Now();
         update.Parameters.AddWithValue("$text", (object?)rationale ?? DBNull.Value);
-        update.Parameters.AddWithValue("$now", Now());
+        update.Parameters.AddWithValue("$now", now);
         update.Parameters.AddWithValue("$id", proposalId.Value);
-        return update.ExecuteNonQuery() == 1;
-    }
-
-    /// <inheritdoc />
-    public bool SetNote(CanonicalId proposalId, string? note)
-    {
-        using var connection = _database.OpenConnection();
-        using var update = connection.CreateCommand();
-        update.CommandText = """
-            UPDATE Proposals SET Note = $text, NoteIntentDigest = CASE WHEN $text IS NULL THEN NULL ELSE CurrentIntentDigest END,
-                NoteUpdatedUtc = CASE WHEN $text IS NULL THEN NULL ELSE $now END WHERE ProposalId = $id;
-            """;
-        update.Parameters.AddWithValue("$text", (object?)note ?? DBNull.Value);
-        update.Parameters.AddWithValue("$now", Now());
-        update.Parameters.AddWithValue("$id", proposalId.Value);
-        return update.ExecuteNonQuery() == 1;
+        if (update.ExecuteNonQuery() != 1) return false;
+        if (rationale is not null)
+            ProposalDiscussionRepository.RecordRationaleRevision(connection, transaction, proposalId.Value, rationale,
+                author ?? new DiscussionAuthor(null, ""), now);
+        transaction.Commit();
+        return true;
     }
 
     /// <inheritdoc />
@@ -861,11 +925,69 @@ public sealed class ProposalRepository : IProposalRepository
     /// <inheritdoc />
     public StatusTransitionOutcome Transition(
         CanonicalId proposalId, IReadOnlyCollection<string> allowedFrom, string to, string? supersededBy = null)
+        => TransitionCore(proposalId, allowedFrom, to, supersededBy, null);
+
+    /// <summary>Records a person's Comment and moves the Proposal in the same transaction.</summary>
+    public StatusTransitionOutcome TransitionWithComment(
+        CanonicalId proposalId, IReadOnlyCollection<string> allowedFrom, string to, string comment)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(comment);
+        return TransitionCore(proposalId, allowedFrom, to, null, comment);
+    }
+
+    /// <summary>The label a Comment Motif wrote itself carries, so a reader sees it was not a person's.</summary>
+    public const string SystemAuthorLabel = "Motif";
+
+    /// <summary>Moves the Proposal and records a system Comment saying so in the same transaction.</summary>
+    public StatusTransitionOutcome TransitionWithSystemNote(
+        CanonicalId proposalId, IReadOnlyCollection<string> allowedFrom, string to, string note)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(note);
+        return TransitionCore(proposalId, allowedFrom, to, null, null, note);
+    }
+
+    private StatusTransitionOutcome TransitionCore(CanonicalId proposalId, IReadOnlyCollection<string> allowedFrom,
+        string to, string? supersededBy, string? comment, string? systemNote = null)
     {
         ArgumentNullException.ThrowIfNull(allowedFrom);
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction();
+        var outcome = MoveInTransaction(connection, transaction, proposalId, allowedFrom, to, supersededBy, comment, systemNote);
+        if (outcome.Moved)
+        {
+            transaction.Commit();
+            if (!ProposalDifferenceRetention.KeepsWordDetail(to))
+            {
+                ReviewRowArtifacts.DeleteReleased(_database, proposalId.Value);
+                TrialScratchRetention.TrySweepReviewInputs(_database);
+            }
+        }
+        return outcome;
+    }
+
+    private StatusTransitionOutcome MoveInTransaction(SqliteConnection connection, SqliteTransaction transaction,
+        CanonicalId proposalId, IReadOnlyCollection<string> allowedFrom, string to, string? supersededBy,
+        string? comment, string? systemNote = null)
+    {
         var placeholders = string.Join(", ", allowedFrom.Select((_, i) => "$from" + i));
+        if (comment is not null || systemNote is not null)
+        {
+            using var insert = connection.CreateCommand();
+            insert.Transaction = transaction;
+            insert.CommandText = $"""
+                INSERT INTO ProposalComments (ProposalId, Kind, AuthorLabel, PersonName, Text, IntentDigest, CreatedUtc)
+                SELECT ProposalId, $kind, $label, '', $text, CurrentIntentDigest, $now
+                FROM Proposals WHERE ProposalId = $id AND DraftName IS NULL AND Status IN ({placeholders});
+                """;
+            insert.Parameters.AddWithValue("$kind", systemNote is null ? "standard" : "system");
+            insert.Parameters.AddWithValue("$label", systemNote is null ? DBNull.Value : SystemAuthorLabel);
+            insert.Parameters.AddWithValue("$text", comment ?? systemNote!);
+            insert.Parameters.AddWithValue("$now", Now());
+            insert.Parameters.AddWithValue("$id", proposalId.Value);
+            var fromIndex = 0;
+            foreach (var from in allowedFrom) insert.Parameters.AddWithValue("$from" + fromIndex++, from);
+            insert.ExecuteNonQuery();
+        }
         using var update = connection.CreateCommand();
         update.Transaction = transaction;
         update.CommandText = $"""
@@ -879,7 +1001,8 @@ public sealed class ProposalRepository : IProposalRepository
         foreach (var from in allowedFrom) update.Parameters.AddWithValue("$from" + index++, from);
         if (update.ExecuteNonQuery() > 0)
         {
-            transaction.Commit();
+            DropWordDetailIfDecided(connection, transaction, proposalId.Value, to);
+            ReopenRequestIfUndecided(connection, transaction, proposalId.Value, to);
             return new StatusTransitionOutcome(true, to);
         }
 
@@ -905,15 +1028,95 @@ public sealed class ProposalRepository : IProposalRepository
         update.Parameters.AddWithValue("$superseded", (object?)supersededBy ?? DBNull.Value);
         update.Parameters.AddWithValue("$id", proposalId.Value);
         update.ExecuteNonQuery();
+        DropWordDetailIfDecided(connection, transaction, proposalId.Value, status);
+        ReopenRequestIfUndecided(connection, transaction, proposalId.Value, status);
         transaction.Commit();
+        if (!ProposalDifferenceRetention.KeepsWordDetail(status))
+        {
+            ReviewRowArtifacts.DeleteReleased(_database, proposalId.Value);
+            TrialScratchRetention.TrySweepReviewInputs(_database);
+        }
     }
+
+    // A decline keeps its Request answered; a withdrawal or replacement reopens it.
+    private static void ReopenRequestIfUndecided(SqliteConnection connection, SqliteTransaction transaction,
+        string proposalId, string status)
+    {
+        if (status is ManifestStatus.Withdrawn or ManifestStatus.Superseded)
+            RequestRepository.ReopenFor(connection, transaction, proposalId);
+    }
+
+    private void DropWordDetailIfDecided(SqliteConnection connection, SqliteTransaction transaction, string proposalId,
+        string status)
+    {
+        if (!ProposalDifferenceRetention.KeepsWordDetail(status))
+        {
+            ProposalDifferenceRetention.DropWordDetail(connection, transaction, proposalId, Now());
+            ReviewReportRetention.DropDetail(connection, transaction, proposalId, Now());
+        }
+        ProposalDiscussionRepository.ClearRationaleHistoryIfDecided(connection, transaction, proposalId);
+        if (ProposalLifecycle.IsTerminal(status))
+            EvidenceArtifactRepository.ReleaseClosedProposalPins(connection, transaction, proposalId);
+    }
+
+    /// <summary>The longest recording an applied Receipt may spend retrying a busy store, attempts included.</summary>
+    internal TimeSpan ReceiptBusyBudget { get; init; } = TimeSpan.FromSeconds(60);
+
+    /// <summary>The longest one attempt can wait on the store's busy handler; no attempt starts without room for it.</summary>
+    internal TimeSpan ReceiptAttemptAllowance { get; init; } = TimeSpan.FromMilliseconds(SqliteConnections.BusyTimeoutMilliseconds);
+
+    /// <summary>Told when tidying after a committed Receipt fails; the Receipt itself is recorded.</summary>
+    internal Action<Exception>? CleanupFailed { get; init; }
+
+    /// <summary>Replaces the tidying after a committed Receipt; a test uses it to make that step fail.</summary>
+    internal Action<Receipt>? CleanupStep { get; init; }
+
+    /// <summary>Told as each recording attempt starts, so a test can count them.</summary>
+    internal Action<int>? AttemptStarted { get; init; }
 
     /// <inheritdoc />
     public void RecordAppliedReceipt(Receipt receipt)
     {
         ArgumentNullException.ThrowIfNull(receipt);
+        // The project is saved, so busy is retried on a fresh connection; recording is idempotent.
+        var elapsed = System.Diagnostics.Stopwatch.StartNew();
+        for (var attempt = 1; ; attempt++)
+        {
+            var pause = TimeSpan.FromMilliseconds(Math.Min(250 * attempt, 2000));
+            AttemptStarted?.Invoke(attempt);
+            try
+            {
+                CommitAppliedReceipt(receipt);
+                break;
+            }
+            catch (SqliteException failure) when (SqliteConnections.IsBusy(failure) &&
+                elapsed.Elapsed + pause + ReceiptAttemptAllowance <= ReceiptBusyBudget)
+            {
+                Thread.Sleep(pause);
+            }
+        }
+        try
+        {
+            if (CleanupStep is { } step) step(receipt);
+            else
+            {
+                ReviewRowArtifacts.DeleteReleased(_database, receipt.ProposalId.Value);
+                TrialScratchRetention.DeleteProposal(_database, receipt.ProposalId);
+            }
+        }
+        catch (Exception exception) when (exception is SqliteException or IOException or UnauthorizedAccessException)
+        {
+            CleanupFailed?.Invoke(exception);
+        }
+    }
+
+    // BEGIN IMMEDIATE takes the write lock first, so the busy handler applies.
+    private void CommitAppliedReceipt(Receipt receipt)
+    {
         using var connection = _database.OpenConnection();
-        using var transaction = connection.BeginTransaction();
+        // The driver repeats busy waits up to its own command timeout; keep one attempt inside its allowance.
+        connection.DefaultTimeout = Math.Max(1, (int)Math.Ceiling(ReceiptAttemptAllowance.TotalSeconds));
+        using var transaction = connection.BeginTransaction(deferred: false);
         using var current = connection.CreateCommand();
         current.Transaction = transaction;
         current.CommandText = "SELECT CurrentIntentDigest FROM Proposals WHERE ProposalId = $id;";
@@ -945,12 +1148,20 @@ public sealed class ProposalRepository : IProposalRepository
             insert.Parameters.AddWithValue("$json", JsonSerializer.Serialize(receipt));
             insert.Parameters.AddWithValue("$recordedUtc", _clock.UtcNow.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture));
             insert.ExecuteNonQuery();
+            using var progress = connection.CreateCommand();
+            progress.Transaction = transaction;
+            progress.CommandText = "UPDATE ProgressState SET PendingReceiptId = CASE WHEN PendingReceiptId IS NULL " +
+                "THEN (SELECT ReceiptId FROM Receipts WHERE ProposalId = $id) ELSE 'multiple' END WHERE Id = 1;";
+            progress.Parameters.AddWithValue("$id", receipt.ProposalId.Value);
+            progress.ExecuteNonQuery();
+            SIL.Motif.Host.Sources.SourceIndexRepository.MarkAllPending(connection, transaction);
         }
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = "UPDATE Proposals SET Status = 'applied' WHERE ProposalId = $id;";
         command.Parameters.AddWithValue("$id", receipt.ProposalId.Value);
         command.ExecuteNonQuery();
+        DropWordDetailIfDecided(connection, transaction, receipt.ProposalId.Value, ProposalLifecycle.ToWire(ProposalStatus.Applied));
         if (recordedDigest is null)
         {
             using var drift = connection.CreateCommand();
@@ -995,6 +1206,8 @@ public sealed class ProposalRepository : IProposalRepository
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction();
         RequireDraftNameFree(connection, transaction, draftName);
+        if (RequestRepository.ConflictingRequest(connection, transaction, proposalId.Value) is { } requestId)
+            throw new RequestProposalOpenException(requestId);
         using var update = connection.CreateCommand();
         update.Transaction = transaction;
         update.CommandText = """
@@ -1014,22 +1227,66 @@ public sealed class ProposalRepository : IProposalRepository
     }
 
     /// <inheritdoc />
-    public bool DiscardDraft(string draftName, string? expectedJson = null)
+    public bool DiscardDraft(string draftName, string? expectedJson = null) =>
+        DiscardDraft(draftName, expectedJson, beforeEvidenceRemoved: null);
+
+    /// <summary>
+    /// Discards a Draft like <see cref="DiscardDraft(string, string?)"/>. A never-finalized Draft first loses the
+    /// evidence its Trials recorded, and is kept, with nothing changed, when that evidence is still pinned or retained.
+    /// </summary>
+    /// <param name="draftName">The Draft to discard.</param>
+    /// <param name="expectedJson">The content the caller read, or <see langword="null"/> to skip the check.</param>
+    /// <param name="beforeEvidenceRemoved">
+    /// Called inside the transaction for a never-finalized Draft, before its evidence goes, so the caller can remove
+    /// records the store does not link to the Proposal (its Trial jobs).
+    /// </param>
+    /// <param name="emptyDraftId">When supplied, requires this never-finalized Draft with no authored content.</param>
+    /// <exception cref="ProposalRetainedByExampleSetException">A phonology Example Set cites the Draft.</exception>
+    /// <exception cref="ProposalEvidenceRetainedException">A result of the Draft is pinned or retained.</exception>
+    internal bool DiscardDraft(string draftName, string? expectedJson,
+        Action<SqliteConnection, SqliteTransaction, CanonicalId>? beforeEvidenceRemoved, CanonicalId? emptyDraftId = null)
     {
         if (string.IsNullOrWhiteSpace(draftName)) throw new ArgumentException("A draft name is required.", nameof(draftName));
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction();
         bool wasReopened;
+        CanonicalId proposalId;
         using (var find = connection.CreateCommand())
         {
             find.Transaction = transaction;
-            find.CommandText = "SELECT CurrentIntentDigest, DraftJson FROM Proposals WHERE DraftName = $name;";
+            find.CommandText = "SELECT CurrentIntentDigest, DraftJson, ProposalId FROM Proposals WHERE DraftName = $name;";
             find.Parameters.AddWithValue("$name", draftName);
             using var reader = find.ExecuteReader();
             if (!reader.Read()) throw new KeyNotFoundException($"Draft '{draftName}' was not found.");
             if (expectedJson is not null && (reader.IsDBNull(1) || reader.GetString(1) != expectedJson))
                 throw new DraftChangedException(draftName);
             wasReopened = !reader.IsDBNull(0);
+            proposalId = CanonicalId.Parse(reader.GetString(2));
+        }
+        if (emptyDraftId is { } expectedId)
+        {
+            if (wasReopened || proposalId != expectedId || expectedJson is null)
+                throw new DraftChangedException(draftName);
+            using var discussion = connection.CreateCommand();
+            discussion.Transaction = transaction;
+            discussion.CommandText = """
+                SELECT Role, Rationale,
+                    EXISTS (SELECT 1 FROM ProposalComments WHERE ProposalId = $id),
+                    EXISTS (SELECT 1 FROM ProposalRationaleRevisions WHERE ProposalId = $id),
+                    EXISTS (SELECT 1 FROM ProposalPictures WHERE ProposalId = $id)
+                FROM Proposals WHERE ProposalId = $id;
+                """;
+            discussion.Parameters.AddWithValue("$id", proposalId.Value);
+            using var reader = discussion.ExecuteReader();
+            if (!reader.Read() || (!reader.IsDBNull(0) && reader.GetString(0) == ProposalRoles.PendingChanges))
+                throw new DraftChangedException(draftName);
+            if (!reader.IsDBNull(1) || reader.GetBoolean(2) || reader.GetBoolean(3) || reader.GetBoolean(4))
+                throw new DraftAuthoredContentException();
+        }
+        if (!wasReopened)
+        {
+            beforeEvidenceRemoved?.Invoke(connection, transaction, proposalId);
+            ProposalDeletion.RemoveEvidence(connection, transaction, proposalId.Value);
         }
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
@@ -1039,7 +1296,10 @@ public sealed class ProposalRepository : IProposalRepository
             : "DELETE FROM Proposals WHERE DraftName = $name;";
         command.Parameters.AddWithValue("$name", draftName);
         command.ExecuteNonQuery();
+        // The reopened Proposal is decided again, so what was revised while it was open is history to drop.
+        if (wasReopened) ProposalDiscussionRepository.ClearRationaleHistoryIfDecided(connection, transaction, proposalId.Value);
         transaction.Commit();
+        TrialScratchRetention.DeleteProposal(_database, proposalId);
         return wasReopened;
     }
 
@@ -1047,27 +1307,26 @@ public sealed class ProposalRepository : IProposalRepository
         SELECT p.ProposalId, p.CurrentIntentDigest, r.ProposalJson,
                p.Status, p.Label, p.Rationale, p.SupersededBy,
                p.AnchorJson, p.ArchivedUtc, p.DraftName, p.DraftJson, p.Role,
-               p.RationaleIntentDigest, p.RationaleUpdatedUtc, p.Note, p.NoteIntentDigest, p.NoteUpdatedUtc
+               p.RationaleIntentDigest, p.RationaleUpdatedUtc
         FROM Proposals p LEFT JOIN ProposalRevisions r ON r.ProposalId = p.ProposalId
             AND r.IntentDigest = p.CurrentIntentDigest
         """;
 
     private const string DraftSelectSql =
         "SELECT ProposalId, Status, Label, Rationale, SupersededBy, AnchorJson, ArchivedUtc, DraftName, DraftJson, Role, " +
-        "RationaleIntentDigest, RationaleUpdatedUtc, Note, NoteIntentDigest, NoteUpdatedUtc " +
+        "RationaleIntentDigest, RationaleUpdatedUtc, CurrentIntentDigest " +
         "FROM Proposals";
 
     private static ProposalRecord ReadDraftRecord(SqliteDataReader reader)
     {
         var proposalId = CanonicalId.Parse(reader.GetString(0));
-        return new ProposalRecord(proposalId, null, reader.IsDBNull(8) ? null : reader.GetString(8), reader.GetString(1),
+        return new ProposalRecord(proposalId, Text(reader, 12), reader.IsDBNull(8) ? null : reader.GetString(8), reader.GetString(1),
             reader.IsDBNull(2) ? null : reader.GetString(2), reader.IsDBNull(3) ? null : reader.GetString(3),
             reader.IsDBNull(4) ? null : reader.GetString(4), null,
             reader.IsDBNull(5) ? null : reader.GetString(5), reader.IsDBNull(6) ? null : reader.GetString(6),
             reader.IsDBNull(7) ? null : reader.GetString(7), reader.IsDBNull(9) ? null : reader.GetString(9))
         {
             RationaleIntentDigest = Text(reader, 10), RationaleUpdatedUtc = Text(reader, 11),
-            Note = Text(reader, 12), NoteIntentDigest = Text(reader, 13), NoteUpdatedUtc = Text(reader, 14),
         };
     }
 
@@ -1104,7 +1363,6 @@ public sealed class ProposalRepository : IProposalRepository
             draftName, reader.IsDBNull(11) ? null : reader.GetString(11))
         {
             RationaleIntentDigest = Text(reader, 12), RationaleUpdatedUtc = Text(reader, 13),
-            Note = Text(reader, 14), NoteIntentDigest = Text(reader, 15), NoteUpdatedUtc = Text(reader, 16),
         };
     }
 

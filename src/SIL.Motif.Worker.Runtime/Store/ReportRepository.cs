@@ -11,7 +11,7 @@ namespace SIL.Motif.Worker.Store;
 /// </param>
 /// <param name="RenderedText">
 /// The presentation computed at measurement time, stored so a later reader never needs the Assessor that
-/// made the underlying Assessment to still be reachable (ADR 0042's Report amendment).
+/// made the underlying Assessment to still be reachable (ADR 0020's Report amendment).
 /// </param>
 public sealed record ReportRecord(
     string ReportId,
@@ -71,9 +71,12 @@ public sealed class ReportRepository
             throw new ArgumentException("Report id and report JSON are required.", nameof(report));
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction();
-        Write(connection, transaction, report, immutable: false);
+        Save(connection, transaction, report);
         transaction.Commit();
     }
+
+    internal static void Save(SqliteConnection connection, SqliteTransaction transaction, ReportRecord report) =>
+        Write(connection, transaction, report, immutable: false);
 
     internal static void SaveImmutable(SqliteConnection connection, SqliteTransaction transaction, ReportRecord report)
     {

@@ -32,7 +32,6 @@ internal enum ArtifactReferenceFamily
     Assessments,
     InvocationArtifacts,
     Reports,
-    ProposalDifferences,
     Baselines,
     Jobs,
     WorkflowRecords,
@@ -257,8 +256,6 @@ internal static class GeneratedArtifactReferences
             () => CaptureInvocations(store, builder));
         CaptureTable(builder, ArtifactReferenceFamily.Reports, store.StoreIdentity,
             () => CaptureReports(store, builder));
-        CaptureTable(builder, ArtifactReferenceFamily.ProposalDifferences, store.StoreIdentity,
-            () => CaptureDifferences(store, builder));
         CaptureTable(builder, ArtifactReferenceFamily.Baselines, store.StoreIdentity,
             () => CaptureBaselines(store, builder));
         CaptureTable(builder, ArtifactReferenceFamily.Baselines, store.StoreIdentity,
@@ -414,11 +411,12 @@ internal static class GeneratedArtifactReferences
     {
         string[] allowed = ["InvocationId", "SourcePath", "SourceBytesSha256", "ExecutableBytesSha256", "WordsPath",
             "WordsSha256", "TsvPath", "TsvSha256", "StandardErrorPath", "StandardErrorSha256", "PerWordTimeoutMs",
-            "PerWordStepLimit", "Threads", "CollectStatistics", "ExecutableVersion", "ExecutablePath", "AnalysesPath",
-            "AnalysesSha256", "StoppedWordRetry", "GrammarWarnings"];
+            "PerWordParserWorkLimit", "Threads", "CollectStatistics", "ExecutableVersion", "ExecutablePath", "AnalysesPath",
+            "AnalysesSha256", "StoppedWordRetry", "GrammarWarnings", "GrammarExportFormat", "ApprovedExpectationsSha256",
+            "ImportedSnapshotPath", "ImportedSnapshotSha256"];
         string[] required = ["InvocationId", "SourcePath", "SourceBytesSha256", "ExecutableBytesSha256", "WordsPath",
             "WordsSha256", "TsvPath", "TsvSha256", "StandardErrorPath", "StandardErrorSha256", "PerWordTimeoutMs",
-            "PerWordStepLimit", "Threads", "CollectStatistics"];
+            "PerWordParserWorkLimit", "Threads", "CollectStatistics"];
         if (root.ValueKind != JsonValueKind.Object) return false;
         var valid = IsObjectShape(root, "invocation evidence", allowed, required);
         foreach (var (property, reason) in new[]
@@ -455,6 +453,21 @@ internal static class GeneratedArtifactReferences
         if (hasAnalysesHash && (analysesHashes[0].ValueKind != JsonValueKind.String ||
             !IsCanonicalSha256(analysesHashes[0].GetString()))) valid = false;
         if (hasAnalysesPath != hasAnalysesHash) valid = false;
+        var snapshotPaths = Properties(root, "ImportedSnapshotPath").ToArray();
+        var snapshotHashes = Properties(root, "ImportedSnapshotSha256").ToArray();
+        if (snapshotPaths.Length > 1 || snapshotHashes.Length > 1) valid = false;
+        var hasSnapshotPath = snapshotPaths.Length == 1 && snapshotPaths[0].ValueKind != JsonValueKind.Null;
+        var hasSnapshotHash = snapshotHashes.Length == 1 && snapshotHashes[0].ValueKind != JsonValueKind.Null;
+        if (hasSnapshotPath)
+        {
+            if (snapshotPaths[0].ValueKind != JsonValueKind.String ||
+                string.IsNullOrWhiteSpace(snapshotPaths[0].GetString())) valid = false;
+            else AddPath(builder, ArtifactReferenceFamily.InvocationArtifacts, storeIdentity, recordId,
+                "invocation-snapshot-path", snapshotPaths[0].GetString()!);
+        }
+        if (hasSnapshotHash && (snapshotHashes[0].ValueKind != JsonValueKind.String ||
+            !IsCanonicalSha256(snapshotHashes[0].GetString()))) valid = false;
+        if (hasSnapshotPath != hasSnapshotHash) valid = false;
         var retries = Properties(root, "StoppedWordRetry").ToArray();
         if (retries.Length > 1) valid = false;
         if (retries.Length == 1 && retries[0].ValueKind != JsonValueKind.Null)
@@ -462,7 +475,7 @@ internal static class GeneratedArtifactReferences
             var retry = retries[0];
             string[] retryAllowed = ["LimitMs", "Stopped", "Retried", "Recovered", "StillStopped", "RetryInvocationId",
                 "FirstPassTsvSha256", "FirstPassAnalysesSha256", "RetryTsvSha256", "RetryAnalysesSha256", "Words",
-                "NotRetried", "Failure"];
+                "NotRetried", "Failure", "RetryStandardErrorSha256", "GrammarWarnings"];
             string[] retryRequired = ["LimitMs", "Stopped", "Retried", "Recovered", "StillStopped", "RetryInvocationId",
                 "FirstPassTsvSha256", "FirstPassAnalysesSha256", "RetryTsvSha256", "RetryAnalysesSha256", "Words",
                 "NotRetried"];
@@ -470,6 +483,9 @@ internal static class GeneratedArtifactReferences
             var retryIds = Properties(retry, "RetryInvocationId").ToArray();
             if (retryIds.Length != 1 || retryIds[0].ValueKind != JsonValueKind.String ||
                 string.IsNullOrWhiteSpace(retryIds[0].GetString())) valid = false;
+            var retryStderr = Properties(retry, "RetryStandardErrorSha256").ToArray();
+            if (retryStderr.Length > 1 || retryStderr.Any(hash => hash.ValueKind != JsonValueKind.String ||
+                !IsCanonicalSha256(hash.GetString()))) valid = false;
             foreach (var retryId in retryIds.Where(value => value.ValueKind == JsonValueKind.String))
                 AddRequiredReference(builder, ArtifactReferenceFamily.InvocationArtifacts, storeIdentity,
                     ArtifactReferenceTargetKind.Invocation, retryId.GetString() ?? string.Empty, recordId,
@@ -524,8 +540,9 @@ internal static class GeneratedArtifactReferences
                     builder.Incomplete(ArtifactReferenceFamily.Reports, store.StoreIdentity,
                         "report-direct-assessment-missing", recordId);
             }
-            else builder.Incomplete(ArtifactReferenceFamily.Reports, store.StoreIdentity,
-                "report-kind-unrecognized", recordId);
+            else if (kind != TrialExportArtifact.BindingKind)
+                builder.Incomplete(ArtifactReferenceFamily.Reports, store.StoreIdentity,
+                    "report-kind-unrecognized", recordId);
         }
     }
 
@@ -742,7 +759,7 @@ internal static class GeneratedArtifactReferences
         if (finding.ValueKind != JsonValueKind.Object) return false;
         var valid = IsObjectShape(finding, "Parsimony finding",
             ["findingId", "measureId", "axis", "tier", "attachesTo", "groupKey", "number", "threshold",
-                "evidenceDigest", "evidenceRefs", "recipeLink", "limitations", "verification", "itemNames"],
+                "evidenceDigest", "evidenceRefs", "recipeLink", "limitations", "verification", "itemNames", "description"],
             ["findingId", "measureId", "axis", "tier", "attachesTo", "groupKey", "number", "threshold",
                 "evidenceDigest", "evidenceRefs", "recipeLink", "limitations", "verification"]);
         valid &= HasDefinedEnumDiscriminant(finding, "axis", typeof(ParsimonyAxis));
@@ -807,23 +824,6 @@ internal static class GeneratedArtifactReferences
         if (values.Length != 1 || values[0].ValueKind == JsonValueKind.Null) return optional;
         if (values[0].ValueKind != JsonValueKind.Number) return true;
         return values[0].TryGetInt32(out var value) && Enum.IsDefined(enumType, value);
-    }
-
-    private static void CaptureDifferences(PrivateArtifactStoreSnapshot store, SnapshotBuilder builder)
-    {
-        using var command = Command(store, "SELECT DifferenceId, BeforeAssessmentId, AfterAssessmentId " +
-            "FROM ProposalDifferences ORDER BY DifferenceId;");
-        using var reader = command.ExecuteReader();
-        while (reader.Read())
-        {
-            var recordId = "ProposalDifferences/" + reader.GetString(0);
-            builder.Reference(ArtifactReferenceFamily.ProposalDifferences, store.StoreIdentity,
-                ArtifactReferenceTargetKind.Assessment, reader.GetString(1), recordId, "proposal-difference-before");
-            builder.Reference(ArtifactReferenceFamily.ProposalDifferences, store.StoreIdentity,
-                ArtifactReferenceTargetKind.Assessment, reader.GetString(2), recordId, "proposal-difference-after");
-            builder.Retain(ArtifactReferenceFamily.ProposalDifferences, store.StoreIdentity, recordId,
-                "proposal-difference-citation");
-        }
     }
 
     private static void CaptureBaselines(PrivateArtifactStoreSnapshot store, SnapshotBuilder builder)
@@ -914,7 +914,7 @@ internal static class GeneratedArtifactReferences
 
     private static void CaptureGrammarChecks(PrivateArtifactStoreSnapshot store, SnapshotBuilder builder)
     {
-        using var command = Command(store, "SELECT rowid, BaselineToken, ResponseJson FROM GrammarChecks ORDER BY rowid;");
+        using var command = Command(store, "SELECT rowid, BaselineToken, ResponseGzip FROM GrammarChecks ORDER BY rowid;");
         using var reader = command.ExecuteReader();
         while (reader.Read())
         {
@@ -931,22 +931,23 @@ internal static class GeneratedArtifactReferences
                 AddBaselineToken(builder, store.StoreIdentity, parsedRowToken, recordId,
                     "grammar-check-baseline-token");
             }
-            catch (Exception exception) when (IsStoredDataFailure(exception))
+            catch (Exception exception) when (IsStoredDataFailure(exception) || exception is InvalidCastException)
             {
                 builder.Incomplete(ArtifactReferenceFamily.Baselines, store.StoreIdentity,
                     "grammar-check-reference-unrecognized", recordId);
             }
             try
             {
-                var json = NullableString(reader, 2)
-                    ?? throw new InvalidDataException("Grammar Check response is absent.");
+                var json = GrammarCheckStorage.Decompress(reader.GetFieldValue<byte[]>(2));
                 RequireObjectShape(json, "Grammar Check response", "Findings", "HasBaseline", "Locale",
-                    "CheckedLexemeCount", "CheckedRuleCount", "Advisories", "Summary", "Provenance");
+                    "CheckedLexemeCount", "CheckedRuleCount", "Advisories", "Summary", "Provenance", "ObjectTimingDetail",
+                    "FstChecked", "FstCheckError");
                 using var document = JsonDocument.Parse(json);
                 var root = document.RootElement;
                 RequireObjectShape(root, "Grammar Check response",
                     ["Findings", "HasBaseline", "Locale", "CheckedLexemeCount", "CheckedRuleCount", "Advisories",
-                        "Summary", "Provenance"], ["Findings", "HasBaseline"]);
+                        "Summary", "Provenance", "ObjectTimingDetail", "FstChecked", "FstCheckError"],
+                    ["Findings", "HasBaseline"]);
                 var valid = ValidateNullableObjectArray(root, "Findings") &&
                     ValidateOptionalObjectArray(root, "Advisories") && ValidateOptionalObjectArray(root, "Summary");
                 foreach (var provenance in Properties(root, "Provenance"))
@@ -979,7 +980,7 @@ internal static class GeneratedArtifactReferences
                     builder.Incomplete(ArtifactReferenceFamily.Baselines, store.StoreIdentity,
                         "grammar-check-reference-unrecognized", recordId);
             }
-            catch (Exception exception) when (IsStoredDataFailure(exception))
+            catch (Exception exception) when (IsStoredDataFailure(exception) || exception is InvalidCastException)
             {
                 builder.Incomplete(ArtifactReferenceFamily.Baselines, store.StoreIdentity,
                     "grammar-check-reference-unrecognized", recordId);
@@ -1063,6 +1064,7 @@ internal static class GeneratedArtifactReferences
                 builder.Incomplete(ArtifactReferenceFamily.Jobs, store.StoreIdentity,
                     "job-kind-cannot-publish-dry-run", rootId);
             if (parsedStatus is { } executionStatus && MayHaveExecuted(executionStatus) &&
+                (executionStatus != JobStatus.StoppedByBudget || dryRunPublished) &&
                 kind is "dry-run" or TrialJobHandler.TrialKind && !inputHasBaselineBinding &&
                 !resultHasBaselineBinding)
                 builder.Incomplete(ArtifactReferenceFamily.Jobs, store.StoreIdentity,
@@ -1074,7 +1076,7 @@ internal static class GeneratedArtifactReferences
 
     private static bool MayHaveExecuted(JobStatus status) => status is JobStatus.Running or JobStatus.Completed or
         JobStatus.CompletedDryRunOnly or JobStatus.CompletedWithAssessmentFailure or JobStatus.Failed or
-        JobStatus.Cancelled or JobStatus.Interrupted;
+        JobStatus.Cancelled or JobStatus.Interrupted or JobStatus.StoppedByBudget;
 
     private static bool IsExpectedSuccessfulJobStatus(string kind, JobStatus status) => kind switch
     {
@@ -1098,6 +1100,9 @@ internal static class GeneratedArtifactReferences
         {
             switch (kind)
             {
+                case "assess":
+                    RequireObjectShape(json, "Assess job input");
+                    break;
                 case ProjectJobHandlers.BaselineRefreshKind:
                     RequireObjectShape(json, "Baseline refresh job input");
                     break;
@@ -1105,12 +1110,13 @@ internal static class GeneratedArtifactReferences
                 {
                     RequireObjectShape(json, "Trial job input",
                         ["proposalJson", "scope", "words", "allWords", "prerequisites", "limits",
-                            "baselineAssessmentIds", "negativeWords", "wordList"], ["proposalJson", "scope"]);
+                            "baselineAssessmentIds", "negativeWords", "expectedLosses", "wordList", "reviewInputs", "reviewBaselines", "reviewBeforeStopCode", "reviewBeforePartial", "reviewRevision", "reviewCounterSemantics"], ["proposalJson", "scope"]);
                     var input = JsonSerializer.Deserialize<TrialJobInput>(json, StrictJsonOptions)
                         ?? throw new InvalidDataException("The Trial input is null.");
                     if (string.IsNullOrWhiteSpace(input.ProposalJson) ||
                         input.Words?.Any(string.IsNullOrWhiteSpace) == true ||
                         input.NegativeWords?.Any(string.IsNullOrWhiteSpace) == true ||
+                        input.ExpectedLosses?.Any(string.IsNullOrWhiteSpace) == true ||
                         input.Prerequisites?.Any(prerequisite => prerequisite is null) == true)
                         throw new InvalidDataException("The Trial input contains an invalid typed member.");
                     foreach (var assessmentId in input.BaselineAssessmentIds ?? [])
@@ -1175,7 +1181,7 @@ internal static class GeneratedArtifactReferences
                 case ParsimonyJobHandler.JobKind:
                 {
                     RequireObjectShape(json, "Parsimony job input",
-                        ["measureId", "scopeBinding", "assessmentIds"], ["measureId", "scopeBinding"]);
+                        ["measureId", "scopeBinding", "assessmentIds", "measureIds", "note"], ["measureId", "scopeBinding"]);
                     var input = JsonSerializer.Deserialize<ParsimonyJobInput>(json, StrictJsonOptions)
                         ?? throw new InvalidDataException("The Parsimony job input is null.");
                     if (string.IsNullOrWhiteSpace(input.MeasureId) ||
@@ -1192,7 +1198,8 @@ internal static class GeneratedArtifactReferences
                 case ParsimonyCandidateEvidenceBuilder.JobKind:
                 {
                     RequireObjectShape(json, "candidate Parsimony job input", "schemaVersion", "dryRunJobId",
-                        "measureId", "scopeBinding", "assessmentIds", "retirementExpectationTranslation");
+                        "measureId", "scopeBinding", "assessmentIds", "retirementExpectationTranslation",
+                        "measureIds", "inputsKey");
                     var strictInput = JsonSerializer.Deserialize<ParsimonyCandidateJobInput>(json, StrictJsonOptions)
                         ?? throw new InvalidDataException("The candidate Parsimony job input is null.");
                     if (strictInput.RetirementExpectationTranslation is { } translation &&
@@ -1229,6 +1236,21 @@ internal static class GeneratedArtifactReferences
         var hasBaselineBinding = false;
         try
         {
+            if (status == JobStatus.StoppedByBudget && kind is "assess" or TrialJobHandler.TrialKind)
+            {
+                RequireObjectShape(json, "Budget stop result",
+                    ["code", "message", "wordsDone", "wordsNotDone", "baselineToken"],
+                    ["code", "message", "wordsDone", "wordsNotDone"]);
+                using var document = JsonDocument.Parse(json);
+                if (document.RootElement.TryGetProperty("baselineToken", out var token))
+                {
+                    var baseline = JsonSerializer.Deserialize<BaselineToken>(token.GetRawText(), StrictJsonOptions)
+                        ?? throw new InvalidDataException("The budget stop has no Baseline token.");
+                    AddBaselineToken(builder, storeIdentity, baseline, recordId, "budget-stop-baseline-token");
+                    hasBaselineBinding = true;
+                }
+                return hasBaselineBinding;
+            }
             if (kind == ProjectJobHandlers.BaselineRefreshKind)
             {
                 if (status == JobStatus.Completed)
@@ -1304,7 +1326,7 @@ internal static class GeneratedArtifactReferences
                 case TrialJobHandler.TrialKind:
                 {
                     RequireObjectShape(json, "Trial result",
-                        ["baselineToken", "assessmentIds", "allWords", "grammarCheckWarning"],
+                        ["baselineToken", "assessmentIds", "allWords", "grammarCheckWarning", "droppedGrammar", "reviewAfter", "reviewCounterSemantics"],
                         ["baselineToken", "assessmentIds", "allWords", "grammarCheckWarning"]);
                     var completion = JsonSerializer.Deserialize<TrialJobReferenceCompletion>(json, StrictJsonOptions)
                         ?? throw new InvalidDataException("The Trial result is null.");
@@ -1345,6 +1367,13 @@ internal static class GeneratedArtifactReferences
         return hasBaselineBinding;
     }
 
+    // A failure's user-facing detail, plus the optional exception type and full text kept for diagnosis.
+    private static readonly string[] JobFailureProperties = ["detail", "exceptionType", "exception"];
+
+    private static bool IsDetailFailureShape(string[] names) =>
+        names.Contains("detail", StringComparer.Ordinal) &&
+        names.All(name => JobFailureProperties.Contains(name, StringComparer.Ordinal));
+
     private static void CaptureNonSuccessJobResult(string kind, JobStatus? status, bool dryRunPublished, string json)
     {
         if (status == JobStatus.Cancelled && dryRunPublished)
@@ -1361,12 +1390,15 @@ internal static class GeneratedArtifactReferences
         if (parsed.RootElement.ValueKind != JsonValueKind.Object)
             throw new InvalidDataException("A non-success job result must be an object.");
         var properties = parsed.RootElement.EnumerateObject().Select(property => property.Name).ToArray();
-        if (properties.Length == 1 && properties[0] == "detail")
+        if (IsDetailFailureShape(properties))
         {
-            RequireObjectShape(json, "job failure result", "detail");
+            RequireObjectShape(json, "job failure result", JobFailureProperties);
             var detail = parsed.RootElement.GetProperty("detail");
             if (detail.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(detail.GetString()))
                 throw new InvalidDataException("The job failure result has no detail.");
+            foreach (var optional in JobFailureProperties.Skip(1))
+                if (parsed.RootElement.TryGetProperty(optional, out var value) && value.ValueKind != JsonValueKind.String)
+                    throw new InvalidDataException("The job failure result's diagnostic must be text.");
             return;
         }
         if (status == JobStatus.Failed && properties.Length == 1 && properties[0] == "failure")
@@ -1389,7 +1421,7 @@ internal static class GeneratedArtifactReferences
             var names = candidate.RootElement.ValueKind == JsonValueKind.Object
                 ? candidate.RootElement.EnumerateObject().Select(property => property.Name).ToArray()
                 : [];
-            if (names.Length == 1 && names[0] is "detail" or "failure")
+            if (IsDetailFailureShape(names) || (names.Length == 1 && names[0] == "failure"))
             {
                 CaptureNonSuccessJobResult(ProjectJobHandlers.BaselineRefreshKind, JobStatus.Failed, false, json);
                 return;
@@ -1437,7 +1469,7 @@ internal static class GeneratedArtifactReferences
 
         var valid = IsObjectShape(root, "candidate Parsimony job result",
             ["SchemaVersion", "MeasureId", "Candidate", "Before", "After", "FindingChanges",
-                "ApprovedAnalysisPreservation"],
+                "ApprovedAnalysisPreservation", "MoreMeasures"],
             ["SchemaVersion", "MeasureId", "Candidate", "Before", "After", "FindingChanges",
                 "ApprovedAnalysisPreservation"]);
         var schemaVersions = Properties(root, "SchemaVersion").ToArray();
@@ -1463,6 +1495,22 @@ internal static class GeneratedArtifactReferences
         foreach (var report in afterReports)
             valid &= CaptureParsimonyCandidateReportReferences(storeIdentity, recordId,
                 "parsimony-candidate-after", report, builder);
+
+        foreach (var more in Properties(root, "MoreMeasures"))
+        {
+            if (more.ValueKind != JsonValueKind.Array) { valid = false; continue; }
+            foreach (var item in more.EnumerateArray())
+            {
+                valid &= IsObjectShape(item, "candidate Parsimony measure result",
+                    ["MeasureId", "Before", "After", "FindingChanges"], ["MeasureId", "Before", "After", "FindingChanges"]);
+                foreach (var report in Properties(item, "Before"))
+                    valid &= CaptureParsimonyCandidateReportReferences(storeIdentity, recordId,
+                        "parsimony-candidate-before", report, builder);
+                foreach (var report in Properties(item, "After"))
+                    valid &= CaptureParsimonyCandidateReportReferences(storeIdentity, recordId,
+                        "parsimony-candidate-after", report, builder);
+            }
+        }
 
         try
         {
@@ -1591,7 +1639,7 @@ internal static class GeneratedArtifactReferences
             if (finding.ValueKind != JsonValueKind.Object) { valid = false; continue; }
             valid &= IsObjectShape(finding, "candidate Parsimony finding",
                 ["FindingId", "MeasureId", "Axis", "Tier", "AttachesTo", "GroupKey", "Number", "Threshold",
-                    "EvidenceDigest", "EvidenceRefs", "RecipeLink", "Limitations", "Verification", "ItemNames"],
+                    "EvidenceDigest", "EvidenceRefs", "RecipeLink", "Limitations", "Verification", "ItemNames", "Description"],
                 ["FindingId", "MeasureId", "Axis", "Tier", "AttachesTo", "GroupKey", "Number", "Threshold",
                     "EvidenceDigest", "EvidenceRefs", "RecipeLink", "Limitations", "Verification"]);
             valid &= HasDefinedEnumDiscriminant(finding, "Axis", typeof(ParsimonyAxis));
@@ -1673,7 +1721,7 @@ internal static class GeneratedArtifactReferences
 
     private static void CaptureKnownJobFailureResult(string json)
     {
-        RequireObjectShape(json, "job failure result", "detail");
+        RequireObjectShape(json, "job failure result", JobFailureProperties);
         var failure = JsonSerializer.Deserialize<JobFailureReferenceCompletion>(json, StrictJsonOptions)
             ?? throw new InvalidDataException("The job failure result is null.");
         if (string.IsNullOrWhiteSpace(failure.Detail))
@@ -2401,7 +2449,10 @@ internal static class GeneratedArtifactReferences
         [property: JsonPropertyName("baselineToken")] BaselineToken BaselineToken,
         [property: JsonPropertyName("assessmentIds")] IReadOnlyList<string> AssessmentIds,
         [property: JsonPropertyName("allWords")] bool AllWords,
-        [property: JsonPropertyName("grammarCheckWarning")] string? GrammarCheckWarning);
+        [property: JsonPropertyName("grammarCheckWarning")] string? GrammarCheckWarning,
+        [property: JsonPropertyName("droppedGrammar")] JsonElement? DroppedGrammar = null,
+        [property: JsonPropertyName("reviewAfter")] IReadOnlyList<ReviewAfterPartition>? ReviewAfter = null,
+        [property: JsonPropertyName("reviewCounterSemantics")] int? ReviewCounterSemantics = null);
 
     private sealed record ParsimonyJobReferenceCompletion(
         [property: JsonPropertyName("reportIds")] IReadOnlyList<string> ReportIds,
@@ -2415,7 +2466,9 @@ internal static class GeneratedArtifactReferences
         [property: JsonPropertyName("revisionId")] string RevisionId);
 
     private sealed record JobFailureReferenceCompletion(
-        [property: JsonPropertyName("detail")] string Detail);
+        [property: JsonPropertyName("detail")] string Detail,
+        [property: JsonPropertyName("exceptionType")] string? ExceptionType = null,
+        [property: JsonPropertyName("exception")] string? Exception = null);
 
     private sealed class SnapshotBuilder
     {

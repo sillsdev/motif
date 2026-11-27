@@ -8,17 +8,27 @@ public sealed class ProjectDatabaseCatalog
 {
     private readonly int _supportedSchema;
     private readonly Version _workerVersion;
+    private readonly string? _holderRoot;
 
     /// <summary>Creates a catalog for one worker schema and compatibility generation.</summary>
     /// <param name="supportedSchema">The highest database schema this worker can open.</param>
     /// <param name="workerVersion">The worker version to use for compatibility checks.</param>
-    public ProjectDatabaseCatalog(int supportedSchema, Version workerVersion)
+    /// <param name="holderRoot">
+    /// The worker root of a runner that records itself beside each store it keeps open (see
+    /// <see cref="StoreHolder"/>), or <see langword="null"/> for a caller that holds a store only briefly.
+    /// </param>
+    public ProjectDatabaseCatalog(int supportedSchema, Version workerVersion, string? holderRoot = null)
     {
         if (supportedSchema < 1) throw new ArgumentOutOfRangeException(nameof(supportedSchema));
         ArgumentNullException.ThrowIfNull(workerVersion);
         _supportedSchema = supportedSchema;
         _workerVersion = workerVersion;
+        _holderRoot = holderRoot;
     }
+
+    /// <summary>Records this process as a holder of the project's store, or returns <see langword="null"/> when no root was given.</summary>
+    internal IDisposable? PublishHolder(ProjectLocator project) =>
+        _holderRoot is { } root ? StoreHolder.Publish(DatabasePathFor(project), root) : null;
 
     /// <summary>Opens the project sibling database through the worker-owned host boundary.</summary>
     /// <param name="project">The project locator bound to the sibling database.</param>
@@ -38,7 +48,7 @@ public sealed class ProjectDatabaseCatalog
     /// </summary>
     /// <param name="project">The project locator bound to the sibling database.</param>
     /// <param name="ownershipPatience">Maximum wait for the creation lock; defaults to 30 seconds.</param>
-    public bool DeleteIfOtherVersion(ProjectLocator project, TimeSpan? ownershipPatience = null)
+    public StoreDeletion DeleteIfOtherVersion(ProjectLocator project, TimeSpan? ownershipPatience = null)
     {
         ArgumentNullException.ThrowIfNull(project);
         return MotifDatabase.DeleteIfOtherVersion(DatabasePathFor(project), project, _supportedSchema, _workerVersion,

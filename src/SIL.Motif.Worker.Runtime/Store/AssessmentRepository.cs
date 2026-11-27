@@ -1,5 +1,7 @@
 using System.Globalization;
+using System.IO.Compression;
 using System.Runtime.ExceptionServices;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -17,6 +19,10 @@ using SIL.Motif.Worker.Jobs;
 
 namespace SIL.Motif.Worker.Store;
 
+/// <summary>Previously selected Assessment evidence is no longer in the store.</summary>
+public sealed class AssessmentExpiredException(string id)
+    : Exception($"Assessment '{id}' is no longer available. Refresh the evidence and try again.");
+
 /// <summary>
 /// Durable Assessment storage: one immutable measurement per row, plus the project's single pointer to
 /// its current Assessment. Callers use this seam without depending on the normalized detail tables.
@@ -25,7 +31,7 @@ public interface IAssessmentRepository
 {
     /// <summary>
     /// Records one Assessment together with its words and analyses, in one transaction — a half-written
-    /// Assessment must never be observable. Assessments are immutable (ADR 0042 decision 2): recording
+    /// Assessment must never be observable. Assessments are immutable (ADR 0020 decision 2): recording
     /// under an id that already exists is a genuine primary-key collision, not an upsert.
     /// </summary>
     void Record(NewAssessmentRecord assessment);
@@ -84,7 +90,7 @@ public interface IAssessmentRepository
         string kind, string baselineToken, IReadOnlyList<string>? assessmentIds, IReadOnlyCollection<string> wordForms);
 
     /// <summary>
-    /// Promotes one Assessment to be the project's current Assessment (ADR 0042 decision 2): a pointer
+    /// Promotes one Assessment to be the project's current Assessment (ADR 0020 decision 2): a pointer
     /// the project holds, not a state the Assessment carries.
     /// </summary>
     /// <exception cref="KeyNotFoundException">No Assessment is recorded under this id.</exception>
@@ -96,7 +102,7 @@ public interface IAssessmentRepository
 
     /// <summary>
     /// Deletes the Assessments recorded against one Proposal that nothing else still needs, except
-    /// <paramref name="exceptAssessmentId"/> — the sweep purge-on-apply drives (ADR 0042's Trial amendment). A
+    /// <paramref name="exceptAssessmentId"/> — the sweep purge-on-apply drives (ADR 0020's Trial amendment). A
     /// promoted candidate must always be named here by its exact id: this call, not the order it runs in relative
     /// to promotion, is what keeps it out of the sweep. An Assessment a Report cites, a pin or retained invocation
     /// holds, that is current, or that a surviving Assessment replaces is kept, and no surviving row is rewritten.
@@ -237,11 +243,12 @@ public sealed record AssessmentRecord(
     public BatchInvocationEvidence? Invocation => Details switch { AssessmentRecordDetails.Words w => w.Invocation,
         AssessmentRecordDetails.Unloaded u => u.Invocation, _ => null };
     public IReadOnlyList<AssessmentObjectTiming> ObjectTimings => WordDetails()?.ObjectTimings ?? [];
+    public AssessmentTimingEvidence? TimingEvidence => WordDetails()?.TimingEvidence;
 }
 
 /// <summary>
 /// Where a caller turns one recorded Assessment into the narrower view it actually needs — a Report's, a
-/// comparison's, or a regression check's (ADR 0042's projections). Kept beside <see cref="AssessmentRecord"/>
+/// comparison's, or a regression check's (ADR 0020's projections). Kept beside <see cref="AssessmentRecord"/>
 /// itself rather than beside each narrower type: those live in <c>SIL.Motif.Host</c>, which this module
 /// depends on and never the reverse, so this is the one place able to see both the row and every view of it.
 /// </summary>
@@ -485,6 +492,23 @@ public sealed class AssessmentRepository : IAssessmentRepository
     private static void InsertPrepared(
         SqliteConnection connection, SqliteTransaction transaction, IReadOnlyList<PreparedAssessment> assessments)
     {
+        var payloads = new Dictionary<string, object?[]>(StringComparer.Ordinal);
+        foreach (var prepared in assessments)
+            foreach (var row in prepared.Words)
+                foreach (var index in new[] { 8, 9, 12, 14, 18 })
+                    if (row[index] is byte[] payload)
+                    {
+                        var hash = SHA256.HashData(payload);
+                        var key = Convert.ToHexString(hash);
+                        if (payloads.TryGetValue(key, out var existing) &&
+                            !payload.AsSpan().SequenceEqual((byte[])existing[1]!))
+                            throw new InvalidDataException("Word payload hash collision.");
+                        payloads[key] = [hash, payload];
+                        row[index] = hash;
+                    }
+        InsertRows(connection, transaction, "AssessmentWordPayloads", ["Hash", "Payload"], payloads.Values.ToArray(),
+            " ON CONFLICT(Hash) DO UPDATE SET Payload = CASE WHEN Payload = excluded.Payload THEN Payload ELSE NULL END");
+        var wordOwners = new List<PreparedAssessment>();
         foreach (var prepared in assessments)
         {
             var assessment = prepared.Record;
@@ -500,7 +524,18 @@ public sealed class AssessmentRepository : IAssessmentRepository
             switch (assessment.Material)
             {
                 case AssessmentRecordMaterial.Words:
-                    InsertWordsAndAnalyses(connection, transaction, prepared);
+                    var owner = prepared.Words.Count == 0 ? null : wordOwners.FirstOrDefault(candidate =>
+                        SameWordSet(candidate, prepared));
+                    if (owner is null)
+                    {
+                        InsertWordsAndAnalyses(connection, transaction, prepared);
+                        if (prepared.Words.Count != 0) wordOwners.Add(prepared);
+                    }
+                    else
+                    {
+                        InsertRows(connection, transaction, "AssessmentWordSetBindings",
+                            ["AssessmentId", "OwnerAssessmentId"], [[assessment.AssessmentId, owner.Record.AssessmentId]]);
+                    }
                     InsertRows(connection, transaction, "AssessmentObjectTimings", ObjectTimingColumns,
                         prepared.ObjectTimings);
                     break;
@@ -510,6 +545,25 @@ public sealed class AssessmentRepository : IAssessmentRepository
                 default: throw new ArgumentException("Unknown Assessment material.");
             }
         }
+    }
+
+    private static bool SameWordSet(PreparedAssessment left, PreparedAssessment right)
+    {
+        if (left.Words.Count != right.Words.Count || left.Analyses.Count != right.Analyses.Count) return false;
+        for (var i = 0; i < left.Words.Count; i++)
+            if (!SameValues(left.Words[i], right.Words[i], 2)) return false;
+        for (var i = 0; i < left.Analyses.Count; i++)
+            if (left.Analyses[i].Word != right.Analyses[i].Word ||
+                !SameValues(left.Analyses[i].Values, right.Analyses[i].Values, 1)) return false;
+        return true;
+    }
+
+    private static bool SameValues(object?[] left, object?[] right, int start)
+    {
+        for (var i = start; i < left.Length; i++)
+            if (left[i] is byte[] bytes ? right[i] is not byte[] other || !bytes.AsSpan().SequenceEqual(other)
+                : !Equals(left[i], right[i])) return false;
+        return true;
     }
 
     // Every value a row needs, computed outside the transaction; word rows leave their id to be assigned inside it.
@@ -527,7 +581,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
         "AssessedWordId", "AssessmentId", "OrdinalIndex", "Word", "Outcome", "ElapsedMs", "ElapsedNs", "RawSignature",
         "MorphologyJson", "CorrectnessJson", "ProjectStanding", "OccurrenceCount", "ReadingGradesJson",
         "MissedApprovedCount", "MissedApprovedJson", "IsIncomplete", "Attempts", "Passes", "AnalysisComparisonJson",
-        "WorkSteps",
+        "ParserWork", "LowercaseOf",
     ];
 
     private static readonly string[] AnalysisColumns =
@@ -535,8 +589,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
 
     private static readonly string[] ObjectTimingColumns =
     [
-        "AssessmentId", "OrdinalIndex", "Kind", "Key", "IdentityQuality", "Direction", "Object", "Word", "Attempts",
-        "Passes", "ElapsedNs",
+        "AssessmentId", "Detail", "Evidence",
     ];
 
     private static PreparedAssessment Prepare(NewAssessmentRecord assessment)
@@ -551,16 +604,16 @@ public sealed class AssessmentRepository : IAssessmentRepository
             [
                 null, assessment.AssessmentId, wordIndex, word.Word, word.Outcome, word.ElapsedMs, word.ElapsedNs,
                 word.RawSignature,
-                word.Morphology is null ? null : JsonSerializer.Serialize(word.Morphology, ParseMorphEvidence.JsonOptions),
-                word.Correctness is null ? null : JsonSerializer.Serialize(word.Correctness, ParseMorphEvidence.JsonOptions),
+                word.Morphology is null ? null : Compress(JsonSerializer.Serialize(word.Morphology, ParseMorphEvidence.StoredJsonOptions)),
+                word.Correctness is null ? null : Compress(JsonSerializer.Serialize(word.Correctness, ParseMorphEvidence.JsonOptions)),
                 word.ProjectStanding, word.OccurrenceCount,
-                word.ReadingGrades is null ? null : JsonSerializer.Serialize(word.ReadingGrades),
+                word.ReadingGrades is null ? null : Compress(JsonSerializer.Serialize(word.ReadingGrades)),
                 word.MissedApprovedCount,
-                word.MissedApproved is null ? null : JsonSerializer.Serialize(word.MissedApproved, ParseMorphEvidence.JsonOptions),
+                word.MissedApproved is null ? null : Compress(JsonSerializer.Serialize(word.MissedApproved, ParseMorphEvidence.JsonOptions)),
                 word.IsIncomplete ? 1 : 0, word.Attempts, word.Passes,
                 word.AnalysisComparison is null ? null
-                    : JsonSerializer.Serialize(word.AnalysisComparison, ParseMorphEvidence.JsonOptions),
-                word.WorkSteps,
+                    : Compress(JsonSerializer.Serialize(word.AnalysisComparison, ParseMorphEvidence.JsonOptions)),
+                word.ParserWork, word.LowercaseOf,
             ]);
             for (var analysisIndex = 0; analysisIndex < word.Analyses.Count; analysisIndex++)
             {
@@ -573,11 +626,10 @@ public sealed class AssessmentRepository : IAssessmentRepository
             }
         }
         var wordsMaterial = assessment.Material as AssessmentRecordMaterial.Words;
-        var timings = (wordsMaterial?.ObjectTimings ?? []).Select((row, index) => new object?[]
-        {
-            assessment.AssessmentId, index, row.Kind, row.Key, row.IdentityQuality, row.Direction, row.Object,
-            row.Word, row.Attempts, row.Passes, row.ElapsedNs,
-        }).ToArray();
+        object?[][] timings = wordsMaterial is null ||
+            (wordsMaterial.ObjectTimings.Count == 0 && wordsMaterial.TimingEvidence is null)
+            ? [] : [[assessment.AssessmentId, CompressJson(wordsMaterial.ObjectTimings),
+                wordsMaterial.TimingEvidence is null ? null : CompressJson(wordsMaterial.TimingEvidence)]];
         var selection = (assessment.Subject as AssessmentSubject.Words)?.Selection;
         return new PreparedAssessment(assessment,
             wordsMaterial?.Invocation is null ? null : JsonSerializer.Serialize(wordsMaterial.Invocation, InvocationJsonOptions),
@@ -622,12 +674,24 @@ public sealed class AssessmentRepository : IAssessmentRepository
     public AssessmentRecord Get(string assessmentId)
     {
         using var connection = _database.OpenConnection();
-        var header = GetHeader(connection, assessmentId) ??
+        using var transaction = connection.BeginTransaction(deferred: true);
+        return Get(connection, transaction, assessmentId);
+    }
+
+    internal AssessmentRecord GetSelected(string assessmentId)
+    {
+        try { return Get(assessmentId); }
+        catch (KeyNotFoundException) { throw new AssessmentExpiredException(assessmentId); }
+    }
+
+    internal AssessmentRecord Get(SqliteConnection connection, SqliteTransaction transaction, string assessmentId)
+    {
+        var header = ReadHeader(connection, transaction, assessmentId) ??
             throw new KeyNotFoundException($"Assessment '{assessmentId}' was not found.");
         return header.Subject is AssessmentSubject.PhonologyExamples
-            ? header with { Details = PhonologyAssessmentRepository.ReadDetails(connection, header.AssessmentId) }
+            ? header with { Details = PhonologyAssessmentRepository.ReadDetails(connection, header.AssessmentId, transaction) }
             : header with { Details = LoadWordDetails(connection, header,
-                ReadWords(connection, assessmentId), ReadObjectTimings(connection, assessmentId)) };
+                ReadWords(connection, assessmentId, null, transaction), ReadObjectTimings(connection, assessmentId, transaction), transaction) };
     }
 
     public AssessmentRecord? GetHeader(string assessmentId)
@@ -685,6 +749,39 @@ public sealed class AssessmentRepository : IAssessmentRepository
         return records;
     }
 
+    /// <summary>Reads Assessment headers of one kind from a particular retained invocation.</summary>
+    public IReadOnlyList<AssessmentRecord> ListByInvocationAndKind(string invocationId, string kind)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(invocationId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(kind);
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = HeaderSelectSql + " WHERE InvocationId = $invocation AND Kind = $kind ORDER BY SavedUtc DESC, AssessmentId DESC;";
+        command.Parameters.AddWithValue("$invocation", invocationId);
+        command.Parameters.AddWithValue("$kind", kind);
+        RepositoryReadCounters.QueryExecuted();
+        using var reader = command.ExecuteReader();
+        var records = new List<AssessmentRecord>();
+        while (reader.Read()) records.Add(ReadHeader(reader));
+        return records;
+    }
+
+    /// <summary>Reads a bounded set of recent standalone Assessment headers for evidence reuse.</summary>
+    public IReadOnlyList<AssessmentRecord> ListRecentBaselineHeaders(string kind, int count)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = HeaderSelectSql + " WHERE Kind = $kind AND ProposalId IS NULL " +
+            "ORDER BY SavedUtc DESC, AssessmentId DESC LIMIT $count;";
+        command.Parameters.AddWithValue("$kind", kind);
+        command.Parameters.AddWithValue("$count", count);
+        using var reader = command.ExecuteReader();
+        var records = new List<AssessmentRecord>();
+        while (reader.Read()) records.Add(ReadHeader(reader));
+        return records;
+    }
+
     /// <inheritdoc />
     public IReadOnlyList<AssessmentRecord> ListBaselineAssessments(string kind)
     {
@@ -692,10 +789,17 @@ public sealed class AssessmentRepository : IAssessmentRepository
             throw new ArgumentException("This read requires a Words Assessment kind.");
         if (string.IsNullOrWhiteSpace(kind)) throw new ArgumentException("A kind is required.", nameof(kind));
         using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction(deferred: true);
+        return ListBaselineAssessments(connection, transaction, kind);
+    }
 
+    internal IReadOnlyList<AssessmentRecord> ListBaselineAssessments(SqliteConnection connection,
+        SqliteTransaction transaction, string kind)
+    {
         var headers = new List<AssessmentRecord>();
         using (var command = connection.CreateCommand())
         {
+            command.Transaction = transaction;
             command.CommandText =
                 HeaderSelectSql + " WHERE Kind = $kind AND ProposalId IS NULL ORDER BY SavedUtc, AssessmentId;";
             command.Parameters.AddWithValue("$kind", kind);
@@ -706,7 +810,8 @@ public sealed class AssessmentRepository : IAssessmentRepository
 
         return headers.Select(header => header with
         {
-            Details = LoadWordDetails(connection, header, ReadWords(connection, header.AssessmentId), ReadObjectTimings(connection, header.AssessmentId))
+            Details = LoadWordDetails(connection, header, ReadWords(connection, header.AssessmentId, null, transaction),
+                ReadObjectTimings(connection, header.AssessmentId, transaction), transaction)
         }).ToList();
     }
 
@@ -721,9 +826,17 @@ public sealed class AssessmentRepository : IAssessmentRepository
         ArgumentException.ThrowIfNullOrWhiteSpace(selectionSha256);
         ArgumentNullException.ThrowIfNull(selectionWords);
         using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction(deferred: true);
+        return FindLatestBaselineAssessment(connection, transaction, kind, baselineToken, selectionSha256, selectionWords);
+    }
+
+    internal AssessmentRecord? FindLatestBaselineAssessment(SqliteConnection connection, SqliteTransaction transaction,
+        string kind, string baselineToken, string selectionSha256, IReadOnlyList<string> selectionWords)
+    {
         AssessmentRecord? header;
         using (var command = connection.CreateCommand())
         {
+            command.Transaction = transaction;
             command.CommandText = HeaderSelectSql + """
                  WHERE Kind = $kind AND ProposalId IS NULL AND BaselineToken = $baseline
                    AND SelectionSha256 = $selectionSha AND SelectionWordsJson = $selectionWords
@@ -741,7 +854,8 @@ public sealed class AssessmentRepository : IAssessmentRepository
         if (header is null) return null;
         return header with
         {
-            Details = LoadWordDetails(connection, header, ReadWords(connection, header.AssessmentId), ReadObjectTimings(connection, header.AssessmentId))
+            Details = LoadWordDetails(connection, header, ReadWords(connection, header.AssessmentId, null, transaction),
+                ReadObjectTimings(connection, header.AssessmentId, transaction), transaction)
         };
     }
 
@@ -815,6 +929,22 @@ public sealed class AssessmentRepository : IAssessmentRepository
         return rows;
     }
 
+    internal string? FindSameInvocationId(SqliteConnection connection, SqliteTransaction transaction,
+        string kind, string baselineToken, string invocationId)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            SELECT AssessmentId FROM Assessments WHERE Kind = $kind AND ProposalId IS NULL
+                AND BaselineToken = $baseline AND InvocationId = $invocation
+            ORDER BY SavedUtc DESC, AssessmentId DESC LIMIT 1;
+            """;
+        command.Parameters.AddWithValue("$kind", kind);
+        command.Parameters.AddWithValue("$baseline", baselineToken);
+        command.Parameters.AddWithValue("$invocation", invocationId);
+        return command.ExecuteScalar() as string;
+    }
+
     internal IReadOnlyList<AssessmentRecord> ReadSelectedWords(
         SqliteConnection connection, SqliteTransaction transaction,
         IReadOnlyList<AssessmentRecord> headers, IReadOnlyCollection<string> wordForms)
@@ -840,9 +970,20 @@ public sealed class AssessmentRepository : IAssessmentRepository
         if (wordForms.Count == 0 || assessmentIds is { Count: 0 }) return [];
 
         using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction(deferred: true);
         var headers = new List<AssessmentRecord>();
+        if (assessmentIds is not null)
+        {
+            using var check = connection.CreateCommand();
+            check.Transaction = transaction;
+            check.CommandText = "SELECT value FROM json_each($ids) WHERE NOT EXISTS " +
+                "(SELECT 1 FROM Assessments WHERE AssessmentId = value) LIMIT 1;";
+            check.Parameters.AddWithValue("$ids", JsonSerializer.Serialize(assessmentIds));
+            if (check.ExecuteScalar() is string missing) throw new AssessmentExpiredException(missing);
+        }
         using (var command = connection.CreateCommand())
         {
+            command.Transaction = transaction;
             command.CommandText = assessmentIds is null
                 ? HeaderSelectSql + " WHERE Kind = $kind AND ProposalId IS NULL AND BaselineToken = $baseline " +
                   "ORDER BY SavedUtc DESC, AssessmentId DESC LIMIT 1;"
@@ -860,7 +1001,8 @@ public sealed class AssessmentRepository : IAssessmentRepository
         var selectedForms = wordForms.ToHashSet(StringComparer.Ordinal);
         return headers.Select(header => header with
         {
-            Details = LoadWordDetails(connection, header, ReadWords(connection, header.AssessmentId, selectedForms), []),
+            Details = LoadWordDetails(connection, header, ReadWords(connection, header.AssessmentId, selectedForms, transaction),
+                new StoredTimings([], null), transaction),
         }).ToArray();
     }
 
@@ -892,22 +1034,25 @@ public sealed class AssessmentRepository : IAssessmentRepository
     public AssessmentRecord? GetCurrent()
     {
         using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction(deferred: true);
         string? currentId;
         using (var command = connection.CreateCommand())
         {
+            command.Transaction = transaction;
             command.CommandText = "SELECT CurrentAssessmentId FROM MotifMetadata WHERE Id = 1;";
             RepositoryReadCounters.QueryExecuted();
             currentId = command.ExecuteScalar() as string;
         }
         if (currentId is null) return null;
 
-        var header = ReadHeader(connection, null, currentId) ?? throw new InvalidDataException(
+        var header = ReadHeader(connection, transaction, currentId) ?? throw new InvalidDataException(
             $"MotifMetadata points at current Assessment '{currentId}', which is not recorded " +
             "(store inconsistency).");
         header.RequireWords();
         return header with
         {
-            Details = LoadWordDetails(connection, header, ReadWords(connection, currentId), ReadObjectTimings(connection, currentId))
+            Details = LoadWordDetails(connection, header, ReadWords(connection, currentId, null, transaction),
+                ReadObjectTimings(connection, currentId, transaction), transaction)
         };
     }
 
@@ -928,19 +1073,27 @@ public sealed class AssessmentRepository : IAssessmentRepository
             throw new ArgumentException("An invocation id is required.", nameof(invocation));
         using var find = connection.CreateCommand();
         find.Transaction = transaction;
-        find.CommandText = "SELECT EvidenceJson FROM AssessmentInvocations WHERE InvocationId = $id;";
+        find.CommandText = "SELECT EvidenceJson, InputProfileJson FROM AssessmentInvocations WHERE InvocationId = $id;";
         find.Parameters.AddWithValue("$id", invocation.InvocationId);
-        if (find.ExecuteScalar() is string existing)
+        using (var existing = find.ExecuteReader())
         {
-            if (ReadInvocation(existing) != invocation)
-                throw new InvalidOperationException($"Invocation '{invocation.InvocationId}' already records different evidence.");
-            return;
+            if (existing.Read())
+            {
+                if (ReadInvocation(existing.GetString(0), existing.IsDBNull(1) ? null : existing.GetString(1)) != invocation)
+                    throw new InvalidOperationException($"Invocation '{invocation.InvocationId}' already records different evidence.");
+                return;
+            }
         }
         using var insert = connection.CreateCommand();
         insert.Transaction = transaction;
-        insert.CommandText = "INSERT INTO AssessmentInvocations (InvocationId, EvidenceJson) VALUES ($id, $evidence);";
+        insert.CommandText = """
+            INSERT INTO AssessmentInvocations (InvocationId, EvidenceJson, InputProfileJson)
+            VALUES ($id, $evidence, $profile);
+            """;
         insert.Parameters.AddWithValue("$id", invocation.InvocationId);
         insert.Parameters.AddWithValue("$evidence", invocationJson);
+        insert.Parameters.AddWithValue("$profile", invocation.InputProfile is { } profile
+            ? JsonSerializer.Serialize(profile, InvocationJsonOptions) : (object)DBNull.Value);
         insert.ExecuteNonQuery();
     }
 
@@ -1026,7 +1179,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
     private const int RowsPerStatement = 100;
 
     private static void InsertRows(SqliteConnection connection, SqliteTransaction transaction, string table,
-        IReadOnlyList<string> columns, IReadOnlyList<object?[]> rows)
+        IReadOnlyList<string> columns, IReadOnlyList<object?[]> rows, string suffix = "")
     {
         for (var start = 0; start < rows.Count; start += RowsPerStatement)
         {
@@ -1047,33 +1200,28 @@ public sealed class AssessmentRepository : IAssessmentRepository
                 }
                 sql.Append(')');
             }
-            command.CommandText = sql.Append(';').ToString();
+            command.CommandText = sql.Append(suffix).Append(';').ToString();
             command.ExecuteNonQuery();
         }
     }
 
-    private static IReadOnlyList<AssessmentObjectTiming> ReadObjectTimings(SqliteConnection connection,
+    private sealed record StoredTimings(IReadOnlyList<AssessmentObjectTiming> Rows, AssessmentTimingEvidence? Evidence);
+
+    private static StoredTimings ReadObjectTimings(SqliteConnection connection,
         string assessmentId, SqliteTransaction? transaction = null)
     {
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
-        command.CommandText = """
-            SELECT Kind, Key, IdentityQuality, Direction, Object, Word, Attempts, Passes, ElapsedNs
-            FROM AssessmentObjectTimings WHERE AssessmentId = $id ORDER BY OrdinalIndex;
-            """;
+        command.CommandText = "SELECT Detail, Evidence FROM AssessmentObjectTimings WHERE AssessmentId = $id;";
         command.Parameters.AddWithValue("$id", assessmentId);
         RepositoryReadCounters.QueryExecuted();
         using var reader = command.ExecuteReader();
-        var rows = new List<AssessmentObjectTiming>();
-        while (reader.Read())
-        {
-            RepositoryReadCounters.RecordDeserialized();
-            rows.Add(new AssessmentObjectTiming(reader.GetString(0), reader.GetString(1), reader.GetString(2),
-                reader.GetString(3), reader.GetString(4), reader.GetString(5),
-                reader.IsDBNull(6) ? null : reader.GetInt32(6), reader.IsDBNull(7) ? null : reader.GetInt32(7),
-                reader.IsDBNull(8) ? null : reader.GetInt64(8)));
-        }
-        return rows;
+        if (!reader.Read()) return new StoredTimings([], null);
+        var rows = DecompressJson<AssessmentObjectTiming[]>(reader, 0)
+            ?? throw new InvalidDataException("Stored object timing detail is missing.");
+        var evidence = reader.IsDBNull(1) ? null : DecompressJson<AssessmentTimingEvidence>(reader, 1)
+            ?? throw new InvalidDataException("Stored object timing evidence is missing.");
+        return new StoredTimings(rows, evidence);
     }
 
     private const string HeaderSelectSql = """
@@ -1082,7 +1230,8 @@ public sealed class AssessmentRepository : IAssessmentRepository
                SelectionProvenanceJson, OutcomeDigest, SemanticDigest, GrammarSourceSha256, ModelFingerprint,
                Pipeline, DiagnosticCount, SavedUtc, CachePath, CacheDigest,
                (SELECT EvidenceJson FROM AssessmentInvocations ai WHERE ai.InvocationId = Assessments.InvocationId),
-               ReplacesAssessmentId, SubjectKind, SubjectJson
+               ReplacesAssessmentId, SubjectKind, SubjectJson,
+               (SELECT InputProfileJson FROM AssessmentInvocations ai WHERE ai.InvocationId = Assessments.InvocationId)
         FROM Assessments
         """;
 
@@ -1135,7 +1284,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
             Details: subject is AssessmentSubject.Words
                 ? new AssessmentRecordDetails.Unloaded(reader.IsDBNull(21) ? null : reader.GetString(21),
                     reader.IsDBNull(22) ? null : reader.GetString(22),
-                    reader.IsDBNull(23) ? null : ReadInvocation(reader.GetString(23)))
+                    reader.IsDBNull(23) ? null : ReadInvocation(reader.GetString(23), reader.IsDBNull(27) ? null : reader.GetString(27)))
                 : new AssessmentRecordDetails.Unloaded())
         {
             ReplacesAssessmentId = reader.IsDBNull(24) ? null : reader.GetString(24)
@@ -1143,19 +1292,25 @@ public sealed class AssessmentRepository : IAssessmentRepository
     }
 
     private static AssessmentRecordDetails.Words LoadWordDetails(SqliteConnection connection,
-        AssessmentRecord header, IReadOnlyList<AssessedWord> rows, IReadOnlyList<AssessmentObjectTiming> timings,
+        AssessmentRecord header, IReadOnlyList<AssessedWord> rows, StoredTimings timings,
         SqliteTransaction? transaction = null)
     {
         header.RequireWords();
-        return new AssessmentRecordDetails.Words(rows, header.CachePath, header.CacheDigest, timings, header.Invocation);
+        return new AssessmentRecordDetails.Words(rows, header.CachePath, header.CacheDigest, timings.Rows, header.Invocation)
+            { TimingEvidence = timings.Evidence };
     }
 
-    private static BatchInvocationEvidence ReadInvocation(string json)
+    private static BatchInvocationEvidence ReadInvocation(string json, string? profileJson)
     {
         try
         {
-            return JsonSerializer.Deserialize<BatchInvocationEvidence>(json, InvocationJsonOptions)
+            var evidence = JsonSerializer.Deserialize<BatchInvocationEvidence>(json, InvocationJsonOptions)
                 ?? throw new JsonException("Missing invocation evidence.");
+            return profileJson is null ? evidence : evidence with
+            {
+                InputProfile = JsonSerializer.Deserialize<BatchInputProfile>(profileJson, InvocationJsonOptions)
+                    ?? throw new JsonException("Missing invocation input profile."),
+            };
         }
         catch (JsonException exception)
         {
@@ -1163,6 +1318,38 @@ public sealed class AssessmentRepository : IAssessmentRepository
                 "The stored invocation evidence is obsolete or invalid; delete the project .motif.db file and recreate the Assessments.",
                 exception);
         }
+    }
+
+    private static byte[] Compress(string value)
+    {
+        using var output = new MemoryStream();
+        using (var compressed = new BrotliStream(output, CompressionLevel.Optimal, leaveOpen: true))
+            compressed.Write(Encoding.UTF8.GetBytes(value));
+        return output.ToArray();
+    }
+
+    // Streams through the compressor so the serialized rows never exist as one string or one byte array.
+    private static byte[] CompressJson<T>(T value)
+    {
+        using var output = new MemoryStream();
+        using (var compressed = new BrotliStream(output, CompressionLevel.Optimal, leaveOpen: true))
+            JsonSerializer.Serialize(compressed, value);
+        return output.ToArray();
+    }
+
+    private static T? DecompressJson<T>(SqliteDataReader reader, int ordinal)
+    {
+        using var input = new MemoryStream((byte[])reader.GetValue(ordinal), writable: false);
+        using var compressed = new BrotliStream(input, CompressionMode.Decompress);
+        return JsonSerializer.Deserialize<T>(compressed);
+    }
+
+    private static string Decompress(SqliteDataReader reader, int ordinal)
+    {
+        using var input = new MemoryStream((byte[])reader.GetValue(ordinal), writable: false);
+        using var compressed = new BrotliStream(input, CompressionMode.Decompress);
+        using var text = new StreamReader(compressed, Encoding.UTF8);
+        return text.ReadToEnd();
     }
 
     // One streaming pass over a word/analysis join, grouped by word — no N+1 querying.
@@ -1174,12 +1361,19 @@ public sealed class AssessmentRepository : IAssessmentRepository
         command.CommandText = """
             SELECT aw.AssessedWordId, aw.Word, aw.Outcome, aw.ElapsedMs, aw.ElapsedNs,
                    pa.CategoryGuid, pa.MorphemeGuidsJson, pa.RootIndex, pa.IdentityDigest, aw.RawSignature,
-                   aw.MorphologyJson, aw.CorrectnessJson, aw.OrdinalIndex, aw.ProjectStanding, aw.OccurrenceCount,
-                   aw.ReadingGradesJson, aw.MissedApprovedCount, aw.IsIncomplete, aw.MissedApprovedJson, aw.Attempts, aw.Passes, aw.AnalysisComparisonJson,
-                   aw.WorkSteps
+                   (SELECT Payload FROM AssessmentWordPayloads WHERE Hash = aw.MorphologyJson), (SELECT Payload FROM AssessmentWordPayloads WHERE Hash = aw.CorrectnessJson), aw.OrdinalIndex, aw.ProjectStanding, aw.OccurrenceCount,
+                   (SELECT Payload FROM AssessmentWordPayloads WHERE Hash = aw.ReadingGradesJson), aw.MissedApprovedCount, aw.IsIncomplete, (SELECT Payload FROM AssessmentWordPayloads WHERE Hash = aw.MissedApprovedJson), aw.Attempts, aw.Passes, (SELECT Payload FROM AssessmentWordPayloads WHERE Hash = aw.AnalysisComparisonJson),
+                   aw.ParserWork,
+                   (aw.MorphologyJson IS NOT NULL AND NOT EXISTS (SELECT 1 FROM AssessmentWordPayloads WHERE Hash = aw.MorphologyJson)) OR
+                   (aw.CorrectnessJson IS NOT NULL AND NOT EXISTS (SELECT 1 FROM AssessmentWordPayloads WHERE Hash = aw.CorrectnessJson)) OR
+                   (aw.ReadingGradesJson IS NOT NULL AND NOT EXISTS (SELECT 1 FROM AssessmentWordPayloads WHERE Hash = aw.ReadingGradesJson)) OR
+                   (aw.AnalysisComparisonJson IS NOT NULL AND NOT EXISTS (SELECT 1 FROM AssessmentWordPayloads WHERE Hash = aw.AnalysisComparisonJson)) OR
+                   (aw.MissedApprovedJson IS NOT NULL AND NOT EXISTS (SELECT 1 FROM AssessmentWordPayloads WHERE Hash = aw.MissedApprovedJson)),
+                   aw.LowercaseOf
             FROM AssessedWords aw
             LEFT JOIN ParsedAnalyses pa ON pa.AssessedWordId = aw.AssessedWordId
-            WHERE aw.AssessmentId = $id
+            WHERE aw.AssessmentId = COALESCE((SELECT OwnerAssessmentId FROM AssessmentWordSetBindings
+                WHERE AssessmentId = $id), $id)
               AND ($forms IS NULL OR aw.Word IN (SELECT value FROM json_each($forms)))
             ORDER BY aw.OrdinalIndex, pa.OrdinalIndex;
             """;
@@ -1205,7 +1399,8 @@ public sealed class AssessmentRepository : IAssessmentRepository
         bool currentIncomplete = false;
         int? currentAttempts = null;
         int? currentPasses = null;
-        long? currentWorkSteps = null;
+        long? currentParserWork = null;
+        string? currentLowercaseOf = null;
         List<ParsedAnalysis> currentAnalyses = [];
 
         RepositoryReadCounters.QueryExecuted();
@@ -1215,6 +1410,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
             var wordId = reader.GetInt64(0);
             if (wordId != currentWordId)
             {
+                if (reader.GetBoolean(23)) throw new InvalidDataException("An Assessment word payload is missing.");
                 if (currentWordId is not null)
                 {
                     RepositoryReadCounters.RecordDeserialized();
@@ -1223,7 +1419,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
                         ProjectStanding = currentStanding, OccurrenceCount = currentOccurrenceCount,
                         ReadingGrades = currentReadingGrades, AnalysisComparison = currentComparison, MissedApprovedCount = currentMissedApprovedCount,
                         MissedApproved = currentMissedApproved, IsIncomplete = currentIncomplete,
-                        Attempts = currentAttempts, Passes = currentPasses, WorkSteps = currentWorkSteps });
+                        Attempts = currentAttempts, Passes = currentPasses, ParserWork = currentParserWork, LowercaseOf = currentLowercaseOf });
                 }
                 if (wordForms is null && reader.GetInt32(12) != words.Count)
                     throw new InvalidDataException("Assessment case ordinals must be contiguous and begin at zero.");
@@ -1234,21 +1430,22 @@ public sealed class AssessmentRepository : IAssessmentRepository
                 currentElapsedNs = reader.IsDBNull(4) ? null : reader.GetInt64(4);
                 currentSignature = reader.IsDBNull(9) ? null : reader.GetString(9);
                 currentMorphology = reader.IsDBNull(10) ? null
-                    : JsonSerializer.Deserialize<ParseWordEvidence>(reader.GetString(10), ParseMorphEvidence.JsonOptions);
+                    : JsonSerializer.Deserialize<ParseWordEvidence>(Decompress(reader, 10), ParseMorphEvidence.StoredJsonOptions);
                 currentCorrectness = reader.IsDBNull(11) ? null
-                    : JsonSerializer.Deserialize<WordCorrectness>(reader.GetString(11), ParseMorphEvidence.JsonOptions);
+                    : JsonSerializer.Deserialize<WordCorrectness>(Decompress(reader, 11), ParseMorphEvidence.JsonOptions);
                 currentStanding = reader.IsDBNull(13) ? null : reader.GetString(13);
                 currentOccurrenceCount = reader.IsDBNull(14) ? null : reader.GetInt32(14);
-                currentReadingGrades = reader.IsDBNull(15) ? null : JsonSerializer.Deserialize<string[]>(reader.GetString(15));
+                currentReadingGrades = reader.IsDBNull(15) ? null : JsonSerializer.Deserialize<string[]>(Decompress(reader, 15));
                 currentMissedApprovedCount = reader.IsDBNull(16) ? null : reader.GetInt32(16);
                 currentIncomplete = reader.GetInt32(17) != 0;
                 currentMissedApproved = reader.IsDBNull(18) ? null
-                    : JsonSerializer.Deserialize<ParserReading[]>(reader.GetString(18), ParseMorphEvidence.JsonOptions);
+                    : JsonSerializer.Deserialize<ParserReading[]>(Decompress(reader, 18), ParseMorphEvidence.JsonOptions);
                 currentAttempts = reader.IsDBNull(19) ? null : reader.GetInt32(19);
                 currentPasses = reader.IsDBNull(20) ? null : reader.GetInt32(20);
                 currentComparison = reader.IsDBNull(21) ? null
-                    : JsonSerializer.Deserialize<WordAnalysisComparison>(reader.GetString(21), ParseMorphEvidence.JsonOptions);
-                currentWorkSteps = reader.IsDBNull(22) ? null : reader.GetInt64(22);
+                    : JsonSerializer.Deserialize<WordAnalysisComparison>(Decompress(reader, 21), ParseMorphEvidence.JsonOptions);
+                currentParserWork = reader.IsDBNull(22) ? null : reader.GetInt64(22);
+                currentLowercaseOf = reader.IsDBNull(24) ? null : reader.GetString(24);
                 currentAnalyses = [];
             }
 
@@ -1271,7 +1468,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
                 ProjectStanding = currentStanding, OccurrenceCount = currentOccurrenceCount,
                 ReadingGrades = currentReadingGrades, AnalysisComparison = currentComparison, MissedApprovedCount = currentMissedApprovedCount,
                 MissedApproved = currentMissedApproved, IsIncomplete = currentIncomplete,
-                        Attempts = currentAttempts, Passes = currentPasses, WorkSteps = currentWorkSteps });
+                        Attempts = currentAttempts, Passes = currentPasses, ParserWork = currentParserWork, LowercaseOf = currentLowercaseOf });
         }
         return words;
     }
