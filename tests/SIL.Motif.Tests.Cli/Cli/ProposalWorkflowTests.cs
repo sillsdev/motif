@@ -881,7 +881,7 @@ public sealed class ProposalWorkflowTests : IDisposable
         var queued = JobCommands.EnqueueTrial(new EnqueueTrialRequest(_fwDataPath, ProductVersion, id, Words: ["word"]));
         Assert.True(queued.Succeeded, queued.Refusal?.Message);
 
-        var run = RunCli("1", "reject", "--project", _fwDataPath, id);
+        var run = RunCli("1", "reject", "--project", _fwDataPath, "--proposal", id);
 
         Assert.True(run.ExitCode == 0, run.Error + run.Output);
         Assert.Contains(queued.Value!.JobId, run.Output, StringComparison.Ordinal);

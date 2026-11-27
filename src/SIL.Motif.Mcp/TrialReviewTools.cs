@@ -13,7 +13,6 @@ namespace SIL.Motif.Mcp;
 internal static class TrialReviewTools
 {
     internal static readonly JsonObject OutputSchema = CreateOutputSchema();
-    internal static readonly JsonObject DifferenceSchema = CreateDifferenceSchema();
 
     private static readonly (string Member, string Name)[] ReadFields =
     [
@@ -140,34 +139,8 @@ internal static class TrialReviewTools
             : ToolOutcome.Refused(outcome.Refusal!);
     }
 
-    internal static ToolOutcome Difference(ServerContext context, ToolArgs args)
-    {
-        if (!args.Has("report"))
-        {
-            if (new[] { "proposal", "section", "set", "outcome", "flag", "filter", "word", "case", "side", "trace", "cursor" }.Any(args.Has))
-                return ToolOutcome.Refused("tool.invalid-argument", FailureReason.InvalidArgument, "Legacy Difference and report selectors are exclusive.");
-            return TrialResults.Read(context, args);
-        }
-        if (args.Has("difference") || args.Has("category") || args.Has("offset"))
-            return ToolOutcome.Refused("tool.invalid-argument", FailureReason.InvalidArgument, "Report and legacy Difference selectors are exclusive.");
-        return Read(context, args.Required("proposal"), args);
-    }
-
-    private static JsonObject CreateDifferenceSchema()
-    {
-        var schema = OutputSchema.DeepClone().AsObject();
-        var success = schema["oneOf"]![0]!.AsObject();
-        success["properties"]!["result"] = new JsonObject { ["oneOf"] = new JsonArray(
-            new JsonObject { ["$ref"] = "#/$defs/TrialReviewResult" },
-            new JsonObject { ["type"] = "object", ["required"] = new JsonArray("difference", "category", "total", "offset", "returned", "nextOffset", "items"),
-                ["properties"] = new JsonObject { ["difference"] = new JsonObject { ["type"] = "string" },
-                    ["category"] = new JsonObject { ["type"] = "string" }, ["total"] = new JsonObject { ["type"] = "integer" },
-                    ["offset"] = new JsonObject { ["type"] = "integer" }, ["returned"] = new JsonObject { ["type"] = "integer" },
-                    ["nextOffset"] = new JsonObject { ["type"] = new JsonArray("integer", "null") },
-                    ["items"] = new JsonObject { ["type"] = "array", ["items"] = new JsonObject { ["type"] = "object" } } },
-                ["additionalProperties"] = false }) };
-        return schema;
-    }
+    internal static ToolOutcome Difference(ServerContext context, ToolArgs args) =>
+        Read(context, args.Required("proposal"), args);
 
     private static JsonObject CreateOutputSchema()
     {

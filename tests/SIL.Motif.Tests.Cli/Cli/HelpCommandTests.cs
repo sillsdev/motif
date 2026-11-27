@@ -135,12 +135,12 @@ public sealed class HelpCommandTests
     [Fact]
     public void AVerbGroupThatIsAlsoATopicKeepsItsPageAndGainsAVerbsSection()
     {
-        var result = Run(true, true, "help", "list");
+        var result = Run(true, true, "help", "parsimony");
 
         Assert.Equal(0, result.ExitCode);
-        Assert.Equal(HelpCatalog.Load().Find(HelpEntryKind.Command, "list")!.Title, result.Output.Split('\n')[0].TrimEnd('\r'));
+        Assert.Equal(HelpCatalog.Load().Find(HelpEntryKind.Command, "parsimony")!.Title, result.Output.Split('\n')[0].TrimEnd('\r'));
         Assert.Contains("Verbs:", result.Output, StringComparison.Ordinal);
-        Assert.Contains("list requests", result.Output, StringComparison.Ordinal);
+        Assert.Contains("parsimony dispose", result.Output, StringComparison.Ordinal);
     }
 
     [Fact]

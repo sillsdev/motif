@@ -738,7 +738,7 @@ public sealed class ProposalRepository : IProposalRepository
         if (!reader.Read())
         {
             throw new KeyNotFoundException(
-                $"Proposal '{proposalId.Value}' not found in store. Run 'list' to see " +
+                $"Proposal '{proposalId.Value}' not found in store. Run 'proposals --include-set-aside' to see " +
                 "committed proposals.");
         }
 
@@ -857,7 +857,7 @@ public sealed class ProposalRepository : IProposalRepository
         if (!reader.Read())
         {
             throw new KeyNotFoundException(
-                $"Proposal '{proposalId.Value}' not found in store. Run 'list' to see " +
+                $"Proposal '{proposalId.Value}' not found in store. Run 'proposals --include-set-aside' to see " +
                 "committed proposals.");
         }
 
@@ -1012,7 +1012,7 @@ public sealed class ProposalRepository : IProposalRepository
         read.Parameters.AddWithValue("$id", proposalId.Value);
         var observed = read.ExecuteScalar() as string ??
             throw new KeyNotFoundException(
-                $"Proposal '{proposalId.Value}' not found in store. Run 'list' to see committed proposals.");
+                $"Proposal '{proposalId.Value}' not found in store. Run 'proposals --include-set-aside' to see committed proposals.");
         return new StatusTransitionOutcome(false, observed);
     }
 
@@ -1220,7 +1220,7 @@ public sealed class ProposalRepository : IProposalRepository
         if (update.ExecuteNonQuery() != 1)
         {
             throw new KeyNotFoundException(
-                $"Proposal '{proposalId.Value}' not found in store. Run 'list' to see " +
+                $"Proposal '{proposalId.Value}' not found in store. Run 'proposals --include-set-aside' to see " +
                 "committed proposals.");
         }
         transaction.Commit();

@@ -15,10 +15,6 @@
       "class": "Draft"
     },
     {
-      "name": "motif_record_parsimony_disposition",
-      "class": "Draft"
-    },
-    {
       "name": "motif_parsimony_record_types",
       "class": "Read"
     },

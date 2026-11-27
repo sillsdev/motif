@@ -33,6 +33,6 @@ public static partial class ProposalCommands
         {
         }
         return CommandOutcome<IReadOnlyList<OperationEnvelope>>.Refused(new Refusal("draft.not-found", FailureReason.NotFound,
-            $"No Draft or Proposal is named '{draftOrProposal}'. Run 'motif list' to see Proposals.", Fact(("draftName", draftOrProposal))));
+            $"No Draft or Proposal is named '{draftOrProposal}'. Run 'motif proposals --include-set-aside' to see Proposals.", Fact(("draftName", draftOrProposal))));
     }
 }

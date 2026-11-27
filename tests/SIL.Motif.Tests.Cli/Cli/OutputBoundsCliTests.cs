@@ -47,41 +47,6 @@ public sealed class OutputBoundsCliTests : IDisposable
     }
 
     [Fact]
-    public void ListReturnsOnePageThatNamesTheTotalAndConcatenatesToTheFullList()
-    {
-        for (var i = 0; i < 30; i++)
-            Assert.Equal(0, Run("new", "--project", _project, "--draft", "draft" + i).ExitCode);
-
-        var first = JsonNode.Parse(Run("list", "--project", _project, "--json").Output)!;
-        Assert.Equal(25, first["proposals"]!.AsArray().Count);
-        Assert.Equal(30, first["total"]!.GetValue<int>());
-        Assert.Equal(25, first["nextOffset"]!.GetValue<int>());
-
-        var second = JsonNode.Parse(Run("list", "--project", _project, "--offset", "25", "--json").Output)!;
-        Assert.Equal(5, second["proposals"]!.AsArray().Count);
-        Assert.Null(second["nextOffset"]);
-
-        var all = first["proposals"]!.AsArray().Concat(second["proposals"]!.AsArray())
-            .Select(item => item!["proposalId"]!.GetValue<string>()).ToArray();
-        Assert.Equal(30, all.Distinct().Count());
-
-        var pastEnd = JsonNode.Parse(Run("list", "--project", _project, "--offset", "500", "--json").Output)!;
-        Assert.Empty(pastEnd["proposals"]!.AsArray());
-        Assert.Equal(30, pastEnd["total"]!.GetValue<int>());
-
-        var text = Run("list", "--project", _project, "--limit", "10");
-        Assert.Contains("Showing 1-10 of 30.", text.Output, StringComparison.Ordinal);
-        Assert.Contains("Next: motif list --project " + _project + " --offset 10 --limit 10", text.Output, StringComparison.Ordinal);
-        var allStatuses = Run("list", "--project", _project, "--all", "--limit", "10").Output;
-        Assert.Contains(" --all --offset 10 --limit 10", allStatuses, StringComparison.Ordinal);
-        var pastEndText = Run("list", "--project", _project, "--offset", "100").Output;
-        Assert.Contains("0 shown; 30 proposals; last offset 29", pastEndText, StringComparison.Ordinal);
-        Assert.DoesNotContain("No proposals in store", pastEndText, StringComparison.Ordinal);
-        var byPage = Run("list", "--project", _project, "--limit", "10", "--page", "3");
-        Assert.Contains("Showing 21-30 of 30.", byPage.Output, StringComparison.Ordinal);
-    }
-
-    [Fact]
     public void TheNextStepQuotesAPathWithSpacesAndKeepsOtherFlags()
     {
         var flags = new Dictionary<string, string>
@@ -102,7 +67,7 @@ public sealed class OutputBoundsCliTests : IDisposable
     {
         Assert.Equal(0, Run("new", "--project", _project, "--draft", "d").ExitCode);
 
-        foreach (var verb in new[] { new[] { "list" }, ["show", "d"] })
+        foreach (var verb in new[] { new[] { "show", "d" } })
         {
             var result = Run([.. verb, "--project", _project, flag, value, "--json"]);
 

@@ -84,7 +84,7 @@ public sealed class ToolSurfaceTests
     }
 
     private static readonly string[] BatchlessComposers =
-        ["retire-allomorph", "retire-redundant-zero-affix", "compose-record-parsimony-disposition"];
+        ["retire-allomorph", "retire-redundant-zero-affix"];
 
     private static string[] AgentEligibleComposerVerbs() => CommandCatalog.All
         .Where(command => SIL.Motif.Commands.ProposalCommands.ComposerVerbs.Contains(command.Name))
@@ -99,9 +99,9 @@ public sealed class ToolSurfaceTests
             .Order(StringComparer.Ordinal).ToArray();
 
     [Fact]
-    public void TheMcpBatchOffersEveryComposerVerbTheCatalogOffersToAgentsExceptThreeNamedOnes()
+    public void TheMcpBatchOffersEveryComposerVerbTheCatalogOffersToAgentsExceptTwoNamedOnes()
     {
-        // The retiring batch keeps its published set; motif_compose offers the three it leaves out.
+        // The retiring batch keeps its published set; motif_compose offers the two it leaves out.
         foreach (var verb in BatchlessComposers)
         {
             Assert.Contains(verb, SIL.Motif.Commands.ProposalCommands.ComposerVerbs);
@@ -125,7 +125,6 @@ public sealed class ToolSurfaceTests
     [Theory]
     [InlineData("retire-allomorph", "format")]
     [InlineData("retire-redundant-zero-affix", "retirement")]
-    [InlineData("compose-record-parsimony-disposition", "subject")]
     public void AStepOfAHandWrittenToolComposerHasASchemaClosedDownToItsLeaves(string verb, string nested)
     {
         var compose = AgentTools.All.Single(tool => tool.Name == "motif_compose").InputSchema;
@@ -140,9 +139,6 @@ public sealed class ToolSurfaceTests
     [Theory]
     [InlineData("motif_retire_allomorph", new[] { "draft", "intent_json", "project" })]
     [InlineData("motif_retire_redundant_zero_affix", new[] { "draft", "intent_json", "project" })]
-    [InlineData("motif_record_parsimony_disposition", new[] { "draft", "recordTypeId", "measureId", "subject",
-        "disposition", "evidenceDigest", "evidenceContract", "subjectCaption", "measureCaption", "reason", "question",
-        "reportId", "project" })]
     public void TheHandWrittenToolsKeepTheirArguments(string name, string[] arguments)
     {
         var tool = AgentTools.All.Single(candidate => candidate.Name == name);
@@ -189,6 +185,7 @@ public sealed class ToolSurfaceTests
             "compose-merge-boundary-markers",
             "compose-move-example",
             "compose-move-sense-to-entry",
+            "compose-record-parsimony-disposition",
             "compose-record-source-validated-decision",
             "compose-remove-alternate-form",
             "compose-remove-exception-feature",
@@ -237,8 +234,9 @@ public sealed class ToolSurfaceTests
                 "compose-merge-boundary-markers" or "compose-edit-text-notes" or
                 "compose-delete-environment" or "compose-edit-environment" or "compose-delete-exception-feature" or
                 "compose-delete-natural-class" or "compose-delete-text-segment-note" or "compose-delete-inflection-class" or
-                "compose-tag-stems-by-query" or "compose-remove-exception-feature").ToArray();
-        Assert.Equal(25, numeralEditors.Length);
+                "compose-tag-stems-by-query" or "compose-remove-exception-feature" or
+                "compose-record-parsimony-disposition").ToArray();
+        Assert.Equal(26, numeralEditors.Length);
         Assert.All(numeralEditors, command =>
         {
             Assert.Equal(CommandSurface.AdvancedAi, command.Surface);

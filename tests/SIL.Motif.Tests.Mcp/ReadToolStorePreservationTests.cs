@@ -167,7 +167,7 @@ public sealed class ReadToolStorePreservationTests(PristineProjectFixture pristi
         "motif_sources" => ["default", "source", "chapter"],
         "motif_current" => ["default", "source"],
         "motif_decision_evidence" => ["default", "subject"],
-        "motif_difference" => ["legacy", "report", "trace"],
+        "motif_difference" => ["report", "trace"],
         "motif_proposal_difference" => ["proposal", "difference"],
         "motif_report" => ["coverage", "correctness", "difference", "parsimony"],
         "motif_find_composer" => ["goal", "subject"],

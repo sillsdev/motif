@@ -43,10 +43,6 @@ public static class HostRefusalCodes
     public const string ToolFailed = "tool.failed";
     /// <summary>An MCP tool argument has the wrong type or value.</summary>
     public const string ToolInvalidArgument = "tool.invalid-argument";
-    /// <summary>An MCP tool was given a Difference category that does not exist.</summary>
-    public const string ToolInvalidCategory = "tool.invalid-category";
-    /// <summary>An MCP tool was given an offset or limit out of range.</summary>
-    public const string ToolInvalidPage = "tool.invalid-page";
     /// <summary>A required MCP tool argument is absent.</summary>
     public const string ToolMissingArgument = "tool.missing-argument";
     /// <summary>An MCP tool named a Difference that does not exist.</summary>
