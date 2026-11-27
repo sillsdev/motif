@@ -57,6 +57,17 @@ public sealed class GdrQueryBlockCheckTests(PristineProjectFixture pristine)
         new(GuideEvidenceStatus.Ready, null, "", null, null, 1, new Dictionary<string, double>());
 
     [Fact]
+    public void ABlockWhoseRunLineIsNotNfcIsFlaggedAndAnNfcBlockIsNot()
+    {
+        var composed = Corpus.Replace("readings > 0", "form ~ \\\"\u0B95\u0BCB\\\"", StringComparison.Ordinal);
+        var decomposed = composed.Normalize(System.Text.NormalizationForm.FormD);
+        Assert.NotEqual(composed, decomposed);
+        var result = GdrQueryBlockCheck.Check([Source("nfc", composed), Source("nfd", decomposed)], "p.fwdata", false, TimeSpan.FromSeconds(5), null);
+        var finding = Assert.Single(result.Findings, f => f.Code == GdrSyncCodes.QueryNotNormalized);
+        Assert.Equal(["nfd"], finding.Subjects);
+    }
+
+    [Fact]
     public void AWarmCorpusBlockIsOkWithItsRowCountAndAnIncompleteParseSaysAtLeast()
     {
         var folder = Directory.CreateTempSubdirectory("gdr-check-warm").FullName;
