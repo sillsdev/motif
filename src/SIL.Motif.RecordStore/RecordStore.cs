@@ -140,7 +140,9 @@ public sealed partial class RecordStore : IAsyncDisposable
     private static void CreateAtomically(string path, TimeProvider? timeProvider)
     {
         var building = path + ".creating";
-        foreach (var leftover in new[] { building, building + "-wal", building + "-shm", building + "-journal", building + ".write.lock" })
+        // Sidecars beside a missing store are a crash's leftovers and must not meet the new database.
+        foreach (var leftover in new[] { building, building + "-wal", building + "-shm", building + "-journal", building + ".write.lock",
+            path + "-wal", path + "-shm", path + "-journal" })
             File.Delete(leftover);
         try
         {

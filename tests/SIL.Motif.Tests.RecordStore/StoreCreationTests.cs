@@ -33,6 +33,19 @@ public sealed partial class DeletionSafetyTests
     }
 
     [Fact]
+    public async Task AStaleSidecarBesideAMissingStoreIsDiscardedBeforeTheNewStoreIsBuilt()
+    {
+        Directory.CreateDirectory(root);
+        var path = Path.Combine(root, "stale.sqlite");
+        foreach (var suffix in new[] { "-wal", "-shm", "-journal" }) File.WriteAllBytes(path + suffix, [9, 9, 9, 9]);
+        await using (new Store(path)) { }
+        Assert.Equal(1L, Scalar("SELECT count(*) FROM RecordStoreState", path));
+        Assert.DoesNotContain((byte)9, File.Exists(path + "-wal") ? File.ReadAllBytes(path + "-wal") : []);
+        Assert.False(File.Exists(path + "-journal"));
+        await using var reopened = new Store(path);
+    }
+
+    [Fact]
     public async Task AFailedIndexRebuildClearsTheTrackerAndRefusesFurtherUseOfTheHandle()
     {
         var seed = await Import();
