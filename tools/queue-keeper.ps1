@@ -50,7 +50,8 @@ try {
     $q = Invoke-Graphql @'
 query($o:String!,$n:String!){repository(owner:$o,name:$n){
   mergeQueue(branch:"main"){entries(first:100){nodes{position state pullRequest{number}}}}
-  pullRequests(states:OPEN,first:100){nodes{id number headRefName
+  pullRequests(states:OPEN,first:100){nodes{id number headRefName baseRefName isDraft state mergeable
+    commits(last:1){nodes{commit{committedDate}}}
     timelineItems(last:40,itemTypes:[REMOVED_FROM_MERGE_QUEUE_EVENT,ADDED_TO_MERGE_QUEUE_EVENT]){nodes{__typename
       ... on RemovedFromMergeQueueEvent{createdAt reason} ... on AddedToMergeQueueEvent{createdAt}}}}}}}
 '@ @{ o = $owner; n = $name }
@@ -89,10 +90,29 @@ query($o:String!,$n:String!){repository(owner:$o,name:$n){
     foreach ($pr in $prs) {
         $number = [int]$pr.number
         if ($inQueue.ContainsKey($number)) { continue }
-        $reason = Get-LatestEvictionReason -Events @($pr.timelineItems.nodes)
-        if (-not $reason) { continue }
-        if ($reason -ne 'failed_checks') { Log "- #$number left alone: evicted for $reason"; continue }
+        $eviction = Get-LatestEviction -Events @($pr.timelineItems.nodes)
+        if (-not $eviction) { continue }
+        $reason = [string]$eviction.reason
+        if ($reason -notin 'failed_checks', 'merge_conflict') { Log "- #$number left alone: evicted for $reason"; continue }
         try {
+            # A push after the eviction supersedes the old failure: requeue once the required checks on the new head are green.
+            $headDate = @($pr.commits.nodes | Select-Object -Last 1).ForEach({ $_.commit.committedDate })
+            $pushed = Get-PushedSinceEvictionDecision -State ([string]$pr.state) -IsDraft ([bool]$pr.isDraft) -BaseRef ([string]$pr.baseRefName) `
+                -EvictedAt $eviction.createdAt -HeadCommittedAt ($headDate | Select-Object -First 1) -Mergeable ([string]$pr.mergeable) -CheckBuckets @(
+                    if ($pr.mergeable -eq 'MERGEABLE') {
+                        $c = & gh pr checks $number -R $Repo --required --json bucket 2>&1
+                        if ($LASTEXITCODE -notin 0, 8) { throw "gh pr checks failed: $c" }
+                        (($c | Out-String) | ConvertFrom-Json) | ForEach-Object { $_.bucket }
+                    })
+            if ($pushed.Action -eq 'Wait') { Log "- #$number $($pushed.Reason) (evicted for $reason, pushed since)"; continue }
+            if ($pushed.Action -eq 'Requeue') {
+                if ($DryRun) { Log "- #$number would be requeued: $($pushed.Reason) (evicted for $reason)"; continue }
+                # Enqueue directly: auto-merge is lost on eviction and cannot be re-enabled here.
+                Invoke-Graphql 'mutation($id:ID!){enqueuePullRequest(input:{pullRequestId:$id}){mergeQueueEntry{position}}}' @{ id = $pr.id } | Out-Null
+                Log "- #$number requeued: $($pushed.Reason) (evicted for $reason)"
+                continue
+            }
+            if ($reason -eq 'merge_conflict') { Log "- #$number left alone: evicted for merge_conflict ($($pushed.Reason))"; continue }
             if ($null -eq $mergeGroupRuns) { $mergeGroupRuns = @(Get-RunPages 'event=merge_group&status=failure') }
             $failed = @($mergeGroupRuns | Where-Object { $_.head_branch -like "gh-readonly-queue/main/pr-$number-*" } | Sort-Object created_at -Descending)
             if ($failed.Count -eq 0) { Log "- #$number left alone: no failed queue-group run found"; continue }

@@ -76,4 +76,24 @@ $ev = @([pscustomobject]@{ __typename = 'AddedToMergeQueueEvent' }, [pscustomobj
 Assert-True ((Get-LatestEvictionReason -Events $ev) -eq 'failed_checks') 'Trailing removal not seen.'
 Assert-True ($null -eq (Get-LatestEvictionReason -Events @($ev[1], $ev[0]))) 'A later add must clear the eviction.'
 
+# Pushed since eviction: rebased and green requeues, pending waits, not rebased and conflicting are left alone.
+$evicted = [datetime]'2026-11-27T10:00:00Z'
+$newer = [datetime]'2026-11-27T11:00:00Z'
+$d = Get-PushedSinceEvictionDecision -EvictedAt $evicted -HeadCommittedAt $newer -Mergeable MERGEABLE -CheckBuckets @('pass', 'pass')
+Assert-True ($d.Action -eq 'Requeue') 'A rebased PR with green required checks must requeue.'
+$d = Get-PushedSinceEvictionDecision -EvictedAt $evicted -HeadCommittedAt $newer -Mergeable MERGEABLE -CheckBuckets @('pass', 'pending')
+Assert-True ($d.Action -eq 'Wait' -and $d.Reason -match 'waiting for checks') 'A rebased PR with pending checks must wait.'
+$d = Get-PushedSinceEvictionDecision -EvictedAt $evicted -HeadCommittedAt ([datetime]'2026-11-27T09:00:00Z') -Mergeable MERGEABLE -CheckBuckets @('pass')
+Assert-True ($d.Action -eq 'Skip') 'A PR not pushed since the eviction must be left alone.'
+$d = Get-PushedSinceEvictionDecision -EvictedAt $evicted -HeadCommittedAt $newer -Mergeable CONFLICTING -CheckBuckets @('pass')
+Assert-True ($d.Action -eq 'Skip') 'A conflicting PR must be left alone.'
+$d = Get-PushedSinceEvictionDecision -EvictedAt $evicted -HeadCommittedAt $newer -Mergeable MERGEABLE -CheckBuckets @('pass', 'fail')
+Assert-True ($d.Action -eq 'Skip') 'A failing required check must not requeue.'
+$d = Get-PushedSinceEvictionDecision -IsDraft $true -EvictedAt $evicted -HeadCommittedAt $newer -Mergeable MERGEABLE -CheckBuckets @('pass')
+Assert-True ($d.Action -eq 'Skip') 'A draft must be left alone.'
+$d = Get-PushedSinceEvictionDecision -BaseRef 'dev' -EvictedAt $evicted -HeadCommittedAt $newer -Mergeable MERGEABLE -CheckBuckets @('pass')
+Assert-True ($d.Action -eq 'Skip') 'A PR not based on main must be left alone.'
+$ev2 = [pscustomobject]@{ __typename = 'RemovedFromMergeQueueEvent'; reason = 'merge_conflict'; createdAt = '2026-11-27T10:00:00Z' }
+Assert-True ((Get-LatestEviction -Events @($ev2)).reason -eq 'merge_conflict') 'Get-LatestEviction must return the trailing removal.'
+
 Write-Host 'MotifQueueKeeper tests passed'

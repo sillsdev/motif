@@ -110,3 +110,42 @@ function Get-LatestEvictionReason {
     if ($last -and $last.__typename -eq 'RemovedFromMergeQueueEvent') { return [string]$last.reason }
     return $null
 }
+
+# The latest queue event when it is a removal (the PR was evicted and nobody has requeued it since); else $null.
+function Get-LatestEviction {
+    [CmdletBinding()]
+    param([object[]] $Events = @())
+
+    $last = $Events | Select-Object -Last 1
+    if ($last -and $last.__typename -eq 'RemovedFromMergeQueueEvent') { return $last }
+    return $null
+}
+
+# Decides whether a PR evicted for merge_conflict or failed_checks may be requeued because it was pushed to since.
+# Returns Action (Requeue, Wait or Skip) and Reason. Requires: open, not a draft, base main, head committed after the
+# eviction, mergeable MERGEABLE, and every required check on the head green (Buckets from `gh pr checks --required`).
+function Get-PushedSinceEvictionDecision {
+    [CmdletBinding()]
+    param(
+        [string] $State = 'OPEN',
+        [bool] $IsDraft = $false,
+        [string] $BaseRef = 'main',
+        $EvictedAt,
+        $HeadCommittedAt,
+        [string] $Mergeable = 'UNKNOWN',
+        [string[]] $CheckBuckets = @()
+    )
+
+    function Skip([string] $Why) { [pscustomobject]@{ Action = 'Skip'; Reason = $Why } }
+    if ($State -ne 'OPEN') { return Skip "state is $State" }
+    if ($IsDraft) { return Skip 'it is a draft' }
+    if ($BaseRef -ne 'main') { return Skip "base is $BaseRef, not main" }
+    if ($null -eq $HeadCommittedAt -or $null -eq $EvictedAt -or ([datetime]$HeadCommittedAt) -le ([datetime]$EvictedAt)) { return Skip 'head is not newer than the eviction' }
+    if ($Mergeable -ne 'MERGEABLE') { return Skip "mergeable is $Mergeable" }
+    $buckets = @($CheckBuckets)
+    $bad = @($buckets | Where-Object { $_ -notin 'pass', 'skipping', 'pending' })
+    if ($bad.Count -gt 0) { return Skip "required checks not green ($($bad -join ', '))" }
+    if (@($buckets | Where-Object { $_ -eq 'pending' }).Count -gt 0) { return [pscustomobject]@{ Action = 'Wait'; Reason = 'waiting for checks' } }
+    if ($buckets.Count -eq 0) { return [pscustomobject]@{ Action = 'Wait'; Reason = 'waiting for checks (none reported yet)' } }
+    [pscustomobject]@{ Action = 'Requeue'; Reason = 'pushed since the eviction, mergeable, required checks green' }
+}
