@@ -95,9 +95,7 @@ query($o:String!,$n:String!){repository(owner:$o,name:$n){
         $reason = [string]$eviction.reason
         if (-not (Test-RequeueableEvictionReason -Reason $reason)) { Log "- #$number left alone: evicted for $reason"; continue }
         try {
-            # A push after the eviction supersedes the old failure: requeue once the required checks on the new head are green.
-            # Push time is approximated by the head commit's committedDate (a rebase or amend rewrites it); a plain push of an
-            # older commit would not look newer.
+            # A push after the eviction supersedes the failure; push time is the head commit's committedDate.
             $headDate = $null
             $lastCommit = @($pr.commits.nodes | Select-Object -Last 1)
             if ($lastCommit.Count -gt 0) { $headDate = $lastCommit[0].commit.committedDate }
@@ -120,7 +118,7 @@ query($o:String!,$n:String!){repository(owner:$o,name:$n){
                 $todayCount = @($markerTimes | Where-Object { ([datetime]$_).ToUniversalTime().Date -eq $today }).Count
                 if ($todayCount -ge $MaxRequeuesPerDay) { Log "- #$number left alone: already requeued $todayCount time(s) today"; continue }
                 if ($DryRun) { Log "- #$number would be requeued: $($pushed.Reason) (evicted for $reason)"; continue }
-                # The marker comes first so the cap can be counted. Enqueue directly: auto-merge is lost on eviction and cannot be re-enabled here.
+                # Marker first, so the cap can be counted; enqueue directly, as eviction drops auto-merge.
                 Invoke-Api @('-X', 'POST', "repos/$Repo/issues/$number/comments", '-f', "body=$marker`nQueue keeper is requeueing this PR after a $reason eviction: $($pushed.Reason).") | Out-Null
                 Invoke-Graphql 'mutation($id:ID!){enqueuePullRequest(input:{pullRequestId:$id}){mergeQueueEntry{position}}}' @{ id = $pr.id } | Out-Null
                 Log "- #$number requeued: $($pushed.Reason) (evicted for $reason)"
