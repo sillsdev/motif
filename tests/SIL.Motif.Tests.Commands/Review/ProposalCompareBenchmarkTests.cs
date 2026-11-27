@@ -54,11 +54,13 @@ public sealed class ProposalCompareBenchmarkTests(Xunit.Abstractions.ITestOutput
 
             var jobs = new[] { a, b }.Select(id => Trials.NewestFirst(Trials.JobsFor(database, project, CanonicalId.Parse(id)))[0].JobId).ToArray();
             var exportPages = TrialExportArtifact.Read(database, jobs[0])!.Pages;
+            var readBytes = GC.GetAllocatedBytesForCurrentThread();
             var readTimer = Stopwatch.StartNew();
             foreach (var job in jobs)
                 for (var page = 1; page <= exportPages; page++)
                     Assert.NotNull(TrialExportArtifact.Read(database, job, page: page)!.Page);
             var storeReadMs = readTimer.Elapsed.TotalMilliseconds;
+            var storeReadMb = (GC.GetAllocatedBytesForCurrentThread() - readBytes) / 1048576.0;
 
             var bytes = GC.GetAllocatedBytesForCurrentThread();
             var timer = Stopwatch.StartNew();
@@ -75,7 +77,7 @@ public sealed class ProposalCompareBenchmarkTests(Xunit.Abstractions.ITestOutput
 
             Assert.Equal(1, ProposalCompareReads.JoinsComputedFor(database.FullPath));
             output.WriteLine($"forms={count} run={run} rows={summary.RowsTotal} comparePages={summary.Pages} exportPages={exportPages} " +
-                $"storeReadMs={storeReadMs:F1} coldSummaryMs={coldMs:F1} coldMB={coldMb:F1} warmAllPagesMs={pagesMs:F1} " +
+                $"storeReadMs={storeReadMs:F1} storeReadMB={storeReadMb:F1} coldSummaryMs={coldMs:F1} coldMB={coldMb:F1} coldKBPerForm={coldMb * 1024 / count:F1} warmAllPagesMs={pagesMs:F1} " +
                 $"warmMsPerPage={pagesMs / summary.Pages:F2} warmMB={pagesMb:F1}");
         }
         finally { Directory.Delete(root, recursive: true); }
