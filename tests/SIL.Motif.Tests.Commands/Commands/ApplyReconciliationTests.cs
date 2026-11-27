@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using SIL.Motif.Commands;
@@ -360,12 +361,259 @@ public sealed class ApplyReconciliationTests(PristineProjectFixture pristine)
             Assert.False(outcome.Succeeded);
             Assert.Equal("apply.reconciliation-needed", outcome.Refusal!.Code);
             Assert.Equal(FailureReason.StoreInconsistent, outcome.Refusal.Reason);
+            Assert.Equal("5", outcome.Refusal.Facts["causeSqliteCode"]);
+            Assert.Contains("SqliteException", outcome.Refusal.Facts["cause"], StringComparison.Ordinal);
+            Assert.Contains("motif apply " + proposalId, outcome.Refusal.Message, StringComparison.Ordinal);
         }
         finally
         {
             Environment.SetEnvironmentVariable("MOTIF_TEST_BUSY_RECEIPT_WRITE_FOR", previous);
         }
         AssertGlossOnDisk(projectPath, seed.FirstSenseId, NewLangProjFixture.AnalysisTag, gloss);
+        Assert.True(ProjectReconciliationMarker.Exists(projectPath));
+        var (entries, unknown) = ProjectReconciliationMarker.Read(projectPath);
+        Assert.False(unknown);
+        Assert.Equal((ReconciliationBoundary.ReceiptRecording, proposalId), Assert.Single(entries));
+        Assert.True(ProjectReconciliationMarker.ClearableByCommand(projectPath, out _));
+        Assert.Equal("proposed", StoredStatus(projectPath, proposalId));
+
+        var recovered = ProposalCommands.Apply(new ApplyRequest(projectPath, "1.0", proposalId, Force: true));
+
+        Assert.True(recovered.Succeeded, recovered.Refusal?.Message);
+        Assert.True(recovered.Value!.AlreadyApplied);
+        Assert.Contains("recorded", recovered.Value.ResultNote, StringComparison.Ordinal);
+        Assert.False(ProjectReconciliationMarker.Exists(projectPath));
+        Assert.Equal("applied", StoredStatus(projectPath, proposalId));
+        AssertGlossOnDisk(projectPath, seed.FirstSenseId, NewLangProjFixture.AnalysisTag, gloss);
+    }
+
+    // A marker that could not be written leaves only the store saying `proposed`; applying again still repairs it.
+    [Fact]
+    public void ApplyingAgainRecordsAnApplyTheStoreNeverHeardOfEvenWithoutAMarker()
+    {
+        var seed = pristine.Seed;
+        var gloss = SeededProject.FirstGloss + " unrecorded no marker";
+        string projectPath;
+        using (var scratch = pristine.NewScratch())
+            projectPath = scratch.ProjectId.Path;
+        var proposalId = CreateMeasuredProposal(projectPath, "unrecorded-no-marker",
+            CanonicalId.FromGuid(seed.FirstSenseId).Value, gloss);
+        Assert.True(ProposalCommands.Apply(new ApplyRequest(projectPath, "1.0", proposalId, Force: true)).Succeeded);
+        using (var database = ProjectMotifDatabase.Open(projectPath))
+        using (var connection = database.OpenConnection())
+        {
+            foreach (var sql in new[] { "DELETE FROM Receipts;", "UPDATE Proposals SET Status = 'proposed';" })
+            {
+                using var command = connection.CreateCommand();
+                command.CommandText = sql;
+                command.ExecuteNonQuery();
+            }
+        }
+        Assert.False(ProjectReconciliationMarker.Exists(projectPath));
+
+        var recovered = ProposalCommands.Apply(new ApplyRequest(projectPath, "1.0", proposalId, Force: true));
+
+        Assert.True(recovered.Succeeded, recovered.Refusal?.Message);
+        Assert.True(recovered.Value!.AlreadyApplied);
+        Assert.Equal("applied", StoredStatus(projectPath, proposalId));
+    }
+
+    // While the warning stands, an Apply the log does not hold is refused and the warning kept.
+    [Fact]
+    public void AProposalTheLogDoesNotHoldIsRefusedWhileTheWarningStands()
+    {
+        var seed = pristine.Seed;
+        string projectPath;
+        using (var scratch = pristine.NewScratch())
+            projectPath = scratch.ProjectId.Path;
+        var proposalId = CreateMeasuredProposal(projectPath, "not-in-log",
+            CanonicalId.FromGuid(seed.FirstSenseId).Value, SeededProject.FirstGloss + " not in log");
+        ProjectReconciliationMarker.Mark(projectPath, ReconciliationBoundary.Save, proposalId);
+
+        var outcome = ProposalCommands.Apply(new ApplyRequest(projectPath, "1.0", proposalId, Force: true));
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal("apply.reconciliation-needed", outcome.Refusal!.Code);
+        Assert.Contains("Refresh", outcome.Refusal.Message, StringComparison.Ordinal);
+        Assert.True(ProjectReconciliationMarker.Exists(projectPath));
+        AssertGlossOnDisk(projectPath, seed.FirstSenseId, NewLangProjFixture.AnalysisTag, SeededProject.FirstGloss);
+    }
+
+    [Fact]
+    public void RecoveringOneProposalAlsoRecordsTheOtherSavedApplyAndThenClearsTheWarning()
+    {
+        string projectPath;
+        using (var scratch = pristine.NewScratch())
+            projectPath = scratch.ProjectId.Path;
+        var (first, second) = TwoAppliedButUnrecorded(projectPath);
+        ProjectReconciliationMarker.Mark(projectPath, ReconciliationBoundary.ReceiptRecording, first);
+        ProjectReconciliationMarker.Mark(projectPath, ReconciliationBoundary.ReceiptRecording, second);
+
+        Assert.True(ProposalCommands.Apply(new ApplyRequest(projectPath, "1.0", first, Force: true)).Succeeded);
+
+        Assert.Equal("applied", StoredStatus(projectPath, second));
+        Assert.False(ProjectReconciliationMarker.Exists(projectPath));
+    }
+
+    [Fact]
+    public void RecoveringOneProposalKeepsTheWarningWhileAnotherSavedApplyCannotBeRecorded()
+    {
+        string projectPath;
+        using (var scratch = pristine.NewScratch())
+            projectPath = scratch.ProjectId.Path;
+        var (first, second) = TwoAppliedButUnrecorded(projectPath);
+        var digest = LoggedDigest(projectPath, second);
+        File.WriteAllText(projectPath, File.ReadAllText(projectPath).Replace(digest, new string('0', digest.Length)));
+        ProjectReconciliationMarker.Mark(projectPath, ReconciliationBoundary.ReceiptRecording, first);
+        ProjectReconciliationMarker.Mark(projectPath, ReconciliationBoundary.ReceiptRecording, second);
+
+        Assert.True(ProposalCommands.Apply(new ApplyRequest(projectPath, "1.0", first, Force: true)).Succeeded);
+
+        Assert.Equal("proposed", StoredStatus(projectPath, second));
+        Assert.True(ProjectReconciliationMarker.Exists(projectPath));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ACommandNeverClearsAWarningThatNeedsAPersonToLook(bool oldTextOnlyMarker)
+    {
+        string projectPath;
+        using (var scratch = pristine.NewScratch())
+            projectPath = scratch.ProjectId.Path;
+        var (first, _) = TwoAppliedButUnrecorded(projectPath);
+        if (oldTextOnlyMarker) ProjectReconciliationMarker.Mark(projectPath);
+        else ProjectReconciliationMarker.Mark(projectPath, ReconciliationBoundary.Save, first);
+
+        var outcome = ProposalCommands.Apply(new ApplyRequest(projectPath, "1.0", first, Force: true));
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        Assert.Equal("applied", StoredStatus(projectPath, first));
+        Assert.True(ProjectReconciliationMarker.Exists(projectPath));
+    }
+
+    [Fact]
+    public void RecordUnrecordedAppliesRecordsMatchesAndKeepsTheWarningForAMismatch()
+    {
+        string projectPath;
+        using (var scratch = pristine.NewScratch())
+            projectPath = scratch.ProjectId.Path;
+        var (first, second) = TwoAppliedButUnrecorded(projectPath);
+        var digest = LoggedDigest(projectPath, second);
+        File.WriteAllText(projectPath, File.ReadAllText(projectPath).Replace(digest, new string('0', digest.Length)));
+        ProjectReconciliationMarker.Mark(projectPath);
+
+        var outcome = ProposalCommands.RecordUnrecordedApplies(projectPath, "1.0");
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        Assert.Equal(1, outcome.Value!.Recorded);
+        Assert.Equal(1, outcome.Value.Unresolved);
+        Assert.Equal("applied", StoredStatus(projectPath, first));
+        Assert.Equal("proposed", StoredStatus(projectPath, second));
+        Assert.True(ProjectReconciliationMarker.Exists(projectPath));
+        var refused = ProposalCommands.Apply(new ApplyRequest(projectPath, "1.0", second, Force: true));
+        Assert.Equal("apply.applied-content-mismatch", refused.Refusal?.Code);
+        Assert.Contains("Refresh", refused.Refusal!.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RecordUnrecordedAppliesClearsTheWarningOnceNothingIsOutstanding()
+    {
+        string projectPath;
+        using (var scratch = pristine.NewScratch())
+            projectPath = scratch.ProjectId.Path;
+        var (first, second) = TwoAppliedButUnrecorded(projectPath);
+        ProjectReconciliationMarker.Mark(projectPath, ReconciliationBoundary.Save, first);
+
+        var outcome = ProposalCommands.RecordUnrecordedApplies(projectPath, "1.0");
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        Assert.Equal(2, outcome.Value!.Recorded);
+        Assert.Equal(0, outcome.Value.Unresolved);
+        Assert.Equal("applied", StoredStatus(projectPath, first));
+        Assert.Equal("applied", StoredStatus(projectPath, second));
+        Assert.False(ProjectReconciliationMarker.Exists(projectPath));
+    }
+
+    [Fact]
+    public void AFailureRecordingAnotherProposalLeavesTheFirstAppliedAndTheWarningNamingTheOther()
+    {
+        string projectPath;
+        using (var scratch = pristine.NewScratch())
+            projectPath = scratch.ProjectId.Path;
+        var (first, second) = TwoAppliedButUnrecorded(projectPath);
+        ProjectReconciliationMarker.Mark(projectPath, ReconciliationBoundary.ReceiptRecording, first);
+        using (var database = ProjectMotifDatabase.Open(projectPath))
+        using (var connection = database.OpenConnection())
+        using (var trigger = connection.CreateCommand())
+        {
+            // A Receipt for different content makes recording this Proposal fail without touching the schema.
+            trigger.CommandText = "INSERT INTO Receipts (ReceiptId, ProposalId, IntentDigest, ReceiptJson, RecordedUtc) " +
+                "VALUES ('receipt/injected', '" + second + "', 'sha256:" + new string('0', 64) + "', '{}', 'now');";
+            trigger.ExecuteNonQuery();
+        }
+
+        var outcome = ProposalCommands.Apply(new ApplyRequest(projectPath, "1.0", first, Force: true));
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        Assert.Contains("stays", outcome.Value!.ResultNote, StringComparison.Ordinal);
+        Assert.Equal("applied", StoredStatus(projectPath, first));
+        Assert.Equal("proposed", StoredStatus(projectPath, second));
+        var (entries, _) = ProjectReconciliationMarker.Read(projectPath);
+        Assert.Contains((ReconciliationBoundary.ReceiptRecording, second), entries);
+    }
+
+    [Fact]
+    public void AnOldTextOnlyWarningStaysForTheWindowEvenAfterEntriesAreAppended()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "old-marker-" + Guid.NewGuid().ToString("N") + ".fwdata");
+        try
+        {
+            ProjectReconciliationMarker.Mark(path);
+            ProjectReconciliationMarker.Mark(path, ReconciliationBoundary.ReceiptRecording, "proposal/x");
+
+            Assert.False(ProjectReconciliationMarker.ClearableByCommand(path, out _));
+        }
+        finally { ProjectReconciliationMarker.Clear(path); }
+    }
+
+    private (string First, string Second) TwoAppliedButUnrecorded(string projectPath)
+    {
+        var first = CreateMeasuredProposal(projectPath, "unrecorded-one",
+            CanonicalId.FromGuid(pristine.Seed.FirstSenseId).Value, SeededProject.FirstGloss + " one");
+        var second = CreateMeasuredProposal(projectPath, "unrecorded-two",
+            CanonicalId.FromGuid(pristine.Seed.SecondSenseId).Value, SeededProject.FirstGloss + " two");
+        string secondAnchor;
+        using (var database = ProjectMotifDatabase.Open(projectPath))
+            secondAnchor = new ProposalRepository(database).Get(CanonicalId.Parse(second)).AnchorJson!;
+        Assert.True(ProposalCommands.Apply(new ApplyRequest(projectPath, "1.0", first, Force: true)).Succeeded);
+        // Applying the first drifts every other anchor; the second's footprint is untouched, so its anchor still holds.
+        using (var database = ProjectMotifDatabase.Open(projectPath))
+            new ProposalRepository(database).SetAnchor(CanonicalId.Parse(second), secondAnchor);
+        Assert.True(ProposalCommands.Apply(new ApplyRequest(projectPath, "1.0", second, Force: true)).Succeeded);
+        var ids = new List<string> { first, second };
+        using (var database = ProjectMotifDatabase.Open(projectPath))
+        using (var connection = database.OpenConnection())
+            foreach (var sql in new[] { "DELETE FROM Receipts;", "UPDATE Proposals SET Status = 'proposed';" })
+            {
+                using var command = connection.CreateCommand();
+                command.CommandText = sql;
+                command.ExecuteNonQuery();
+            }
+        return (ids[0], ids[1]);
+    }
+
+    private static string LoggedDigest(string projectPath, string proposalId)
+    {
+        using var database = ProjectMotifDatabase.Open(projectPath);
+        var digest = new ProposalRepository(database).Get(CanonicalId.Parse(proposalId)).IntentDigest!;
+        return digest["sha256:".Length..];
+    }
+
+    private static string StoredStatus(string projectPath, string proposalId)
+    {
+        using var database = ProjectMotifDatabase.Open(projectPath);
+        return new ProposalRepository(database).Get(CanonicalId.Parse(proposalId)).Status;
     }
 
     [Fact]
@@ -462,7 +710,8 @@ public sealed class ApplyReconciliationTests(PristineProjectFixture pristine)
             "Record the intended lexical meaning before applying the Proposal.");
         var finalized = ProposalCommands.Finalize(new FinalizeRequest(projectPath, "1.0", draftName));
         Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
-        Assert.True(DryRunJobRunner.Run(projectPath, "1.0", finalized.Value!.ProposalId).Succeeded);
+        var dry = DryRunJobRunner.Run(projectPath, "1.0", finalized.Value!.ProposalId);
+        Assert.True(dry.Succeeded, dry.Refusal?.Message);
         return finalized.Value.ProposalId;
     }
 

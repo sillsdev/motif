@@ -20,12 +20,23 @@ internal static class ReadingDeltaText
         foreach (var group in delta.Classes)
         {
             text.AppendLine(string.Create(CultureInfo.InvariantCulture, $"{group.Class}: {group.Total}"));
+            if (delta.Groups is not null) continue;
             foreach (var row in group.Rows)
                 text.AppendLine(string.Create(CultureInfo.InvariantCulture,
                     $"  {row.Word} ({row.CaseKey}): {row.BeforeCount} before, {row.AfterCount} after, " +
                     $"{row.Retired.Sum(item => item.Count)} retired, {row.Added.Sum(item => item.Count)} added"));
             var rest = group.Total - group.Offset - group.Rows.Count;
             if (rest > 0) text.AppendLine(string.Create(CultureInfo.InvariantCulture, $"  {rest} more; use --offset or --page."));
+        }
+        if (delta.Groups is { } groups)
+        {
+            text.AppendLine(string.Create(CultureInfo.InvariantCulture, $"By {groups.By}: {groups.Total} groups, most tokens first"));
+            foreach (var group in groups.Rows)
+                text.AppendLine(string.Create(CultureInfo.InvariantCulture,
+                    $"  {group.Key}{(group.Label is null ? "" : " " + group.Label)}: {group.Retired} retired, {group.Added} added, " +
+                    $"{group.Words} words, {group.Tokens} tokens; e.g. {string.Join(", ", group.SampleWords)}"));
+            var more = groups.Total - groups.Offset - groups.Rows.Count;
+            if (more > 0) text.AppendLine(string.Create(CultureInfo.InvariantCulture, $"  {more} more groups; use --offset or --page."));
         }
         foreach (var manifest in delta.Manifests)
             text.AppendLine(string.Create(CultureInfo.InvariantCulture,

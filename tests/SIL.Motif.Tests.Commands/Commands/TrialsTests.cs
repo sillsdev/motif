@@ -58,6 +58,13 @@ public sealed class TrialsTests : IDisposable
         Assert.Equal(comparable ? 110L : null, trial.Work.TrialParserWork);
         Assert.False(trial.Work.WorkIncreaseWarning);
         Assert.Equal(JobStatus.Completed, trial.Status);
+
+        // Each word carries both sides' work and the delta, only when the two Assessments are comparable (#482).
+        var detailed = Trials.Read(new ReadTrialRequest(fixture.Project.FullFwDataPath, proposal.Id.Value,
+            IncludeWordResults: true)).Value!;
+        var word = Assert.Single(detailed.WordResults);
+        Assert.Equal(110L, word.ParserWork);
+        Assert.Equal(comparable ? 100L : null, word.BaselineWorkUnits);
     }
 
     [Fact]

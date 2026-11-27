@@ -88,12 +88,21 @@ public static class MotifInstallLifecycle
             dataDirectory + ". Remove the installed app or AppImage separately.";
     }
 
+    /// <summary>
+    /// Whether Velopack reports an installed version, without throwing when its hooks never ran (development
+    /// builds, issue 516) and so no locator was set.
+    /// </summary>
+    public static bool HasInstalledVelopackVersion()
+    {
+        return VelopackLocator.IsCurrentSet && VelopackLocator.Current.CurrentlyInstalledVersion is not null;
+    }
+
     private static void RegisterPackagedInstall()
     {
         MotifAgentPackageStore.ForInstallation().Refresh();
         if (OperatingSystem.IsWindows())
         {
-            if (VelopackLocator.Current.CurrentlyInstalledVersion is not null)
+            if (HasInstalledVelopackVersion())
                 InstallRegistration.RegisterCurrent();
             return;
         }

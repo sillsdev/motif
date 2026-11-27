@@ -69,11 +69,16 @@ public sealed record RejectionTraceProducer(
 /// <param name="Status"><c>complete</c>, <c>stopped</c>, <c>invalid</c> or <c>refused</c>.</param>
 /// <param name="OutputCensus"><c>complete</c>, <c>partial</c> or <c>unavailable</c>.</param>
 /// <param name="OutputCount">The outputs the ordinary search returned before any capture limit.</param>
-/// <param name="WorkUnits">The parser's work for the word, or <see langword="null"/> when unreported.</param>
+/// <param name="WorkUnits">The parser's work for the word, or <see langword="null"/> when unreported; never published, only as <see cref="RejectionTraceSearch.WorkLimitUsedPercent"/>.</param>
 /// <param name="StopReasons">Why the search stopped early, empty when it ran to completion.</param>
 public sealed record RejectionTraceSearch(
-    string Status, string OutputCensus, long? OutputCount, long? WorkUnits, IReadOnlyList<string> StopReasons)
+    string Status, string OutputCensus, long? OutputCount,
+    [property: System.Text.Json.Serialization.JsonIgnore] long? WorkUnits, IReadOnlyList<string> StopReasons)
 {
+    /// <summary>The percentage of the recorded work limit the word used (0-100 or more), or null when either figure is missing.</summary>
+    public double? WorkLimitUsedPercent => WorkUnits is { } used && WorkCap is { State: "bounded", Value: > 0 and var limit }
+        ? Math.Round((double)used * 100d / limit, 2) : null;
+
     /// <summary>The typed error the parser attached to this word, or <see langword="null"/>.</summary>
     public string? ErrorCode { get; init; }
 
@@ -87,32 +92,19 @@ public sealed record RejectionTraceSearch(
     public const string WorkLimitStopReason = "work_limit";
 
     /// <summary>
-    /// How the search ended in words: <c>work limit reached</c> when the parser recorded that stop, with the work done and
-    /// the limit as recorded, and never <c>complete</c> for a search the parser did not finish.
+    /// How the search ended in words: <c>work limit reached</c> when the parser recorded that stop, and never
+    /// <c>complete</c> for a search the parser did not finish. It gives no work count.
     /// </summary>
     public string Description
     {
         get
         {
-            if (WorkLimitReached)
-                return $"work limit reached ({WorkCountText} against {WorkLimitText})";
+            if (WorkLimitReached) return "work limit reached (used 100% of the work limit)";
             return StopReasons.Count > 0 && Status != "complete"
                 ? $"search {Status} ({string.Join(", ", StopReasons)})"
                 : $"search {Status}";
         }
     }
-
-    private string WorkCountText => WorkUnits is { } work
-        ? work.ToString("N0", System.Globalization.CultureInfo.InvariantCulture) + " work units"
-        : "work count not recorded";
-
-    private string WorkLimitText => WorkCap switch
-    {
-        { State: "bounded", Value: { } limit } => "a limit of " +
-            limit.ToString("N0", System.Globalization.CultureInfo.InvariantCulture),
-        { State: "unbounded" } => "a limit the parser recorded as unbounded",
-        _ => "a limit the parser did not record",
-    };
 }
 
 /// <summary>The work limit a parser's rejection trace recorded for one search.</summary>

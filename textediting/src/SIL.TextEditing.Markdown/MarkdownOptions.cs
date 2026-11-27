@@ -190,7 +190,7 @@ namespace SIL.TextEditing.Markdown
     {
         string _normal = "Normal", _heading1 = "Heading 1", _heading2 = "Heading 2", _heading3 = "Heading 3", _bulletedList = "Bulleted List",
             _numberedList = "Numbered List", _blockQuote = "Block Quote", _hyperlink = "Hyperlink";
-        string? _tableHeader, _tableRow;
+        string? _tableHeader, _tableRow, _code;
 
         // No name is null: a null would only show as a NullReferenceException deep in the reader.
         static string Name(string? value) => value ?? throw new ArgumentNullException(nameof(value));
@@ -210,6 +210,10 @@ namespace SIL.TextEditing.Markdown
         public string? TableRow { get => _tableRow; set => _tableRow = value; }
         /// <summary>The character style a link run has unless the notation says otherwise (<c>.nostyle</c>, or <c>custom-style=</c>).</summary>
         public string Hyperlink { get => _hyperlink; set => _hyperlink = Name(value); }
+        /// <summary>The character style a code span (<c>`x`</c>) is read as, named by the host. A run with only this style, in the default analysis writing system, is
+        /// written as a code span when its text can stand in one. Null (the default): the host has no such style, a code span is <c>fwmd.syntax.unsupported-markup</c>
+        /// and the writer never writes one.</summary>
+        public string? Code { get => _code; set => _code = value; }
 
         /// <summary>The recogniser (ADR 0033) for these names: which paragraphs are headings, list items and table rows (the table styles when the host names them), and
         /// <see cref="Normal"/> as the style a flattened block gets. A host gives it to <c>RichTextField.BlockRecognizer</c> so that pasted Markdown is recognised by the

@@ -83,6 +83,7 @@ internal static class ComposerDefinitions
         new EditEnvironmentDefinition(),
         new DeleteEnvironmentDefinition(),
         new DeleteNaturalClassDefinition(),
+        new DeleteInflectionClassDefinition(),
         new DeleteTextSegmentNoteDefinition(),
         new RecordParsimonyDispositionDefinition(),
         new RecordSourceValidatedDecisionDefinition(),

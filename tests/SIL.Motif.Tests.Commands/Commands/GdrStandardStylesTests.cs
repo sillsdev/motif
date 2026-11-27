@@ -130,6 +130,57 @@ public sealed class GdrStandardStylesTests(PristineProjectFixture pristine)
         Assert.Equal(["Bulleted List", "Heading 3", "Normal"], StyleNames(path).Order(StringComparer.Ordinal));
     }
 
+    // A code span is the "Code" character style, staged with the body and shown again as a backtick span.
+    private const string CodeBody = "### How it works\n\nSee `AaIUe36vzwMPYN1owvSyWg`, run `motif guide add`, match `^(a_b|c*d)[kK]\\d+$`, and keep a \\` tick.";
+
+    [Fact]
+    public void ACodeSpanStagesTheCodeStyleAndRoundTripsThroughShowAsABacktickSpan()
+    {
+        var path = Project(styles: false);
+
+        var added = GdrAddCommands.Add(new GdrAddRequest(path, "Verbs", Markdown: CodeBody, WritingSystem: "en"));
+
+        Assert.True(added.Succeeded, added.Refusal?.Code + ": " + added.Refusal?.Message);
+        Assert.Equal(["Normal", "Heading 3", "Code"], added.Value!.StylesCreated);
+        Applied(path);
+        Assert.Contains("Code", StyleNames(path));
+        using (var cache = new FwDataProjectLoader().LoadScratchCache(path))
+        {
+            var code = cache.LangProject.StylesOC.Single(style => style.Name == "Code");
+            Assert.Equal(StyleType.kstCharacter, code.Type);
+            Assert.Equal(new Guid("b7556fbc-fcf1-433f-9480-83e98267cf58"), code.Guid);
+            Assert.Equal("<default monospace>", code.Rules.GetStrPropValue((int)FwTextPropType.ktptFontFamily));
+        }
+
+        var shown = GdrQuery.Show(new GdrShowRequest(path, "GDR-1")).Value!;
+        var body = new GdrMarkdownView(shown, Path.GetFileNameWithoutExtension(path)).Fields.Single(field => field.Name == "discussion").Body;
+        Assert.Equal(CodeBody, body);
+        Assert.Contains(shown.Discussion.SelectMany(paragraph => paragraph.Runs), run => run.Text == "motif guide add");
+    }
+
+    [Fact]
+    public void ACodeSpanOnAProjectThatHasTheCodeStyleStagesNoStyleOperation()
+    {
+        var path = Project(styles: true);
+        using (var cache = new FwDataProjectLoader().LoadScratchCache(path))
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var style = cache.ServiceLocator.GetInstance<IStStyleFactory>().Create();
+                cache.LangProject.StylesOC.Add(style);
+                style.Name = "Code";
+                style.Type = StyleType.kstCharacter;
+            });
+            new FwDataProjectLoader().Save(cache);
+        }
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), RootFor(path)).Succeeded);
+
+        var added = GdrAddCommands.Add(new GdrAddRequest(path, "Verbs", Markdown: "### How it works\n\nRun `motif`.", WritingSystem: "en"));
+
+        Assert.True(added.Succeeded, added.Refusal?.Message);
+        Assert.Empty(added.Value!.StylesCreated);
+    }
+
     // FlexStyles.xml: a heading is based on and followed by Normal; Normal and a list follow themselves.
     private static void AssertFieldWorksDefaults(string path)
     {

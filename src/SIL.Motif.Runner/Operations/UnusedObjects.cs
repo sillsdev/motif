@@ -115,6 +115,23 @@ public static class UnusedObjects
             "Remove the class from each (environments by editing their string) or relink with compose-relink-natural-class first.");
     }
 
+    /// <summary>
+    /// Requires an inflection class with no subclass and no referrer: no stem or affix MSA, affix allomorph, derivational
+    /// from/to slot or category default points at it.
+    /// </summary>
+    public static void RequireUnusedInflectionClass(IMoInflClass inflectionClass, CanonicalId id, string kind)
+    {
+        if (inflectionClass.Owner is not (IPartOfSpeech or IMoInflClass))
+            throw new InvalidOperationException($"'{kind}': '{id.Value}' is not an inflection class of a category.");
+        if (inflectionClass.SubclassesOC.Count > 0)
+            throw new InvalidOperationException(
+                $"'{kind}': inflection class '{id.Value}' has {inflectionClass.SubclassesOC.Count} subclass(es) " +
+                $"({string.Join(", ", inflectionClass.SubclassesOC.Take(5).Select(sub => sub.Guid.ToString("D")))}); delete those first.");
+        RequireNone(Referrers(inflectionClass), $"inflection class '{id.Value}'", kind,
+            "Remove the class from each first (compose-edit-affix-inflection-classes, compose-edit-stem-inflection-class, " +
+            "compose-edit-part-of-speech-inflection-class-default).");
+    }
+
     /// <summary>Requires a Note that a Segment owns.</summary>
     public static void RequireSegmentNote(INote note, CanonicalId id, string kind)
     {

@@ -294,7 +294,8 @@ public sealed class WarmPanGlossPoolTests : IDisposable
         var state = pool.GetState(grammar);
         Assert.NotNull(state.FailureCode);
         Assert.NotNull(state.FailureMessage);
-        if (!OperatingSystem.IsWindows()) Assert.Equal("memory-ceiling", state.FailureCode);
+        if (!OperatingSystem.IsWindows())
+            Assert.True(state.FailureCode == "memory-ceiling", $"Expected memory-ceiling but got {state.FailureCode}: {state.FailureMessage}");
         var fallback = Assert.IsType<WarmParseResult.Fallback>(
             await pool.TryWordAsync(grammar, "t1", grammar, "motifa", true, CancellationToken.None));
         Assert.Equal(state.FailureCode, fallback.Code);

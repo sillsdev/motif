@@ -23,6 +23,10 @@ public static class TrialReadingDelta
     /// <summary>The delta of the requested Trial, with a page of rows for each requested class.</summary>
     public static CommandOutcome<ReadingDelta> Read(ReadTrialDeltaRequest request) => Run(request, null);
 
+    /// <summary>Reads the delta with <paramref name="causes"/> naming what a grouping needs, in place of the Baseline.</summary>
+    internal static CommandOutcome<ReadingDelta> Read(ReadTrialDeltaRequest request, IReadingCauseSource causes) =>
+        Run(request, null, causes: causes);
+
     /// <summary>
     /// Reads the delta and holds it to <paramref name="expectations"/>, as the lane gate does: the delta's
     /// <see cref="ReadingDelta.Expectations"/> says green, mismatch, doubled-over-cap or unmeasured.
@@ -47,9 +51,16 @@ public static class TrialReadingDelta
         ManifestOptions? options = null) => Run(request, manifestDirectory, options ?? new ManifestOptions());
 
     private static CommandOutcome<ReadingDelta> Run(ReadTrialDeltaRequest request, string? manifestDirectory,
-        ManifestOptions? options = null, TrialExpectations? expectations = null, string? receiptPath = null)
+        ManifestOptions? options = null, TrialExpectations? expectations = null, string? receiptPath = null,
+        IReadingCauseSource? causes = null)
     {
         ArgumentNullException.ThrowIfNull(request);
+        if (request.GroupBy == ReadingDeltaGroupings.Rule)
+            return CommandOutcome<ReadingDelta>.Refused(new Refusal(RefusalCodes.TrialDeltaGroupUnsupported, FailureReason.Refused,
+                "A Reading's identity names entries, analyses, allomorphs and features but no phonological or compound rule, " +
+                "so --group-by rule would have to guess. Use --group-by entry or --group-by slot."));
+        if (request.GroupBy is not null && !ReadingDeltaGroupings.Supported.Contains(request.GroupBy))
+            return Invalid("--group-by is one of " + string.Join(", ", ReadingDeltaGroupings.Supported) + ".");
         var classes = request.Classes is { Count: > 0 } ? request.Classes : ReadingDeltaClasses.Default;
         if ((request.JobId is null) == (request.ProposalId is null))
             return Invalid("Name one Trial job or one Proposal.");
@@ -67,7 +78,7 @@ public static class TrialReadingDelta
             {
                 var receipt = Locate(database, project, request);
                 if (receipt is null) return Unavailable("No retained evidence export matches this Trial.");
-                return Build(database, receipt, request, classes, manifestDirectory, options ?? new ManifestOptions(), expectations, receiptPath);
+                return Build(database, receipt, request, classes, manifestDirectory, options ?? new ManifestOptions(), expectations, receiptPath, causes);
             }
             catch (Exception exception) when (exception is IOException or InvalidDataException or
                 UnauthorizedAccessException or JsonException)
@@ -89,7 +100,7 @@ public static class TrialReadingDelta
 
     private static CommandOutcome<ReadingDelta> Build(MotifDatabase database, TrialExportReceipt receipt,
         ReadTrialDeltaRequest request, IReadOnlyList<string> classes, string? manifestDirectory, ManifestOptions options,
-        TrialExpectations? expectations, string? receiptPath)
+        TrialExpectations? expectations, string? receiptPath, IReadingCauseSource? causes)
     {
         var inputs = new List<ReadingDeltaInput>();
         var unmeasured = new HashSet<string>(StringComparer.Ordinal);
@@ -109,12 +120,30 @@ public static class TrialReadingDelta
             Count(forms, ReadingDeltaClasses.Changed), Count(forms, ReadingDeltaClasses.Doubled),
             Count(forms, ReadingDeltaClasses.Rejected), forms.Sum(form => form.Retired.Sum(item => item.Count)),
             forms.Sum(form => form.Added.Sum(item => item.Count)), unmeasured.Count);
+        var grouped = request.GroupBy is not null;
         var shown = classes.Distinct(StringComparer.Ordinal).Select(name =>
         {
             var members = forms.Where(form => form.Classes.Contains(name)).ToArray();
             return new ReadingDeltaClass(name, members.Length, request.Offset,
-                [.. members.Skip(request.Offset).Take(request.Limit).Select(Row)]);
+                grouped ? [] : [.. members.Skip(request.Offset).Take(request.Limit).Select(Row)]);
         }).ToArray();
+        ReadingDeltaGroups? groups = null;
+        if (grouped)
+        {
+            var source = causes ?? BaselineCauseSource.Open(database,
+                new JobRepository(database).Get(receipt.JobId)?.ProjectKey ?? "");
+            try
+            {
+                if (request.GroupBy == ReadingDeltaGroupings.Slot && !source.CanNameSlots)
+                    return CommandOutcome<ReadingDelta>.Refused(new Refusal(RefusalCodes.TrialDeltaGroupUnsupported, FailureReason.Refused,
+                        "Slots are read from the current Baseline's project copy, which could not be opened. Use --group-by entry, or take a new Baseline."));
+                if (!source.HasTokens) limitations.Add("tokens-unavailable");
+                var chosen = classes.ToHashSet(StringComparer.Ordinal);
+                groups = ReadingCauseGrouping.Group(request.GroupBy!, forms.Where(form => form.Classes.Overlaps(chosen)), source,
+                    request.Offset, request.Limit);
+            }
+            finally { (source as IDisposable)?.Dispose(); }
+        }
 
         IReadOnlyList<ReadingManifestSummary> manifests = [];
         if (manifestDirectory is not null)
@@ -169,7 +198,7 @@ public static class TrialReadingDelta
             }
         }
         return CommandOutcome<ReadingDelta>.Success(new ReadingDelta(ReadingDelta.Version, receipt.JobId,
-            receipt.ProposalRevision, counts, shown, manifests, [.. limitations], held, written, siblings));
+            receipt.ProposalRevision, counts, shown, manifests, [.. limitations], held, written, siblings, groups));
     }
 
     // The receipt of a green Trial, bound to the revision and Baseline just proved current.
