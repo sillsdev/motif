@@ -12,6 +12,18 @@ A rule earns its place when its predictions beat chance on words nobody built it
 assumed: the same prediction is rerun with other letters, and the rule must clear every one of them. This is the
 smallest step of `grammar-discovery-loop`; that skill calls this one at its step 4.
 
+## Known-language mode
+
+When a reference grammar describes the language, replace letter-swap controls with three inputs: a **citation**
+(grammar, page and statement), a **paradigm** the rule must generate, and **wrong-environment negatives**
+(forms the rule must not produce where the grammar excludes it; check each against the corpus first, since a
+negative can be a real word). Steps 1 and 3 still apply, so the paradigm
+plus other predicted forms total at least 20; a smaller paradigm gives UNDECIDED at best. Verdicts use the same
+PASS, FAIL and UNDECIDED terms: every cell attested in the corpus or cited with page and statement, no negative
+produced, 0 attested losses in the Trial. Record it as in Completion: write the counts into `control.json`
+(`trial_attested_losses` and the others), pass the citation in `--command`, and run
+`motif hypothesis test <H-n> --file control.json`. The ledger refuses a PASS with fewer than 20 predicted forms.
+
 ## Inputs
 
 - The hypothesis record (statement, mechanism, falsifier; see `grammar-discovery-loop/references/hypothesis-record.md`).
