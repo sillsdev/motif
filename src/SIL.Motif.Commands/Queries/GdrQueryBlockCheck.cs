@@ -43,6 +43,10 @@ public static class GdrQueryBlockCheck
                     $"{Place(source.Gdr, source.Section)}: {diagnostic.Message} (line {diagnostic.Line}). Fix the block; it is advisory and nothing was blocked.",
                     source.Gdr, source.Section, null, 1, [source.Query?.Id ?? "(no id)"]));
             if (source.Query is not { } query) continue;
+            if (!PatternNormalization.IsNormal(query.Run))
+                findings.Add(new GdrSyncFinding(GdrSyncCodes.QueryNotNormalized,
+                    $"{Place(source.Gdr, source.Section)}, query {query.Id}: the run line is not in NFC, the form Query matches in. Query composes the pattern and each corpus form to NFC before matching, so the count is the same, but a pattern that is decomposed (such as a Tamil two-part vowel sign as two code points) can be refused when it cannot be composed safely. Save the line composed (NFC).",
+                    source.Gdr, source.Section, null, 1, [query.Id]));
             var result = Describe(source, query, run, timeout, parserPath, projectPath, seams, abandoned, buildIndex);
             runs.Add(result);
             if (result.Status is GdrQueryBlockStatus.Ok or GdrQueryBlockStatus.Skipped) continue;
