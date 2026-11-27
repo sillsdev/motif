@@ -26,7 +26,12 @@ public static class ProjectionJson
         },
     };
 
+    private static readonly JsonSerializerOptions LineOptions = new(Options) { WriteIndented = false };
+
     public static string Serialize<T>(T projection) => JsonSerializer.Serialize(projection, Options);
+
+    /// <summary>Serializes a projection on one line, for a JSONL row.</summary>
+    public static string SerializeLine<T>(T projection) => JsonSerializer.Serialize(projection, LineOptions);
 
     /// <summary>Serializes a projection as UTF-8 with the same wire conventions as the text form.</summary>
     public static byte[] ToUtf8Bytes<T>(T projection) => JsonSerializer.SerializeToUtf8Bytes(projection, Options);

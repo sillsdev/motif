@@ -136,7 +136,12 @@ public static class CliVerbCatalog
             "Commands", "new", "new",
             new[] { "new --project <fwdata> --draft <name> [--label <text>] [--request <requestId>] [--json]" }),
         new CliVerbDescriptor("Commands", "import", "import",
-            new[] { "import --project <fwdata> --file <path> [--draft <name> [--strict]] [--page <n>] [--json]" }),
+            new[]
+            {
+                "import --project <fwdata> --file <path> [--draft <name> [--strict]] [--page <n>] [--json]",
+                "import --project <fwdata> --dir <folder> [--draft <name> [--strict]] [--page <n> [--refused-only]] " +
+                "[--report <file.jsonl>] [--source <text>] [--revision <text>] [--licence <text>] [--json]",
+            }),
         new CliVerbDescriptor("Commands", "record export", "record export",
             new[] { "record export --project <fwdata> --out <path> (--record <guid> | --all) [--kind <kind>] [--json]" }),
         new CliVerbDescriptor("Commands", "pending-changes", "pending-changes",

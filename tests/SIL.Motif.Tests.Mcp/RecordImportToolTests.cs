@@ -33,7 +33,7 @@ public sealed class RecordImportToolTests(PristineProjectFixture pristine) : IDi
         var tool = AgentTools.All.Single(item => item.Name == "motif_import_record");
         Assert.Equal(SIL.Motif.Commands.Catalog.AgentClass.Draft, tool.Class);
         Assert.False(tool.ReadOnly);
-        Assert.Equal(["draft", "file", "page", "project", "strict"], tool.ArgumentNames.Order(StringComparer.Ordinal));
+        Assert.Equal(["dir", "draft", "file", "licence", "page", "project", "refusedOnly", "revision", "source", "strict"], tool.ArgumentNames.Order(StringComparer.Ordinal));
         Assert.False(tool.InputSchema["additionalProperties"]!.GetValue<bool>());
         Assert.NotNull(tool.OutputSchema);
         Assert.Contains(tool.Routes, route => route.Command == "import");
@@ -144,6 +144,54 @@ public sealed class RecordImportToolTests(PristineProjectFixture pristine) : IDi
             Assert.True(refused.Error, candidate);
             Assert.Contains(RefusalCodes.RecordImportFileUnreadable, refused.Text, StringComparison.Ordinal);
         }
+    }
+
+    [Fact]
+    public async Task AFolderIsReadOnlyUnderTheRootsAndALinkedFolderOrFileCannotLeadOut()
+    {
+        var (path, file) = Fixture();
+        using var privateRoot = PrivateManagedRoot.Use(Path.GetDirectoryName(path)!);
+        KnownProjectTestSetup.AssignUniqueTag(RunnerOptions.ResolveRoot(), path, "import-dir-roots");
+        var profile = new ToolProfile("import-dir-roots", null, null, "concise", [], AllTools: true);
+        var tools = MotifMcpServer.Expose(profile);
+        var projectFolder = Path.GetDirectoryName(path)!;
+        var inside = Path.Combine(projectFolder, "records");
+        Directory.CreateDirectory(inside);
+        File.Copy(file, Path.Combine(inside, "entry.fw.md"));
+        var outside = Path.Combine(_folder, "outside");
+        Directory.CreateDirectory(outside);
+        File.Copy(file, Path.Combine(outside, "other.fw.md"));
+
+        async Task<(bool Error, string Text)> Call(params (string Name, object Value)[] extra)
+        {
+            var result = await MotifMcpServer.CallAsync(Context(path, profile), tools, "motif_import_record",
+                Args([("project", path), .. extra]), CancellationToken.None);
+            return (result.IsError == true, result.StructuredContent?.ToString() ?? "");
+        }
+
+        var ok = await Call(("dir", inside));
+        Assert.False(ok.Error, ok.Text);
+        Assert.Contains("\"updated\":1", ok.Text.Replace(" ", "").Replace("\n", "").Replace("\r", ""), StringComparison.Ordinal);
+        var rows = await Call(("dir", inside), ("page", 1));
+        Assert.False(rows.Error, rows.Text);
+        Assert.Contains("entry.fw.md", rows.Text, StringComparison.Ordinal);
+        var root = await Call(("dir", projectFolder));
+        Assert.False(root.Error, root.Text);
+        Assert.True((await Call(("dir", outside))).Error);
+        Assert.True((await Call(("dir", Path.Combine(inside, "..", "..", Path.GetFileName(_folder), "outside")))).Error);
+        Assert.True((await Call(("dir", inside), ("file", file))).Error);
+        try
+        {
+            Directory.CreateSymbolicLink(Path.Combine(inside, "escape"), outside);
+            File.CreateSymbolicLink(Path.Combine(inside, "escaped.fw.md"), Path.Combine(outside, "other.fw.md"));
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or PlatformNotSupportedException) { return; }
+        var viaLink = await Call(("dir", Path.Combine(projectFolder, "records", "escape")));
+        Assert.True(viaLink.Error);
+        Assert.Contains(RefusalCodes.RecordImportFileUnreadable, viaLink.Text, StringComparison.Ordinal);
+        var walked = await Call(("dir", inside), ("page", 1));
+        Assert.DoesNotContain("other.fw.md", walked.Text, StringComparison.Ordinal);
+        Assert.DoesNotContain("escaped.fw.md", walked.Text, StringComparison.Ordinal);
     }
 
     [Fact]

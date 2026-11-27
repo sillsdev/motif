@@ -23,8 +23,19 @@ internal sealed class RecordImportChangedException() : ProposalRefusalException(
     new Dictionary<string, string>());
 
 /// <summary>The scratch pass failed in a way no single change explains, so the import cannot be previewed.</summary>
-internal sealed class RecordImportScratchException(Exception inner)
-    : Exception("The operations could not be tried on a scratch copy: " + inner.GetType().Name + ".", inner);
+internal sealed class RecordImportScratchException(Exception inner, int unit = -1)
+    : Exception("The operations could not be tried on a scratch copy: " + inner.GetType().Name + ".", inner)
+{
+    /// <summary>The file, by its place in the pass, whose operations failed; -1 when no one file is to blame.</summary>
+    public int Unit { get; } = unit;
+}
+
+/// <summary>The scratch pass failed on one file of a folder, named by its path.</summary>
+internal sealed class RecordImportScratchFileException(string path, RecordImportScratchException inner)
+    : Exception(inner.Message, inner)
+{
+    public string Path { get; } = path;
+}
 
 public static partial class RecordImportCommand
 {
@@ -35,6 +46,9 @@ public static partial class RecordImportCommand
 
     /// <summary>Tests change the project between the preview and the stage by setting this.</summary>
     internal static Action? BeforeStage { get; set; }
+
+    /// <summary>Tests make one file's operation fail unexpectedly by throwing from this.</summary>
+    internal static Action<OperationEnvelope>? ScratchProbe { get; set; }
 
     /// <summary>Identifies the lowering's operations, so a stage can check what was previewed.</summary>
     private static string Digest(IReadOnlyList<OperationEnvelope> operations)
@@ -48,38 +62,55 @@ public static partial class RecordImportCommand
     }
 
     /// <summary>Runs the operations on a scratch copy in Apply's order, so refusals surface early.</summary>
-    private static RecordLowering ValidateOnScratch(LcmCache cache, ProjectRecordPlan plan, RecordLowering full)
+    private static RecordLowering ValidateOnScratch(LcmCache cache, ProjectRecordPlan plan, RecordLowering full) =>
+        ValidateOnScratch(cache, [(plan, full)])[0];
+
+    /// <summary>One scratch pass over every file's operations, each failure charged to its file.</summary>
+    private static RecordLowering[] ValidateOnScratch(LcmCache cache, IReadOnlyList<(ProjectRecordPlan Plan, RecordLowering Full)> units)
     {
-        if (full.Operations.Count == 0 || full.OperationChanges is not { } owners) return full;
-        var changes = plan.ChangeSet.Changes;
-        var changeOf = new Dictionary<CanonicalId, int>();
-        for (var index = 0; index < full.Operations.Count; index++)
-            changeOf[full.Operations[index].OperationId] = owners[index];
-        var failed = new Dictionary<int, string>();
+        var results = units.Select(unit => unit.Full).ToArray();
+        var owner = new Dictionary<CanonicalId, (int Unit, int Change)>();
+        var byId = new Dictionary<CanonicalId, OperationEnvelope>();
+        for (var unit = 0; unit < units.Count; unit++)
+        {
+            var full = units[unit].Full;
+            if (full.Operations.Count == 0 || full.OperationChanges is not { } owners) continue;
+            for (var index = 0; index < full.Operations.Count; index++)
+            {
+                owner[full.Operations[index].OperationId] = (unit, owners[index]);
+                byId[full.Operations[index].OperationId] = full.Operations[index];
+            }
+        }
+        if (byId.Count == 0) return results;
+        var failed = new Dictionary<(int Unit, int Change), string>();
         var failedOperations = new HashSet<CanonicalId>();
-        var own = changeOf.Keys.ToHashSet();
-        var contained = full.Operations.Select(operation => new OperationEnvelope(operation.OperationId, operation.Kind,
+        var contained = byId.Values.Select(operation => new OperationEnvelope(operation.OperationId, operation.Kind,
             operation.EntityId, operation.Target, operation.After, operation.Placement,
-            operation.DependsOn.Where(dependency => own.Contains(dependency.OperationId)).ToArray(),
+            operation.DependsOn.Where(dependency => owner.TryGetValue(dependency.OperationId, out var own) &&
+                own.Unit == owner[operation.OperationId].Unit).ToArray(),
             rationale: operation.Rationale)).ToArray();
-        var byId = full.Operations.ToDictionary(operation => operation.OperationId);
         var handler = cache.ServiceLocator.GetInstance<IActionHandler>();
-        using var unit = new NonUndoableUnitOfWorkHelper(handler);
-        unit.RollBack = false;
+        using var unitOfWork = new NonUndoableUnitOfWorkHelper(handler);
+        unitOfWork.RollBack = false;
         using var writes = DeferredWrites.Begin(cache);
         IReadOnlyList<OperationEnvelope> order;
         try
         {
+            for (var unit = 0; unit < units.Count; unit++)
+            {
+                try { OperationExecutionOrder.Sort(contained.Where(operation => owner[operation.OperationId].Unit == unit).ToArray()); }
+                catch (Exception exception) when (IsRefusalOfOneChange(exception)) { throw new RecordImportScratchException(exception, unit); }
+            }
             order = OperationExecutionOrder.Sort(contained);
         }
-        catch (Exception exception) when (IsRefusalOfOneChange(exception))
+        catch (Exception exception) when (exception is not RecordImportScratchException && IsRefusalOfOneChange(exception))
         {
             throw new RecordImportScratchException(exception);
         }
         foreach (var ordered in order)
         {
             var id = ordered.OperationId;
-            var change = changeOf[id];
+            var change = owner[id];
             if (failed.ContainsKey(change) || ordered.DependsOn.Any(dependency => failedOperations.Contains(dependency.OperationId)))
             {
                 failedOperations.Add(id);
@@ -88,6 +119,7 @@ public static partial class RecordImportCommand
             }
             try
             {
+                ScratchProbe?.Invoke(byId[id]);
                 OperationHandlerRegistry.Resolve(byId[id].Kind, "Draft composer preparation")
                     .ApplyAndCaptureEffect(cache, byId[id], new List<CanonicalId>());
             }
@@ -100,7 +132,7 @@ public static partial class RecordImportCommand
             }
             catch (Exception exception) when (exception is not (ProjectWritingSystemsUnavailableException or OutOfMemoryException))
             {
-                throw new RecordImportScratchException(exception);
+                throw new RecordImportScratchException(exception, change.Unit);
             }
         }
         try
@@ -109,10 +141,21 @@ public static partial class RecordImportCommand
         }
         catch (Exception exception) when (IsRefusalOfOneChange(exception))
         {
-            foreach (var change in changeOf.Values.Distinct().Where(change => !failed.ContainsKey(change)))
+            foreach (var change in owner.Values.Distinct().Where(change => !failed.ContainsKey(change)))
                 failed[change] = "The operations together could not be written: " + exception.Message;
         }
-        if (failed.Count == 0) return full;
+        for (var unit = 0; unit < units.Count; unit++)
+        {
+            var mine = failed.Where(pair => pair.Key.Unit == unit).ToDictionary(pair => pair.Key.Change, pair => pair.Value);
+            if (mine.Count > 0) results[unit] = WithoutFailed(units[unit].Plan, units[unit].Full, mine);
+        }
+        return results;
+    }
+
+    private static RecordLowering WithoutFailed(ProjectRecordPlan plan, RecordLowering full, Dictionary<int, string> failed)
+    {
+        var changes = plan.ChangeSet.Changes;
+        var owners = full.OperationChanges!;
         if (full.RequiredChanges is { } required && failed.Keys.Where(required.Contains).Order().FirstOrDefault(-1) is var fatal and >= 0)
             return new([], full.Refusals, full.PlanRefusals, [], null, new RecordLoweringRefusal(RefusalCodes.RecordImportCreateShape,
                 changes[fatal].ObjectType ?? "", changes[fatal].Field, plan.RecordGuid,

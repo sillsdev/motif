@@ -78,6 +78,12 @@ public sealed partial class ImportRecordViewModel : ObservableObject, IDisposabl
     /// <summary>The name the Draft was staged under.</summary>
     [ObservableProperty] private string? _stagedDraftName;
 
+    /// <summary>Refuse to stage when any change is refused.</summary>
+    [ObservableProperty] private bool _strict;
+
+    /// <summary>The changes the import refused and left out of the staged Draft; null until <see cref="State"/> is Staged.</summary>
+    [ObservableProperty] private int? _stagedRefusalCount;
+
     public int ChangeCount => Preview?.ChangeCount ?? 0;
     public int OperationCount => Preview?.OperationCount ?? 0;
     public int RefusalCount => Preview?.RefusalCount ?? 0;
@@ -120,7 +126,7 @@ public sealed partial class ImportRecordViewModel : ObservableObject, IDisposabl
 
     /// <summary>Stages the previewed changes in a new Draft named <see cref="DraftName"/>.</summary>
     public Task StageAsync() =>
-        RunAsync(new RecordImportRequest(_project, FilePath, DraftName.Trim()), staging: true);
+        RunAsync(new RecordImportRequest(_project, FilePath, DraftName.Trim(), 1, Strict), staging: true);
 
     /// <summary>Stops a preview in flight; a stage cannot be stopped once started, so this does nothing then.</summary>
     public void Cancel()
@@ -181,6 +187,7 @@ public sealed partial class ImportRecordViewModel : ObservableObject, IDisposabl
         {
             StagedProposalId = response.ProposalId;
             StagedDraftName = response.DraftName;
+            StagedRefusalCount = response.RefusalCount;
             State = ImportRecordState.Staged;
             return;
         }
@@ -214,6 +221,7 @@ public sealed partial class ImportRecordViewModel : ObservableObject, IDisposabl
         ErrorMessage = null;
         StagedProposalId = null;
         StagedDraftName = null;
+        StagedRefusalCount = null;
         State = ImportRecordState.Idle;
     }
 

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "record-import.schema.json",
-  "description": "Record-file import request and response, shared by the CLI import --file --json and the MCP motif_import_record tool. Null members are omitted. The serialized response stays within 2048 bytes; the lists page.",
+  "description": "Record-file and record-folder import request and response, shared by the CLI import --file and --dir --json and the MCP motif_import_record tool. Null members are omitted. The serialized summary stays within 2048 bytes; the lists page.",
   "oneOf": [
     {
       "$ref": "#/$defs/Request"
@@ -15,8 +15,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "projectPath",
-        "filePath"
+        "projectPath"
       ],
       "properties": {
         "projectPath": {
@@ -37,8 +36,56 @@
         },
         "strict": {
           "type": "boolean"
+        },
+        "dirPath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rows": {
+          "type": "boolean"
+        },
+        "refusedOnly": {
+          "type": "boolean"
+        },
+        "reportPath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "revision": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "licence": {
+          "type": "string",
+          "maxLength": 200
         }
-      }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "filePath"
+          ],
+          "not": {
+            "required": [
+              "dirPath"
+            ]
+          }
+        },
+        {
+          "required": [
+            "dirPath"
+          ],
+          "not": {
+            "required": [
+              "filePath"
+            ]
+          }
+        }
+      ]
     },
     "Operation": {
       "type": "object",
@@ -186,7 +233,10 @@
         },
         "baseVerdict": {
           "enum": [
-            "fresh"
+            "fresh",
+            "new",
+            "unchanged",
+            "not-checked"
           ]
         },
         "changeCount": {
@@ -235,6 +285,16 @@
           "items": {
             "$ref": "#/$defs/Change"
           }
+        },
+        "dir": {
+          "$ref": "#/$defs/DirSummary"
+        },
+        "files": {
+          "type": "array",
+          "maxItems": 200,
+          "items": {
+            "$ref": "#/$defs/FileRow"
+          }
         }
       },
       "allOf": [
@@ -270,6 +330,127 @@
           }
         }
       ]
+    },
+    "FileRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "status",
+        "baseVerdict",
+        "changes",
+        "operations",
+        "refused"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string"
+        },
+        "record": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "created",
+            "updated",
+            "unchanged",
+            "refused"
+          ]
+        },
+        "baseVerdict": {
+          "enum": [
+            "new",
+            "fresh",
+            "stale",
+            "missing",
+            "unchanged",
+            "not-checked"
+          ]
+        },
+        "changes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "operations": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "refused": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "code": {
+          "type": "string",
+          "pattern": "^[a-z-]+\\.[a-z-]+$"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "DirSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "files",
+        "created",
+        "updated",
+        "unchanged",
+        "refused",
+        "ignored",
+        "manifest",
+        "firstRefused"
+      ],
+      "properties": {
+        "files": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "created": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "updated": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unchanged": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "refused": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ignored": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "manifest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "firstRefused": {
+          "type": "array",
+          "maxItems": 5,
+          "items": {
+            "$ref": "#/$defs/FileRow"
+          }
+        },
+        "source": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        },
+        "licence": {
+          "type": "string"
+        }
+      }
     }
   }
 }

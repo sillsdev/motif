@@ -16,6 +16,8 @@ public sealed class RecordImportContractTests
     [InlineData("request")]
     [InlineData("dry-run")]
     [InlineData("draft")]
+    [InlineData("dir-dry-run")]
+    [InlineData("dir-draft")]
     public void GoldenConformsToTheClosedSchema(string name)
     {
         var golden = ReadGolden(name);
@@ -57,6 +59,34 @@ public sealed class RecordImportContractTests
 
         var request = ReadGolden("request");
         request["page"] = 0;
+        Assert.False(Schema.Evaluate(JsonSerializer.SerializeToElement(request)).IsValid);
+    }
+
+    [Fact]
+    public void AFolderSummaryListsAtMostFiveRefusedRowsAndAPageAtMostTwoHundredRows()
+    {
+        Assert.Equal(5, RecordImportPaging.SummaryRefusedRows);
+        Assert.Equal(200, RecordImportPaging.RowsPerPage);
+        var response = ReadGolden("dir-dry-run");
+        var rows = response["dir"]!["firstRefused"]!.AsArray();
+        for (var index = 0; index < 5; index++) rows.Add(rows[0]!.DeepClone());
+        Assert.False(Schema.Evaluate(JsonSerializer.SerializeToElement(response)).IsValid);
+
+        response = ReadGolden("dir-draft");
+        var files = response["files"]!.AsArray();
+        for (var index = 0; index < 200; index++) files.Add(files[0]!.DeepClone());
+        Assert.False(Schema.Evaluate(JsonSerializer.SerializeToElement(response)).IsValid);
+    }
+
+    [Fact]
+    public void ARequestNamesAFileOrAFolderButNotBoth()
+    {
+        var request = JsonNode.Parse("""{"projectPath":"P.fwdata","dirPath":"folder","draftName":"d","source":"s"}""")!;
+        Assert.True(Schema.Evaluate(JsonSerializer.SerializeToElement(request)).IsValid);
+        request["filePath"] = "a.md";
+        Assert.False(Schema.Evaluate(JsonSerializer.SerializeToElement(request)).IsValid);
+        request.AsObject().Remove("filePath");
+        request.AsObject().Remove("dirPath");
         Assert.False(Schema.Evaluate(JsonSerializer.SerializeToElement(request)).IsValid);
     }
 

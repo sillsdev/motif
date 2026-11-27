@@ -273,10 +273,15 @@ internal static class AgentTools
         new("motif_import_record",
             string.Empty,
             AgentClass.Draft,
-            Schema.Object([("file", Schema.String("Path of the edited record file, exported from this project."), true),
+            Schema.Object([("file", Schema.String("Path of the edited record file, exported from this project. Give this or dir."), false),
+                ("dir", Schema.String("A folder of *.fw.md record files, imported as one Proposal. Give this or file."), false),
                 ("draft", Schema.String("A new Draft name to stage the operations in. Leave it out for a dry run that writes nothing."), false),
-                ("page", Schema.Integer("Page of changes, operations and refusals to list. Default 1.", 1, 100000), false),
-                ("strict", Schema.Boolean("Needs a draft name: refuse to stage when any change is refused. Default false."), false)]),
+                ("page", Schema.Integer("Page of changes, operations and refusals to list. For dir, it lists that page of file rows, 200 to a page. Default 1.", 1, 100000), false),
+                ("refusedOnly", Schema.Boolean("With dir and page: list only the refused files."), false),
+                ("source", Schema.String("With dir: where the records came from, kept with the Proposal."), false),
+                ("revision", Schema.String("With dir: the revision of the source."), false),
+                ("licence", Schema.String("With dir: the licence of the source."), false),
+                ("strict", Schema.Boolean("Needs a draft name: refuse to stage when any change (for dir, any file) is refused. Default false."), false)]),
             false,
             false,
             false,
@@ -287,7 +292,8 @@ internal static class AgentTools
             OutputSchema = RecordImportToolSchema.Output,
             FieldNames = new Dictionary<string, string?>
             {
-                ["FilePath"] = "file", ["DraftName"] = "draft", ["Page"] = "page", ["Strict"] = "strict",
+                ["FilePath"] = "file", ["DirPath"] = "dir", ["DraftName"] = "draft", ["Page"] = "page", ["Strict"] = "strict",
+                ["RefusedOnly"] = "refusedOnly", ["Source"] = "source", ["Revision"] = "revision", ["Licence"] = "licence", ["Rows"] = null, ["ReportPath"] = null,
             },
         },
 
@@ -1634,12 +1640,19 @@ internal static class AgentTools
 
     private static ToolOutcome ImportRecord(ServerContext context, ToolArgs args)
     {
-        var file = args.Required("file");
-        if (RecordImportCommand.RefuseOutsideAgentRoots(context.ProjectPath, file, Directory.GetCurrentDirectory()) is { } refusal)
+        var file = args.Optional("file");
+        var dir = args.Optional("dir");
+        if ((file is null) == (dir is null))
+            return ToolOutcome.Refused(new Refusal(RefusalCodes.RecordImportFileOrDir, FailureReason.InvalidArgument,
+                "Give --file or --dir, not both.", new Dictionary<string, string>()));
+        if (RecordImportCommand.RefuseOutsideAgentRoots(context.ProjectPath, (file ?? dir)!, Directory.GetCurrentDirectory()) is { } refusal)
             return ToolOutcome.Refused(refusal);
+        var page = args.OptionalInt("page");
         return ToolOutcome.From(RecordImportCommand.Run(new RecordImportRequest(
-            context.ProjectPath, file, args.Optional("draft"), args.OptionalInt("page") ?? 1,
-            args.OptionalBoolean("strict") ?? false)));
+            context.ProjectPath, file, args.Optional("draft"), page ?? 1,
+            args.OptionalBoolean("strict") ?? false, dir, dir is not null && page is not null ? true : null,
+            args.OptionalBoolean("refusedOnly") == true ? true : null, null, args.Optional("source"),
+            args.Optional("revision"), args.Optional("licence"))));
     }
 
     private static ToolOutcome StartProposal(ServerContext context, ToolArgs args)

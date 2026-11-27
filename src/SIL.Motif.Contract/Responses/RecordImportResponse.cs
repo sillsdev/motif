@@ -27,6 +27,36 @@ public sealed record RecordImportChange(string Kind, string? Class, string Field
 /// <param name="Reason">What stopped the change, shortened to <see cref="Requests.RecordImportPaging.TextLength"/>.</param>
 public sealed record RecordImportRefusal(string Code, string? Class, string Field, string? Object, string Reason);
 
+/// <summary>One file of a folder import.</summary>
+/// <param name="Path">The file's path relative to the folder, with <c>/</c> separators.</param>
+/// <param name="Kind">The record kind the file names, when it could be read.</param>
+/// <param name="Record">The canonical id of the project record the file is about, when known.</param>
+/// <param name="Status"><c>created</c>, <c>updated</c>, <c>unchanged</c> or <c>refused</c>.</param>
+/// <param name="BaseVerdict"><c>new</c>, <c>fresh</c>, <c>stale</c>, <c>missing</c>, <c>unchanged</c> or <c>not-checked</c>.</param>
+/// <param name="Changes">The changes the file makes.</param>
+/// <param name="Operations">The operations that will be staged for the file.</param>
+/// <param name="Refused">The changes of the file that were refused.</param>
+/// <param name="Code">The <c>record-import.*</c> code of the file's first refusal, whole-file or of a change.</param>
+/// <param name="Reason">What stopped it, shortened.</param>
+public sealed record RecordImportFileRow(string Path, string? Kind, string? Record, string Status, string BaseVerdict,
+    int Changes, int Operations, int Refused, string? Code = null, string? Reason = null);
+
+/// <summary>What a folder import found, in counts. The rows are listed by page.</summary>
+/// <param name="Files">The <c>*.fw.md</c> files read.</param>
+/// <param name="Created">Files that create a record.</param>
+/// <param name="Updated">Files that change a record.</param>
+/// <param name="Unchanged">Files that say what the project already holds.</param>
+/// <param name="Refused">Files refused whole, with their code in the row.</param>
+/// <param name="Ignored">Entries that are not <c>*.fw.md</c> files, or are links, and so were not read.</param>
+/// <param name="Manifest">The sha256 of the per-file manifest (path, text digest, record, status), so a stage can tell the folder changed.</param>
+/// <param name="FirstRefused">The first refused rows, at most <see cref="Requests.RecordImportPaging.SummaryRefusedRows"/>.</param>
+/// <param name="Source">The source the options named.</param>
+/// <param name="Revision">The revision the options named.</param>
+/// <param name="Licence">The licence the options named.</param>
+public sealed record RecordImportDirSummary(int Files, int Created, int Updated, int Unchanged, int Refused, int Ignored,
+    string Manifest, IReadOnlyList<RecordImportFileRow> FirstRefused, string? Source = null, string? Revision = null,
+    string? Licence = null);
+
 /// <summary>
 /// What a record-file import found. The CLI <c>import --file --json</c> and the MCP tool return exactly this. Nothing is
 /// ever applied: a dry run writes nothing, and a staged import only adds a Draft. A file refused whole is not this
@@ -46,6 +76,9 @@ public sealed record RecordImportRefusal(string Code, string? Class, string Fiel
 /// <param name="DraftName">The Draft the operations were staged in; null for a dry run.</param>
 /// <param name="ProposalId">The Draft's canonical id; null for a dry run.</param>
 /// <param name="Changes">This page of the changes the file makes, with the field and the old and new value of each.</param>
+/// <param name="Dir">For a folder import, the counts and the first refused files; the fields above then hold totals and <c>baseVerdict</c> is <c>not-checked</c>.</param>
+/// <param name="Files">For a folder import asked for by page, that page of file rows.</param>
+/// <param name="ReportRows">For a folder import given a report path, every file row, for the host to write to that file; never serialized.</param>
 public sealed record RecordImportResponse(
     string Mode,
     string? RecordKind,
@@ -60,4 +93,7 @@ public sealed record RecordImportResponse(
     IReadOnlyList<RecordImportRefusal> Refusals,
     string? DraftName = null,
     string? ProposalId = null,
-    IReadOnlyList<RecordImportChange>? Changes = null);
+    IReadOnlyList<RecordImportChange>? Changes = null,
+    RecordImportDirSummary? Dir = null,
+    IReadOnlyList<RecordImportFileRow>? Files = null,
+    [property: System.Text.Json.Serialization.JsonIgnore] IReadOnlyList<RecordImportFileRow>? ReportRows = null);

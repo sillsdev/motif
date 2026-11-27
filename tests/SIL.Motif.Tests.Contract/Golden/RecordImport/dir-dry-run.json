@@ -1,0 +1,34 @@
+{
+  "mode": "dryRun",
+  "baseVerdict": "not-checked",
+  "changeCount": 12,
+  "operationCount": 31,
+  "refusalCount": 2,
+  "page": 1,
+  "pageCount": 1,
+  "operations": [],
+  "refusals": [],
+  "dir": {
+    "files": 5,
+    "created": 2,
+    "updated": 1,
+    "unchanged": 1,
+    "refused": 1,
+    "ignored": 3,
+    "manifest": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "firstRefused": [
+      {
+        "path": "stale/old.fw.md",
+        "kind": "lexicon/entry",
+        "record": "-AAAAAAAAAAAAAAAAAAAAAA",
+        "status": "refused",
+        "baseVerdict": "stale",
+        "changes": 0,
+        "operations": 0,
+        "refused": 0,
+        "code": "record-import.plan-refused",
+        "reason": "The project's record changed after the file was exported."
+      }
+    ]
+  }
+}

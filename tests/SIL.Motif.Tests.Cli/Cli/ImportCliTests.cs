@@ -110,6 +110,45 @@ public sealed class ImportCliTests : IDisposable
     }
 
     [Fact]
+    public void AFolderIsImportedAsOneProposalWithRowsPagedAsJsonLinesAndAReport()
+    {
+        var folder = Path.Combine(_root, "folder");
+        Directory.CreateDirectory(folder);
+        File.Copy(_file, Path.Combine(folder, "entry.fw.md"));
+        File.WriteAllText(Path.Combine(folder, "bad.fw.md"), "not a record\n");
+        var report = Path.Combine(_root, "rows.jsonl");
+
+        var summary = Run("import", "--project", _project, "--dir", folder, "--report", report, "--source", "synthetic");
+        Assert.True(summary.ExitCode == 0, summary.Error + summary.Output);
+        Assert.Contains("created: 0; updated: 1; unchanged: 0; refused: 1", summary.Output, StringComparison.Ordinal);
+        Assert.Contains("record-import.plan-refused", summary.Output, StringComparison.Ordinal);
+        Assert.Equal(2, File.ReadAllLines(report).Length);
+
+        var page = Run("import", "--project", _project, "--dir", folder, "--page", "1", "--refused-only");
+        Assert.True(page.ExitCode == 0, page.Error + page.Output);
+        Assert.Contains("\"path\":\"bad.fw.md\"", page.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"path\":\"entry.fw.md\"", page.Output, StringComparison.Ordinal);
+
+        var json = Run("import", "--project", _project, "--dir", folder, "--draft", "dir-draft", "--json");
+        Assert.True(json.ExitCode == 0, json.Error + json.Output);
+        var node = JsonNode.Parse(json.Output)!;
+        Assert.Equal("draft", node["mode"]!.GetValue<string>());
+        Assert.Equal(1, node["dir"]!["updated"]!.GetValue<int>());
+
+        var strict = Run("import", "--project", _project, "--dir", folder, "--draft", "dir-strict", "--strict", "--json");
+        Assert.NotEqual(0, strict.ExitCode);
+        Assert.Contains(RefusalCodes.RecordImportStrictRefused, strict.Output + strict.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AFileAndAFolderTogetherAreAUsageErrorAndFolderOptionsNeedAFolder()
+    {
+        Assert.NotEqual(0, Run("import", "--project", _project, "--file", _file, "--dir", _root).ExitCode);
+        Assert.NotEqual(0, Run("import", "--project", _project, "--file", _file, "--report", "x.jsonl").ExitCode);
+        Assert.NotEqual(0, Run("import", "--project", _project, "--dir", _root, "--refused-only").ExitCode);
+    }
+
+    [Fact]
     public void ADryRunPrintsTheOperationsAndWritesNothing()
     {
         var before = SHA256.HashData(File.ReadAllBytes(_project));

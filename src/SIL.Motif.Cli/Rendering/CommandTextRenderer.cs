@@ -1656,8 +1656,28 @@ public static class CommandTextRenderer
         return text.ToString();
     }
 
+    private static string RenderRecordImportDir(RecordImportResponse r)
+    {
+        var d = r.Dir!;
+        var text = new StringBuilder();
+        text.AppendLine(r.Mode == "draft"
+            ? $"Staged {r.OperationCount:N0} operation(s) from {d.Files:N0} file(s) in Draft {r.DraftName} ({r.ProposalId}). Nothing was applied."
+            : $"Dry run of {d.Files:N0} file(s): {r.OperationCount:N0} operation(s) would be staged. Nothing was written.");
+        text.AppendLine($"  created: {d.Created:N0}; updated: {d.Updated:N0}; unchanged: {d.Unchanged:N0}; refused: {d.Refused:N0}; refused changes: {r.RefusalCount - d.Refused:N0}; ignored: {d.Ignored:N0}");
+        text.AppendLine($"  manifest: {d.Manifest}; row pages: {r.PageCount}");
+        if (d.Source is not null || d.Revision is not null || d.Licence is not null)
+            text.AppendLine($"  source: {d.Source}; revision: {d.Revision}; licence: {d.Licence}");
+        foreach (var row in d.FirstRefused)
+            text.AppendLine($"  refused {row.Path}  {row.Code}: {row.Reason}");
+        if (r.Files is { } rows)
+            foreach (var row in rows) text.AppendLine(ProjectionJson.SerializeLine(row));
+        else if (r.PageCount > 0) text.AppendLine("  Rows: --page <n> lists the file rows, one JSON line each.");
+        return text.ToString();
+    }
+
     private static string RenderRecordImport(RecordImportResponse r)
     {
+        if (r.Dir is not null) return RenderRecordImportDir(r);
         var text = new StringBuilder();
         text.AppendLine(r.Mode == "draft"
             ? $"Staged {r.OperationCount:N0} operation(s) from the {r.RecordKind} file in Draft {r.DraftName} ({r.ProposalId}); {r.RefusalCount:N0} change(s) refused and not staged. Nothing was applied."

@@ -28,5 +28,13 @@ public static partial class RefusalCatalog
         Spec(RefusalCodes.RecordImportStrictRefused, FailureReason.Refused),
         Spec(RefusalCodes.RecordImportStrictNeedsDraft, FailureReason.InvalidArgument),
         Spec(RefusalCodes.RecordImportInvalidPage, FailureReason.InvalidArgument),
+        Spec(RefusalCodes.RecordImportFileOrDir, FailureReason.InvalidArgument),
+        Spec(RefusalCodes.RecordImportDirEmpty, FailureReason.InvalidArgument),
+        Spec(RefusalCodes.RecordImportDirUnreadable, FailureReason.InvalidArgument),
+        Spec(RefusalCodes.RecordImportOptionInvalid, FailureReason.InvalidArgument),
+        Spec(RefusalCodes.RecordImportBatchTooLarge, FailureReason.Refused),
+        Spec(RefusalCodes.RecordImportRecordTwice, FailureReason.Refused),
+        Spec(RefusalCodes.RecordImportGuidDuplicateInBatch, FailureReason.Refused),
+        Spec(RefusalCodes.RecordImportReferenceToNewInBatch, FailureReason.Refused),
     ];
 }
