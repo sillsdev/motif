@@ -161,6 +161,10 @@ public static class GrammarCheckQuery
                     CheckedRuleCount = inventory.RuleCount,
                     Advisories = EmptyLexiconAdvisory(inventory),
                 };
+                projected = projected with
+                {
+                    Advisories = projected.Advisories.Concat(GrammarAdvisorySweep.Run(Cache())).ToArray(),
+                };
                 projected = RequiredSlotWarnings.AddTo(projected, Cache());
                 projected = NegatedFeatureValueWarnings.AddTo(projected, Cache());
                 projected = DerivedStemClassWarnings.AddTo(projected, Cache());

@@ -491,7 +491,7 @@
   },
   "grammar check": {
     "title": "Check a grammar",
-    "description": "Runs the grammar checker against the project's current Baseline and stores its findings; use warnings to read them afterward. The stored-analysis comparison follows the Default proposal checks setting unless the command overrides it. It returns the first 10 findings with the full counts and names the next offset; --limit, --offset, --page and --all read the rest.",
+    "description": "Runs the grammar checker against the project's current Baseline and stores its findings; use warnings to read them afterward. The stored-analysis comparison follows the Default proposal checks setting unless the command overrides it. It returns the first 10 findings with the full counts and names the next offset; --limit, --offset, --page and --all read the rest; whole-grammar advisories (compose.whole-word-environment, compose.one-stem-inflection-class, grammar.orphan-environment) never change the exit code.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
   "timing": {
