@@ -31,7 +31,7 @@ public static class AssessSummary
             response.TimingOverrideAssessmentIds, response.CompletionSummary, response.CorrectnessStatus,
             response.GrammarWarnings, response.ObjectTimingNote,
         })!.AsObject();
-        result["words"] = new JsonArray(response.Words.Select(Detailed).ToArray());
+        result["words"] = DetailedWords(response.Words);
         result["costComparison"] = new JsonObject { ["state"] = "unavailable", ["reason"] = "No paired Assessment was selected." };
         if (Scope(response) is { } scope) result["scope"] = scope;
         return result;
@@ -48,7 +48,7 @@ public static class AssessSummary
             trial.Clean, trial.WordScope, trial.Standing, trial.DroppedGrammarNotChecked,
             trial.Sample, trial.SampleWords, trial.WordListDigest,
         })!.AsObject();
-        result["wordResults"] = new JsonArray(trial.WordResults.Select(Detailed).ToArray());
+        result["wordResults"] = DetailedWords(trial.WordResults);
         return result;
     }
 
@@ -99,15 +99,45 @@ public static class AssessSummary
             ["costComparison"] = new JsonObject { ["state"] = "unavailable", ["reason"] = "No paired Assessment was selected." },
         };
         if (!string.IsNullOrEmpty(invocationId)) result["invocation"] = invocationId;
-        result["words"] = new JsonArray(page.Select(row => detailed ? Detailed(row) : Concise(row)).ToArray());
+        var shares = WorkShares(words);
+        result["words"] = new JsonArray(page.Select((row, index) =>
+            detailed ? Detailed(row, shares.After[offset + index]) : Concise(row, shares.After[offset + index])).ToArray());
         return result;
     }
 
-    private static JsonNode Concise(AssessmentWordResult row)
+    /// <summary>The detailed rows, each with its percentage of the run's parser work.</summary>
+    private static JsonArray DetailedWords(IReadOnlyList<AssessmentWordResult> words)
+    {
+        var shares = WorkShares(words);
+        return new JsonArray(words.Select((row, index) =>
+        {
+            var node = Detailed(row, shares.After[index]);
+            if (shares.Before[index] is { } before) node["baselineWorkSharePercent"] = before;
+            if (shares.After[index] is { } after && shares.Before[index] is { } was)
+                node["workSharePointsDelta"] = Math.Round(after - was, ShareDigits);
+            return node;
+        }).ToArray());
+    }
+
+    private const int ShareDigits = 2;
+
+    /// <summary>Each word's percent of the run's total work, per side.</summary>
+    private static (double?[] After, double?[] Before) WorkShares(IReadOnlyList<AssessmentWordResult> words) =>
+        (Shares(words, word => word.ParserWork), Shares(words, word => word.BaselineWorkUnits));
+
+    private static double?[] Shares(IReadOnlyList<AssessmentWordResult> words, Func<AssessmentWordResult, long?> work)
+    {
+        var total = words.Sum(word => (decimal)(work(word) ?? 0));
+        return total <= 0 || words.Any(word => work(word) is null) ? new double?[words.Count]
+            : words.Select(word => work(word) is { } own ? (double?)Math.Round((double)(own * 100m / total), ShareDigits) : null).ToArray();
+    }
+
+    private static JsonNode Concise(AssessmentWordResult row, double? workShare)
     {
         var node = new JsonObject { ["word"] = row.Word, ["outcome"] = row.Outcome };
         if (row.LowercaseOf is { } lowercaseOf) node["lowercaseOf"] = lowercaseOf;
         if (row.StoppedBy is { } stoppedBy) node["stoppedBy"] = stoppedBy;
+        if (workShare is { } share) node["workSharePercent"] = share;
         if (row.Outcome == "analysed")
         {
             node["reading"] = AssessmentCounts.IsAccepted(row) ? "accepted" : "guess-only";
@@ -116,7 +146,7 @@ public static class AssessSummary
         return node;
     }
 
-    private static JsonNode Detailed(AssessmentWordResult row) => ProjectionJson.ToNode(new
+    private static JsonObject Detailed(AssessmentWordResult row, double? workShare = null) => ProjectionJson.ToNode(new
     {
         row.Word, row.LowercaseOf, row.WordWritingSystem, row.Outcome, row.IsIncomplete, row.CompletionStatus,
         row.Comparison, row.AnalysisComparison, row.StoredAnalysesAvailable,
@@ -129,5 +159,6 @@ public static class AssessSummary
         row.ReadingGrades, row.ProjectStanding, row.MissedApproved, row.ExpectedAnalysis,
         row.StoppedBy, row.Origin, row.OccurrenceCount, row.FixFirst, row.HasUnavailableEvidence,
         row.EvidenceStatus, row.CorrectnessStatus,
-    })!;
+        WorkSharePercent = workShare,
+    })!.AsObject();
 }
