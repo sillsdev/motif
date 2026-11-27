@@ -68,7 +68,7 @@ public static class EditPhonemeComposer
                 throw new InvalidOperationException($"{NotFound}: the phoneme has no representation '{from}'.");
             if (ReadEnvironmentsWriting(cache, from).FirstOrDefault() is { } environment)
                 throw new InvalidOperationException(
-                    $"{Referenced}: environment '{environment.Name}' writes '{from}'; change that environment first.");
+                    $"{Referenced}: environment '{environment.Name}' writes '{from}'; switch that side of the environment to a natural class with compose-edit-environment first.");
         }
 
         var builder = new SoundSystemAuthoring.Builder(mintId, "Authored by the EditPhoneme composer.");

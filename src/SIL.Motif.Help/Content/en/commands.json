@@ -1244,6 +1244,26 @@
     ],
     "redirect": "Use only if nothing uses the exception feature any more; otherwise use compose-remove-exception-feature, which clears every use in one Proposal."
   },
+  "compose-edit-environment": {
+    "title": "Edit a phonological environment",
+    "description": "Rewrites the left context, the right context or both of an existing environment in place, so the allomorphs that name it keep their link. It refuses an unknown phoneme or natural class, a stale target, or a kept side that does not read back. Motif stages a Draft for a person to review and Apply.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "environment": "Id of the environment to edit.",
+      "expectedText": "The environment's current string, such as / ா _ #.",
+      "left": "New left context, replacing the whole left side; each item names one phoneme, naturalClass, boundary or boundaryMarker. Leave out to keep it.",
+      "right": "New right context, replacing the whole right side. Leave out to keep it."
+    },
+    "goals": [
+      "Change an environment from a phoneme to a natural class without re-pointing allomorphs",
+      "Fix one side of an environment that a phoneme merge or respelling refused to touch"
+    ],
+    "guides": [
+      "conditioned-allomorphs"
+    ],
+    "redirect": "Use only if an object already uses the environment and one side must change; otherwise condition an allomorph differently with compose-edit-allomorph-condition, and for a family of environments prefer one natural-class environment or a phonological rule."
+  },
   "compose-delete-environment": {
     "title": "Delete a phonological environment",
     "description": "Deletes a phonological environment that no allomorph, rule or other object uses. It refuses an environment still in use and names each user. Motif stages a Draft for a person to review and Apply.",
