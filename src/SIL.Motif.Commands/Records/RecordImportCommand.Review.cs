@@ -7,11 +7,7 @@ namespace SIL.Motif.Commands.Records;
 
 public static partial class RecordImportCommand
 {
-    /// <summary>
-    /// Watches a scratch copy while a folder's operations run on it: which existing entries change homograph number, and
-    /// which gain a variant or complex-form back-reference from a new entry. liblcm renumbers homographs itself, so the
-    /// numbers are read before and after rather than worked out.
-    /// </summary>
+    /// <summary>Reads homograph numbers and back-references on the scratch copy.</summary>
     private sealed class ReviewProbe(IReadOnlyCollection<Guid> created)
     {
         private readonly Dictionary<Guid, int> _before = [];

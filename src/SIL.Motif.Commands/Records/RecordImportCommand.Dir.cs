@@ -723,8 +723,7 @@ public static partial class RecordImportCommand
                 .Select(file => Row(file, 300)).ToList();
             return Build([], 0, rows, plan.Review);
         }
-        // Rows and text are cut until the summary fits, so long names stay within the bound.
-        // The review rows give way before the refused rows do, and the counts stay.
+        // Review rows, then refused rows and text, are cut until the summary fits.
         var reviews = new[] { plan.Review, plan.Review is { } counts ? counts with { FirstHomographs = [], FirstBackReferences = [] } : null };
         for (var count = firstRefused.Count; count >= 0; count--)
             foreach (var length in new[] { RecordImportPaging.TextLength, 60, 40, 24 })
