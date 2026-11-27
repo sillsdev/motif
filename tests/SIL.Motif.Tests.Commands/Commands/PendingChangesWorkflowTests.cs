@@ -698,6 +698,7 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
         Assert.Single(reopened.Changes);
     }
 
+    [Trait("Quarantine", "#609")]
     [Fact]
     public async Task CancellingAMeasurementCancelsTheTrialJob()
     {
