@@ -86,7 +86,7 @@ public sealed class PhonologyAssessmentRepositoryTests : IDisposable
     }
 
     [Fact]
-    public void Schema76UpgradeKeepsEveryCarriedAssessmentReadable()
+    public void Schema76UpgradeDropsAssessmentsAndKeepsTheExampleSet()
     {
         var example = Example("e", new CitationView("Original source", "p. 1"));
         using (var database = Open())
@@ -115,13 +115,19 @@ public sealed class PhonologyAssessmentRepositoryTests : IDisposable
         }
 
         using var upgraded = Open();
-        var assessments = new AssessmentRepository(upgraded);
-        foreach (var id in new[] { "words", "phonology", "unavailable" })
-            Assert.Equal(id, assessments.Get(id).AssessmentId);
-        var phonologyResults = new PhonologyAssessmentRepository(upgraded);
-        Assert.Equal(example.Citation, phonologyResults.ReadExample("phonology", "e").Result.Example.Citation);
-        Assert.Single(phonologyResults.ReadDependencies("phonology"));
-        Assert.IsType<PhonologyRowEvidence.Unavailable>(phonologyResults.ReadExample("unavailable", "e").Result.Evidence);
+        // Assessments are derived and dropped (ADR 0023); the example set is authored and kept.
+        foreach (var table in new[] { "AssessmentInvocations", "Assessments", "PhonologyAssessmentRows", "PhonologyAssessmentDependencies" })
+            Assert.Equal(0L, Count(upgraded, table));
+        Assert.Equal(1L, Count(upgraded, "PhonologyExampleSetRevisions"));
+        Assert.Throws<KeyNotFoundException>(() => new AssessmentRepository(upgraded).Get("phonology"));
+    }
+
+    private static long Count(SIL.Motif.Host.Store.MotifDatabase database, string table)
+    {
+        using var connection = database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = $"SELECT COUNT(*) FROM {table};";
+        return Convert.ToInt64(command.ExecuteScalar());
     }
 
     [Fact]

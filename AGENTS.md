@@ -265,6 +265,11 @@ For PR review, PR copy, review-comment responses, or Jira bug work, read
 [`respond-to-review-comments`](.claude/skills/respond-to-review-comments/SKILL.md), or
 [`jira-bugfix`](.claude/skills/jira-bugfix/SKILL.md). These are software-development workflows;
 they do not replace Motif's Proposal, Dry Run, or Assessment contracts.
+A known flake is quarantined when its issue is filed: `[Trait("Quarantine", "#NNN")]` (see the development workflow).
+
+**Landing:** before you enqueue, requeue or cancel anything in the merge queue, read
+[Landing through the merge queue](docs/development-workflow.md#landing-through-the-merge-queue). It holds the
+owner's standing orders, including that a Windows-only failure does not stop merging.
 
 To interpret a Parsimony finding for a linguist, or to stage its fix, keep, ask or defer, read the
 [`parsimony-review`](plugin/skills/parsimony-review/SKILL.md) skill first.

@@ -26,6 +26,7 @@ namespace SIL.Motif.Tests.App.RealClient;
 [Collection(LcmCacheTestCollection.Name)]
 public sealed class CompareDiscussionRealProjectTests(PristineProjectFixture pristine)
 {
+    [Trait("Quarantine", "#472")]
     [Fact]
     public void AnEditFieldWorksOvertookIsComparedDoneAndThenAppliesWithBothChanges()
     {

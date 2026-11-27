@@ -42,6 +42,22 @@ public sealed class StoreDeletionButtonTests
         Assert.Contains("upgrade", refusal.Sentence);
     }
 
+    [Fact]
+    public void ANewerStoreNeverOffersDeletionAndPointsToTheNewerMotifOrABackup()
+    {
+        var refusal = WindowRefusal.From(new Refusal(RefusalCodes.StoreOtherVersion, FailureReason.Refused, "newer",
+            new Dictionary<string, string>
+            {
+                ["fwDataPath"] = Project, [RefusalFactNames.StorePath] = StorePath, [RefusalFactNames.StoreNewer] = "true",
+            }));
+        Assert.False(refusal.OffersStoreDeletion);
+        Assert.False(refusal.OffersRefreshToUpgrade);
+        Assert.True(refusal.IsStoreCauseThatRetryCannotClear);
+        Assert.DoesNotContain("Delete", refusal.Sentence);
+        Assert.Contains("newer", refusal.Sentence);
+        Assert.Contains("backup", refusal.Sentence);
+    }
+
     [Theory]
     [InlineData(RefusalCodes.StoreOtherVersion, true)]
     [InlineData(RefusalCodes.StoreUnsupported, false)]

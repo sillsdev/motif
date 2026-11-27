@@ -16,6 +16,7 @@ public static partial class RefusalCatalog
         Spec(RefusalCodes.TrialDeltaRequestInvalid, FailureReason.InvalidArgument),
         Spec(RefusalCodes.TrialDeltaIncomplete, FailureReason.Refused),
         Spec(RefusalCodes.TrialDeltaManifestUnwritable, FailureReason.InvalidArgument),
+        Spec(RefusalCodes.TrialReceiptUnwritable, FailureReason.InvalidArgument),
         Spec(RefusalCodes.TrialReviewInputUnavailable, FailureReason.Refused),
         Spec(RefusalCodes.TrialNoBaseSampleInvalid, FailureReason.InvalidArgument),
         Spec(RefusalCodes.TrialWorkingSetNotAGate, FailureReason.Refused),
@@ -25,6 +26,8 @@ public static partial class RefusalCatalog
         Spec(RefusalCodes.TrialTouchedNeedsWords, FailureReason.InvalidArgument),
         Spec(RefusalCodes.TrialTouchedNoBaseline, FailureReason.NotFound),
         Spec(RefusalCodes.TrialTouchedNoObjects, FailureReason.NotFound),
+        Spec(RefusalCodes.TrialSiblingsInvalid, FailureReason.InvalidArgument),
+        Spec(RefusalCodes.TrialSiblingsNone, FailureReason.NotFound),
         Spec(RefusalCodes.TrialNone, FailureReason.NotFound),
         Spec(RefusalCodes.TrialScratchGone, FailureReason.NotFound),
     ];

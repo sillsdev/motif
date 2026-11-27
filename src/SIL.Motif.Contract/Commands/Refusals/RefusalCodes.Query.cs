@@ -48,6 +48,8 @@ public static partial class RefusalCodes
     public const string QueryAsOfUnavailable = "query.as-of-unavailable";
     /// <summary>A corpus word list or segment file named by a corpus query cannot be read or is malformed.</summary>
     public const string QueryCorpusUnreadable = "query.corpus-unreadable";
+    /// <summary>A Guide block asked for a parse index that is not built; a render never builds one, so the block says which command does.</summary>
+    public const string QueryParseIndexCold = "query.parse-index-cold";
     /// <summary>A corpus query option is out of range or its pattern is not a valid regular expression.</summary>
     public const string QueryCorpusInvalid = "query.corpus-invalid";
     /// <summary><c>--write-words</c> names a file that exists and <c>--force</c> was not given; nothing was written.</summary>

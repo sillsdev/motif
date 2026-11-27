@@ -43,10 +43,12 @@ public static class CliVerbCatalog
             new[] { "guide show --project <fwdata> <GDR-n> [--as-of <draft-or-proposal>] [--json | --format fw-md]" }),
         new CliVerbDescriptor("Project", "guide", "guide edit",
             new[] { "guide edit --project <fwdata> <GDR-n> --from-file <file.md | -> [--draft <name>] [--json]" }),
+        new CliVerbDescriptor("Project", "guide", "guide add",
+            new[] { "guide add --project <fwdata> --title <text> [--parent <GDR-n>] [--after <GDR-n>] [--from-file <file.md | ->] [--ws <tag>] [--draft <name>] [--json]" }),
         new CliVerbDescriptor("Project", "guide", "guide decide",
             new[] { "guide decide --project <fwdata> <GDR-n> --choosing <A> --over <B> --because <reason> [--draft <name>] [--json]" }),
         new CliVerbDescriptor("Project", "guide", "guide check",
-            new[] { "guide check --project <fwdata> [--json]" }),
+            new[] { "guide check --project <fwdata> [--no-run | --build] [--timeout <seconds>] [--json]" }),
         new CliVerbDescriptor("Project", "source", "source list",
             new[] { "source list --project <fwdata> [--all] [--json]" }),
         new CliVerbDescriptor("Project", "source", "source show",
@@ -304,12 +306,12 @@ public static class CliVerbCatalog
             new[] { "dry-run --project <fwdata> <proposalId> --wait [--wait-terminal] [--wait-timeout-ms <ms>] [--no-background] [--effects] [--json]" }),
         new CliVerbDescriptor(
             "Commands", "trial", "trial",
-            new[] { "trial --project <fwdata> <proposalId> [--scope <name>] [--words <file>|--all-words] [--touched] [--no-base-sample] [--review-set <ids>|none] [--wait [--wait-terminal] [--wait-timeout-ms <ms>] [--no-background] [--expect-loss <file>] [--verbose]] [--json]" }),
+            new[] { "trial --project <fwdata> <proposalId> [--scope <name>] [--words <file>|--all-words] [--touched] [--siblings --corpus-types <file> [--siblings-max <n>] [--siblings-pattern <regex>]|--no-siblings] [--no-base-sample] [--review-set <ids>|none] [--wait [--wait-terminal] [--wait-timeout-ms <ms>] [--no-background] [--expect-loss <file>] [--verbose]] [--json]" }),
         new CliVerbDescriptor(
             "Commands", "trial", "trial --wait",
             new[]
             {
-                "trial --project <fwdata> <proposalId> [--scope <name>] [--words <file>|--all-words] [--touched] [--no-base-sample] --wait " +
+                "trial --project <fwdata> <proposalId> [--scope <name>] [--words <file>|--all-words] [--touched] [--siblings --corpus-types <file> [--siblings-max <n>] [--siblings-pattern <regex>]|--no-siblings] [--no-base-sample] --wait " +
                 "[--wait-terminal] [--wait-timeout-ms <ms>] [--no-background] [--expect-loss <file>] [--verbose] [--json]",
             }),
         new CliVerbDescriptor(
@@ -321,7 +323,7 @@ public static class CliVerbCatalog
             }),
         new CliVerbDescriptor(
             "Commands", "apply", "apply",
-            new[] { "apply <proposalId> --project <fwdata> [--force] [--autonomous] [--message <text>] [--note] [--no-background] [--effects] [--json]" }),
+            new[] { "apply <proposalId> --project <fwdata> [--force] [--receipt <file>] [--autonomous] [--message <text>] [--note] [--no-background] [--effects] [--json]" }),
         new CliVerbDescriptor(
             "Commands", "apply", "apply --all-pending",
             new[] { "apply --all-pending --project <fwdata> [--revision <r>] [--autonomous] [--message <text>] [--note] [--no-background] [--effects] [--json]" }),
@@ -469,7 +471,7 @@ public static class CliVerbCatalog
             new[] { "setup skip --project <fwdata> [--json]" }),
         new CliVerbDescriptor(
             "Project", "store", "store upgrade",
-            new[] { "store upgrade --project <fwdata> [--json]", "store upgrade --source <old.db> --out <new.db> [--json]" }),
+            new[] { "store upgrade --project <fwdata> [--dry-run] [--json]", "store upgrade --source <old.db> --out <new.db> [--json]" }),
         new CliVerbDescriptor(
             "Project", "store", "store delete-refused",
             new[] { "store delete-refused --project <fwdata> [--json]" }),
@@ -499,7 +501,7 @@ public static class CliVerbCatalog
         new CliVerbDescriptor("Commands", "proposal compare", "proposal compare",
             new[] { "proposal compare <proposalId> <proposalId> [<proposalId>...] --project <fwdata> [--at <digest>] [--job <jobId>]... [--page <N> --snapshot <token>] [--json]" }),
         new CliVerbDescriptor("Commands", "proposal trial delta", "proposal trial delta",
-            new[] { "proposal trial delta --project <fwdata> (--job <jobId> | --proposal <id>) [--classes lost,gained,changed,doubled,stopped-negative] [--write-manifests <dir> [--alias-created true|false] [--keep-case]] [--expect-retired <file>] [--expect-added <file>] [--max-doubled <n>] [--max-doubled-frac <0-1>] [--limit <1-200>] [--offset <n> | --page <N>] [--json]" }),
+            new[] { "proposal trial delta --project <fwdata> (--job <jobId> | --proposal <id>) [--classes lost,gained,changed,doubled,stopped-negative] [--write-manifests <dir> [--alias-created true|false] [--keep-case]] [--expect-retired <file>] [--expect-added <file>] [--max-doubled <n>] [--max-doubled-frac <0-1>] [--write-receipt <file>] [--limit <1-200>] [--offset <n> | --page <N>] [--json]" }),
         new CliVerbDescriptor("Commands", "proposal trial export", "proposal trial export",
             new[] { "proposal trial export <jobId> --project <fwdata> [--at <digest>] [--page <N>] [--json]" }),
         new CliVerbDescriptor("Commands", "proposal trial", "proposal trial",
@@ -788,7 +790,7 @@ public static class CliVerbCatalog
                 "--evidence-digest <digest>] [--clear] [--json]",
             }),
         new CliVerbDescriptor("Commands", "apply", "apply --proposal",
-            new[] { "apply --proposal <id> --project <fwdata> [--revision <r>] [--autonomous] [--message <text>] [--note] [--no-background] [--effects] [--json]" }),
+            new[] { "apply --proposal <id> --project <fwdata> [--revision <r>] [--receipt <file>] [--autonomous] [--message <text>] [--note] [--no-background] [--effects] [--json]" }),
     }.Concat(SIL.Motif.Commands.ProposalCommands.ComposerDescriptors.Select(composer =>
         new CliVerbDescriptor("Commands", composer.Verb, composer.Verb, new[] { ComposerUsage(composer.Verb) })))
         .ToArray());

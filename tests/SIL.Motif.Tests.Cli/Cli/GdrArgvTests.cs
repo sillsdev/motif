@@ -170,6 +170,42 @@ public sealed class GdrArgvTests(PristineProjectFixture pristine) : IDisposable
     }
 
     [Theory]
+    [InlineData("--foo", "1")]
+    [InlineData("--timeout", "0")]
+    [InlineData("--timeout", "soon")]
+    [InlineData("--no-run", "false")]
+    [InlineData("--no-run", "--build")]
+    public async Task CheckRefusesStrayFlagsAndBadTimeoutsWithItsUsageLine(params string[] options)
+    {
+        var path = ProjectWithBaseline();
+        var cli = await RunAutonomousAsync(new[] { "guide", "check", "--project", path }.Concat(options).ToArray());
+
+        Assert.True(cli.ExitCode == FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument), cli.Error);
+        Assert.Empty(cli.Output);
+        Assert.Contains("guide check --project <fwdata> [--no-run | --build] [--timeout <seconds>]", cli.Error);
+    }
+
+    [Fact]
+    public async Task CheckWithNoRunAndATimeoutListsTheBlocksSkippedInJson()
+    {
+        var path = ProjectWithBaseline();
+        var cli = await RunAutonomousAsync("guide", "check", "--project", path, "--no-run", "--timeout", "5", "--json");
+
+        Assert.True(cli.ExitCode == 0, cli.Error);
+        Assert.Contains("\"queryBlocks\"", cli.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task CheckWithBuildOnAGuideWithNoQueryBlocksSucceedsAndBuildsNothing()
+    {
+        var path = ProjectWithBaseline();
+        var cli = await RunAutonomousAsync("guide", "check", "--project", path, "--build", "--json");
+
+        Assert.True(cli.ExitCode == 0, cli.Error);
+        Assert.DoesNotContain("\"indexBuilt\":true", cli.Output, StringComparison.Ordinal);
+    }
+
+    [Theory]
     [InlineData("show", "--format", "unknown")]
     [InlineData("show", "--format", "fw-md", "--json")]
     [InlineData("show", "--format")]

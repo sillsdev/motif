@@ -20,7 +20,7 @@ namespace SIL.Motif.Tests.App.Walkthrough;
 public sealed class StoreRefusalWalkthroughTests(PristineProjectFixture pristine)
 {
     [Fact]
-    public void ARefusedNewerStoreCanBeExplainedKeptOrDeletedFromTheWindow()
+    public void ARefusedNewerStoreCanBeExplainedAndKeptButNeverDeletedFromTheWindow()
     {
         using var project = new WalkthroughProject(pristine);
         var storePath = StorePath(project.FwDataPath);
@@ -82,29 +82,17 @@ public sealed class StoreRefusalWalkthroughTests(PristineProjectFixture pristine
                 .Single(text => text.Text == refusal.Details);
             Assert.True(detailsText.IsEffectivelyVisible);
 
-            walkthrough.ClickDeleteButton();
-            var question = walkthrough.Named<Border>("StoreDeletionQuestion");
-            Assert.True(question.IsEffectivelyVisible);
-            CaptureIfRequested(walkthrough, "refusal-delete-confirmation-after.png");
+            // A store from a newer Motif is never offered delete or reset: the sentence says what to do instead.
+            Assert.Contains("newer", refusal.Sentence, StringComparison.OrdinalIgnoreCase);
+            Assert.False(block.FindDeleteButton().IsEffectivelyVisible);
+            Assert.False(walkthrough.Workspace.DeleteRefusedStoreCommand.CanExecute(refusal));
+            Assert.False(walkthrough.Workspace.IsConfirmingStoreDeletion);
 
-            walkthrough.Click("Keep Motif's store");
-            Assert.False(question.IsEffectivelyVisible);
-            Assert.True(block.FindDeleteButton().IsEffectivelyVisible);
+            // Keeping it is all there is: nothing was touched.
             walkthrough.WaitUntilProjectIsQuiet(
-                WalkthroughSteps.Remaining(deadline), "keeping the newer store left the project being read");
+                WalkthroughSteps.Remaining(deadline), "the refused newer store left the project being read");
             Assert.Equal(newerStoreBytes, ReadSharedBytes(storePath));
             Assert.Equal(MotifSchema.CurrentSchema + 1, UserVersion(storePath));
-
-            walkthrough.ClickDeleteButton();
-            Assert.True(question.IsEffectivelyVisible);
-            walkthrough.Click("Confirm deleting Motif's store and reopening the project");
-            walkthrough.WaitUntil(
-                () => !walkthrough.Workspace.IsConfirmingStoreDeletion &&
-                    walkthrough.Workspace.Baseline.ShownRefusal is null &&
-                    !walkthrough.Workspace.ConfirmStoreDeletionCommand.IsRunning,
-                WalkthroughSteps.Remaining(deadline), "confirming deletion did not reopen the project");
-
-            Assert.False(File.Exists(storePath));
             Assert.Equal(projectBytes, File.ReadAllBytes(project.FwDataPath));
 
             return Task.CompletedTask;

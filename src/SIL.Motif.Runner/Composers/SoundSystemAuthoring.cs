@@ -126,7 +126,7 @@ public static class AuthorEnvironmentComposer
     }
 
     // The parser drops a whole allomorph environment that holds '+' or any marker, leaving the form unconstrained.
-    private static void RequireWordBoundaryOnly(IReadOnlyList<EnvironmentContext> contexts)
+    internal static void RequireWordBoundaryOnly(IReadOnlyList<EnvironmentContext> contexts)
     {
         if (contexts.Any(context => context is { Boundary: "morpheme" } or { BoundaryMarker: not null }))
             throw new InvalidOperationException(

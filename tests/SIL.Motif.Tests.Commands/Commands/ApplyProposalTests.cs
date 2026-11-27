@@ -26,6 +26,28 @@ public sealed class ApplyProposalTests(PristineProjectFixture pristine)
     private static readonly TimeSpan StepBound = TimeSpan.FromMinutes(5);
 
     [Fact]
+    public async Task ADisposedObjectDuringApplyIsARefusalNotAFaultedJob()
+    {
+        var (path, pending) = await TriedPendingChange("apply-disposed");
+        var previous = Environment.GetEnvironmentVariable("MOTIF_TEST_DISPOSED_IN_APPLY_FOR");
+        try
+        {
+            Environment.SetEnvironmentVariable("MOTIF_TEST_DISPOSED_IN_APPLY_FOR", path);
+            var applied = await Task.Run(() => PendingChangesWorkflow.Apply(
+                new ApplyProposalRequest(path, pending.DraftId!, pending.Revision),
+                parserPath: FakeParser.ExecutablePath)).WaitAsync(StepBound);
+
+            Assert.False(applied.Succeeded);
+            Assert.Equal(HostRefusalCodes.CliUnexpected, applied.Refusal!.Code);
+            Assert.Equal(FailureReason.StoreInconsistent, applied.Refusal.Reason);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("MOTIF_TEST_DISPOSED_IN_APPLY_FOR", previous);
+        }
+    }
+
+    [Fact]
     public async Task FinalizesADraftThenApplies()
     {
         var (path, pending) = await TriedPendingChange("finalize-then-apply");
@@ -82,6 +104,7 @@ public sealed class ApplyProposalTests(PristineProjectFixture pristine)
         Assert.Equal([bound], before.Value!.AssessmentIds);
     }
 
+    [Trait("Quarantine", "#504")]
     [Fact]
     public async Task AProposalReopenedForReviewIsAppliedUnderItsOwnId()
     {

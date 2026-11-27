@@ -12,41 +12,6 @@ namespace SIL.Motif.Host.Store;
 /// <summary>Copies authored project data into a new current-schema store.</summary>
 public static class MotifStoreUpgrade
 {
-    private static readonly string[] Kept = ["Corpora", "CorpusDocuments", "Proposals", "ProposalRevisions",
-        "ProposalRationaleRevisions", "ProposalComments", "ProposalPictures",
-        "Receipts", "AppliedIndex", "NamedSelections", "DefaultSelection", "ParsimonySelection", "ReviewMarks", "ReadOccurrences",
-        "PhonologyExampleSets", "PhonologyExampleSetRevisions", "PhonologyExamples", "ReviewReports", "Requests",
-        "Hypotheses", "HypothesisProposals", "HypothesisTests", "StoreRelocations", "WordTypeDispositions"];
-    private static readonly string[] Schema76Carry =
-    [
-        "Baselines", "BaselineSummaries", "BaselineTextWords", "BaselineTextWordforms", "BaselineTextReadIndex",
-        "AssessmentInvocations", "Assessments", "AssessmentWordPayloads", "AssessmentWordSetBindings",
-        "AssessedWords", "ParsedAnalyses", "AssessmentObjectTimings", "RetainedInvocations", "RetainedInvocationMembers",
-        "PhonologyAssessmentBindings", "PhonologyAssessmentRows", "PhonologyAssessmentDependencies",
-        "SourceIndexState", "SourcePassages", "SourceWordforms", "SourceWordPlaces",
-    ];
-
-    // Schema 77 added the coverage publication tables; they are authored pins from then on.
-    private static readonly string[] Schema77Carry =
-        ["GrammarCoverageSegmentations", "GrammarCoverageMeasurements", "GrammarCoverageNoAnalysisRank"];
-
-    private static readonly HashSet<string> Derived = new(StringComparer.Ordinal)
-    {
-        "ActiveParse", "AssessedWords", "AssessmentInvocations", "AssessmentObjectTimings", "AssessmentPins",
-        "AssessmentWordPayloads", "AssessmentWordSetBindings", "Assessments", "BeforeAssessmentBinding", "BaselineSummaries", "BaselineTextReadIndex", "BaselineTextWordforms",
-        "BaselineTextWords", "Baselines", "CurrentParsimonyBundles", "GrammarChecks", "Jobs", "ParsedAnalyses",
-        "ParserRefusals", "ParsimonyBuildClaims", "ParsimonyBundleReferences", "ParsimonyBundles", "ParsimonyFrozenViews", "ParsimonyReaderLeases",
-        "SourceIndexState", "SourcePassages", "SourceWordforms", "SourceWordPlaces",
-        "IndexedCorpusHeads", "IndexedCorpusGenerations", "IndexedCorpusDocuments", "IndexedCorpusShards",
-        "IndexedCorpusForms", "IndexedCorpusOccurrences", "IndexedCorpusWeights", "IndexedCorpusShardWeights",
-        "PendingChangeFits", "ProgressState", "ProgressTexts", "PhonologyAssessmentBindings", "PhonologyAssessmentDependencies", "PhonologyAssessmentRows",
-        "ProposalDifferenceBuckets", "ProposalDifferenceCases", "ProposalDifferenceOccurrences",
-        "Reports", "RetainedInvocationMembers", "RetainedInvocations",
-        "query_snapshot", "query_forms", "query_stems", "query_uses", "query_objects",
-        "ReviewReportCases", "ReviewReportMemberships", "ReviewReportEvents",
-        "GrammarCoverageSegmentations", "GrammarCoverageMeasurements", "GrammarCoverageNoAnalysisRank"
-    };
-
     private static void ReleaseReviewReportDetails(SqliteConnection connection, SqliteTransaction transaction)
     {
         var reports = new List<(string Id, string Json, string Digest)>();
@@ -88,16 +53,44 @@ public static class MotifStoreUpgrade
     public sealed record UnreadableRevision(string ProposalId, string IntentDigest, string Error);
 
     /// <summary>Counts and diagnostic information for one store upgrade.</summary>
+    /// <param name="SourceSchema">The schema the store was at.</param>
+    /// <param name="TargetSchema">The schema it was upgraded to.</param>
+    /// <param name="BackupPath">The original store file, kept beside the new one so an interrupted swap can finish.</param>
+    /// <param name="Carried">Each authored table carried, with its rows.</param>
+    /// <param name="Dropped">Each derived table dropped.</param>
+    /// <param name="UnreadableRevisions">Revisions current code cannot parse; their bytes are kept.</param>
+    /// <param name="BackupDirectory">The <c>store backup</c> folder taken before the upgrade, which <c>store restore</c> takes.</param>
+    /// <param name="BackupReceiptPath">That backup's <c>motif-backup.json</c>.</param>
+    /// <param name="DroppedCounts">Each dropped table with the rows it held, so the receipt says what was lost.</param>
+    /// <param name="Steps">The declared steps the store crossed, as <c>schema: what changed</c>, oldest first.</param>
     public sealed record Report(int SourceSchema, int TargetSchema, string? BackupPath,
         Dictionary<string, long> Carried, List<string> Dropped,
-        List<UnreadableRevision> UnreadableRevisions);
+        List<UnreadableRevision> UnreadableRevisions, string? BackupDirectory = null,
+        string? BackupReceiptPath = null, Dictionary<string, long>? DroppedCounts = null, List<string>? Steps = null);
 
     /// <summary>Copies an immutable source into a new output and writes a JSON report beside it.</summary>
     public static Report Copy(string source, string output) => Build(source, output, null, true, null);
 
+    /// <summary>The rows one derived table of the old store held, so the report says what was dropped.</summary>
+    private static Dictionary<string, long> CountDropped(SqliteConnection destination, SqliteTransaction transaction,
+        List<string> dropped, bool carriesSummaries)
+    {
+        var counts = new Dictionary<string, long>(StringComparer.Ordinal);
+        foreach (var table in dropped)
+            counts[table] = Scalar(destination, $"SELECT COUNT(*) FROM old.{Quote(table)};", transaction);
+        // Summaries of undecided Proposals are not carried, and are dropped like any derived row.
+        if (carriesSummaries)
+        {
+            var notCarried = Scalar(destination, "SELECT COUNT(*) FROM old.ProposalDifferences;", transaction) -
+                Scalar(destination, "SELECT COUNT(*) FROM main.ProposalDifferences;", transaction);
+            if (notCarried > 0) counts["ProposalDifferences"] = notCarried;
+        }
+        return counts;
+    }
+
     internal static Report Build(string source, string output, ProjectLocator? expected, bool immutable, string? backup,
         Version? worker = null, Action<SqliteConnection, bool>? onOpen = null,
-        int firstSummarySchema = FirstSummarySchema)
+        int firstSummarySchema = FirstSummarySchema, StoreSafetyBackup? safetyBackup = null)
     {
         source = Path.GetFullPath(source);
         output = Path.GetFullPath(output);
@@ -150,12 +143,10 @@ public static class MotifStoreUpgrade
             Execute(destination, "PRAGMA defer_foreign_keys = ON;", transaction);
             var tables = Names(destination, "SELECT name FROM old.sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';", transaction);
             // Summaries written before their current shape cannot be read, so they are dropped like any derived table.
-            var carriesSummaries = version >= firstSummarySchema;
-            var kept = carriesSummaries ? Kept.Append("ProposalDifferences").ToArray() : Kept;
-            if (version is 76 or 77) kept = [.. kept, .. Schema76Carry];
-            if (version == 77) kept = [.. kept, .. Schema77Carry];
-            bool IsDerived(string name) => !kept.Contains(name, StringComparer.Ordinal) &&
-                (Derived.Contains(name) || name == "ProposalDifferences");
+            var plan = StoreUpgradeSteps.PlanFor(version, firstSummarySchema);
+            var carriesSummaries = plan.CarriesSummaries;
+            var kept = plan.Kept;
+            bool IsDerived(string name) => plan.IsDerived(name);
             var unknown = tables.Except(kept, StringComparer.Ordinal).Where(name => name != "MotifMetadata" && !IsDerived(name)).ToArray();
             if (unknown.Length != 0) throw new InvalidDataException(StoreUpgradeMessages.Format("UnknownTable", string.Join(", ", unknown)));
             var carried = kept.ToDictionary(table => table, _ => 0L, StringComparer.Ordinal);
@@ -169,14 +160,7 @@ public static class MotifStoreUpgrade
                 if (matching.Length == 0) throw new InvalidDataException(StoreUpgradeMessages.Format("NoColumns", table));
                 var names = matching.Select(Quote).ToList();
                 var values = matching.Select(name => table == "Proposals" && name == "AnchorJson" ? "NULL" : Quote(name)).ToList();
-                // Before schema 60 a Named Selection's limit counted analysis attempts; it now counts parser work.
-                if (table == "NamedSelections" && oldColumns.Contains("PerWordStepLimit") &&
-                    newColumns.Contains("PerWordParserWorkLimit") && !oldColumns.Contains("PerWordParserWorkLimit"))
-                {
-                    names.Add(Quote("PerWordParserWorkLimit"));
-                    values.Add("CASE WHEN PerWordStepLimit IS NULL THEN NULL WHEN PerWordStepLimit <= 92233720368547758 THEN PerWordStepLimit * 100 " +
-                        "ELSE 9223372036854775807 END");
-                }
+                foreach (var step in plan.Crossed) step.RewriteColumns?.Invoke(table, oldColumns, newColumns, names, values);
                 AddRequiredDefaults(destination, transaction, table, oldColumns, names, values);
                 var where = table == "ProposalDifferences" ? " WHERE " + DecidedDifferences : "";
                 Execute(destination, $"INSERT INTO main.{Quote(table)} ({string.Join(",", names)}) SELECT {string.Join(",", values)} FROM old.{Quote(table)}{where};", transaction);
@@ -184,10 +168,9 @@ public static class MotifStoreUpgrade
                 if (carried[table] != Scalar(destination, $"SELECT COUNT(*) FROM old.{Quote(table)}{where};", transaction))
                     throw new InvalidDataException(StoreUpgradeMessages.Format("CountChanged", table));
             }
-            if (version == 76)
-                Execute(destination, "UPDATE SourceIndexState SET Status = 'stale' WHERE Kind = 'Paratext';", transaction);
             ReleaseReviewReportDetails(destination, transaction);
-            FoldNotesIntoComments(destination, transaction, tables, carried);
+            foreach (var step in plan.Crossed)
+                step.AfterCopy?.Invoke(new StoreUpgradeStep.Context(destination, transaction, tables, carried));
             // The word rows are not carried, so every carried summary says its word detail is gone.
             if (carriesSummaries) Execute(destination, "UPDATE main.ProposalDifferences SET WordDetailDroppedUtc = " +
                 "strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE WordDetailDroppedUtc IS NULL;", transaction);
@@ -196,6 +179,7 @@ public static class MotifStoreUpgrade
                 if (metadataColumns.Contains(column))
                     Execute(destination, $"UPDATE MotifMetadata SET {Quote(column)} = (SELECT {Quote(column)} FROM old.MotifMetadata WHERE Id=1);", transaction);
             var dropped = tables.Where(IsDerived).Order(StringComparer.Ordinal).ToList();
+            var droppedCounts = CountDropped(destination, transaction, dropped, carriesSummaries);
             var unreadable = CheckRevisions(destination, transaction);
             using (var check = destination.CreateCommand())
             {
@@ -213,7 +197,9 @@ public static class MotifStoreUpgrade
                     throw new InvalidDataException(StoreUpgradeMessages.Get("IntegrityFailed"));
             }
             transaction.Commit();
-            var report = new Report(version, MotifSchema.CurrentSchema, backup, carried, dropped, unreadable);
+            var report = new Report(version, MotifSchema.CurrentSchema, backup, carried, dropped, unreadable,
+                safetyBackup?.Directory, safetyBackup?.ReceiptPath, droppedCounts,
+                plan.Crossed.Select(step => $"{step.To}: {step.Summary}").ToList());
             File.WriteAllText(temporaryReport, JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true }));
             File.Move(temporaryReport, output + ".upgrade.json");
             return report;
@@ -227,20 +213,6 @@ public static class MotifStoreUpgrade
         {
             if (File.Exists(temporaryReport)) File.Delete(temporaryReport);
         }
-    }
-
-    // A schema 61 Note becomes a Comment by a person with no recorded name; blank Notes are dropped.
-    private static void FoldNotesIntoComments(SqliteConnection destination, SqliteTransaction transaction,
-        HashSet<string> tables, Dictionary<string, long> carried)
-    {
-        if (!tables.Contains("Proposals") || tables.Contains("ProposalComments") ||
-            !Columns(destination, "old", "Proposals", transaction).Contains("Note")) return;
-        var notes = Scalar(destination, "SELECT COUNT(*) FROM old.Proposals WHERE Note IS NOT NULL AND trim(Note) <> '';", transaction);
-        Execute(destination, "INSERT INTO main.ProposalComments (ProposalId, Kind, AuthorLabel, PersonName, Text, IntentDigest, CreatedUtc, EditedUtc) " +
-            "SELECT ProposalId, 'standard', NULL, '', Note, NoteIntentDigest, COALESCE(NoteUpdatedUtc, strftime('%Y-%m-%dT%H:%M:%fZ','now')), NULL " +
-            "FROM old.Proposals WHERE Note IS NOT NULL AND trim(Note) <> '' ORDER BY rowid;", transaction);
-        carried["ProposalComments"] = Scalar(destination, "SELECT COUNT(*) FROM main.ProposalComments;", transaction);
-        if (carried["ProposalComments"] != notes) throw new InvalidDataException(StoreUpgradeMessages.Format("CountChanged", "ProposalComments"));
     }
 
     private static void AddRequiredDefaults(SqliteConnection db, SqliteTransaction transaction, string table,
@@ -298,7 +270,7 @@ public static class MotifStoreUpgrade
         return errors;
     }
 
-    private static HashSet<string> Columns(SqliteConnection db, string schema, string table, SqliteTransaction tx) =>
+    internal static HashSet<string> Columns(SqliteConnection db, string schema, string table, SqliteTransaction tx) =>
         Names(db, $"SELECT name FROM pragma_table_info('{table.Replace("'", "''")}','{schema}');", tx);
     private static HashSet<string> Names(SqliteConnection db, string sql, SqliteTransaction tx)
     {
@@ -310,15 +282,15 @@ public static class MotifStoreUpgrade
         while (reader.Read()) result.Add(reader.GetString(0));
         return result;
     }
-    private static string Quote(string name) => "\"" + name.Replace("\"", "\"\"") + "\"";
-    private static long Scalar(SqliteConnection db, string sql, SqliteTransaction? tx = null)
+    internal static string Quote(string name) => "\"" + name.Replace("\"", "\"\"") + "\"";
+    internal static long Scalar(SqliteConnection db, string sql, SqliteTransaction? tx = null)
     {
         using var command = db.CreateCommand();
         command.Transaction = tx;
         command.CommandText = sql;
         return Convert.ToInt64(command.ExecuteScalar());
     }
-    private static void Execute(SqliteConnection db, string sql, SqliteTransaction? tx = null)
+    internal static void Execute(SqliteConnection db, string sql, SqliteTransaction? tx = null)
     {
         using var command = db.CreateCommand();
         command.Transaction = tx;

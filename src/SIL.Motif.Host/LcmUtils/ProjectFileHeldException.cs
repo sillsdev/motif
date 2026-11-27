@@ -28,6 +28,20 @@ public sealed class ProjectFileHeldException(string fwDataPath)
     }
 
     /// <summary>
+    /// Whether <paramref name="exception"/>, or one inside it, carries the operating system's sharing-violation text.
+    /// LibLCM wraps the IOException without keeping it, so only the message survives.
+    /// </summary>
+    public static bool MentionsSharingViolation(Exception exception)
+    {
+        for (var current = exception; current is not null; current = current.InnerException)
+        {
+            if (current.Message.Contains("being used by another process", StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>
     /// Whether another process has the file open in a way that stops this one reading it. LibLCM reports that as an
     /// <see cref="LcmInitializationException"/> that carries only the operating system's message, so a failed open
     /// asks the file itself.

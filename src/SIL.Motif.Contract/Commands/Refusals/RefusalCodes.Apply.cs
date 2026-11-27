@@ -33,4 +33,8 @@ public static partial class RefusalCodes
     public const string ApplyTrialMissing = "apply.trial-missing";
     /// <summary>The Proposal or the project changed since it was tried.</summary>
     public const string ApplyTrialStale = "apply.trial-stale";
+    /// <summary>The Trial receipt Apply was asked to honour is missing, unreadable, altered or not a passing receipt.</summary>
+    public const string ApplyReceiptInvalid = "apply.receipt-invalid";
+    /// <summary>The Trial receipt names another Proposal revision, Baseline, Trial or gate code than the ones Apply would use now.</summary>
+    public const string ApplyReceiptStale = "apply.receipt-stale";
 }

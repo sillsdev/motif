@@ -173,6 +173,7 @@ public static class CommandTextRenderer
             GdrShowResponse r => RenderGdrShow(r),
             GdrCheckResponse r => RenderGdrCheck(r),
             GdrEditResponse r => RenderGdrEdit(r),
+            GdrAddResponse r => RenderGdrAdd(r),
             SourcePassageResponse r => SourceTextRenderer.RenderPassage(r),
             SourceListResponse r => SourceTextRenderer.RenderList(r),
             SourceShowResponse r => SourceTextRenderer.RenderShow(r),
@@ -1710,7 +1711,7 @@ public static class CommandTextRenderer
 
     private static string RenderGdrList(GdrListResponse response)
     {
-        if (!response.HasBaseline) return "No Baseline yet. Capture a Baseline to read the Grammar Guide." + Environment.NewLine;
+        if (!response.HasBaseline) return "No Baseline yet. Capture a Baseline to read the Grammar Guide: motif baseline capture --project <fwdata>. A new project's first section is added with guide add." + Environment.NewLine;
         if (response.Records.Count == 0) return "This project has no Grammar Guide." + Environment.NewLine;
         var text = new StringBuilder();
         foreach (var record in response.Records) text.AppendLine($"{record.Abbreviation}  {record.Title}");
@@ -1723,21 +1724,58 @@ public static class CommandTextRenderer
         text.AppendLine(response.Fields.Count == 0
             ? $"{response.Abbreviation}: the Markdown matches the section, so nothing was staged in {response.DraftName}."
             : $"{response.Abbreviation}: staged {string.Join(", ", response.Fields)} in {response.DraftName} ({response.OperationCount} operation(s)).");
+        if (response.StylesCreated.Count > 0)
+            text.AppendLine($"Also creates the FieldWorks standard style(s) the project lacks: {string.Join(", ", response.StylesCreated)}.");
         foreach (var warning in response.Warnings) text.AppendLine("warning: " + warning);
         if (response.Fields.Count > 0)
             text.AppendLine($"Preview it with 'guide show {response.Abbreviation} --as-of {response.DraftName}'; Apply it with the rest of {response.DraftName}.");
         return text.ToString();
     }
 
+    private static string RenderGdrAdd(GdrAddResponse response)
+    {
+        var text = new StringBuilder();
+        text.AppendLine($"{response.Abbreviation}: staged a new section{(response.ListCreated ? " and the Grammar Guide list" : "")} " +
+            $"in {response.DraftName} ({response.OperationCount} operation(s)); its id is {response.Id}.");
+        if (response.StylesCreated.Count > 0)
+            text.AppendLine($"Also creates the FieldWorks standard style(s) the project lacks: {string.Join(", ", response.StylesCreated)}.");
+        foreach (var warning in response.Warnings) text.AppendLine("warning: " + warning);
+        text.AppendLine($"Apply {response.DraftName}, then run 'baseline capture --project <fwdata>'; 'guide show {response.Abbreviation}' and 'guide check' read the Baseline.");
+        return text.ToString();
+    }
+
     private static string RenderGdrCheck(GdrCheckResponse response)
     {
-        if (!response.HasBaseline) return "No Baseline yet. Capture a Baseline to check the Grammar Guide." + Environment.NewLine;
+        if (!response.HasBaseline) return "No Baseline yet. Capture a Baseline to check the Grammar Guide: motif baseline capture --project <fwdata>." + Environment.NewLine;
         var text = new StringBuilder();
         var counts = response.Counts;
         text.AppendLine(response.InSync ? "The Grammar Guide is in sync with the grammar." : $"{response.Findings.Count} Guide warning(s). The Grammar Guide is not in sync with the grammar.");
         text.AppendLine($"Read {counts.Records} record(s), {counts.Sections} section(s), {counts.Links} link(s); " +
             $"{counts.ExamplesChecked} of {counts.Examples} example word(s) settled by stored Trial or Assessment rows.");
         foreach (var kind in response.Coverage) text.AppendLine($"  {kind.Kind}: {kind.Covered} of {kind.Objects} have a section");
+        if (response.QueryBlocks is { Count: > 0 } blocks)
+        {
+            text.AppendLine();
+            text.AppendLine($"{blocks.Count} query block(s):");
+            foreach (var block in blocks)
+            {
+                var place = block.Section is { Length: > 0 } ? $"{block.Gdr}, {block.Section}" : block.Gdr;
+                var count = block.Rows is { } rows ? $"{(block.Complete == false ? "at least " : "")}{rows.ToString("N0", CultureInfo.InvariantCulture)} row(s)" : "no count";
+                // A group-by block's rows are groups: the words and tokens beneath them say how much evidence there is.
+                if (block.Words is { } words) count += $", {words.ToString("N0", CultureInfo.InvariantCulture)} word(s)";
+                if (block.Tokens is { } tokens) count += $", {tokens.ToString("N0", CultureInfo.InvariantCulture)} token(s)";
+                if (block.IndexBuilt) count += " (built the parse index)";
+                var detail = block.Status switch
+                {
+                    GdrQueryBlockStatus.Ok => count,
+                    GdrQueryBlockStatus.Skipped => "not run",
+                    GdrQueryBlockStatus.Refused => block.Code ?? "refused",
+                    GdrQueryBlockStatus.NotBuilt => "not built; run motif guide check --build",
+                    _ => "failed",
+                };
+                text.AppendLine($"  {block.Id}  {place}  {block.Status}  {detail}  {block.Milliseconds.ToString("0.#", CultureInfo.InvariantCulture)} ms");
+            }
+        }
         foreach (var finding in response.Findings)
         {
             text.AppendLine();

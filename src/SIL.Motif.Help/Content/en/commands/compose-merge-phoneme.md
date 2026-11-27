@@ -24,6 +24,6 @@ Refusal messages begin with a stable name:
 - `phoneme-merge-nothing-to-move`: the source has no spelling to move.
 - `phoneme-merge-code-conflict`: a spelling of the source also belongs to another phoneme or boundary, the target included. Fix the spelling with `compose-edit-phoneme` first.
 - `phoneme-merge-class-would-empty`: the source is the only member of a natural class. Edit or remove that class first.
-- `phoneme-merge-referenced`: an environment writes a spelling of the source, or a rule or another object uses the source. Merging would widen what it matches, so change it first.
+- `phoneme-merge-referenced`: an environment writes a spelling of the source, or a rule or another object uses the source. Merging would widen what it matches, so change an environment first with `compose-edit-environment`.
 
 To take a merge back, apply `compose-split-phoneme`. The command stages operations in a Draft and does not change the saved FieldWorks project. Dry Run and Trial the Proposal, then Finalize it for a person to review and Apply.

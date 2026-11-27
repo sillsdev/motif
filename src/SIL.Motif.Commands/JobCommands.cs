@@ -295,6 +295,10 @@ public static class JobCommands
                     SampleWords = request.NoBaseSample ? words!.Length : null,
                     WordListDigest = request.NoBaseSample ? WordListDigest(words!) : null,
                     ExportRevision = record.DraftName is null ? record.IntentDigest : DraftRevision.Compute(record.ProposalJson),
+                    Siblings = request.SiblingSample is { } siblings
+                        ? new TrialSiblingsInput(JobWordLists.Store(database, siblings.Words), siblings.Pattern, siblings.Seed,
+                            siblings.Max, siblings.Forms, siblings.CorpusTypesSha256, siblings.Candidates, siblings.ParsedCandidates) { Warning = siblings.Warning, ReferrerForms = siblings.ReferrerForms, Referrers = siblings.Referrers, SkippedReferrerForms = siblings.SkippedReferrerForms }
+                        : null,
                     ReviewBeforeDispatches = request.ReviewBeforeDispatches?.Select(batch => batch with
                     {
                         WordList = JobWordLists.Store(database, batch.Words!),

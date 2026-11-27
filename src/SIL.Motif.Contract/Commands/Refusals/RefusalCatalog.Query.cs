@@ -31,6 +31,7 @@ public static partial class RefusalCatalog
         Spec(RefusalCodes.QueryAsOfUnavailable, FailureReason.Refused),
         Spec(RefusalCodes.QueryCorpusUnreadable, FailureReason.InvalidArgument),
         Spec(RefusalCodes.QueryCorpusInvalid, FailureReason.InvalidArgument),
+        Spec(RefusalCodes.QueryParseIndexCold, FailureReason.Refused),
         Spec(RefusalCodes.QueryWriteWordsExists, FailureReason.InvalidArgument),
         Spec(RefusalCodes.QuerySeqNegationIncomplete, FailureReason.Refused),
         Spec(RefusalCodes.QuerySeqItemUnknown, FailureReason.InvalidArgument),

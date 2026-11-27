@@ -18,11 +18,17 @@ public static partial class RefusalCodes
     public const string StoreBackupDestinationOwned = "store.backup-destination-owned";
     public const string StoreInconsistent = "store.inconsistent";
     /// <summary>
-    /// The project's Motif store was made by another version of Motif and is refused rather than migrated.
-    /// Its facts carry the store's own path under <c>storePath</c>, so the window can name the file and,
-    /// before 1.0, offer to delete it so Motif recreates it.
+    /// The project's Motif store was made by another version of Motif. An older one is upgraded on open
+    /// (<c>storeUpgradable</c>); a newer one is refused with <c>storeNewer</c>, never reset or deleted: install the
+    /// newer Motif or restore a pre-upgrade backup. Its facts carry the store's own path under <c>storePath</c>.
     /// </summary>
     public const string StoreOtherVersion = "store.other-version";
+    /// <summary>
+    /// Motif could not finish upgrading an older project store: its backup could not be taken, or the upgraded copy could not
+    /// be built or moved into place. The store is as it was (or the next open finishes the move) and the backup, when one was
+    /// taken, is named. Its facts carry <c>storePath</c>, <c>failedStep</c>, <c>fromSchema</c>, <c>toSchema</c> and, once taken, <c>backupPath</c>.
+    /// </summary>
+    public const string StoreUpgradeFailed = "store.upgrade-failed";
     /// <summary>
     /// The Motif store beside the project is registered to a different project, as when a project is copied
     /// or renamed together with its store. Its facts carry <c>storePath</c> and <c>registeredProjectPath</c>.

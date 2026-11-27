@@ -30,6 +30,8 @@ public static partial class RefusalCatalog
         Spec(RefusalCodes.ApplyInProgress, FailureReason.Busy),
         Spec(RefusalCodes.ApplyTrialMissing, FailureReason.Refused),
         Spec(RefusalCodes.ApplyTrialStale, FailureReason.Refused),
+        Spec(RefusalCodes.ApplyReceiptInvalid, FailureReason.InvalidArgument),
+        Spec(RefusalCodes.ApplyReceiptStale, FailureReason.Refused),
     ];
 
     private static IEnumerable<string> WindowCodesApply() =>

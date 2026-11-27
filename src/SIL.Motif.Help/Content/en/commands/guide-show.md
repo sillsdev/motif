@@ -1,6 +1,6 @@
 # Read a Grammar Guide section
 
-`guide show --project <fwdata> <GDR-n>` reads one section of the Grammar Guide from the current Baseline. It is an Advanced AI command. The section can also be named by its canonical id.
+`guide show --project <fwdata> <GDR-n>` reads one section of the Grammar Guide from the current Baseline. It is a read and needs no mode. The section can also be named by its canonical id.
 
 The default text view shows the record and its Discussion. `--json` returns the record's rich text runs, styles and writing systems. `--format fw-md` instead prints the whole record as FieldWorks Markdown, exactly as the window's Markdown view opens it before edits: title and abstract alternatives, then Discussion. Choose either `--json` or `--format fw-md`.
 

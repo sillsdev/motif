@@ -34,17 +34,17 @@ public sealed class StoreDeleteRefusedArgvTests : IDisposable
     private string StorePath => Path.GetFullPath(Path.Combine(_root, "project.motif.db"));
 
     [Fact]
-    public void ARefusedStoreIsDeletedAndReportedAsJson()
+    public void ANewerStoreIsRefusedAsNewerAndKept()
     {
         RefusedStore();
+        var before = File.ReadAllBytes(StorePath);
 
         var result = Run($"store delete-refused --project \"{Project}\" --json", developerCommands: true);
 
-        Assert.Equal(0, result.ExitCode);
-        using var document = JsonDocument.Parse(result.Output);
-        Assert.True(document.RootElement.GetProperty("deleted").GetBoolean());
-        Assert.Equal(StorePath, document.RootElement.GetProperty("storePath").GetString());
-        Assert.False(File.Exists(StorePath));
+        Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.Refused), result.ExitCode);
+        Assert.Contains("store.other-version", result.Error, StringComparison.Ordinal);
+        Assert.Contains("storeNewer", result.Error, StringComparison.Ordinal);
+        Assert.Equal(before, File.ReadAllBytes(StorePath));
         Assert.True(File.Exists(Project));
     }
 

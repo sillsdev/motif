@@ -10,6 +10,8 @@ public static partial class RefusalCodes
     public const string ProjectNotFound = "project.not-found";
     public const string ProjectOperationIo = "project.operation-io";
     public const string ProjectStoreIo = "project.store-io";
+    /// <summary>Windows refused a store file move or open because another process holds the store, its <c>-wal</c> or its <c>-shm</c> open; nothing was changed.</summary>
+    public const string ProjectStoreInUse = "project.store-in-use";
     public const string ProjectTagInvalid = "project.tag-invalid";
     public const string ProjectTagTaken = "project.tag-taken";
     public const string ProjectTagUnavailable = "project.tag-unavailable";

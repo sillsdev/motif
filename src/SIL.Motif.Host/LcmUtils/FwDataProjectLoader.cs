@@ -317,26 +317,56 @@ public class FwDataProjectLoader
         var progress = new LcmThreadedProgress();
         try
         {
-            if (FailsWritingSystemLoadForTest(fwDataFilePath))
-                throw new KeyNotFoundException("The writing system qaa-x-test was not found in this manager.");
-            if (HoldsProjectFileForTest(fwDataFilePath))
-                throw new IOException("Injected sharing violation.", unchecked((int)0x80070020));
-            var cache = ExclusiveXmlCache.Open(Path.GetFullPath(fwDataFilePath), lcmDirectories, progress);
-            OpenedProjects.Add(cache, new OpenedProject(Path.GetFullPath(fwDataFilePath)));
-            return cache;
+            return RetryWhileHeld(fwDataFilePath, () =>
+            {
+                if (FailsWritingSystemLoadForTest(fwDataFilePath))
+                    throw new KeyNotFoundException("The writing system qaa-x-test was not found in this manager.");
+                if (HoldsProjectFileForTest(fwDataFilePath))
+                    throw new IOException("Injected sharing violation.", unchecked((int)0x80070020));
+                var cache = ExclusiveXmlCache.Open(Path.GetFullPath(fwDataFilePath), lcmDirectories, progress);
+                OpenedProjects.Add(cache, new OpenedProject(Path.GetFullPath(fwDataFilePath)));
+                return cache;
+            }, Thread.Sleep);
         }
         catch (KeyNotFoundException failure) when (ProjectWritingSystemsUnavailableException.FromLoadFailure(
             failure, fwDataFilePath, SharedWritingSystemRepositoryPath()) is { } explained)
         {
             throw explained;
         }
-        catch (Exception failure) when (failure is LcmInitializationException and not LcmFileLockedException ||
-            ProjectFileHeldException.IsSharingViolation(failure))
+    }
+
+    private const int HeldOpenAttempts = 8;
+    private const int HeldOpenDelayMilliseconds = 100;
+
+    /// <summary>
+    /// Runs <paramref name="open"/>, and when it fails because another holder has the project file, tries again a
+    /// bounded number of times (about 0.7 s in all) before refusing as held.
+    /// </summary>
+    /// <remarks>
+    /// LibLCM reports a sharing violation as an <see cref="LcmInitializationException"/> carrying only the operating
+    /// system's text, and the holder may let go before a probe afterwards looks, so the failure's own message counts
+    /// as held. A transient hold then retries, and a lasting one is the retryable in-use refusal, never an
+    /// unreadable project.
+    /// </remarks>
+    internal static T RetryWhileHeld<T>(string fwDataFilePath, Func<T> open, Action<int> sleepMilliseconds)
+    {
+        for (var attempt = 1; ; attempt++)
         {
-            // Probe here, not in the filter: a filter runs before the failed open's own handles are released.
-            if (!ProjectFileHeldException.IsSharingViolation(failure) && !ProjectFileHeldException.IsHeld(fwDataFilePath))
-                throw;
-            throw new ProjectFileHeldException(fwDataFilePath);
+            try
+            {
+                return open();
+            }
+            catch (Exception failure) when (failure is LcmInitializationException and not LcmFileLockedException ||
+                ProjectFileHeldException.IsSharingViolation(failure))
+            {
+                // Probe here, not in the filter: a filter runs before the failed open's own handles are released.
+                var held = ProjectFileHeldException.IsSharingViolation(failure) ||
+                    ProjectFileHeldException.MentionsSharingViolation(failure) ||
+                    ProjectFileHeldException.IsHeld(fwDataFilePath);
+                if (!held) throw;
+                if (attempt >= HeldOpenAttempts) throw new ProjectFileHeldException(fwDataFilePath);
+                sleepMilliseconds(HeldOpenDelayMilliseconds);
+            }
         }
     }
 

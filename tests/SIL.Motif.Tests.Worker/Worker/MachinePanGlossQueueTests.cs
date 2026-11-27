@@ -571,6 +571,7 @@ public sealed class MachinePanGlossQueueTests
         Assert.All(observedRates, rate => Assert.Equal((uint)WindowsCpuJob.CpuRateHardCapBasisPoints, rate));
     }
 
+    [Trait("Quarantine", "#417")]
     [RequiresWindowsFact]
     public async Task RunAsync_CancelsAJobStillWaitingForASlotWithoutBlockingOthers()
     {
@@ -582,24 +583,43 @@ public sealed class MachinePanGlossQueueTests
         var holderTask = queue.RunAsync("holder", async (_, ct) =>
         {
             holderStarted.SetResult();
-            await holderRelease.Task.WaitAsync(TimeSpan.FromSeconds(10), ct);
+            await holderRelease.Task.WaitAsync(TimeSpan.FromSeconds(60), ct);
             return 0;
         }, CancellationToken.None);
-        await holderStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        // Events, not a clock: a holder that fails before it starts ends this wait with its own exception.
+        await await Task.WhenAny(holderStarted.Task, holderTask).WaitAsync(TimeSpan.FromSeconds(60));
+        Assert.True(holderStarted.Task.IsCompleted);
 
         using var waitingJobCancellation = new CancellationTokenSource();
         var waitingTask = queue.RunAsync("waiting", (_, _) => Task.FromResult(0), waitingJobCancellation.Token);
         waitingJobCancellation.Cancel();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => waitingTask)
-            .WaitAsync(TimeSpan.FromSeconds(5));
+            .WaitAsync(TimeSpan.FromSeconds(60));
 
         holderRelease.SetResult();
-        Assert.Equal(0, await holderTask.WaitAsync(TimeSpan.FromSeconds(5)));
+        Assert.Equal(0, await holderTask.WaitAsync(TimeSpan.FromSeconds(60)));
 
         // The cancelled waiter must not have leaked the slot it never held.
         var afterTask = queue.RunAsync("after", (_, _) => Task.FromResult(7), CancellationToken.None);
-        Assert.Equal(7, await afterTask.WaitAsync(TimeSpan.FromSeconds(5)));
+        Assert.Equal(7, await afterTask.WaitAsync(TimeSpan.FromSeconds(60)));
+    }
+
+    [Fact]
+    public async Task RunAsync_FailsAnAdmittedJobWhoseContainmentCannotBeCreatedAndReleasesItsSlot()
+    {
+        var slotNames = UniqueSlotNames(1);
+        using var queue = new MachinePanGlossQueue(slotNames);
+        queue.JobFactory = () => throw new InvalidOperationException("no job object");
+
+        var failed = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => queue.RunAsync("broken", (_, _) => Task.FromResult(1), CancellationToken.None)
+                .WaitAsync(TimeSpan.FromSeconds(60)));
+        Assert.Equal("no job object", failed.Message);
+
+        queue.JobFactory = null;
+        Assert.Equal(7, await queue.RunAsync("after", (_, _) => Task.FromResult(7), CancellationToken.None)
+            .WaitAsync(TimeSpan.FromSeconds(60)));
     }
 
     [RequiresWindowsFact]

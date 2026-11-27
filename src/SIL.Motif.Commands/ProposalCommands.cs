@@ -1946,11 +1946,12 @@ public static partial class ProposalCommands
         if (before is null) return;
         var binding = new BeforeAssessmentBindingRepository(database);
         var identity = new BaselineSemanticIdentity(baseline.ProjectIdentity, digest, baseline.ProjectionVersion);
-        binding.Bind(candidate.AssessmentId, identity);
-        binding.Bind(before.AssessmentId, identity);
         var timing = assessments.ListByInvocationAndKind(invocation.InvocationId, AssessmentKinds.ObjectTiming)
             .FirstOrDefault(record => record.ProposalId == proposalId);
-        if (timing is not null) binding.Bind(timing.AssessmentId, identity);
+        // One transaction, so a retry after a lock never repeats rows an earlier attempt wrote.
+        var ids = new List<string> { candidate.AssessmentId, before.AssessmentId };
+        if (timing is not null) ids.Add(timing.AssessmentId);
+        binding.BindAll(ids, identity);
     }
 
     internal static IReadOnlyCollection<string> ChangedWords(SIL.Motif.Contract.Model.Proposal proposal) =>
@@ -2029,6 +2030,10 @@ public static partial class ProposalCommands
             if (ApplyAuthorization.PendingChangesRefusal(database, record.ProposalId) is { } pendingRefusal)
                 return CommandOutcome<ApplyProjection>.Refused(pendingRefusal);
 
+            if (attribution.ReceiptPath is { } receiptPath &&
+                SIL.Motif.Commands.Review.TrialReceiptFile.Verify(database, project, record, receiptPath) is { } receiptRefusal)
+                return CommandOutcome<ApplyProjection>.Refused(receiptRefusal);
+
             if (attribution.Mode == ApplyModes.Autonomous &&
                 AutonomousTrialGate.Check(database, project, record) is { } gateRefusal)
                 return CommandOutcome<ApplyProjection>.Refused(gateRefusal);
@@ -2084,6 +2089,9 @@ public static partial class ProposalCommands
                 if (attribution.Mode == ApplyModes.Autonomous &&
                     AutonomousTrialGate.Check(database, project, record, cache) is { } liveGateRefusal)
                     return CommandOutcome<ApplyProjection>.Refused(liveGateRefusal);
+                if (attribution.ReceiptPath is not null &&
+                    SIL.Motif.Commands.Review.TrialReceiptFile.VerifyLive(database, project, record, cache) is { } liveReceiptRefusal)
+                    return CommandOutcome<ApplyProjection>.Refused(liveReceiptRefusal);
                 if (loadedSidecars?.Current(project.FullFwDataPath) != true) loadedSidecars = null;
                 var loadedSource = originalIdentity is null ? null : ProgressSourceIdentity.Capture(project.FullFwDataPath);
                 if (record.Status != ManifestStatus.Applied)
@@ -2146,6 +2154,9 @@ public static partial class ProposalCommands
                     ApplySaveCheck.RequireOnDisk(project.FullFwDataPath, receipt.AppliedLogEntry.ProposalId);
                 }
 
+                if (IsTestTarget("MOTIF_TEST_DISPOSED_IN_APPLY_FOR", project.FullFwDataPath))
+                    throw new ObjectDisposedException("SQLitePCL.sqlite3");
+
                 try
                 {
                     if (ShouldFailReceiptWriteForTest(project.FullFwDataPath))
@@ -2177,16 +2188,24 @@ public static partial class ProposalCommands
                     if (logged)
                         postApplyNotes.Add($"Details are in {ProjectDiagnosticLog.PathFor(project.FullFwDataPath)}.");
                 }
-                void TryPostApplyStep(string action, Action work)
+                void TryPostApplyStep(string action, string next, Action work)
                 {
-                    try { work(); }
+                    try { BusyRetry.Run(work); }
                     catch (Exception exception)
                     {
-                        NotePostApplyFailure($"Apply completed, but {action} could not be completed.", exception);
+                        NotePostApplyFailure($"Apply completed, but {action} could not be completed. " +
+                            $"The apply succeeded. {next}", exception);
                     }
                 }
+                var quotedProject = "\"" + project.FullFwDataPath + "\"";
+                var refreshVerb = $"Finish this stage with `motif baseline capture --project {quotedProject}`.";
+                var promoteNext = "The new Assessment was not made current; `motif assess --project " + quotedProject +
+                    "` creates a fresh current one.";
+                var bindNext = "The Before Assessment was not bound to the saved project state, so a later Trial of this " +
+                    "project may measure its Before state again.";
+                var cleanupNext = "Older Assessments of this Proposal were not removed; they are harmless and may stay.";
 
-                TryPostApplyStep("Source index queueing", () =>
+                TryPostApplyStep("Source index queueing", refreshVerb, () =>
                 {
                     IReadOnlyList<SIL.Motif.Scripture.SourceListEntry> sources;
                     try { sources = SIL.Motif.Scripture.SourceList.Read(cache); }
@@ -2195,7 +2214,7 @@ public static partial class ProposalCommands
                     if (noBackground) SIL.Motif.Worker.Sources.SourceIndexRefresh.MarkPending(database, sources);
                     else SIL.Motif.Worker.Sources.SourceIndexRefresh.Enqueue(database, sources);
                 });
-                TryPostApplyStep("Progress publication", () =>
+                TryPostApplyStep("Progress publication", refreshVerb, () =>
                 {
                     var pending = ProgressRepository.PendingReceipt(database, canonicalId.Value);
                     if (pending is null) return;
@@ -2222,21 +2241,21 @@ public static partial class ProposalCommands
                         incremental ? existing.Value.Projection : null, savedSource.Serialize());
                 });
 
-                TryPostApplyStep("post-receipt housekeeping", () =>
+                TryPostApplyStep("post-receipt housekeeping", refreshVerb, () =>
                 {
                     if (ShouldFailAfterReceiptForTest(project.FullFwDataPath))
                         throw new IOException("Injected post-receipt failure.");
                 });
                 if (candidate is not null)
                 {
-                    TryPostApplyStep("Assessment promotion", () =>
+                    TryPostApplyStep("Assessment promotion", promoteNext, () =>
                         assessments.PromoteToCurrent(candidate.AssessmentId));
-                    TryPostApplyStep("Before Assessment binding", () =>
+                    TryPostApplyStep("Before Assessment binding", bindNext, () =>
                         BindBeforeAssessment(database, assessments, canonicalId, candidate, cache));
                 }
                 if (configuration.PurgeOnApply)
                 {
-                    TryPostApplyStep("Assessment cleanup", () =>
+                    TryPostApplyStep("Assessment cleanup", cleanupNext, () =>
                         assessments.DeleteByProposal(canonicalId, candidate?.AssessmentId));
                 }
 
@@ -2355,7 +2374,7 @@ public static partial class ProposalCommands
                 "proposal.not-found", FailureReason.NotFound, ex.Message,
                 Fact(("proposalId", proposalId))));
         }
-        catch (Exception ex) when (ex is not ProjectWritingSystemsUnavailableException)
+        catch (Exception ex) when (ex is not (ProjectWritingSystemsUnavailableException or ObjectDisposedException))
         {
             // A failed apply rolled back, not Undo: derived caches may be stale (ADR 0017) -- see the remarks above.
             return CommandOutcome<ApplyProjection>.Refused(new Refusal(

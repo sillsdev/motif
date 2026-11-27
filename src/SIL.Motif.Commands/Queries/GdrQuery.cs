@@ -51,10 +51,11 @@ public static class GdrQuery
     /// without a section, links to deleted objects, and examples that no longer parse as their section says, read from the
     /// Trial and Assessment rows already stored. It parses nothing. The warning count is what the loop's completion test reads.
     /// </summary>
-    public static CommandOutcome<GdrCheckResponse> Check(GdrCheckRequest request)
+    public static CommandOutcome<GdrCheckResponse> Check(GdrCheckRequest request, string? parserPath = null)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return ProjectStoreCommand.ReadExisting(request.ProjectPath,
+        IReadOnlyList<GdrQueryBlockSource>? sources = null;
+        var read = ProjectStoreCommand.ReadExisting(request.ProjectPath,
             request.ExpectedBaseline is not null ? BaselineChanged<GdrCheckResponse>() : CommandOutcome<GdrCheckResponse>.Success(new(false, true, [], [], new GdrSyncCounts(0, 0, 0, 0, 0, []))),
             (database, project) =>
         {
@@ -73,6 +74,7 @@ public static class GdrQuery
                 var ledger = new HypothesisRepository(database).PassedGdrLinks()
                     .Select(link => new GdrLedgerLink(link.HypothesisId, link.GdrId, link.GdrSection)).ToArray();
                 var checkedResponse = GdrSyncChecker.Check(reader.Cache, new GdrExampleEvidenceRepository(database), ledger);
+                sources = GdrSyncChecker.ReadQueryBlocks(reader.Cache);
                 return CommandOutcome<GdrCheckResponse>.Success(checkedResponse with
                 {
                     Baseline = baseline.Token,
@@ -85,6 +87,12 @@ public static class GdrQuery
                 return CommandOutcome<GdrCheckResponse>.Refused(refused.Refusal);
             }
         });
+        // The blocks run after the store is closed: a v1 line opens it again, and a slow block must not hold it.
+        if (!read.Succeeded || read.Value is not { HasBaseline: true } response || sources is null) return read;
+        var blocks = GdrQueryBlockCheck.Check(sources, request.ProjectPath, request.RunBlocks,
+            TimeSpan.FromSeconds(Math.Max(1, request.BlockTimeoutSeconds)), parserPath, request.BuildIndex);
+        var findings = blocks.Findings.Count == 0 ? response.Findings : [.. response.Findings, .. blocks.Findings];
+        return CommandOutcome<GdrCheckResponse>.Success(response with { Findings = findings, InSync = findings.Count == 0, QueryBlocks = blocks.Runs });
     }
 
     /// <summary>Reads one record's Discussion with the project's styles and writing systems and any others it uses.</summary>

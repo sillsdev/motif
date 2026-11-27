@@ -75,6 +75,24 @@ public sealed class ProposalTextsTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public void AReadyProposalsRationaleKeepsAMotifQueryBlockAsWrittenAndRefusesAPythonFence()
+    {
+        var (path, id) = Finalized("queries");
+        const string Query = "Before.\n\n```motif-query\nid: forms\ntitle: Forms\nrun: motif query corpus forms --pos noun\n```\n\n" +
+            "```motif-show\nquery: forms\nshow: counts\n```\n\nAfter.";
+
+        var written = ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, id, Query));
+        Assert.True(written.Succeeded, written.Refusal?.Message);
+        Assert.Empty(written.Value!.Findings);
+        Assert.Equal(Query, Show(path, id).Rationale!.Markdown);
+
+        var python = ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, id, "```python\nprint(1)\n```"));
+        Assert.Equal("proposal.rationale-findings", python.Refusal?.Code);
+        Assert.Contains("fwmd.syntax.unsupported-markup", python.Refusal!.Message);
+        Assert.Equal(Query, Show(path, id).Rationale!.Markdown);
+    }
+
+    [Fact]
     public void ARationaleMayBeRewrittenOnAReadyProposalButNotAfterItIsClosed()
     {
         var (path, id) = Finalized("closing");

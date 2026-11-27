@@ -39,7 +39,17 @@
               AutomationProperties.AutomationId="{x:Static app:AutomationIds.GuideQueryNotice}">
         <views:CopyableTextBlock Text="{Binding Notice}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
       </Border>
-      <ItemsControl x:Name="GuideQueryDisplays" ItemsSource="{Binding Displays}">
+      <ItemsControl x:Name="GuideEvidenceDisplays" ItemsSource="{Binding EvidenceDisplays}" IsVisible="{Binding IsEvidence}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:GuideEvidenceDisplayViewModel">
+            <StackPanel Classes="guideBlock">
+              <views:CopyableTextBlock Text="{Binding Headline}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+              <views:CopyableTextBlock Classes="guideMeta" Text="{Binding TableText}" IsVisible="{Binding ShowsLines}" TextWrapping="NoWrap" />
+            </StackPanel>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+      <ItemsControl x:Name="GuideQueryDisplays" ItemsSource="{Binding Displays}" IsVisible="{Binding IsRowsQuery}">
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:GuideQueryDisplayViewModel">
             <guide:GuideQueryDisplay />

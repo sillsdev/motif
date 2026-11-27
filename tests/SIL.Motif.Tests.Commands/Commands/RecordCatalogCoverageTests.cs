@@ -166,8 +166,8 @@ public sealed class RecordCatalogCoverageTests(ITestOutputHelper output) : IDisp
         schemas.SelectMany(schema => schema.Schema.Kinds).OrderBy(kind => kind.Name, StringComparer.Ordinal).SelectMany(kind =>
             kind.Roots.Select(root => kind.Name == RecordChangeSetLowerer.EntryKind
                 ? $"# Root create\t{kind.Name}\t{root.Name}\tCovered\tlowered through AuthorLexicalEntryComposer and AuthorVariantEntryComposer; a complex form has no operation yet"
-                : kind.Name == "notebook/record"
-                    ? $"# Root create\t{kind.Name}\t{root.Name}\tUncovered\tno lowering yet"
+                : kind.Name == RecordChangeSetLowerer.NotebookKind
+                    ? $"# Root create\t{kind.Name}\t{root.Name}\tCovered\tlowered through createRecords, setTitle and setType, as InsertRecordDlg makes a record"
                     : kind.Name == "lists/item"
                         ? $"# Root create\t{kind.Name}\t{root.Name}\tUncovered\tADR 0033 D1: never invents list items"
                         : $"# Root create\t{kind.Name}\t{root.Name}\tUncovered\tcompose-author-phonological-rule"));

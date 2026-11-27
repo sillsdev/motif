@@ -184,6 +184,9 @@ public sealed record ProposalTextChangedResponse(string ProposalId, string Field
     /// null for a note.
     /// </summary>
     public string? Text { get; init; }
+
+    /// <summary>Problems in a <c>motif-query</c> or <c>motif-show</c> block of the Rationale, which is stored as written all the same; empty when there are none.</summary>
+    public IReadOnlyList<string> Warnings { get; init; } = [];
 }
 
 /// <summary>A Comment was added, edited or deleted on a Proposal.</summary>

@@ -167,6 +167,7 @@ public static class ChangeVocabulary
             ["DeletePhonologicalRule"] = ("Delete rule", "Delete a phonological rule"),
             ["DeleteExceptionFeature"] = ("Delete exception feature", "Delete an unused exception feature"),
             ["DeleteEnvironment"] = ("Delete environment", "Delete an unused phonological environment"),
+            ["EditEnvironment"] = ("Edit environment", "Edit an environment's contexts in place"),
             ["DeleteNaturalClass"] = ("Delete natural class", "Delete an unused natural class"),
             ["DeleteTextSegmentNote"] = ("Delete note", "Delete a Note of a text segment"),
         ["EditExceptionFeatures"] = ("Change exception features", "Change the exception features of a stem or affix"),
