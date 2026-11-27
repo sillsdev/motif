@@ -47,7 +47,7 @@ public sealed class CebGrammarCoverageTests
     }
 
     [CebGrammarCoverageFact]
-    public void CebInventoryMatchesTheSourceAndUnboundLegacyAssessmentIsUnavailable()
+    public void CebInventoryMatchesTheSourceAndTheUpgradeDropsTheLegacyAssessment()
     {
         var settings = JsonSerializer.Deserialize<Settings>(File.ReadAllText(Environment.GetEnvironmentVariable(SettingsVariable)!))!;
         var project = new ProjectLocator(settings.Fwdata, settings.StoreProjectIdentity);
@@ -63,7 +63,9 @@ public sealed class CebGrammarCoverageTests
             });
             var pairedCopy = Path.Combine(root, Path.GetFileName(settings.AssessmentStore));
             var upgrade = MotifStoreUpgrade.Copy(settings.AssessmentStore, pairedCopy);
-            Assert.True(upgrade.Carried["AssessedWords"] > 0);
+            Assert.True(upgrade.DroppedCounts!["AssessedWords"] > 0);
+            Assert.Contains("Assessments", upgrade.Dropped);
+            Assert.Contains("Baselines", upgrade.Dropped);
             using var paired = MotifDatabase.OpenOwned(pairedCopy, project, MotifSchema.CurrentSchema, new Version(1, 0));
             using var profile = BaselineReadCache.Open(settings.Fwdata);
             var tokeniser = SourceApprovals.Tokeniser(profile.Cache);
@@ -89,16 +91,8 @@ public sealed class CebGrammarCoverageTests
                 row.Frequency == stream.GetValueOrDefault(form)), "CEB inventory membership or weights differ.");
             Assert.Equal(stream.Values.Sum(), manifest.Rows.Sum(row => row.Frequency));
 
-            var assessment = new AssessmentRepository(paired).Get(settings.AssessmentId);
-            var baseline = new BaselineRepository(paired).GetLatestCaptured(ProjectWorkspaceKey.Compute(project))!.Token;
-            Assert.Equal(settings.Revision, baseline.SemanticSnapshotDigest);
-            Assert.Equal(settings.BaselineId, baseline.BundleDigest);
-            Assert.Null(assessment.Invocation!.InputProfile);
-            var basis = new GrammarCoverageBasis(settings.ProjectId, settings.Revision, baseline, settings.GrammarId, settings.ParserId,
-                GrammarCoverageAssessment.LimitsId(80000, new ParserWorkLimit(20000000), null),
-                segmentation.Id, segmentation.MappingDigest);
-            var refusal = Assert.Throws<GrammarCoverageReadException>(() => store.Build(paired, settings.AssessmentId, basis));
-            Assert.Equal(GrammarCoverageReadFailure.Unavailable, refusal.Failure);
+            // The upgrade drops Assessments and Baselines (ADR 0023), so the legacy assessment is gone, not unavailable.
+            Assert.Throws<KeyNotFoundException>(() => new AssessmentRepository(paired).Get(settings.AssessmentId));
 
             Assert.True(originalFiles.SequenceEqual(HashSource(settings.Paratext)), "The Paratext Source changed.");
             Assert.Equal(settings.GrammarId, BatchInvocationEvidence.DigestFile(settings.Fwdata));

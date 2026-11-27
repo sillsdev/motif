@@ -63,6 +63,30 @@ internal sealed class MotifSqliteStoreDescriptor
     /// <c>pre-reset</c>), refusing a store that is not this project's before any file is written.
     /// </summary>
     public Func<string, StoreSafetyBackup>? BackUp { get; init; }
+
+    /// <summary>
+    /// Runs after an upgrade (or rebuild) has finished, with the backup it made, to keep the backups within their caps.
+    /// A failure here never fails the upgrade.
+    /// </summary>
+    public Action<StoreSafetyBackup>? Retain { get; init; }
+
+    /// <summary>
+    /// When true, an existing store of an older schema is not upgraded but rebuilt empty after <see cref="BackUp"/>
+    /// has taken its backup (the machine store: it holds only records that are recomputed). A newer store is still refused.
+    /// </summary>
+    public bool RebuildOlder { get; init; }
+
+    /// <summary>
+    /// Copies what a person authored out of the backup store (the second argument) into the freshly created store, in the
+    /// transaction that creates it, when <see cref="RebuildOlder"/> has just rebuilt it.
+    /// </summary>
+    public Action<SqliteConnection, string>? CarryAfterRebuild { get; init; }
+
+    /// <summary>Tables <see cref="CarryAfterRebuild"/> copies, so a rebuild's notice does not list them as dropped.</summary>
+    public IReadOnlyCollection<string> CarriedTables { get; init; } = [];
+
+    /// <summary>What a rebuilt store is called in the notice that says it was rebuilt.</summary>
+    public string NoticeName { get; init; } = "project store";
 }
 
 /// <summary>
@@ -129,6 +153,7 @@ internal sealed class MotifSqliteStore : IDisposable
         try
         {
             if (descriptor.Upgrade is not null) PrepareUpgrade(fullPath, descriptor, ownershipPatience ?? DefaultOwnershipPatience);
+            else if (descriptor.RebuildOlder) PrepareRebuild(fullPath, descriptor, ownershipPatience ?? DefaultOwnershipPatience);
             useLease = AcquireUseLease(fullPath, ownershipPatience ?? DefaultOwnershipPatience);
             // This orders first creation without excluding other readers.
             if (NeedsCreation(fullPath))
@@ -261,6 +286,7 @@ internal sealed class MotifSqliteStore : IDisposable
             MoveSidecars(path, report.BackupPath);
             File.Move(pending, path);
             File.Move(reportFile, path + ".upgrade.json", true);
+            DropSwapCopyIfBackedUp(report);
             Announce(path, report);
             return;
         }
@@ -276,6 +302,7 @@ internal sealed class MotifSqliteStore : IDisposable
                 if (report?.BackupPath is not null && File.Exists(report.BackupPath))
                 {
                     File.Move(pending + ".upgrade.json", path + ".upgrade.json", true);
+                    DropSwapCopyIfBackedUp(report);
                     Announce(path, report);
                 }
             }
@@ -326,7 +353,197 @@ internal sealed class MotifSqliteStore : IDisposable
         {
             throw new MotifStoreUpgradeFailedException(path, MotifStoreUpgradeFailedException.SwapStep, schema, next, safety, exception);
         }
+        // The verified backup folder holds the original, so the sibling copy that only guarded the swap is dropped.
+        DropSwapCopyIfVerified(backup, safety.ReceiptPath, schema);
         Announce(path, built);
+        Retain(descriptor, safety);
+    }
+
+    private static void DropSwapCopyIfBackedUp(MotifStoreUpgrade.Report report)
+    {
+        if (report.BackupPath is not null && report.BackupReceiptPath is not null)
+            DropSwapCopyIfVerified(report.BackupPath, report.BackupReceiptPath, report.SourceSchema);
+    }
+
+    // The original goes only when its backup verifies; otherwise it stays.
+    private static void DropSwapCopyIfVerified(string original, string receiptPath, int schema)
+    {
+        if (!File.Exists(original)) return;
+        if (StoreBackups.MatchesOriginal(receiptPath, original, schema, out var why)) DropSwapCopy(original);
+        else
+        {
+            System.Diagnostics.Trace.TraceWarning($"Motif kept '{original}': its backup did not verify ({why}).");
+            // Retention must never count or evict a copy that is the only good one.
+            try { File.WriteAllText(original + StoreBackupRetention.UnverifiedMarker, why); }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
+        }
+    }
+
+    private static void DropSwapCopy(string backup)
+    {
+        try
+        {
+            foreach (var part in new[] { backup + "-wal", backup + "-shm", backup + "-journal", backup })
+                if (File.Exists(part)) File.Delete(part);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
+    }
+
+    // A failure to tidy old backups must never undo or hide an upgrade that finished.
+    private static void Retain(MotifSqliteStoreDescriptor descriptor, StoreSafetyBackup safety)
+    {
+        try { descriptor.Retain?.Invoke(safety); }
+        catch (Exception exception)
+        {
+            System.Diagnostics.Trace.TraceWarning("Motif could not tidy old store backups: " + exception.Message);
+        }
+    }
+
+    // Backs up and removes an older store under both locks; the open that follows creates it empty.
+    private static void PrepareRebuild(string path, MotifSqliteStoreDescriptor descriptor, TimeSpan patience)
+    {
+        if (StoreUpgradeContext.IsSuppressed || !NeedsRebuild(path, descriptor, out _) && !File.Exists(path + RebuildingSuffix)) return;
+        using var ownership = AcquireOwnership(path, patience);
+        var deadline = DateTime.UtcNow.Add(patience);
+        FileStream lease;
+        while (true)
+        {
+            try { lease = AcquireExclusiveUseLease(path); break; }
+            catch (MotifStoreLockException) when (DateTime.UtcNow < deadline) { Thread.Sleep(25); }
+        }
+        using (lease)
+        {
+            var pending = path + RebuildingSuffix;
+            if (!File.Exists(path) && File.Exists(pending) && IsFinished(pending, descriptor))
+            {
+                // A crash after the old store was removed: the finished new store is the one to keep.
+                File.Move(pending, path);
+                return;
+            }
+            DeleteWithSidecars(pending);
+            if (!NeedsRebuild(path, descriptor, out var schema)) return;
+            var next = descriptor.CurrentSchema;
+            var dropped = CountRows(path).Where(pair => !descriptor.CarriedTables.Contains(pair.Key)).ToDictionary(pair => pair.Key, pair => pair.Value);
+            StoreSafetyBackup safety;
+            try { safety = descriptor.BackUp!(StoreBackups.PreUpgrade); }
+            catch (Exception exception) when (IsUpgradeFailure(exception))
+            {
+                throw new MotifStoreUpgradeFailedException(path, MotifStoreUpgradeFailedException.BackupStep, schema, next, null, exception);
+            }
+            Step("backed-up");
+            SqliteConnection.ClearAllPools();
+            try
+            {
+                // The new store is built and checked beside the old one, which stays until the new one is complete.
+                BuildRebuilt(pending, descriptor, Path.Combine(safety.Directory, StoreBackups.StoreName));
+                Step("carried");
+                SqliteConnection.ClearAllPools();
+                DeleteWithSidecars(path);
+                Step("old-removed");
+                File.Move(pending, path);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or SqliteException or InvalidDataException)
+            {
+                SqliteConnection.ClearAllPools();
+                if (File.Exists(path)) DeleteWithSidecars(pending);
+                throw new MotifStoreUpgradeFailedException(path, MotifStoreUpgradeFailedException.BuildStep, schema, next, safety, exception);
+            }
+            catch when (File.Exists(path))
+            {
+                SqliteConnection.ClearAllPools();
+                DeleteWithSidecars(pending);
+                throw;
+            }
+            Step("rebuilt");
+            StoreUpgradeNotices.Record(new StoreUpgradeNotice(path, schema, next, safety.Directory, safety.ReceiptPath, dropped,
+                descriptor.NoticeName));
+            Retain(descriptor, safety);
+        }
+    }
+
+    private const string RebuildingSuffix = ".rebuilding";
+
+    private static void DeleteWithSidecars(string file)
+    {
+        foreach (var suffix in new[] { "-wal", "-shm", "-journal", "" })
+            if (File.Exists(file + suffix)) File.Delete(file + suffix);
+    }
+
+    private static void BuildRebuilt(string pending, MotifSqliteStoreDescriptor descriptor, string backupStore)
+    {
+        using var connection = OpenInspectionConnection(pending);
+        if (descriptor.IncrementalVacuum) Execute(connection, "PRAGMA auto_vacuum = INCREMENTAL;");
+        Execute(connection, "BEGIN IMMEDIATE;");
+        try
+        {
+            SetApplicationId(connection, descriptor.ApplicationId);
+            descriptor.Create(connection, null);
+            descriptor.CarryAfterRebuild?.Invoke(connection, backupStore);
+            descriptor.ValidateSchema(connection, null);
+            SetUserVersion(connection, null, descriptor.CurrentSchema);
+            Execute(connection, "COMMIT;");
+        }
+        catch
+        {
+            try { Execute(connection, "ROLLBACK;"); }
+            catch (SqliteException) { }
+            throw;
+        }
+    }
+
+    // Finished means the current schema and identity, which are committed last.
+    private static bool IsFinished(string pending, MotifSqliteStoreDescriptor descriptor)
+    {
+        try
+        {
+            using var connection = OpenReadOnly(pending);
+            return PragmaInt(connection, "user_version") == descriptor.CurrentSchema &&
+                PragmaInt(connection, "application_id") == descriptor.ApplicationId;
+        }
+        catch (SqliteException) { return false; }
+    }
+
+    // True for an older store of this kind; a newer, empty, foreign or broken file is left for Open to refuse.
+    private static bool NeedsRebuild(string path, MotifSqliteStoreDescriptor descriptor, out int schema)
+    {
+        schema = 0;
+        if (!File.Exists(path)) return false;
+        try
+        {
+            using var connection = OpenReadOnly(path);
+            schema = PragmaInt(connection, "user_version");
+            return schema > 0 && schema < descriptor.CurrentSchema &&
+                PragmaInt(connection, "application_id") == descriptor.ApplicationId;
+        }
+        catch (SqliteException)
+        {
+            return false;
+        }
+    }
+
+    private static Dictionary<string, long> CountRows(string path)
+    {
+        var counts = new Dictionary<string, long>(StringComparer.Ordinal);
+        try
+        {
+            using var connection = OpenReadOnly(path);
+            var tables = new List<string>();
+            using (var list = connection.CreateCommand())
+            {
+                list.CommandText = "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%';";
+                using var reader = list.ExecuteReader();
+                while (reader.Read()) tables.Add(reader.GetString(0));
+            }
+            foreach (var table in tables)
+            {
+                using var count = connection.CreateCommand();
+                var quoted = "\"" + table.Replace("\"", "\"\"") + "\"";
+                count.CommandText = "SELECT COUNT(*) FROM " + quoted + ";";
+                counts[table] = Convert.ToInt64(count.ExecuteScalar(), System.Globalization.CultureInfo.InvariantCulture);
+            }
+        }
+        catch (SqliteException) { }
+        return counts;
     }
 
     /// <summary>Where an upgrade or reset is, for tests that stop it between steps as a crash would.</summary>

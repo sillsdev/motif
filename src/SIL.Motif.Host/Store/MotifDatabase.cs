@@ -151,6 +151,9 @@ public sealed partial class MotifDatabase : IDisposable
                 if (reason == StoreBackups.PreUpgrade) RefuseOtherProjectOrNewerWorker(path, project, workerVersion);
                 return StoreBackups.WriteHeldExclusively(project, path, reason, timeProvider);
             },
+            Retain = safety => StoreBackupRetention.Prune(
+                Path.GetDirectoryName(safety.Directory)!, StoreBackups.PreUpgrade, safety.Directory, supportedSchema,
+                storePath: path),
             BeforeOpen = connection =>
             {
                 var metadata = MotifSchema.ReadMetadata(connection);
@@ -169,6 +172,57 @@ public sealed partial class MotifDatabase : IDisposable
 
     /// <summary>Opens a configured connection while this worker owns the database.</summary>
     public SqliteConnection OpenConnection() => _store.OpenConnection();
+
+    /// <summary>
+    /// Says what upgrading an older project store would do, without changing it: no backup, lock, rename or report is written.
+    /// The build runs into a scratch file that is deleted before this returns.
+    /// </summary>
+    /// <param name="path">The existing sibling Motif database path.</param>
+    /// <param name="project">The project locator that must match persisted metadata.</param>
+    /// <param name="workerVersion">The worker version used for compatibility checks.</param>
+    /// <returns>The report the real upgrade would produce, or <see langword="null"/> when the store is already current.</returns>
+    public static MotifStoreUpgrade.Report? DryRunUpgrade(string path, ProjectLocator project, Version workerVersion)
+    {
+        var descriptor = Describe(path, project, MotifSchema.CurrentSchema, workerVersion);
+        using var lease = MotifSqliteStore.AcquireExistingReadLease(path);
+        // Beside the store, as the real upgrade writes, so a store too large for the temp volume still has its dry run.
+        var scratch = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(path))!, ".motif-upgrade-dry-run-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(scratch);
+        try
+        {
+            using var probe = new SqliteConnection(new SqliteConnectionStringBuilder
+            {
+                DataSource = Path.GetFullPath(path), Mode = SqliteOpenMode.ReadOnly, Pooling = false, DefaultTimeout = 1,
+            }.ToString());
+            probe.Open();
+            using var command = probe.CreateCommand();
+            command.CommandText = "PRAGMA user_version;";
+            var schema = Convert.ToInt32(command.ExecuteScalar());
+            if (schema > MotifSchema.CurrentSchema)
+                throw new MotifStoreVersionException(Path.GetFullPath(path), 
+                    $"This {descriptor.Name} is at schema {schema} and this build understands {MotifSchema.CurrentSchema}. " +
+                    "Install the newer Motif, or restore a pre-upgrade backup with motif store restore.")
+                { Newer = true };
+            if (schema == MotifSchema.CurrentSchema)
+            {
+                // A store that needs a newer worker is refused here too.
+                if (workerVersion < MotifSchema.ReadMetadata(probe).MinimumWorkerVersion)
+                    throw new MotifStoreVersionException(Path.GetFullPath(path),
+                        $"Worker {workerVersion} is older than database minimum {MotifSchema.ReadMetadata(probe).MinimumWorkerVersion}. " +
+                        "Install the newer Motif, or restore a pre-upgrade backup with motif store restore.")
+                    { Newer = true };
+                return null;
+            }
+            probe.Close();
+            return MotifStoreUpgrade.Build(path, Path.Combine(scratch, "dry-run.db"), project, false, null, workerVersion);
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            try { Directory.Delete(scratch, recursive: true); }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
+        }
+    }
 
     /// <summary>Reads an existing project store without creating it or changing its journal mode.</summary>
     /// <param name="path">The existing sibling Motif database path.</param>

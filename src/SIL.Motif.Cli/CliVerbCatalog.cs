@@ -471,7 +471,7 @@ public static class CliVerbCatalog
             new[] { "setup skip --project <fwdata> [--json]" }),
         new CliVerbDescriptor(
             "Project", "store", "store upgrade",
-            new[] { "store upgrade --project <fwdata> [--json]", "store upgrade --source <old.db> --out <new.db> [--json]" }),
+            new[] { "store upgrade --project <fwdata> [--dry-run] [--json]", "store upgrade --source <old.db> --out <new.db> [--json]" }),
         new CliVerbDescriptor(
             "Project", "store", "store delete-refused",
             new[] { "store delete-refused --project <fwdata> [--json]" }),

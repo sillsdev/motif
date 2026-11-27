@@ -9,8 +9,9 @@ namespace SIL.Motif.Host.Store;
 /// <param name="BackupDirectory">The backup taken first, which <c>motif store restore</c> takes; null for an upgrade recovered from before backups.</param>
 /// <param name="ReceiptPath">The backup's receipt.</param>
 /// <param name="DroppedCounts">Each derived table dropped, with the rows it held.</param>
+/// <param name="StoreName">What the store is called in the message: the project store, or the machine store.</param>
 public sealed record StoreUpgradeNotice(string StorePath, int FromSchema, int ToSchema, string? BackupDirectory,
-    string? ReceiptPath, IReadOnlyDictionary<string, long> DroppedCounts)
+    string? ReceiptPath, IReadOnlyDictionary<string, long> DroppedCounts, string StoreName = "project store")
 {
     /// <summary>The sentence a surface shows after an upgrade.</summary>
     public string Message
@@ -20,7 +21,7 @@ public sealed record StoreUpgradeNotice(string StorePath, int FromSchema, int To
             var dropped = DroppedCounts.Where(pair => pair.Value > 0).OrderBy(pair => pair.Key, StringComparer.Ordinal)
                 .Select(pair => $"{pair.Key} ({pair.Value.ToString(CultureInfo.InvariantCulture)})").ToArray();
             var backup = BackupDirectory is null ? "none was taken for this upgrade" : BackupDirectory;
-            return $"Your Motif project store was upgraded from schema {FromSchema} to {ToSchema}; " +
+            return $"Your Motif {StoreName} was upgraded from schema {FromSchema} to {ToSchema}; " +
                 $"a backup is at {backup}; these derived results were dropped: " +
                 (dropped.Length == 0 ? "none" : string.Join(", ", dropped)) + ". " +
                 "They are recomputed when needed, and they stay in the backup.";

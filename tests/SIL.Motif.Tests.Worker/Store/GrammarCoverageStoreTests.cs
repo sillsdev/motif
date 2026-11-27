@@ -592,7 +592,7 @@ public sealed class GrammarCoverageStoreTests : IDisposable
     }
 
     [Fact]
-    public void Schema76UpgradeKeepsAssessmentInputsAndRequiresANewParatextGeneration()
+    public void Schema76UpgradeDropsAssessmentsAndTheSourceIndex()
     {
         GrammarCoverageBasis oldBasis;
         using (var database = Open())
@@ -618,25 +618,19 @@ public sealed class GrammarCoverageStoreTests : IDisposable
         }
 
         using var upgraded = Open();
-        Assert.True(File.Exists(CoveragePath + ".schema76.bak"));
+        Assert.True(File.Exists(SIL.Motif.Tests.TestFixtures.PreUpgradeBackups.StoreOf(CoveragePath)));
         Assert.Equal((long)MotifSchema.CurrentSchema, Pragma(upgraded, "PRAGMA user_version;"));
         Assert.Equal(0L, Pragma(upgraded, "SELECT COUNT(*) FROM GrammarCoverageSegmentations;"));
         Assert.Equal(0L, Pragma(upgraded, "SELECT COUNT(*) FROM IndexedCorpusGenerations;"));
-        Assert.Equal("stale", new SourceIndexRepository(upgraded).ReadState("source")!.Status);
-        var store = Store();
-        Assert.Throws<InvalidDataException>(() => store.PrepareParatext(upgraded, "project", "source", "old-pin",
+        Assert.Equal(0L, Pragma(upgraded, "SELECT COUNT(*) FROM SourceIndexState;"));
+        Assert.Equal(0L, Pragma(upgraded, "SELECT COUNT(*) FROM AssessmentInvocations;"));
+        Assert.Null(new SourceIndexRepository(upgraded).ReadState("source"));
+        Assert.Throws<InvalidDataException>(() => Store().PrepareParatext(upgraded, "project", "source", "old-pin",
             ProfileHash, new CoreWritingSystemDefinition("en")));
-        var segmentation = store.Prepare(upgraded, Manifest());
-        var basis = oldBasis with { SegmentationId = segmentation.Id, MappingDigest = segmentation.MappingDigest };
-        var carried = new AssessmentRepository(upgraded).Get("old-assessment");
-        Assert.NotEmpty(carried.Words!);
-        Assert.Null(carried.Invocation!.InputProfile);
-        var refusal = Assert.Throws<GrammarCoverageReadException>(() => store.Build(upgraded, carried.AssessmentId, basis));
-        Assert.Equal(GrammarCoverageReadFailure.Unavailable, refusal.Failure);
     }
 
     [Fact]
-    public void Schema77UpgradeKeepsPublishedCoveragePinsInventoriesAndInputs()
+    public void Schema77UpgradeDropsPublishedCoverageAndItsInputs()
     {
         var store = Store();
         string stampId;
@@ -667,19 +661,12 @@ public sealed class GrammarCoverageStoreTests : IDisposable
         }
 
         using var upgraded = Open();
-        Assert.True(File.Exists(CoveragePath + ".schema77.bak"));
+        Assert.True(File.Exists(SIL.Motif.Tests.TestFixtures.PreUpgradeBackups.StoreOf(CoveragePath)));
         Assert.Equal((long)MotifSchema.CurrentSchema, Pragma(upgraded, "PRAGMA user_version;"));
         Assert.Equal(0L, Pragma(upgraded, "SELECT COUNT(*) FROM IndexedCorpusGenerations;"));
-        Assert.Equal(1L, Pragma(upgraded, "SELECT COUNT(*) FROM GrammarCoverageMeasurements;"));
-        Assert.Equal("ready", new SourceIndexRepository(upgraded).ReadState("source")!.Status);
-        var after = store.ReadNoAnalysis(stampId, new());
-        Assert.Equal(before.Stamp.Id, after.Stamp.Id);
-        Assert.Equal(before.Stamp.Revision, after.Stamp.Revision);
-        Assert.Equal(before.RankedWordforms, after.RankedWordforms);
-        Assert.Equal(before.Page.Items.Select(item => item.WordformId), after.Page.Items.Select(item => item.WordformId));
-        var carried = new AssessmentRepository(upgraded).Get("kept-assessment");
-        Assert.Equal(new BatchInputProfile("ws", ProfileHash, BatchInputProfile.WholeWordLowercase),
-            carried.Invocation!.InputProfile);
+        foreach (var table in new[] { "GrammarCoverageMeasurements", "GrammarCoverageSegmentations", "SourceIndexState", "Assessments" })
+            Assert.Equal(0L, Pragma(upgraded, $"SELECT COUNT(*) FROM {table};"));
+        Assert.Throws<GrammarCoverageReadException>(() => store.ReadNoAnalysis(stampId, new()));
     }
 
     private static long Pragma(MotifDatabase database, string sql)

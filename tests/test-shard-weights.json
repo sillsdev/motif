@@ -1216,7 +1216,7 @@
   "SIL.Motif.Tests.Store.JobArchiveCapTests": 0.6,
   "SIL.Motif.Tests.Store.JobWordListsTests": 0.2,
   "SIL.Motif.Tests.Store.MachineStoreTests": 1.1,
-  "SIL.Motif.Tests.Store.MotifDatabaseMigrationTests": 5.0,
+  "SIL.Motif.Tests.Store.MotifDatabaseOpenTests": 5.0,
   "SIL.Motif.Tests.Store.MotifDatabasePoolingTests": 0.1,
   "SIL.Motif.Tests.Store.ParsimonySelectionRepositoryTests": 0.4,
   "SIL.Motif.Tests.Store.PhonologyAssessmentRepositoryTests": 5.7,
