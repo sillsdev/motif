@@ -19,9 +19,9 @@ Each row keeps `caseKey`, the id the report and regression rows use, and lists t
 `--group-by entry` or `--group-by slot` replaces the per-word rows with one group per cause, so a lane reads which lexical entry or affix slot a change comes from without a script. Each group has `key`, `label`, `retired` and `added` Reading copies, `words` (distinct), `tokens` and up to five `sampleWords`, the most frequent first. Groups are ordered by tokens, most first, then by key, and `--limit` and `--offset` or `--page` page the groups. `--classes` chooses which words count; the class totals stay and their rows are left out. It also works with `--json`, `--write-manifests` and the expectation flags, which still see the whole delta.
 
 - `entry`: the key is the entry's canonical id and the label its headword. A Reading counts toward every entry it names, once.
-- `slot`: the key is the canonical id of an inflectional affix slot of an affix morpheme's analysis, the label its name; an affix whose analysis names no slot goes in `(none)`. Stems are not counted. Slots come from the current Baseline's project copy; if it cannot be opened the command refuses with `trial.delta-group-unsupported`.
+- `slot`: the key is the canonical id of an inflectional affix slot of an affix morpheme's analysis, the label its name. Three keys stand for no slot: `(no slot)` for an inflectional affix that names none, `(derivational)` for a derivational affix, and `(unknown msa)` for an analysis the Baseline copy does not hold. Stems are not counted. Slots come from the current Baseline's project copy; if it cannot be opened the command refuses with `trial.delta-group-unsupported`.
 - `rule` is refused with `trial.delta-group-unsupported`: a Reading's identity carries entries, analyses, allomorphs and features but no phonological or compound rule, and the command does not guess one.
-- `tokens` are the word's occurrences in the current Baseline's texts, case folded. When the Baseline holds none, `tokens` is 0 and `limitations` carries `tokens-unavailable`.
+- `tokens` are the word's occurrences in the current Baseline's texts, case folded; spellings that differ only in case count as one word. When the Baseline holds none, `tokens` is 0 and `limitations` carries `tokens-unavailable`.
 
 ## Hold the delta to what you expected
 

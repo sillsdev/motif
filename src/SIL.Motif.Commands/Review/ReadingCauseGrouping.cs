@@ -24,7 +24,10 @@ internal interface IReadingCauseSource
     /// <summary>Whether slots can be read at all; false when the Baseline's project could not be opened.</summary>
     bool CanNameSlots { get; }
 
-    /// <summary>The slots of the analysis, empty when it names none, or null when it is not in the Baseline.</summary>
+    /// <summary>
+    /// The slots of the analysis, empty when it names none, one <see cref="ReadingDeltaGroupings.Derivational"/> entry for a
+    /// derivational affix, or null when it is not in the Baseline.
+    /// </summary>
     IReadOnlyList<(string Id, string? Name)>? Slots(string msaId);
 }
 
@@ -73,7 +76,8 @@ internal static class ReadingCauseGrouping
             var slots = morpheme.MsaId is { } msa ? source.Slots(msa) : null;
             if (slots is null || slots.Count == 0)
             {
-                if (seen.Add(ReadingDeltaGroupings.NoSlot)) yield return (ReadingDeltaGroupings.NoSlot, null);
+                var key = slots is null ? ReadingDeltaGroupings.UnknownMsa : ReadingDeltaGroupings.NoSlot;
+                if (seen.Add(key)) yield return (key, null);
                 continue;
             }
             foreach (var slot in slots)
@@ -81,9 +85,13 @@ internal static class ReadingCauseGrouping
         }
     }
 
+    /// <summary>The spelling words are counted by: lower-cased, then composed, as the Baseline's token counts are keyed.</summary>
+    internal static string Fold(string word) => word.ToLowerInvariant().Normalize(NormalizationForm.FormC);
+
     private sealed class Accumulator(string? label)
     {
-        private readonly Dictionary<string, long> _words = new(StringComparer.Ordinal);
+        // Folded spelling to its first-seen spelling and token count, so case variants count once.
+        private readonly Dictionary<string, (string Word, long Tokens)> _words = new(StringComparer.Ordinal);
         private long _retired, _added;
 
         public string? Label { get; } = label;
@@ -91,13 +99,13 @@ internal static class ReadingCauseGrouping
         public void Add(string word, long count, bool retired, IReadingCauseSource source)
         {
             if (retired) _retired += count; else _added += count;
-            if (!_words.ContainsKey(word)) _words[word] = source.Tokens(word);
+            if (!_words.ContainsKey(Fold(word))) _words[Fold(word)] = (word, source.Tokens(word));
         }
 
         public ReadingDeltaGroup ToGroup(string key, IReadingCauseSource source) => new(key, Label, _retired, _added,
-            _words.Count, _words.Values.Sum(),
-            [.. _words.OrderByDescending(pair => pair.Value).ThenBy(pair => pair.Key, StringComparer.Ordinal)
-                .Take(Samples).Select(pair => pair.Key)]);
+            _words.Count, _words.Values.Sum(item => item.Tokens),
+            [.. _words.Values.OrderByDescending(item => item.Tokens).ThenBy(item => item.Word, StringComparer.Ordinal)
+                .Take(Samples).Select(item => item.Word)]);
     }
 }
 
@@ -144,6 +152,7 @@ internal sealed class BaselineCauseSource : IReadingCauseSource, IDisposable
 
     public IReadOnlyList<(string Id, string? Name)>? Slots(string msaId) => Find(msaId) switch
     {
+        IMoDerivAffMsa => [(ReadingDeltaGroupings.Derivational, null)],
         IMoInflAffMsa msa => [.. msa.SlotsRC.Select(slot => (CanonicalId.FromGuid(slot.Guid).Value, (string?)slot.Name.BestAnalysisAlternative.Text))],
         IMoMorphSynAnalysis => [],
         _ => null,
@@ -153,7 +162,7 @@ internal sealed class BaselineCauseSource : IReadingCauseSource, IDisposable
         _reader is not null && CanonicalId.TryParse(id, out var parsed) &&
         _reader.Cache.ServiceLocator.ObjectRepository.TryGetObject(parsed.ToGuid(), out var found) ? found : null;
 
-    private static string Key(string word) => word.ToLowerInvariant().Normalize(NormalizationForm.FormC);
+    private static string Key(string word) => ReadingCauseGrouping.Fold(word);
 
     public void Dispose() => _reader?.Dispose();
 }

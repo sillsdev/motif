@@ -78,8 +78,12 @@ public sealed class TrialDeltaArgvTests
         Assert.Equal(2, rows[0].GetProperty("retired").GetInt32());
         Assert.Equal(2, rows[0].GetProperty("words").GetInt32());
         Assert.Contains("By entry: 3 groups", text.Output);
+        var unknown = await CliProcess.RunAsync(runnerRoot, null, false, "proposal", "trial", "delta", "--project", fixture.Project,
+            "--proposal", proposal, "--group-by", "word", "--json");
         Assert.NotEqual(0, rule.ExitCode);
         Assert.Contains("trial.delta-group-unsupported", rule.Output + rule.Error);
+        Assert.NotEqual(0, unknown.ExitCode);
+        Assert.Contains("trial.delta-request-invalid", unknown.Output + unknown.Error);
     }
 
     [Fact]

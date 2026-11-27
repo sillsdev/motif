@@ -653,7 +653,7 @@ public sealed class TrialReadingDeltaTests
     {
         public bool HasTokens => tokens.Count > 0;
         public bool CanNameSlots => canNameSlots;
-        public long Tokens(string word) => tokens.GetValueOrDefault(word);
+        public long Tokens(string word) => tokens.GetValueOrDefault(word.ToLowerInvariant());
         public string? EntryLabel(string entryId) => entries.GetValueOrDefault(entryId);
         public IReadOnlyList<(string Id, string? Name)>? Slots(string msaId) =>
             slots.TryGetValue(msaId, out var found) ? [.. found.Select(slot => (slot.Id, (string?)slot.Name))] : null;
@@ -728,23 +728,39 @@ public sealed class TrialReadingDeltaTests
         using var fixture = new ReviewAcceptanceFixture();
         static ProposalCompareExports.FormSpec Affixed(string form, int[] before, int[] after) =>
             new(form, [], []) { BeforeSignatures = [.. before.Select(item => Sig(item, stem: false))], AfterSignatures = [.. after.Select(item => Sig(item, stem: false))] };
-        var proposal = Publish(fixture.Project, Affixed("a", [1], []), Affixed("b", [2], []), Affixed("c", [], [3]), Form("stem", [4], []));
-        var causes = Causes(new() { ["a"] = 4, ["b"] = 9, ["c"] = 1 }, slots: new()
+        var proposal = Publish(fixture.Project, Affixed("a", [1], []), Affixed("b", [2], []), Affixed("c", [], [3]), Form("stem", [4], []),
+            Affixed("d", [5], []), Affixed("e", [6], []));
+        var causes = Causes(new() { ["a"] = 4, ["b"] = 9, ["c"] = 1, ["d"] = 2, ["e"] = 3 }, slots: new()
         {
             [Id(101)] = [(Id(500), "Number")],
             [Id(102)] = [],
             [Id(103)] = [(Id(500), "Number"), (Id(501), "Case")],
+            [Id(105)] = [("(derivational)", "")],
         });
 
         var groups = TrialReadingDelta.Read(new ReadTrialDeltaRequest(fixture.Project, ProposalId: proposal, GroupBy: "slot"), causes)
             .Value!.Groups!;
 
-        Assert.Equal(["(none)", Id(500), Id(501)], groups.Rows.Select(row => row.Key));
+        Assert.Equal(["(no slot)", Id(500), "(unknown msa)", "(derivational)", Id(501)], groups.Rows.Select(row => row.Key));
         Assert.Equal((1, 0, 1, 9), (groups.Rows[0].Retired, groups.Rows[0].Added, groups.Rows[0].Words, groups.Rows[0].Tokens));
         var number = groups.Rows[1];
         Assert.Equal("Number", number.Label);
         Assert.Equal((1, 1, 2, 5), (number.Retired, number.Added, number.Words, number.Tokens));
-        Assert.Equal((0, 1), (groups.Rows[2].Retired, groups.Rows[2].Added));
+        Assert.Equal((0, 1), (groups.Rows[4].Retired, groups.Rows[4].Added));
+    }
+
+    [Fact]
+    public void GroupByEntryCountsAWordOnceWhenItsSpellingsDifferOnlyInCase()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var proposal = Publish(fixture.Project, Form("Walk", [1], []), Form("walk", [1], []));
+        var causes = Causes(new() { ["walk"] = 6 });
+
+        var group = TrialReadingDelta.Read(new ReadTrialDeltaRequest(fixture.Project, ProposalId: proposal, GroupBy: "entry"), causes)
+            .Value!.Groups!.Rows.Single();
+
+        Assert.Equal((2, 1, 6), (group.Retired, group.Words, group.Tokens));
+        Assert.Single(group.SampleWords);
     }
 
     [Fact]

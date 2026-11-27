@@ -57,15 +57,21 @@ public static class ReadingDeltaGroupings
     /// <summary>A phonological or compound rule; a Reading's identity does not carry one, so it cannot be grouped by.</summary>
     public const string Rule = "rule";
 
-    /// <summary>The key of an affix morpheme whose analysis names no slot.</summary>
-    public const string NoSlot = "(none)";
+    /// <summary>The key of an inflectional affix whose analysis names no slot.</summary>
+    public const string NoSlot = "(no slot)";
+
+    /// <summary>The key of a derivational affix, which has no slot.</summary>
+    public const string Derivational = "(derivational)";
+
+    /// <summary>The key of an analysis the Baseline copy does not hold.</summary>
+    public const string UnknownMsa = "(unknown msa)";
 
     /// <summary>The groupings a read can produce.</summary>
     public static readonly IReadOnlyList<string> Supported = [Entry, Slot];
 }
 
 /// <summary>The Reading changes that share one cause.</summary>
-/// <param name="Key">The cause: an entry's canonical id, a slot's canonical id, or <c>(none)</c>.</param>
+/// <param name="Key">The cause: an entry's canonical id, a slot's canonical id, <c>(no slot)</c>, <c>(derivational)</c> or <c>(unknown msa)</c>.</param>
 /// <param name="Label">The entry's headword or the slot's name, or null when the Baseline could not name it.</param>
 /// <param name="Retired">Reading copies retired that name this cause.</param>
 /// <param name="Added">Reading copies added that name this cause.</param>
