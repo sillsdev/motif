@@ -1059,8 +1059,14 @@ public sealed class ProposalRepository : IProposalRepository
             EvidenceArtifactRepository.ReleaseClosedProposalPins(connection, transaction, proposalId);
     }
 
-    /// <summary>How long recording an applied Receipt keeps retrying a SQLite BUSY or LOCKED before giving up.</summary>
-    internal static TimeSpan ReceiptBusyBudget { get; set; } = TimeSpan.FromSeconds(45);
+    /// <summary>The longest recording an applied Receipt may spend retrying a busy store, attempts included.</summary>
+    internal TimeSpan ReceiptBusyBudget { get; init; } = TimeSpan.FromSeconds(60);
+
+    /// <summary>The longest one attempt can wait on the store's busy handler; no attempt starts without room for it.</summary>
+    internal TimeSpan ReceiptAttemptAllowance { get; init; } = TimeSpan.FromMilliseconds(SqliteConnections.BusyTimeoutMilliseconds);
+
+    /// <summary>Told when tidying after a committed Receipt fails; the Receipt itself is recorded.</summary>
+    internal Action<Exception>? CleanupFailed { get; init; }
 
     /// <inheritdoc />
     public void RecordAppliedReceipt(Receipt receipt)
@@ -1077,13 +1083,20 @@ public sealed class ProposalRepository : IProposalRepository
                 break;
             }
             catch (SqliteException failure) when (SqliteConnections.IsBusy(failure) &&
-                elapsed.Elapsed + pause < ReceiptBusyBudget)
+                elapsed.Elapsed + pause + ReceiptAttemptAllowance <= ReceiptBusyBudget)
             {
                 Thread.Sleep(pause);
             }
         }
-        ReviewRowArtifacts.DeleteReleased(_database, receipt.ProposalId.Value);
-        TrialScratchRetention.DeleteProposal(_database, receipt.ProposalId);
+        try
+        {
+            ReviewRowArtifacts.DeleteReleased(_database, receipt.ProposalId.Value);
+            TrialScratchRetention.DeleteProposal(_database, receipt.ProposalId);
+        }
+        catch (Exception exception) when (exception is SqliteException or IOException or UnauthorizedAccessException)
+        {
+            CleanupFailed?.Invoke(exception);
+        }
     }
 
     // BEGIN IMMEDIATE takes the write lock first, so the busy handler applies.

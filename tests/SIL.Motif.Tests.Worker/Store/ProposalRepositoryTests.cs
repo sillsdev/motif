@@ -161,7 +161,11 @@ public sealed class ProposalRepositoryTests : IDisposable
         using var database = MotifDatabase.OpenOwned(Path.Combine(_root, "persistent.motif.db"), project,
             MotifSchema.CurrentSchema, new Version(1, 0));
         var id = CanonicalId.Mint("proposal/");
-        var repository = new ProposalRepository(database);
+        var repository = new ProposalRepository(database)
+        {
+            ReceiptBusyBudget = TimeSpan.FromMilliseconds(900),
+            ReceiptAttemptAllowance = TimeSpan.FromMilliseconds(200),
+        };
         var digest = "sha256:" + new string('a', 64);
         repository.SaveRevision(new ProposalRevisionRecord(id, digest, "{}", "proposed", null, null, null));
 
@@ -175,17 +179,14 @@ public sealed class ProposalRepositoryTests : IDisposable
         }
         const string variable = "MOTIF_TEST_SQLITE_SHORT_TIMEOUT_FOR";
         var previous = Environment.GetEnvironmentVariable(variable);
-        var previousBudget = ProposalRepository.ReceiptBusyBudget;
         try
         {
             Environment.SetEnvironmentVariable(variable, database.FullPath);
-            ProposalRepository.ReceiptBusyBudget = TimeSpan.FromMilliseconds(600);
             var failure = Assert.Throws<SqliteException>(() => repository.RecordAppliedReceipt(ReceiptFor(id, digest)));
             Assert.Equal(5, failure.SqliteErrorCode);
         }
         finally
         {
-            ProposalRepository.ReceiptBusyBudget = previousBudget;
             Environment.SetEnvironmentVariable(variable, previous);
         }
         held.Rollback();

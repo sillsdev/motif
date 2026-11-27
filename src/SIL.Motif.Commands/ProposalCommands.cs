@@ -1742,6 +1742,13 @@ public static partial class ProposalCommands
     internal static AsyncLocal<Func<FwDataProjectLoader>?> ApplyLoaderOverride { get; } = new();
     internal static AsyncLocal<Action?> BeforeProgressPublication { get; } = new();
 
+    private static ProposalRepository CommandRepository(MotifDatabase database, ProjectLocator project) =>
+        new(database)
+        {
+            CleanupFailed = exception => ProjectDiagnosticLog.Append(project.FullFwDataPath,
+                "A Receipt was recorded, but tidying after it failed.", exception),
+        };
+
     private static (string? Cause, string? SqliteCode) DescribeCause(Exception? exception)
     {
         if (exception is null) return (null, null);
@@ -1751,7 +1758,7 @@ public static partial class ProposalCommands
         return (exception.GetType().Name + ": " + exception.Message, code);
     }
 
-    private static CommandOutcome<ApplyProjection>? RecoverFromMarker(MotifDatabase database,
+    private static CommandOutcome<ApplyProjection> RecoverFromMarker(MotifDatabase database,
         ProposalRepository repository, ProjectLocator project, string id, SIL.Motif.Contract.Model.Proposal envelope)
     {
         var loader = ApplyLoaderFactory();
@@ -1760,10 +1767,55 @@ public static partial class ProposalCommands
         {
             FwDataProjectLoader.RequireProjectPath(markerCache, project.FullFwDataPath);
             var recovered = RecordAlreadyAppliedFromLog(repository, project, id, envelope, markerCache);
-            if (recovered is not null) ProjectReconciliationMarker.Clear(project.FullFwDataPath);
+            if (recovered is null)
+            {
+                return CommandOutcome<ApplyProjection>.Refused(new Refusal(
+                    "apply.reconciliation-needed", FailureReason.StoreInconsistent,
+                    $"An earlier Apply left a warning beside this project ({ProjectReconciliationMarker.PathFor(project.FullFwDataPath)}), " +
+                    $"and the project's applied log has no entry for Proposal {id}. Inspect the project file, then choose " +
+                    "Refresh in the Motif window to acknowledge the warning, before applying.",
+                    Fact(("proposalId", id))));
+            }
+            ClearMarkerIfNothingOutstanding(repository, project, markerCache);
             return recovered;
         }
         finally { markerCache.Dispose(); }
+    }
+
+    // Clears the marker only when everything it names is recorded and nothing else is unrecorded.
+    private static void ClearMarkerIfNothingOutstanding(ProposalRepository repository, ProjectLocator project, LcmCache cache)
+    {
+        var path = project.FullFwDataPath;
+        if (!ProjectReconciliationMarker.Exists(path)) return;
+        if (!ProjectReconciliationMarker.ClearableByCommand(path, out var named)) return;
+        var (_, unresolved) = RecordRemainingUnrecorded(repository, project, cache);
+        if (unresolved > 0) return;
+        foreach (var namedId in named)
+        {
+            try { if (repository.Get(CanonicalId.Parse(namedId)).Status != ManifestStatus.Applied) return; }
+            catch (Exception exception) when (exception is KeyNotFoundException or ArgumentException) { return; }
+        }
+        ProjectReconciliationMarker.Clear(path);
+    }
+
+    private static (int Recorded, int Unresolved) RecordRemainingUnrecorded(ProposalRepository repository,
+        ProjectLocator project, LcmCache cache)
+    {
+        var recorded = 0;
+        var unresolved = 0;
+        foreach (var listed in repository.List(new ProposalListFilter(ManifestStatus.Proposed)))
+        {
+            SIL.Motif.Contract.Model.Proposal envelope;
+            try { (_, envelope) = repository.GetFinalized(listed.ProposalId); }
+            catch (KeyNotFoundException) { continue; }
+            try
+            {
+                if (RecordAlreadyAppliedFromLog(repository, project, listed.ProposalId.Value, envelope, cache) is not null)
+                    recorded++;
+            }
+            catch (AppliedContentMismatchException) { unresolved++; }
+        }
+        return (recorded, unresolved);
     }
 
     /// <summary>Records the Receipt of a Proposal the applied log holds; null if absent.</summary>
@@ -1804,24 +1856,16 @@ public static partial class ProposalCommands
             return CommandOutcome<UnrecordedAppliesResult>.Refused(ProjectApplyLease.Busy(fwDataPath));
         return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, project) =>
         {
-            var repository = new ProposalRepository(database);
+            var repository = CommandRepository(database, project);
             var recorded = 0;
             var unresolved = 0;
             LcmCache? cache = null;
             try
             {
-                foreach (var listed in repository.List(new ProposalListFilter(ManifestStatus.Proposed)))
+                if (repository.List(new ProposalListFilter(ManifestStatus.Proposed)).Count > 0)
                 {
-                    SIL.Motif.Contract.Model.Proposal envelope;
-                    try { (_, envelope) = repository.GetFinalized(listed.ProposalId); }
-                    catch (KeyNotFoundException) { continue; }
-                    cache ??= ApplyLoaderFactory().LoadCache(project.FullFwDataPath);
-                    try
-                    {
-                        if (RecordAlreadyAppliedFromLog(repository, project, listed.ProposalId.Value, envelope, cache) is not null)
-                            recorded++;
-                    }
-                    catch (AppliedContentMismatchException) { unresolved++; }
+                    cache = ApplyLoaderFactory().LoadCache(project.FullFwDataPath);
+                    (recorded, unresolved) = RecordRemainingUnrecorded(repository, project, cache);
                 }
             }
             catch (LcmFileLockedException)
@@ -2089,7 +2133,7 @@ public static partial class ProposalCommands
             return CommandOutcome<ApplyProjection>.Refused(attributionRefusal);
         try
         {
-            var repository = new ProposalRepository(database);
+            var repository = CommandRepository(database, project);
             var id = NormalizeId(proposalId);
             var canonicalId = CanonicalId.Parse(id);
             ProposalRecord record;
@@ -2125,10 +2169,9 @@ public static partial class ProposalCommands
             }
 
             // Recover a saved but unrecorded Apply before any preflight judges its changes.
-            if (record.Status != ManifestStatus.Applied && ProjectReconciliationMarker.Exists(project.FullFwDataPath) &&
-                RecoverFromMarker(database, repository, project, id, envelope) is { } recoveredFromMarker)
+            if (record.Status != ManifestStatus.Applied && ProjectReconciliationMarker.Exists(project.FullFwDataPath))
             {
-                return recoveredFromMarker;
+                return RecoverFromMarker(database, repository, project, id, envelope);
             }
 
             if (ApplyAuthorization.PendingChangesRefusal(database, record.ProposalId) is { } pendingRefusal)
@@ -2194,7 +2237,7 @@ public static partial class ProposalCommands
                     RecordAlreadyAppliedFromLog(repository, project, id, envelope, cache) is { } recordedFromLog)
                 {
                     receiptRecorded = true;
-                    ProjectReconciliationMarker.Clear(project.FullFwDataPath);
+                    ClearMarkerIfNothingOutstanding(repository, project, cache);
                     return recordedFromLog;
                 }
                 if (attribution.Mode == ApplyModes.Autonomous &&
@@ -2439,7 +2482,7 @@ public static partial class ProposalCommands
         {
             // Distinct from the rollback wording below: the mutation may already be durable.
             var message = ex.Message;
-            try { ProjectReconciliationMarker.Mark(project.FullFwDataPath); }
+            try { ProjectReconciliationMarker.Mark(project.FullFwDataPath, ex.Boundary, NormalizeId(proposalId)); }
             catch (Exception markerFailure) when (markerFailure is IOException or UnauthorizedAccessException)
             {
                 message += " Motif could not save a warning beside the project: " + markerFailure.Message;
@@ -2458,7 +2501,10 @@ public static partial class ProposalCommands
         catch (AppliedContentMismatchException ex)
         {
             return CommandOutcome<ApplyProjection>.Refused(new Refusal(
-                "apply.applied-content-mismatch", FailureReason.Refused, ex.Message,
+                "apply.applied-content-mismatch", FailureReason.Refused,
+                ex.Message + (ProjectReconciliationMarker.Exists(project.FullFwDataPath)
+                    ? " The project carries a reconciliation warning: inspect the project, then choose Refresh in the Motif window to acknowledge it."
+                    : ""),
                 Fact(("proposalId", proposalId))));
         }
         catch (ProposalRefusalException ex)

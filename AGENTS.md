@@ -465,7 +465,10 @@ output; on failure the FailureEnvelope (`ok: false`, `code`, `reason`, `message`
 on standard error and standard output is empty. A project with an unresolved reconciliation warning is refused with
 `apply.reconciliation-needed` (exit 4) until it is reconciled in Motif. A saved but unrecorded single Apply is
 recovered by running `motif apply <id> --project <p>` again: it records the Receipt only when the project's applied
-log holds the Proposal with a matching intent digest, and refuses, keeping the warning, otherwise.
+log holds the Proposal with a matching intent digest. While the warning stands, an Apply whose Proposal the log
+does not hold is refused with `apply.reconciliation-needed`. A command clears the warning only when it names Applies
+that were saved but not recorded and none remains; a Save failure or an older warning with no boundary is cleared only by
+Refresh in the Motif window after a person has inspected the project.
 
 The JSON response records live in `SIL.Motif.Contract`, which has no LibLCM reference. Their
 `LcmCache`-dependent builders remain in `SIL.Motif.Projection`.
