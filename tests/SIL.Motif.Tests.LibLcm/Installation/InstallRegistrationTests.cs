@@ -148,4 +148,21 @@ public sealed class InstallRegistrationTests
             if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
         }
     }
+
+    [Theory]
+    [InlineData(false, false, "--version")]
+    [InlineData(false, false, "gdr")]
+    [InlineData(true, true, "--version")]
+    [InlineData(false, true, "--veloapp-install")]
+    [InlineData(false, true, "--veloapp-updated")]
+    public void VelopackHooksRunOnlyForAnInstalledPackageOrAHookArgument(bool installed, bool expected, string first)
+    {
+        Assert.Equal(expected, MotifInstallLifecycle.ShouldRunVelopack([first, "1.2.3"], installed));
+    }
+
+    [Fact]
+    public void VelopackHooksDoNotRunForNoArgumentsInADevelopmentBuild()
+    {
+        Assert.False(MotifInstallLifecycle.ShouldRunVelopack([], installedPackage: false));
+    }
 }
