@@ -9,7 +9,6 @@ namespace SIL.Motif.Host.PanGloss;
 public sealed record PanGlossTraceAnalysis(
     string? AnalysisId,
     int? Index,
-    string? LegacyMorphemes,
     string? Surface,
     IReadOnlyList<PanGlossTraceMorph> Morphs,
     string Availability,
@@ -192,10 +191,9 @@ public static class PanGlossTraceDiagnosticReader
         return new PanGlossTraceAnalysis(
             OptionalString(value, "analysisId") ?? OptionalString(value, "id"),
             OptionalInt(value, "index"),
-            OptionalString(value, "morphemes"),
             Text(value, "surface"),
             morphs,
-            projectionStatus is not null ? (projectionStatus is "available" or "recorded" ? "recorded" : "unavailable") : (morphs.Count > 0 ? "recorded" : "legacy"),
+            projectionStatus is not null ? (projectionStatus is "available" or "recorded" ? "recorded" : "unavailable") : (morphs.Count > 0 ? "recorded" : "unavailable"),
             value.Clone())
         {
             ProjectionStatus = projectionStatus,

@@ -26,12 +26,11 @@
             <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
               <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
                 <views:CopyableTextBlock Text="{Binding Label}" FontWeight="{DynamicResource Intent.Weight.Section}" />
-                <views:CopyableTextBlock Grid.Column="1" Text="{Binding Surface}" ToolTip.Tip="{Binding LegacyMorphemesTip}" />
+                <views:CopyableTextBlock Grid.Column="1" Text="{Binding Surface}" />
                 <views:CopyableTextBlock Grid.Column="2" Classes="muted" Text="{Binding RecordedCountText}"
                                          IsVisible="{Binding HasRepeatedRecords}"
                                          ToolTip.Tip="{x:Static app:MotifAppStrings.TraceRepeatedResultTip}" />
               </Grid>
-              <views:CopyableTextBlock Text="{Binding LegacyMorphemesText}" IsVisible="{Binding HasLegacyMorphemes}" TextWrapping="Wrap" />
               <views:CopyableTextBlock Text="{Binding ProjectionErrorText}" ToolTip.Tip="{Binding ProjectionError}"
                                        IsVisible="{Binding HasProjectionError}"
                                        Classes="muted" TextWrapping="Wrap" />
@@ -91,7 +90,6 @@
               <views:CopyableTextBlock Text="{Binding AnalysisId, StringFormat='Producer id: {0}'}" />
               <views:CopyableTextBlock Text="{Binding Index, StringFormat='Recorded index: {0}'}" />
               <views:CopyableTextBlock Text="{Binding Surface}" />
-              <views:CopyableTextBlock Text="{Binding LegacyMorphemes, StringFormat='Parser morphemes: {0}'}" TextWrapping="Wrap" />
               <views:CopyableTextBlock Text="{Binding ProjectionStatus, StringFormat='Projection status: {0}'}" />
               <views:CopyableTextBlock Text="{Binding ProjectionErrorCode}" TextWrapping="Wrap" />
               <views:CopyableTextBlock Text="{Binding ProjectionError}" TextWrapping="Wrap" />

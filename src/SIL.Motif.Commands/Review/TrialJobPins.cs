@@ -13,32 +13,8 @@ using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Commands.Review;
 
-internal static class LegacyTrialReviewProjection
+internal static class TrialJobPins
 {
-    internal static ReportView? Read(JobRecord job, AssessmentRepository assessments)
-    {
-        if (job.Status != JobStatus.Completed || job.ResultJson is null) return null;
-        var input = TrialJobInput.Parse(job.InputJson);
-        if (input.ReviewInputs is not null) return null;
-        var pins = ReadPins(job, input, assessments);
-        if (pins is null) return null;
-        var digest = pins.EvidenceManifestDigest;
-        var unavailable = new Coverage(null, null, null, null, null, CoveragePrecision.Unavailable, ["legacy-review-inputs-missing"]);
-        var side = new IncompleteSide(null, null, []);
-        var summary = new ReviewSummary("No red flags means only 'not bad', never 'good'.", [],
-            new IncompleteSummary("Incomplete", null, null, side, side, [], 1),
-            new WordformSummary(null, unavailable, unavailable, null, null), new ApprovedSummary(null, null, null, null, null),
-            new CoverageSummary(0, unavailable, unavailable, null), new CoverageSummary(0, unavailable, unavailable, null),
-            [], new NegativeSummary(0, null, null, null), new WorkChange(null, 0, digest, WorkComparison.NotComparable,
-                ["legacy-review-inputs-missing"]), new WarningSummary(null, null, null) { Unavailable = "legacy-review-inputs-missing" }, [], new EffectsSummary(null, false), []);
-        var limitations = new[] { new Limitation("legacy-review-inputs-missing", [],
-            "This Trial predates captured review scope, exact identities and expectations; exhaustive review details are unavailable.", []) };
-        return new ReportView("motif.proposal-review-report", 1, "legacy/" + job.JobId, digest, DetailLevel.Summary,
-            pins, new Freshness(FreshnessRelation.Unknown, ["freshness-not-checked"]), summary,
-            Enum.GetValues<ReviewFlagId>().Select(id => new FlagEvidence(id, EvidenceState.Unavailable,
-                ["legacy-review-inputs-missing"], 0)).ToArray(), limitations, DetailAvailability.Unavailable, [], null, null, null, []);
-    }
-
     internal static ReportPins? ReadPins(JobRecord job, TrialJobInput input, AssessmentRepository assessments)
     {
         if (job.Status != JobStatus.Completed || job.ResultJson is null) return null;

@@ -3330,10 +3330,6 @@ public static class MotifAppStrings
 
     public static string TraceAvailabilityNotRecorded => Text("MotifApp.TraceAvailabilityNotRecorded");
 
-    public static string TraceMorphemesFormat => Text("MotifApp.TraceMorphemesFormat");
-
-    public static string TraceParserMorphemesTipFormat => Text("MotifApp.TraceParserMorphemesTipFormat");
-
     public static string TraceAnalysisNumberFormat => Text("MotifApp.TraceAnalysisNumberFormat");
 
     public static string TraceRecordedAnalysis => Text("MotifApp.TraceRecordedAnalysis");

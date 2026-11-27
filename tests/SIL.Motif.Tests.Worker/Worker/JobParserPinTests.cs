@@ -105,18 +105,18 @@ public sealed class JobParserPinTests : IDisposable
     }
 
     [Fact]
-    public void ALegacyJobWithNoParserIdentityIsClaimedByAnyWorker()
+    public void AJobWithNoParserIdentityIsClaimedByAnyWorker()
     {
         var jobs = new JobRepository(_database);
-        jobs.Create("legacy-1", Project, "trial", "{\"proposalJson\":\"{}\"}", Now());
-        jobs.Create("legacy-2", Project, "trial", "{}", Now());
+        jobs.Create("unpinned-1", Project, "trial", "{\"proposalJson\":\"{}\"}", Now());
+        jobs.Create("unpinned-2", Project, "trial", "{}", Now());
 
         var withOld = new JobClaims(_database, parserKey: ParserIdentity.KeyOf(_oldParser))
             .Claim(Project, "runner-a", Now(), Lease());
         var withNone = new JobClaims(_database, parserKey: null).Claim(Project, "runner-b", Now(), Lease());
 
-        Assert.Equal("legacy-1", withOld!.JobId);
-        Assert.Equal("legacy-2", withNone!.JobId);
+        Assert.Equal("unpinned-1", withOld!.JobId);
+        Assert.Equal("unpinned-2", withNone!.JobId);
     }
 
     [Fact]

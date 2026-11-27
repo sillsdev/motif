@@ -37,7 +37,7 @@ public sealed record StandaloneTraceProjection(
             response.InvalidShape, response.Guessed, response.DeepestRule, response.LowercaseFailure,
             response.Lowercase is null ? null : From(response.Lowercase),
             reading.Analyses.Select(a => new StandaloneAnalysis(a.AnalysisId, a.Surface, a.Availability,
-                a.Signature, a.LegacyMorphemes, a.Morphs.Select(Morph).ToArray())).ToArray(),
+                a.Signature, a.Morphs.Select(Morph).ToArray())).ToArray(),
             reading.NoParseReasons,
             reading.StopGroups.Select(g => new StandaloneStop(g.Rule, g.RuleRefId, g.ReasonCode, g.Explanation)).ToArray(),
             reading.ClosestAttempts.Select(a => new StandaloneAttempt(a.Surface, a.FailureReason, a.Explanation,
@@ -59,7 +59,7 @@ public sealed record StandaloneTraceProjection(
 
 /// <summary>A recorded analysis and its linguistic morphology.</summary>
 public sealed record StandaloneAnalysis(string? AnalysisId, string? Surface, string Availability,
-    string? Signature, string? LegacyMorphemes, IReadOnlyList<StandaloneMorph> Morphs);
+    string? Signature, IReadOnlyList<StandaloneMorph> Morphs);
 /// <summary>A morph's display and identity facts.</summary>
 public sealed record StandaloneMorph(string? Identity, string? RefId, string? Form, string? Headword,
     string? Gloss, string? Category, string? Slot, string? InflectionClass, string? Features,

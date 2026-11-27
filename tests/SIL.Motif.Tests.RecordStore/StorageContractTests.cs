@@ -128,60 +128,17 @@ public sealed class StorageContractTests : IDisposable
     }
 
     [Fact]
-    public async Task VersionFourGranularHistorySurvivesGuardedEditsAndRegenerationInPlace()
+    public async Task AStoreOfTheRetiredFormatFourIsRefusedLikeAnyUnsupportedFormat()
     {
-        const int list = 1000;
-        const int scalar = 1001;
-        var path = PathFor("legacy-writer");
+        var path = PathFor("format-four");
         await using (var empty = new Store(path)) { }
-        using var connection = Open(path);
-        using var command = connection.CreateCommand();
-        command.CommandText = "PRAGMA user_version=4";
-        command.ExecuteNonQuery();
-
-        var record = new GenericRecord { Id = Guid.NewGuid(), ClassId = 1 };
-        var item = new GenericRecord { Id = Guid.NewGuid(), ClassId = 2 };
-        record.Values[list.ToString()] = JsonSerializer.SerializeToElement(new[] { item.Id, item.Id });
-        record.Values[scalar.ToString()] = JsonSerializer.SerializeToElement(1);
-        var types = ImmutableDictionary<int, int>.Empty.Add(list, 28).Add(scalar, 2);
-        var emptyTypes = ImmutableDictionary<int, int>.Empty;
-        var coverage = NativeImportCoverage.Capture([new(record.Id, 1, null, 0), new(item.Id, 2, null, 0)],
-            ImmutableDictionary<int, ImmutableDictionary<int, int>>.Empty.Add(1, types).Add(2, emptyTypes), "legacy import fixture");
-        RecordCommit seed;
-        await using (var writer = new Store(path))
+        using (var connection = Open(path))
+        using (var command = connection.CreateCommand())
         {
-            await writer.ImportNativeAsync([new(record, types), new(item, emptyTypes)], Guid.NewGuid(), coverage);
-            seed = Assert.Single(await writer.CommitsAsync());
-            Assert.True(seed.ChangeCount > 3);
+            command.CommandText = "PRAGMA user_version=4";
+            command.ExecuteNonQuery();
         }
-        command.CommandText = """
-            SELECT group_concat(hex(Change), ':') FROM
-            (SELECT Change FROM ChangeEntities WHERE CommitId=$seed ORDER BY "Index")
-            """;
-        command.Parameters.AddWithValue("$seed", NetworkGuidConverter.Write(seed.Id));
-        var originalChanges = command.ExecuteScalar();
-        Assert.IsType<string>(originalChanges);
-
-        var client = Guid.NewGuid();
-        await using (var upgraded = new Store(path))
-        {
-            var revision = (await upgraded.ReferencesAsync()).Revision;
-            await upgraded.SetFieldAsync(record.Id, scalar, JsonSerializer.SerializeToElement(1),
-                JsonSerializer.SerializeToElement(2), revision, client);
-            var prior = Assert.Single(await upgraded.ReadAsync(), r => r.Id == record.Id);
-            await upgraded.CommitListOperationsAsync([ListAuthoring.Delete(prior, list, client, 1)], client);
-            await upgraded.RegenerateAsync();
-        }
-        await using var reopened = new Store(path);
-        var edited = Assert.Single(await reopened.ReadAsync(), r => r.Id == record.Id);
-        Assert.Equal(2, edited.Values[scalar.ToString()].GetInt32());
-        Assert.Equal([item.Id], reopened.Lists.Read(edited, list));
-        Assert.Contains(seed, await reopened.CommitsAsync());
-        Assert.Equal(originalChanges, command.ExecuteScalar());
-        command.CommandText = "PRAGMA user_version";
-        Assert.Equal(4L, command.ExecuteScalar());
-        command.CommandText = "SELECT max(AuthoredModelVersion) FROM ChangeEntities";
-        Assert.Equal(0L, command.ExecuteScalar());
+        Assert.Contains("Unsupported record store format", Assert.Throws<InvalidDataException>(() => new Store(path)).Message);
     }
 
     [Theory]
@@ -293,27 +250,18 @@ public sealed class StorageContractTests : IDisposable
         Assert.Contains("Snapshots", failure.Message);
     }
 
-    [Theory]
-    [InlineData(4, 0)]
-    [InlineData(7, 1)]
-    public async Task APublicationReadsTombstonesOnlyWhenItWritesDerivedTables(int format, int reads)
+    [Fact]
+    public async Task APublicationReadsTombstonesOnlyWhenItWritesDerivedTables()
     {
-        var path = PathFor("tombstone-skip-" + format);
+        var path = PathFor("tombstone-skip");
         await using (var empty = new Store(path)) { }
-        if (format == 4)
-        {
-            using var connection = Open(path);
-            using var command = connection.CreateCommand();
-            command.CommandText = "PRAGMA user_version=4";
-            command.ExecuteNonQuery();
-        }
         var record = new GenericRecord { Id = Guid.NewGuid(), ClassId = 1 };
         var types = ImmutableDictionary<int, int>.Empty;
         var coverage = NativeImportCoverage.Capture([new(record.Id, 1, null, 0)],
             ImmutableDictionary<int, ImmutableDictionary<int, int>>.Empty.Add(1, types), "tombstone fixture");
         await using var store = new Store(path);
         await store.ImportNativeAsync([new(record, types)], Guid.NewGuid(), coverage);
-        Assert.Equal(reads, store.TombstoneReads);
+        Assert.Equal(1, store.TombstoneReads);
     }
 
     private static GenericRecord Record(string value)

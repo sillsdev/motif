@@ -408,7 +408,7 @@ public sealed class TrialsTests : IDisposable
     }
 
     [Fact]
-    public void WithNoParserNamedBothReadsUseTheRunnersResolverAndSoAgreeWhenItsParserChanges()
+    public void WithNoParserNamedTheReadUsesTheRunnersResolverAndSoAgreesWhenItsParserChanges()
     {
         var configured = FakeParser.Copy(Path.Combine(_root, "configured-parser"));
         using (var append = new FileStream(configured, FileMode.Append)) append.WriteByte(1);
@@ -425,18 +425,13 @@ public sealed class TrialsTests : IDisposable
         var unnamed = Trials.Read(new ReadTrialRequest(fixture.Project.FullFwDataPath, proposal.Id.Value)).Value!;
         var named = Trials.Read(new ReadTrialRequest(fixture.Project.FullFwDataPath, proposal.Id.Value),
             JobRunnerLaunchOptions.ResolveParserPath()).Value!;
-        var review = new SIL.Motif.Commands.Review.TrialReviewCommands(fixture.Database).Read(
-            new SIL.Motif.Contract.Review.ReviewReadRequest(ProjectWorkspaceKey.Compute(fixture.Project),
-                proposal.Id.Value)).Value;
 
         Assert.Equal(TrialFreshness.ParserChanged, unnamed.Freshness);
         Assert.Equal(named.Freshness, unnamed.Freshness);
-        var shown = Assert.IsType<SIL.Motif.Contract.Review.AvailableTrialResult>(review);
-        Assert.Contains("parser-changed", shown.Report.Freshness.Reasons);
     }
 
     [Fact]
-    public void WithNoParserFoundBothReadsReportTheSameTypedUnknownFreshness()
+    public void WithNoParserFoundTheReadReportsUnknownFreshness()
     {
         using var fixture = new ProjectFixture(_root);
         var proposal = fixture.SaveProposal();
@@ -449,14 +444,8 @@ public sealed class TrialsTests : IDisposable
         Assert.Null(JobRunnerLaunchOptions.ResolveParserPath());
 
         var record = Trials.Read(new ReadTrialRequest(fixture.Project.FullFwDataPath, proposal.Id.Value)).Value!;
-        var review = new SIL.Motif.Commands.Review.TrialReviewCommands(fixture.Database).Read(
-            new SIL.Motif.Contract.Review.ReviewReadRequest(ProjectWorkspaceKey.Compute(fixture.Project),
-                proposal.Id.Value)).Value;
 
         Assert.Equal(TrialFreshness.Unknown, record.Freshness);
-        var shown = Assert.IsType<SIL.Motif.Contract.Review.AvailableTrialResult>(review);
-        Assert.Equal(SIL.Motif.Contract.Review.FreshnessRelation.Unknown, shown.Report.Freshness.Relation);
-        Assert.Equal(["freshness-unavailable"], shown.Report.Freshness.Reasons);
     }
 
     [Theory]

@@ -257,7 +257,7 @@ public sealed class TraceEvidenceBoundaryTests
         var reading = WordTraceQuery.LoadDiagnostic(TraceEnvelope.AnalysisRecords(equalRendering: true, available)).Value!.Reading;
         Assert.Equal(summaries, reading.LogicalAnalyses.Count);
         Assert.Equal(3, reading.Analyses.Count);
-        Assert.Equal("ROOT|word", reading.Analyses[1].Signature);
+        Assert.Equal(available ? "ROOT|word" : "|word", reading.Analyses[1].Signature);
         Assert.Equal([1], reading.LogicalAnalyses[1].SourcePositions);
         if (!available) Assert.All(reading.LogicalAnalyses, summary => Assert.Single(summary.SourcePositions));
     }

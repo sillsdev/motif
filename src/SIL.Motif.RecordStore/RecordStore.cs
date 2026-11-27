@@ -23,10 +23,9 @@ public sealed partial class RecordStore : IAsyncDisposable
     private const int StoreFormat = 7;
     private const int CertificateFormat = 6;
     private const int PackedStoreFormat = 5;
-    private const int LegacyStoreFormat = 4;
     internal const int CompleteRecordModelVersion = 1;
     private int format;
-    private int ModelVersion => format == LegacyStoreFormat ? 0 : CompleteRecordModelVersion;
+    private const int ModelVersion = CompleteRecordModelVersion;
     private readonly ServiceProvider provider;
     private readonly AsyncServiceScope scope;
     private readonly DataModel model;
@@ -53,7 +52,7 @@ public sealed partial class RecordStore : IAsyncDisposable
         var services = new ServiceCollection();
         var connection = RecordSqlite.ConnectionString(path, readOnly ? SqliteOpenMode.ReadOnly : SqliteOpenMode.ReadWriteCreate);
         var storedFormat = File.Exists(path) ? ReadFormat(connection) : 0;
-        if (storedFormat is not (0 or LegacyStoreFormat or PackedStoreFormat or CertificateFormat or StoreFormat) || storedFormat > highestFormat)
+        if (storedFormat is not (0 or PackedStoreFormat or CertificateFormat or StoreFormat) || storedFormat > highestFormat)
             throw new InvalidDataException("Unsupported record store format.");
         // A new file is created in the current format; an existing one keeps its own until its first write upgrades it.
         format = storedFormat == 0 ? StoreFormat : storedFormat;
@@ -69,12 +68,9 @@ public sealed partial class RecordStore : IAsyncDisposable
             config.ModelVersionBuilder.Add(0, "Motif generic records", version => version
                 .Change<CreateRecord>().Change<SetRecordValue>().Change<SetRecordAlternative>()
                 .Change<InsertRecordItem>().Change<ListRecordOp>());
-            if (ModelVersion >= CompleteRecordModelVersion)
-            {
-                config.ChangeTypeListBuilder.Add<CreateImportedRecord>();
-                config.ModelVersionBuilder.Add(CompleteRecordModelVersion, "Motif complete-record import",
-                    version => version.Change<CreateImportedRecord>());
-            }
+            config.ChangeTypeListBuilder.Add<CreateImportedRecord>();
+            config.ModelVersionBuilder.Add(CompleteRecordModelVersion, "Motif complete-record import",
+                version => version.Change<CreateImportedRecord>());
         });
         services.AddSingleton<TimeProvider>(new MicrosecondTimeProvider(timeProvider ?? TimeProvider.System));
         provider = services.BuildServiceProvider();
