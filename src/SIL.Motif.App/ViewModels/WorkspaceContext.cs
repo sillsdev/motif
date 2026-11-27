@@ -503,6 +503,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         GrammarSummary = null;
         CurrentPage = WorkspacePage.Progress;
         ProjectPath = null;
+        Commands.ReleaseGuideSession();
         ViewMemory.OpenProject(null);
         Assess.ProjectPath = null;
     }

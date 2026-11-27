@@ -42,6 +42,16 @@
       "draft": "The name of an existing Draft to stage into; omit to stage into the pending changes."
     }
   },
+  "guide refresh-tables": {
+    "title": "Save the tables of a Grammar Guide's query blocks",
+    "description": "Runs each motif query corpus forms block of a Grammar Guide section, or of every section, read-only and stages its saved table in a Draft: a caption and the first ten rows, stored right after the block as an ordinary FieldWorks table, so FieldWorks shows it without Motif. Only this command and the window's Save table write a table; Motif always shows a recomputed result. Nothing reaches the FieldWorks project until a person applies the Draft. Available in Advanced AI mode.",
+    "source": "Hand-written from the Grammar Guide staging path shared with the window.",
+    "fields": {
+      "id": "The section's GDR-n number or canonical id; omit for every section with a query block.",
+      "queryId": "The id of one query block to refresh; omit for every block of the section.",
+      "draft": "The name of an existing Draft to stage into; omit to stage into the pending changes."
+    }
+  },
   "guide decide": {
     "title": "Record a judgement call in a Grammar Guide section",
     "description": "Appends one judgement call, written A or B, I am choosing A, because the reason, under the section's Decisions heading, and stages it in a Draft. The verb records the call a person or the grammar lead made; it does not make it.",

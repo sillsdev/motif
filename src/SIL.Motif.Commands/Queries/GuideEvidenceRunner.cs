@@ -74,10 +74,17 @@ public static class GuideEvidenceRunner
 
     /// <summary>Runs a run line once, shaped with the default columns; shape the result for each display with <see cref="GuideEvidenceResult.Shaped"/>.</summary>
     public static GuideEvidenceResult Evaluate(string runLine, string baseDirectory, string? parserPath = null, CancellationToken cancellationToken = default,
-        string? projectPath = null, bool buildIndex = false)
+        string? projectPath = null, bool buildIndex = false, ProjectSession? session = null)
     {
-        var result = Evaluate(runLine, baseDirectory, parserPath, cancellationToken, null, null, buildIndex);
+        var result = Evaluate(runLine, baseDirectory, parserPath, cancellationToken, null, null, buildIndex, session);
         return projectPath is null ? result : result with { BaselineId = BaselineIdOf(projectPath) };
+    }
+
+    /// <summary>The folder a run line's relative paths resolve against: the project file's folder, or the path itself when it is a folder.</summary>
+    public static string BaseDirectoryOf(string projectPath)
+    {
+        ArgumentNullException.ThrowIfNull(projectPath);
+        return Directory.Exists(projectPath) ? projectPath : Path.GetDirectoryName(Path.GetFullPath(projectPath)) ?? ".";
     }
 
     /// <summary>The project's current Baseline id (the bundle digest of its recorded Baseline token), or null when it has none; read-only.</summary>
@@ -85,7 +92,8 @@ public static class GuideEvidenceRunner
         CurrentBaselineQuery.Query(new CurrentBaselineRequest(projectPath)) is { Succeeded: true, Value: { } baseline } ? baseline.Token?.BundleDigest : null;
 
     internal static GuideEvidenceResult Evaluate(string runLine, string baseDirectory,
-        string? parserPath, CancellationToken cancellationToken, IRealizesIndexBuilder? indexBuilder, string? cacheRoot, bool allowIndexBuild = false)
+        string? parserPath, CancellationToken cancellationToken, IRealizesIndexBuilder? indexBuilder, string? cacheRoot, bool allowIndexBuild = false,
+        ProjectSession? session = null)
     {
         ArgumentNullException.ThrowIfNull(runLine);
         ArgumentNullException.ThrowIfNull(baseDirectory);
@@ -101,7 +109,7 @@ public static class GuideEvidenceRunner
         CommandOutcome<CorpusFormsResponse> outcome;
         try
         {
-            outcome = CorpusQueryCommand.Forms(request, parserPath, cancellationToken, indexBuilder, cacheRoot, allowIndexBuild: allowIndexBuild, phases: phases);
+            outcome = CorpusQueryCommand.Forms(request, parserPath, cancellationToken, indexBuilder, cacheRoot, allowIndexBuild: allowIndexBuild, phases: phases, session: session);
         }
         catch (OperationCanceledException) { throw; }
         catch (Exception exception)

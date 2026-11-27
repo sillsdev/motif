@@ -6,6 +6,8 @@
 
 **Amended 2026-11-25:** The interlinear example block (D10); D8's example-format question is answered.
 
+**Amended 2026-11-26:** A query block may carry a saved table of at most ten rows (D2).
+
 ## Context
 
 A readable current account of a grammar must travel with its FieldWorks project. Proposals explain changes;
@@ -33,9 +35,9 @@ use **Table Header**, **Table Row** and **Table Cell Separator**.
 #### Grouping commands
 
 **Grouping commands** holds queries that gather the corpus evidence behind the section's claims, such as the words
-that share an ending or the stems that take one affix. It stores definitions and display directives only. A query
-result is never stored: it is computed each time the section is rendered or compared, so
-there is no saved table and nothing that can go out of date. Both blocks below are the only fenced block kinds the
+that share an ending or the stems that take one affix. It stores definitions and display directives only, and a block may carry a saved table of at most ten
+rows, refreshed only by an explicit action; what Motif shows is always recomputed. A viewed or opened section
+never writes a table and never reads one in place of a run. Both blocks below are the only fenced block kinds the
 template admits; the importer reads them as authored text, and every other fenced block stays ordinary Markdown.
 A section or Proposal may hold many queries, and one query may be shown several times.
 
@@ -66,9 +68,41 @@ limit: 10
 ```
 ````
 
+#### The saved table
+
+A `motif-query` block may carry a **saved table**, so a linguist who opens the project in FieldWorks without Motif sees the
+block's result. It is stored straight after the block's closing fence as plain paragraphs: a caption paragraph, then a pipe
+table in the **Table Header** and **Table Row** styles of [ADR 0006](0006-rich-text-is-fieldworks-markdown-in-the-shared-textediting-field.md)
+(cells joined by tabs; form columns in the vernacular writing system). The caption is exactly
+"Saved &lt;date&gt; from Baseline &lt;id&gt;; &lt;N&gt; rows in all; Motif recomputes this when shown." with the date as `yyyy-MM-dd`, the id
+the first twelve hex digits of the Baseline's bundle digest, and "at least N" when the parse behind the rows was incomplete.
+The table holds the first ten rows of the query's own columns and sort; N counts them all.
+
+**The marker.** A saved table belongs to a block when a paragraph that reads as the caption follows the block's closing
+fence, and a paragraph in the Table Header style follows it. Position and the caption's fixed wording are the whole marker:
+both are paragraph text and a paragraph style, which FieldWorks keeps through any edit, and nothing else is needed, so no
+hidden run, object link or new style can be lost. Text that does not read as the caption is ordinary authored text; a table
+whose block is deleted becomes ordinary text when FieldWorks removes the block, and `guide edit` removes it with the block.
+
+**Only an explicit action writes it.** `guide refresh-tables [GDR-n] [--query id] [--draft name]` (Advanced AI, like `guide edit`)
+and the window's **Save table** button run each block's `motif query corpus forms` line through the read-only evaluator and stage the
+caption and rows in the Draft Proposal as a Discussion edit (ADR 0007: a Proposal, then Apply). A block whose line is another kind,
+is refused, or has no built parse index keeps the table it has and is named in the answer. Rows that equal the saved ones are not
+restaged. Viewing, opening, `guide show` and `guide check` never write.
+
+**Not authored text.** `guide edit` keeps each block's stored table whatever the Markdown says: a change to a table is dropped
+with a warning, and a block the edit removes takes its table. A hand edit made in FieldWorks stays until the next refresh overwrites it.
+The D8 example check skips saved-table paragraphs, so a word in a table is no example claim.
+
+**Out of date is advice.** `guide check` reports (`guide.saved-table-out-of-date`, advice as in D9) a table whose rows differ from the
+run its block already had in the check (no query runs twice; `--no-run` skips the comparison and `--timeout` bounds it). A table saved from another Baseline is reported only when no live run can settle it (a cold parse index,
+a refused line): saving a table changes the project, so the next Baseline always has another id, and the id alone would call
+every table stale straight after its own refresh.
+
 A Proposal's before and after run each query with `--as-of <base revision>` and with `--as-of <result revision>`, so a
 verb used in a query must accept `--as-of`. `--as-of` names a project revision and is distinct from `query stems --at`. Reading the Guide never executes a query; the renderer and
-`guide check` do. Export carries the definitions and directives only: it never runs a query and never writes a result.
+`guide check` do. Export carries the definitions and directives only: it never runs a query, and the only table it carries is the
+saved table already stored after a block.
 
 `guide check` runs each `motif-query` block read-only, through the evaluator the window uses, and reports a query that does
 not parse, uses a verb that is not read-only, is refused (with its code), needs a parse index that is not built (it names
@@ -152,7 +186,7 @@ templates do not make claims that morpheme rows can test.
 Use each word's newest conclusive `analysed` or `no-analysis` outcome among the newest 25 ParseTime,
 Correctness or ObjectTiming word Assessments. Timed-out, capped and skipped rows are inconclusive, so an
 older conclusive row may answer. With none, report **unverified** and ask the next Trial to include it.
-The token convention above is for prose examples. An example that needs its morphemes and glosses shown is
+The saved table of a query block (D2) is computed text, so no example is read from it. The token convention above is for prose examples. An example that needs its morphemes and glosses shown is
 written as the interlinear block of D10, whose word line is read as a positive example here and whose other lines
 are not read as example words.
 

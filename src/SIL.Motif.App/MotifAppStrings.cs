@@ -4288,6 +4288,11 @@ public static class MotifAppStrings
     public static string GuideQueryRun => Text("MotifApp.GuideQueryRun");
     public static string GuideQueryEdit => Text("MotifApp.GuideQueryEdit");
     public static string GuideQuerySave => Text("MotifApp.GuideQuerySave");
+    public static string GuideQueryProjectChanged => Text("MotifApp.GuideQueryProjectChanged");
+    public static string GuideQuerySaveTable => Text("MotifApp.GuideQuerySaveTable");
+    public static string GuideQueryTableSavedFormat => Text("MotifApp.GuideQueryTableSavedFormat");
+    public static string GuideQueryTableNotSavedFormat => Text("MotifApp.GuideQueryTableNotSavedFormat");
+    public static string GuideQueryTableUnchanged => Text("MotifApp.GuideQueryTableUnchanged");
     public static string GuideQueryCancel => Text("MotifApp.GuideQueryCancel");
     public static string GuideQueryDraftName => Text("MotifApp.GuideQueryDraftName");
     public static string GuideQueryRunning => Text("MotifApp.GuideQueryRunning");

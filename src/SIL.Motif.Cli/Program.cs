@@ -2287,6 +2287,16 @@ try
                     flags.GetValueOrDefault("after"), gdrAddBody, flags.GetValueOrDefault("ws"), flags.GetValueOrDefault("draft"))));
                 break;
             }
+            if (flags.TryGetValue("project", out var gdrRefreshProject) && positionals is ["refresh-tables"] or ["refresh-tables", _])
+            {
+                if (flags.Keys.Any(key => key is not ("project" or "draft" or "query" or "json" or "autonomous")) ||
+                    flags.GetValueOrDefault("draft") == "true" || flags.GetValueOrDefault("query") == "true")
+                    return Usage(UsageLineFor("guide refresh-tables"), asJson);
+                result = RenderCommand(GdrTableCommands.Refresh(new GdrRefreshTablesRequest(gdrRefreshProject,
+                    positionals.Count == 2 ? positionals[1] : null, flags.GetValueOrDefault("draft"), flags.GetValueOrDefault("query")),
+                    JobRunnerLaunchOptions.ResolveParserPath()));
+                break;
+            }
             if (flags.TryGetValue("project", out var gdrEditProject) && positionals is ["edit" or "decide", var gdrEditId])
             {
                 var gdrDraft = flags.GetValueOrDefault("draft");
@@ -2329,7 +2339,7 @@ try
                 (positionals[0] is "list" or "check" ? positionals.Count != 1 : positionals[0] != "show" || positionals.Count != 2) ||
                 flags.ContainsKey("as-of") && positionals[0] != "show")
                 return Usage(UsageLineFor("guide list") + " OR " + UsageLineFor("guide show") + " OR " + UsageLineFor("guide check") +
-                    " OR " + UsageLineFor("guide edit") + " OR " + UsageLineFor("guide add") + " OR " + UsageLineFor("guide decide"), asJson);
+                    " OR " + UsageLineFor("guide edit") + " OR " + UsageLineFor("guide add") + " OR " + UsageLineFor("guide decide") + " OR " + UsageLineFor("guide refresh-tables"), asJson);
             if (positionals[0] == "check" && (flags.Keys.Any(key => key is not ("project" or "json" or "autonomous" or "no-run" or "timeout" or "format" or "build")) ||
                     flags.GetValueOrDefault("no-run", "true") != "true" || flags.ContainsKey("no-run") && flags.ContainsKey("build") || flags.TryGetValue("timeout", out var gdrTimeoutText) &&
                     (!int.TryParse(gdrTimeoutText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var gdrTimeout) || gdrTimeout < 1)))

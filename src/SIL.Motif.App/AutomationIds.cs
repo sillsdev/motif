@@ -367,6 +367,7 @@ public static class AutomationIds
     public const string GuideQueryRun = "motif-guide-query-run";
     public const string GuideQueryEdit = "motif-guide-query-edit";
     public const string GuideQuerySave = "motif-guide-query-save";
+    public const string GuideQuerySaveTable = "motif-guide-query-save-table";
     public const string GuideQueryCancel = "motif-guide-query-cancel";
     public const string GuideQueryDraft = "motif-guide-query-draft";
     public const string GuideQuerySaveReason = "motif-guide-query-save-reason";

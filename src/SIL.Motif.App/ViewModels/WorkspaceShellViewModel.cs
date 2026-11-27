@@ -1029,6 +1029,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     {
         _isDisposed = true;
         StoreUpgradeNotices.Upgraded -= _storeUpgradeSubscription;
+        Context.Commands.ReleaseGuideSession();
         Interlocked.Increment(ref _projectOpenGeneration);
         await Context.StopProjectWorkAsync().ConfigureAwait(true);
         if (_knownProjectsRefreshTask is { } refresh) await refresh.ConfigureAwait(true);

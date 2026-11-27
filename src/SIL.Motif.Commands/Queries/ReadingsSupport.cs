@@ -74,12 +74,14 @@ internal sealed class MorphCatalog
     /// Opens the project and reads its catalog. The project is the one named, else the grammar when it is a FieldWorks project file;
     /// null when neither is, or the project cannot be opened.
     /// </summary>
-    public static MorphCatalog? TryLoad(string? projectPath, string? grammarPath, out string? failure, Action<LcmCache>? alsoRead = null)
+    public static MorphCatalog? TryLoad(string? projectPath, string? grammarPath, out string? failure, Action<LcmCache>? alsoRead = null,
+        ProjectSession? session = null)
     {
         failure = null;
         var path = !string.IsNullOrWhiteSpace(projectPath) ? projectPath
             : grammarPath is { } grammar && grammar.EndsWith(".fwdata", StringComparison.OrdinalIgnoreCase) ? grammar : null;
         if (path is null) return null;
+        if (session is not null) return session.Catalog(path, out failure, alsoRead);
         try
         {
             using var read = BaselineReadCache.Open(path);
