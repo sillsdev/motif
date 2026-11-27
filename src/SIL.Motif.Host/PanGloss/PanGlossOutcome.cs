@@ -1,4 +1,6 @@
+using System.Text.RegularExpressions;
 using SIL.Motif.Host.Parsimony;
+using SIL.Motif.Contract.Jobs;
 
 namespace SIL.Motif.Host.PanGloss;
 
@@ -28,6 +30,15 @@ public abstract record PanGlossOutcome
         /// <summary>Validated phonology evidence with independent invocation bindings.</summary>
         public Assess.PhonologyMeasurement? Phonology { get; init; }
         public string? MorphologyOutput { get; init; }
+
+        /// <summary>The failure kinds the parser declared it answers, kept with a why-not report.</summary>
+        public IReadOnlyList<string>? WhyNotKinds { get; init; }
+
+        /// <summary>
+        /// The rejection reasons the parser's description lists for its diagnostic capture, kept with a rejection trace;
+        /// null when the description lists none.
+        /// </summary>
+        public IReadOnlyList<string>? DescribedRejectReasons { get; init; }
         internal GrammarFactsArtifact? FactsArtifact { get; init; }
 
         /// <summary>The validated facts database written by a <c>facts</c> request.</summary>
@@ -47,7 +58,38 @@ public abstract record PanGlossOutcome
     public sealed record Refused(int ExitCode, string StandardError, string StandardOutput, string Detail)
         : PanGlossOutcome
     {
-        public override string Message => Detail;
+        /// <summary>Termination and memory failures take precedence over otherwise usable parser output.</summary>
+        public JobFailureCategory FailureCategory => Classify(ExitCode, StandardError, TerminationSignal);
+
+        /// <summary>The terminating Unix signal retained by containment, independently of the diagnostic exit number.</summary>
+        public int? TerminationSignal { get; init; }
+
+        public override string Message => FailureCategory switch
+        {
+            JobFailureCategory.ParserKilled => TerminationSignal is { } signal
+                ? $"PanGloss was killed by signal {signal} (diagnostic exit {ExitCode}). " + Detail
+                : $"PanGloss was killed or terminated (exit {ExitCode}). " + Detail,
+            JobFailureCategory.OutOfMemory => $"PanGloss ran out of memory (exit {ExitCode}). " + Detail,
+            _ => Detail,
+        };
+
+        internal static JobFailureCategory Classify(int exitCode, string standardError, int? terminationSignal = null)
+        {
+            if (exitCode == 0 && terminationSignal is null) return JobFailureCategory.None;
+            var status = unchecked((uint)exitCode);
+            if (status is 0xC0000017 or 0xC000009A or 0xC000012D or 0x8007000E ||
+                HasMemoryFailureRecord(standardError))
+                return JobFailureCategory.OutOfMemory;
+            return terminationSignal is not null ||
+                exitCode == -1 || status is >= 0xC0000000 and <= 0xCFFFFFFF ||
+                status is 0x40010004 or 0x40010008
+                ? JobFailureCategory.ParserKilled : JobFailureCategory.ParserRefusal;
+        }
+
+        private static bool HasMemoryFailureRecord(string standardError) => standardError.Split('\n').Any(line =>
+            Regex.IsMatch(line.Trim(),
+                @"\A(?:Out of memory\.|memory allocation of [0-9]+ bytes failed|(?:Unhandled exception\. |---> )?System\.OutOfMemoryException(?:: .*)?)\z",
+                RegexOptions.CultureInvariant | RegexOptions.NonBacktracking));
     }
 
     /// <summary>The parser exited zero but did not write what the request promised — never read as success.</summary>
@@ -64,6 +106,9 @@ public abstract record PanGlossOutcome
 
         /// <summary>Whether the cause is that no executable was found, rather than one that would not run.</summary>
         public bool ExecutableMissing { get; init; }
+
+        /// <summary>The parser capability the executable lacks, or null when the cause is something else.</summary>
+        public string? MissingCapability { get; init; }
     }
 
     /// <summary>The wall-clock cap expired and the process tree was killed.</summary>

@@ -122,6 +122,13 @@ public sealed class WindowsCpuJob : PanGlossContainmentJob
             throw new Win32Exception(Marshal.GetLastWin32Error());
     }
 
+    internal override async Task WaitForTerminatedDescendantsAsync(int processId, CancellationToken cancellationToken)
+    {
+        while (Query<NativeMethods.JOBOBJECT_BASIC_ACCOUNTING_INFORMATION>(
+            NativeMethods.JobObjectInfoClass.JobObjectBasicAccountingInformation).ActiveProcesses != 0)
+            await Task.Delay(TimeSpan.FromMilliseconds(50), cancellationToken).ConfigureAwait(false);
+    }
+
     /// <summary>Reads back the CPU rate control Windows currently has recorded for this job.</summary>
     internal NativeMethods.JOBOBJECT_CPU_RATE_CONTROL_INFORMATION QueryCpuRateControl()
     {

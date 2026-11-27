@@ -21,12 +21,17 @@ public enum ProjectTagProblem
 public sealed class ProjectTagException : Exception
 {
     /// <summary>Builds a refusal that gives the person the project-tag command to resolve it.</summary>
-    public ProjectTagException(ProjectTagProblem problem, string tag, string projectPath)
-        : base(MessageFor(problem, tag, projectPath))
+    public ProjectTagException(
+        ProjectTagProblem problem, string tag, string projectPath, string? collidingProjectPath = null)
+        : base(MessageFor(problem, tag, projectPath, collidingProjectPath))
     {
         Problem = problem;
         Tag = tag;
+        CollidingProjectPath = collidingProjectPath;
     }
+
+    /// <summary>The Known project that already holds the tag, when the refusal is a collision and it is known.</summary>
+    public string? CollidingProjectPath { get; }
 
     /// <summary>The tag-selection problem that caused the refusal.</summary>
     public ProjectTagProblem Problem { get; }
@@ -34,13 +39,17 @@ public sealed class ProjectTagException : Exception
     /// <summary>The candidate tag, or the empty string when no candidate could be read.</summary>
     public string Tag { get; }
 
-    private static string MessageFor(ProjectTagProblem problem, string tag, string projectPath)
+    private static string MessageFor(
+        ProjectTagProblem problem, string tag, string projectPath, string? collidingProjectPath)
     {
         var guidance = $"Set a tag for this project with: motif project tag --set <new-tag> --project \"{projectPath}\".";
         return problem switch
         {
             ProjectTagProblem.Invalid => $"The project tag '{tag}' is invalid. {ProjectTags.RulesText} {guidance}",
-            ProjectTagProblem.Taken => $"The project tag '{tag}' is already used by another Known project. {guidance}",
+            ProjectTagProblem.Taken => collidingProjectPath is null
+                ? $"The project tag '{tag}' is already used by another Known project. {guidance}"
+                : $"The project tag '{tag}' is already used by the Known project \"{collidingProjectPath}\", so Motif " +
+                  $"cannot record \"{projectPath}\" for background work. {guidance}",
             ProjectTagProblem.Unavailable => $"Motif could not determine this project's vernacular language code. {guidance}",
             _ => throw new ArgumentOutOfRangeException(nameof(problem), problem, null),
         };
@@ -66,7 +75,7 @@ public static class ProjectTags
         return true;
     }
 
-    /// <summary>Chooses the language code or, after a collision, the exact project-folder name.</summary>
+    /// <summary>Chooses the language code or, after a collision, the project-folder name (lowercased to the tag alphabet and numbered when that clashes).</summary>
     /// <param name="fullFwDataPath">The full path of the project's FieldWorks data file.</param>
     /// <param name="isTaken">Checks whether a Known project already uses a candidate.</param>
     /// <exception cref="ProjectTagException">The language or fallback candidate cannot be assigned.</exception>
@@ -84,11 +93,37 @@ public static class ProjectTags
         if (!isTaken(languageCode)) return languageCode;
 
         var folderName = Path.GetFileName(Path.GetDirectoryName(fullPath)) ?? string.Empty;
-        if (!IsValid(folderName))
+        if (IsValid(folderName))
+        {
+            if (isTaken(folderName))
+                throw new ProjectTagException(ProjectTagProblem.Taken, folderName, fullPath);
+            return folderName;
+        }
+
+        var stem = Normalize(folderName);
+        if (stem.Length == 0 || !IsLowerLetter(stem[0]))
             throw new ProjectTagException(ProjectTagProblem.Invalid, folderName, fullPath);
-        if (isTaken(folderName))
-            throw new ProjectTagException(ProjectTagProblem.Taken, folderName, fullPath);
-        return folderName;
+        if (!isTaken(stem)) return stem;
+        for (var number = 2; number < 1000; number++)
+        {
+            var suffix = number.ToString(CultureInfo.InvariantCulture);
+            var candidate = stem[..Math.Min(stem.Length, MaxLength - suffix.Length)].TrimEnd('-') + suffix;
+            if (!isTaken(candidate)) return candidate;
+        }
+        throw new ProjectTagException(ProjectTagProblem.Taken, stem, fullPath);
+    }
+
+    /// <summary>Lowercases a folder name into the tag alphabet and cuts it to the tag length.</summary>
+    private static string Normalize(string folderName)
+    {
+        var builder = new System.Text.StringBuilder();
+        foreach (var character in folderName.ToLowerInvariant())
+        {
+            if (IsLowerLetter(character) || char.IsAsciiDigit(character)) builder.Append(character);
+            else if (builder.Length > 0 && builder[^1] != '-') builder.Append('-');
+        }
+        var text = builder.ToString().TrimEnd('-');
+        return text.Length > MaxLength ? text[..MaxLength].TrimEnd('-') : text;
     }
 
     private static string? LanguageCodeFrom(string? writingSystemTag)

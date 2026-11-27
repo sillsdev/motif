@@ -7,7 +7,6 @@ namespace SIL.Motif.Host.PanGloss;
 /// <param name="Capped">The search stopped at PanGloss's analysis-attempt or derived search-work cap.</param>
 /// <param name="TimedOut">The search stopped at PanGloss's own time limit.</param>
 /// <param name="InvalidShape">The word's shape could not be traced at all, so no search ran.</param>
-/// <param name="Steps">The parser's count of analysis attempts for this word, independently of search work.</param>
 /// <param name="ElapsedNs">How long the parser's search took, excluding process start and grammar loading.</param>
 /// <param name="Guessed">Whether the parser's guesser, rather than the lexicon, supplied the result.</param>
 /// <param name="Categories">The parser's effort by kind of grammar object, in the parser's own order.</param>
@@ -15,7 +14,6 @@ public sealed record PanGlossTraceDetails(
     bool Capped,
     bool TimedOut,
     bool InvalidShape,
-    long Steps,
     long ElapsedNs,
     bool Guessed,
     IReadOnlyList<PanGlossTraceCategory> Categories)
@@ -24,11 +22,28 @@ public sealed record PanGlossTraceDetails(
     /// The parser's total work reservations for this word across all phases, or <see langword="null"/> when the
     /// document does not carry <c>search.workSteps</c>.
     /// </summary>
-    public long? WorkSteps { get; init; }
+    public long? ParserWork { get; init; }
 
     /// <summary>Whether the search explored everything it meant to.</summary>
     public bool ReportedCompleted { get; init; } = true;
     public bool SearchCompleted => ReportedCompleted && !Capped && !TimedOut && !InvalidShape;
+
+    /// <summary>
+    /// Which limit ended the search, in words: the work limit counts parser work (<see cref="ParserWork"/>) when
+    /// recorded; the time safety net depends on how fast this computer is. <see langword="null"/> when neither
+    /// limit stopped it.
+    /// </summary>
+    public string? LimitStopReason => (Capped, TimedOut) switch
+    {
+        (true, false) => $"The parser stopped at a work or memory limit{ParserWorkClause}.",
+        (true, true) => $"The parser stopped at a work or memory limit{ParserWorkClause}, " +
+            "and the time safety net, which depends on how fast this computer is, also fired.",
+        (false, true) => "The parser stopped at the time safety net, which depends on how fast this computer is.",
+        _ => null,
+    };
+
+    // A zero is not a measured count of work, so it is left out rather than printed.
+    private string ParserWorkClause => ParserWork is > 0 and var work ? $" after {work:N0} parser work" : string.Empty;
 }
 
 /// <summary>
@@ -55,4 +70,8 @@ public sealed record PanGlossTraceCategory(
     long NoRoot,
     long SurfaceMismatch,
     long Uses,
-    long? SelfElapsedNs);
+    long? SelfElapsedNs)
+{
+    /// <summary>Work-budget reservations attributed to this kind, when recorded.</summary>
+    public long? ParserWork { get; init; }
+}

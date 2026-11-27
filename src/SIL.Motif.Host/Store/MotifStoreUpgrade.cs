@@ -1,0 +1,300 @@
+using System.Text;
+using System.Security.Cryptography;
+using SIL.Motif.Contract.Review;
+using System.Text.Json;
+using Microsoft.Data.Sqlite;
+using SIL.Motif.Contract.Parsing;
+using SIL.Motif.Contract.Projects;
+using SIL.Motif.Runner.Operations;
+
+namespace SIL.Motif.Host.Store;
+
+/// <summary>Copies authored project data into a new current-schema store.</summary>
+public static class MotifStoreUpgrade
+{
+    private static void ReleaseReviewReportDetails(SqliteConnection connection, SqliteTransaction transaction)
+    {
+        var reports = new List<(string Id, string Json, string Digest)>();
+        using (var command = connection.CreateCommand())
+        {
+            command.Transaction = transaction;
+            command.CommandText = "SELECT ReportId, SummaryJson, SummaryDigest FROM ReviewReports;";
+            using var reader = command.ExecuteReader();
+            while (reader.Read()) reports.Add((reader.GetString(0), reader.GetString(1), reader.GetString(2)));
+        }
+        foreach (var (id, json, digest) in reports)
+        {
+            if (Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(json))) != digest)
+                throw new InvalidDataException("Review summary digest does not match.");
+            var summary = JsonSerializer.Deserialize<ReportView>(json, ReviewJson.Options) ?? throw new InvalidDataException("Invalid review summary.");
+            summary = summary with { DetailAvailability = DetailAvailability.Unavailable, Page = null, Word = null, Trace = null,
+                Limitations = summary.Limitations.Concat([new Limitation("detail-released", [], "Report detail was released during store upgrade.", [])]).ToArray() };
+            var updated = JsonSerializer.Serialize(summary, ReviewJson.Options);
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText = "UPDATE ReviewReports SET SummaryJson=$json,SummaryDigest=$hash,InputReferencesJson='[]',DetailAvailable=0,DetailBytes=0 WHERE ReportId=$id;";
+            command.Parameters.AddWithValue("$id", id);
+            command.Parameters.AddWithValue("$json", updated);
+            command.Parameters.AddWithValue("$hash", Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(updated))));
+            command.ExecuteNonQuery();
+        }
+    }
+
+    /// <summary>The first store schema whose Difference summaries have the shape current code reads (ADR 0021).</summary>
+    internal const int FirstSummarySchema = 56;
+
+    // Only a decided or deferred Proposal's newest Difference per Text is carried; a Trial makes the rest again.
+    private const string DecidedDifferences = "ProposalId IN (SELECT ProposalId FROM old.Proposals WHERE Status IN " +
+        "('applied','rejected','withdrawn','superseded','deferred')) AND rowid = (SELECT d.rowid FROM old.ProposalDifferences d " +
+        "WHERE d.ProposalId = old.ProposalDifferences.ProposalId AND d.TextId = old.ProposalDifferences.TextId " +
+        "ORDER BY d.CreatedUtc DESC, d.DifferenceId DESC LIMIT 1)";
+
+    /// <summary>A revision that current code could not load; its bytes remain in the new store.</summary>
+    public sealed record UnreadableRevision(string ProposalId, string IntentDigest, string Error);
+
+    /// <summary>Counts and diagnostic information for one store upgrade.</summary>
+    /// <param name="SourceSchema">The schema the store was at.</param>
+    /// <param name="TargetSchema">The schema it was upgraded to.</param>
+    /// <param name="BackupPath">The original store file, kept beside the new one so an interrupted swap can finish.</param>
+    /// <param name="Carried">Each authored table carried, with its rows.</param>
+    /// <param name="Dropped">Each derived table dropped.</param>
+    /// <param name="UnreadableRevisions">Revisions current code cannot parse; their bytes are kept.</param>
+    /// <param name="BackupDirectory">The <c>store backup</c> folder taken before the upgrade, which <c>store restore</c> takes.</param>
+    /// <param name="BackupReceiptPath">That backup's <c>motif-backup.json</c>.</param>
+    /// <param name="DroppedCounts">Each dropped table with the rows it held, so the receipt says what was lost.</param>
+    /// <param name="Steps">The declared steps the store crossed, as <c>schema: what changed</c>, oldest first.</param>
+    public sealed record Report(int SourceSchema, int TargetSchema, string? BackupPath,
+        Dictionary<string, long> Carried, List<string> Dropped,
+        List<UnreadableRevision> UnreadableRevisions, string? BackupDirectory = null,
+        string? BackupReceiptPath = null, Dictionary<string, long>? DroppedCounts = null, List<string>? Steps = null);
+
+    /// <summary>Copies an immutable source into a new output and writes a JSON report beside it.</summary>
+    public static Report Copy(string source, string output) => Build(source, output, null, true, null);
+
+    /// <summary>The rows one derived table of the old store held, so the report says what was dropped.</summary>
+    private static Dictionary<string, long> CountDropped(SqliteConnection destination, SqliteTransaction transaction,
+        List<string> dropped, bool carriesSummaries)
+    {
+        var counts = new Dictionary<string, long>(StringComparer.Ordinal);
+        foreach (var table in dropped)
+            counts[table] = Scalar(destination, $"SELECT COUNT(*) FROM old.{Quote(table)};", transaction);
+        // Summaries of undecided Proposals are not carried, and are dropped like any derived row.
+        if (carriesSummaries)
+        {
+            var notCarried = Scalar(destination, "SELECT COUNT(*) FROM old.ProposalDifferences;", transaction) -
+                Scalar(destination, "SELECT COUNT(*) FROM main.ProposalDifferences;", transaction);
+            if (notCarried > 0) counts["ProposalDifferences"] = notCarried;
+        }
+        return counts;
+    }
+
+    internal static Report Build(string source, string output, ProjectLocator? expected, bool immutable, string? backup,
+        Version? worker = null, Action<SqliteConnection, bool>? onOpen = null,
+        int firstSummarySchema = FirstSummarySchema, StoreSafetyBackup? safetyBackup = null)
+    {
+        source = Path.GetFullPath(source);
+        output = Path.GetFullPath(output);
+        if (!File.Exists(source)) throw new FileNotFoundException(StoreUpgradeMessages.Get("SourceMissing"), source);
+        if (File.Exists(output) || File.Exists(output + ".upgrade.json"))
+            throw new IOException(StoreUpgradeMessages.Get("OutputExists"));
+        var sourceUri = new Uri(source).AbsoluteUri + (immutable ? "?mode=ro&immutable=1" : "?mode=ro");
+        using var input = new SqliteConnection(new SqliteConnectionStringBuilder
+        {
+            DataSource = sourceUri, Mode = SqliteOpenMode.ReadOnly, Pooling = false
+        }.ToString());
+        input.Open();
+        onOpen?.Invoke(input, true);
+        var application = Scalar(input, "PRAGMA application_id;");
+        var version = checked((int)Scalar(input, "PRAGMA user_version;"));
+        if (application != MotifSchema.ApplicationId || version < 1 || version >= MotifSchema.CurrentSchema)
+            throw new InvalidDataException(StoreUpgradeMessages.Get("SourceVersion"));
+        if (Scalar(input, "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='MotifMetadata';") != 1)
+            throw new InvalidDataException(StoreUpgradeMessages.Get("MissingMetadata"));
+        var metadata = MotifSchema.ReadMetadata(input);
+        if ((worker ?? MotifProductVersion.Current) < metadata.MinimumWorkerVersion)
+            throw new NotSupportedException(StoreUpgradeMessages.Get("NewerWorker"));
+        if (expected is not null &&
+            (!StringComparer.OrdinalIgnoreCase.Equals(expected.FullFwDataPath, metadata.Project.FullFwDataPath) ||
+             !StringComparer.Ordinal.Equals(expected.FieldWorksProjectIdentity, metadata.Project.FieldWorksProjectIdentity)))
+            throw StoreProjectMismatch.Create(source, metadata.Project.FullFwDataPath);
+        Directory.CreateDirectory(Path.GetDirectoryName(output)!);
+        var created = false;
+        var temporaryReport = output + ".upgrade.json.tmp-" + Guid.NewGuid().ToString("N");
+        try
+        {
+            using (File.Open(output, FileMode.CreateNew, FileAccess.Write, FileShare.None)) { }
+            created = true;
+            using var destination = new SqliteConnection(new SqliteConnectionStringBuilder
+            {
+                DataSource = new Uri(output).AbsoluteUri, Mode = SqliteOpenMode.ReadWrite, Pooling = false
+            }.ToString());
+            destination.Open();
+            onOpen?.Invoke(destination, false);
+            Execute(destination, "PRAGMA auto_vacuum = INCREMENTAL;");
+            using (var attach = destination.CreateCommand())
+            {
+                attach.CommandText = "ATTACH DATABASE $source AS old;";
+                attach.Parameters.AddWithValue("$source", sourceUri);
+                attach.ExecuteNonQuery();
+            }
+            Execute(destination, $"PRAGMA application_id = {MotifSchema.ApplicationId}; PRAGMA user_version = {MotifSchema.CurrentSchema};");
+            using var transaction = destination.BeginTransaction();
+            MotifSchema.Create(destination, transaction, metadata.Project);
+            Execute(destination, "PRAGMA defer_foreign_keys = ON;", transaction);
+            var tables = Names(destination, "SELECT name FROM old.sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';", transaction);
+            // Summaries written before their current shape cannot be read, so they are dropped like any derived table.
+            var plan = StoreUpgradeSteps.PlanFor(version, firstSummarySchema);
+            var carriesSummaries = plan.CarriesSummaries;
+            var kept = plan.Kept;
+            bool IsDerived(string name) => plan.IsDerived(name);
+            var unknown = tables.Except(kept, StringComparer.Ordinal).Where(name => name != "MotifMetadata" && !IsDerived(name)).ToArray();
+            if (unknown.Length != 0) throw new InvalidDataException(StoreUpgradeMessages.Format("UnknownTable", string.Join(", ", unknown)));
+            var carried = kept.ToDictionary(table => table, _ => 0L, StringComparer.Ordinal);
+            carried["MotifMetadata"] = 1;
+            foreach (var table in kept)
+            {
+                if (!tables.Contains(table)) continue;
+                var oldColumns = Columns(destination, "old", table, transaction);
+                var newColumns = Columns(destination, "main", table, transaction);
+                var matching = newColumns.Where(oldColumns.Contains).ToArray();
+                if (matching.Length == 0) throw new InvalidDataException(StoreUpgradeMessages.Format("NoColumns", table));
+                var names = matching.Select(Quote).ToList();
+                var values = matching.Select(name => table == "Proposals" && name == "AnchorJson" ? "NULL" : Quote(name)).ToList();
+                foreach (var step in plan.Crossed) step.RewriteColumns?.Invoke(table, oldColumns, newColumns, names, values);
+                AddRequiredDefaults(destination, transaction, table, oldColumns, names, values);
+                var where = table == "ProposalDifferences" ? " WHERE " + DecidedDifferences : "";
+                Execute(destination, $"INSERT INTO main.{Quote(table)} ({string.Join(",", names)}) SELECT {string.Join(",", values)} FROM old.{Quote(table)}{where};", transaction);
+                carried[table] = Scalar(destination, $"SELECT COUNT(*) FROM main.{Quote(table)};", transaction);
+                if (carried[table] != Scalar(destination, $"SELECT COUNT(*) FROM old.{Quote(table)}{where};", transaction))
+                    throw new InvalidDataException(StoreUpgradeMessages.Format("CountChanged", table));
+            }
+            ReleaseReviewReportDetails(destination, transaction);
+            foreach (var step in plan.Crossed)
+                step.AfterCopy?.Invoke(new StoreUpgradeStep.Context(destination, transaction, tables, carried));
+            // The word rows are not carried, so every carried summary says its word detail is gone.
+            if (carriesSummaries) Execute(destination, "UPDATE main.ProposalDifferences SET WordDetailDroppedUtc = " +
+                "strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE WordDetailDroppedUtc IS NULL;", transaction);
+            var metadataColumns = Columns(destination, "old", "MotifMetadata", transaction);
+            foreach (var column in new[] { "CreatedUtc", "SetupSkippedUtc" })
+                if (metadataColumns.Contains(column))
+                    Execute(destination, $"UPDATE MotifMetadata SET {Quote(column)} = (SELECT {Quote(column)} FROM old.MotifMetadata WHERE Id=1);", transaction);
+            var dropped = tables.Where(IsDerived).Order(StringComparer.Ordinal).ToList();
+            var droppedCounts = CountDropped(destination, transaction, dropped, carriesSummaries);
+            var unreadable = CheckRevisions(destination, transaction);
+            using (var check = destination.CreateCommand())
+            {
+                check.Transaction = transaction;
+                check.CommandText = "PRAGMA foreign_key_check;";
+                using var rows = check.ExecuteReader();
+                if (rows.Read()) throw new InvalidDataException(StoreUpgradeMessages.Get("ReferencesInvalid"));
+            }
+            MotifSchema.ValidateSchema(destination, transaction);
+            using (var integrity = destination.CreateCommand())
+            {
+                integrity.Transaction = transaction;
+                integrity.CommandText = "PRAGMA main.quick_check;";
+                if (!string.Equals(integrity.ExecuteScalar() as string, "ok", StringComparison.Ordinal))
+                    throw new InvalidDataException(StoreUpgradeMessages.Get("IntegrityFailed"));
+            }
+            transaction.Commit();
+            var report = new Report(version, MotifSchema.CurrentSchema, backup, carried, dropped, unreadable,
+                safetyBackup?.Directory, safetyBackup?.ReceiptPath, droppedCounts,
+                plan.Crossed.Select(step => $"{step.To}: {step.Summary}").ToList());
+            File.WriteAllText(temporaryReport, JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true }));
+            File.Move(temporaryReport, output + ".upgrade.json");
+            return report;
+        }
+        catch
+        {
+            if (created && File.Exists(output)) File.Delete(output);
+            throw;
+        }
+        finally
+        {
+            if (File.Exists(temporaryReport)) File.Delete(temporaryReport);
+        }
+    }
+
+    private static void AddRequiredDefaults(SqliteConnection db, SqliteTransaction transaction, string table,
+        HashSet<string> oldColumns, List<string> names, List<string> values)
+    {
+        using var command = db.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = $"PRAGMA main.table_info({Quote(table)});";
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            var name = reader.GetString(1);
+            if (oldColumns.Contains(name)) continue;
+            if (reader.GetInt32(5) != 0) throw new InvalidDataException(StoreUpgradeMessages.Format("MissingIdentity", table + "." + name));
+            if (reader.GetInt32(3) == 0 || !reader.IsDBNull(4)) continue;
+            var type = reader.GetString(2).ToUpperInvariant();
+            var value = (table, name) switch
+            {
+                ("NamedSelections", "Revision") => "1",
+                ("NamedSelections", "TimeLimitMode") => "'Estimated'",
+                ("NamedSelections", "TextIdsJson" or "AddedWordsJson") => "'[]'",
+                ("ProposalDifferences", "Reference") => "CASE WHEN json_valid(SummaryJson) " +
+                    "THEN COALESCE(json_extract(SummaryJson, '$.Reference'), 'human') ELSE 'human' END",
+                _ when type.Contains("INT", StringComparison.Ordinal) => "0",
+                _ when type.Contains("REAL", StringComparison.Ordinal) || type.Contains("FLOAT", StringComparison.Ordinal) => "0.0",
+                _ when type.Contains("BLOB", StringComparison.Ordinal) => "X''",
+                _ => "''"
+            };
+            names.Add(Quote(name));
+            values.Add(value);
+        }
+    }
+
+    private static List<UnreadableRevision> CheckRevisions(SqliteConnection db, SqliteTransaction transaction)
+    {
+        OperationRegistryBootstrap.Initialize();
+        var errors = new List<UnreadableRevision>();
+        using var command = db.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "SELECT ProposalId, IntentDigest, ProposalJson FROM ProposalRevisions;";
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            try
+            {
+                var value = reader.GetValue(2);
+                var json = value is byte[] bytes ? new UTF8Encoding(false, true).GetString(bytes) : (string)value;
+                ProposalJsonParser.Parse(json.TrimStart('\uFEFF'));
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                errors.Add(new UnreadableRevision(reader.GetString(0), reader.GetString(1), ex.Message));
+            }
+        }
+        return errors;
+    }
+
+    internal static HashSet<string> Columns(SqliteConnection db, string schema, string table, SqliteTransaction tx) =>
+        Names(db, $"SELECT name FROM pragma_table_info('{table.Replace("'", "''")}','{schema}');", tx);
+    private static HashSet<string> Names(SqliteConnection db, string sql, SqliteTransaction tx)
+    {
+        using var command = db.CreateCommand();
+        command.Transaction = tx;
+        command.CommandText = sql;
+        using var reader = command.ExecuteReader();
+        var result = new HashSet<string>(StringComparer.Ordinal);
+        while (reader.Read()) result.Add(reader.GetString(0));
+        return result;
+    }
+    internal static string Quote(string name) => "\"" + name.Replace("\"", "\"\"") + "\"";
+    internal static long Scalar(SqliteConnection db, string sql, SqliteTransaction? tx = null)
+    {
+        using var command = db.CreateCommand();
+        command.Transaction = tx;
+        command.CommandText = sql;
+        return Convert.ToInt64(command.ExecuteScalar());
+    }
+    internal static void Execute(SqliteConnection db, string sql, SqliteTransaction? tx = null)
+    {
+        using var command = db.CreateCommand();
+        command.Transaction = tx;
+        command.CommandText = sql;
+        command.ExecuteNonQuery();
+    }
+}

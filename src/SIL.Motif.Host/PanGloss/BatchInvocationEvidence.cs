@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Serialization;
+using SIL.Motif.Contract;
 using SIL.Motif.Contract.Assess;
 
 namespace SIL.Motif.Host.PanGloss;
@@ -18,7 +19,7 @@ public sealed record BatchInvocationEvidence(
     string StandardErrorPath,
     string StandardErrorSha256,
     int? PerWordTimeoutMs,
-    StepCap PerWordStepLimit,
+    ParserWorkLimit PerWordParserWorkLimit,
     int Threads,
     bool CollectStatistics)
 {
@@ -38,30 +39,86 @@ public sealed record BatchInvocationEvidence(
     public string? AnalysesPath { get; init; }
     public string? AnalysesSha256 { get; init; }
 
+    /// <summary>The producing writing system and LDML profile when the Assessor establishes both.</summary>
+    [JsonIgnore]
+    public BatchInputProfile? InputProfile { get; init; }
+
+    /// <summary>The exact imported snapshot consumed by the batch, when one was retained.</summary>
+    public string? ImportedSnapshotPath { get; init; }
+
+    /// <summary>The SHA-256 of the retained imported snapshot.</summary>
+    public string? ImportedSnapshotSha256 { get; init; }
+
+    /// <summary>The staging contract for the grammar source, or null for older evidence.</summary>
+    public GrammarExportFormat? GrammarExportFormat { get; init; }
+
+    /// <summary>Digest of the approved morphology used for correctness, when collected.</summary>
+    public string? ApprovedExpectationsSha256 { get; init; }
+
     /// <summary>
     /// Set when words the parser stopped at the per-word time limit were run again in one serial batch under a longer limit and
     /// their rows in the retained TSV and morphology files were replaced by the retried rows; null when none were.
     /// </summary>
     public StoppedWordRetry? StoppedWordRetry { get; init; }
 
-    /// <summary>PanGloss stderr lines retained with the invocation, newline-joined or null when none were retained.</summary>
+    /// <summary>First-pass PanGloss warnings, newline-joined or null when none were retained.</summary>
     /// <remarks>
     /// Joined rather than listed because a record's value equality is what lets one invocation be recorded once per
     /// kind and compared for agreement; a collection member would compare by reference and refuse the second write.
     /// </remarks>
     public string? GrammarWarnings { get; init; }
 
-    /// <summary>The retained PanGloss stderr lines in order.</summary>
+    /// <summary>The retained warnings from both passes in encounter order.</summary>
     [JsonIgnore]
-    public IReadOnlyList<string> GrammarWarningLines => string.IsNullOrEmpty(GrammarWarnings)
+    public IReadOnlyList<string> GrammarWarningLines => StoppedWordRetry is { GrammarWarnings: not null } retry
+        ? FirstPassGrammarWarningLines.Concat(retry.GrammarWarningLines).Distinct(StringComparer.Ordinal).ToArray()
+        : FirstPassGrammarWarningLines;
+
+    /// <summary>The retained warnings that apply to the first pass.</summary>
+    [JsonIgnore]
+    public IReadOnlyList<string> FirstPassGrammarWarningLines => SplitWarnings(GrammarWarnings);
+
+    internal static string[] SplitWarnings(string? warnings) => string.IsNullOrEmpty(warnings)
         ? []
-        : GrammarWarnings.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        : warnings.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    internal static string? ExtractWarnings(string stderr)
+    {
+        var warnings = SplitWarnings(stderr).Where(line =>
+            line.StartsWith("warning:", StringComparison.OrdinalIgnoreCase) ||
+            line.StartsWith("capability:", StringComparison.OrdinalIgnoreCase)).ToArray();
+        return warnings.Length == 0 ? null : string.Join('\n', warnings);
+    }
+
+    /// <summary>Identifies a batch diagnostic that can prevent the grammar search from being complete.</summary>
+    public static bool IsUnsupportedGrammarWarning(string warning) =>
+        warning.StartsWith("capability:", StringComparison.OrdinalIgnoreCase) ||
+        warning.Contains("cannot be loaded as an affix rule", StringComparison.OrdinalIgnoreCase) ||
+        warning.Contains("cannot be checked against the phoneme inventory", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Hashes a file's bytes, independently of parser semantic identities.</summary>
     public static string DigestFile(string path)
     {
         using var stream = File.OpenRead(path);
         return "sha256:" + Convert.ToHexString(SHA256.HashData(stream)).ToLowerInvariant();
+    }
+
+    /// <summary>Reads the exact parser input rows when their retained bytes still match the invocation.</summary>
+    public static IReadOnlyList<string>? ReadVerifiedWords(BatchInvocationEvidence invocation)
+    {
+        try
+        {
+            var snapshot = ReadTextWithDigest(invocation.WordsPath);
+            if (snapshot.Sha256 != invocation.WordsSha256) return null;
+            using var reader = new StringReader(snapshot.Text);
+            var words = new List<string>();
+            while (reader.ReadLine() is { } word) words.Add(word);
+            return words;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            return null;
+        }
     }
 
     internal static TextSnapshot ReadTextWithDigest(string path)
@@ -187,8 +244,41 @@ public sealed record StoppedWordRetry(
     /// <summary>The most words one invocation retries, so a grammar that is slow on thousands of words is not rerun at length.</summary>
     public const int MaxWords = 50;
 
+    /// <summary>The name of the retained retry stderr beside the merged TSV.</summary>
+    public const string StandardErrorFileName = "retry-stderr.txt";
+
     public int NotRetried => Stopped - Retried;
 
     /// <summary>Why the retry gave nothing, when it was attempted and failed; the stopped rows then stay as the first pass left them.</summary>
     public string? Failure { get; init; }
+
+    /// <summary>The digest of the retained retry stderr at <see cref="StandardErrorFileName"/>.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? RetryStandardErrorSha256 { get; init; }
+
+    /// <summary>The retained warning lines that apply to the rows supplied by the retry.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? GrammarWarnings { get; init; }
+
+    [JsonIgnore]
+    public IReadOnlyList<string> GrammarWarningLines => BatchInvocationEvidence.SplitWarnings(GrammarWarnings);
+
+    /// <summary>Names the exact parser keys whose rows were replaced by the retry.</summary>
+    public IEnumerable<string> ReplacedWords()
+    {
+        foreach (var line in Words.Split('\n'))
+        {
+            var fields = line.Split('\t');
+            if (fields.Length == 5 && fields[4] is "recovered" or "still-stopped")
+                yield return fields[1];
+        }
+    }
+}
+
+
+/// <summary>Identifies the writing system and casing policy used to expand an Assessment's Selection.</summary>
+public sealed record BatchInputProfile(string WritingSystemId, string LdmlDigest, string CasePolicy)
+{
+    /// <summary>The Assessor expands capitalized inputs using the writing system's whole-word lowercase form.</summary>
+    public const string WholeWordLowercase = "fieldworks-whole-word-lowercase-1";
 }

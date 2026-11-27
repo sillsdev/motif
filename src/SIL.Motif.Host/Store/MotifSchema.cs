@@ -6,17 +6,18 @@ namespace SIL.Motif.Host.Store;
 
 /// <summary>Owns the single, current SQLite schema for Motif's paired project database.</summary>
 /// <remarks>
-/// Motif is pre-1.0: a database is either exactly this shape or it is refused outright. There is no
-/// migration ladder here — an older database is not upgraded, it is rejected with an actionable error
-/// telling the developer to delete the file and let Motif recreate it.
+/// A project store uses this shape after an upgrade has carried its authored data forward.
+/// Computed data is recreated when needed.
 /// </remarks>
 public static class MotifSchema
 {
+    private static volatile SchemaObject[]? _validatedReadSchema;
+
     /// <summary>SQLite application identifier written to Motif-owned databases.</summary>
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 50;
+    public const int CurrentSchema = 79;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -31,11 +32,11 @@ public static class MotifSchema
         using (var command = connection.CreateCommand())
         {
             command.Transaction = transaction;
-            command.CommandText = MetadataDdl + CorpusDdl + ProposalWorkflowDdl + SelectionDdl + AssessmentDdl + JobDdl +
-                BaselineDdl + BaselineTextWordsDdl + BaselineTextReadIndexDdl + RetainedInvocationDdl + ParsimonyBundleDdl + ParsimonyBundleLifetimeDdl +
+            command.CommandText = IndexedCorpusDdl + SourceIndexDdl + MetadataDdl + CorpusDdl + GrammarCoverageDdl + ProposalWorkflowDdl + SelectionDdl + AssessmentDdl + JobDdl +
+                BaselineDdl + BaselineTextWordsDdl + BaselineTextReadIndexDdl + ProgressDdl + RetainedInvocationDdl + ParsimonyBundleDdl + ParsimonyBundleLifetimeDdl +
                 GrammarCheckDdl + PendingChangeFitDdl + ReviewMarkDdl +
                 ReadOccurrenceDdl + ActiveParseDdl + ParserRefusalDdl + ProposalDifferenceDdl + PhonologyExampleDdl +
-                PhonologyAssessmentDdl;
+                PhonologyAssessmentDdl + BeforeAssessmentBindingDdl + ReviewReportDdl + RequestDdl + HypothesisDdl + QueryDdl + StoreRelocationDdl + WordTypeDispositionDdl;
             command.ExecuteNonQuery();
         }
 
@@ -54,33 +55,69 @@ public static class MotifSchema
         insert.ExecuteNonQuery();
     }
 
+    private sealed record SchemaObject(string Type, string Name, string TableName, string? Sql);
+
+    internal static void ValidateReadSchema(SqliteConnection connection, SqliteTransaction transaction)
+    {
+        var objects = new List<SchemaObject>();
+        using (var command = connection.CreateCommand())
+        {
+            command.Transaction = transaction;
+            command.CommandText = "SELECT type, name, tbl_name, sql FROM sqlite_schema ORDER BY type, name;";
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+                objects.Add(new(reader.GetString(0), reader.GetString(1), reader.GetString(2),
+                    reader.IsDBNull(3) ? null : reader.GetString(3)));
+        }
+        // Every shape check depends only on the DDL observed in this read snapshot.
+        if (_validatedReadSchema is { } validated && objects.SequenceEqual(validated)) return;
+        ValidateSchema(connection, transaction);
+        _validatedReadSchema = objects.ToArray();
+    }
+
     /// <summary>Validates that an existing database has exactly the current schema's shape.</summary>
     internal static void ValidateSchema(SqliteConnection connection, SqliteTransaction? transaction = null)
     {
         var expectedTables = new HashSet<string>(StringComparer.Ordinal)
         {
-            "MotifMetadata", "Corpora", "CorpusDocuments", "Assessments", "AssessedWords", "AssessmentInvocations",
+            "MotifMetadata", "Corpora", "CorpusDocuments", "GrammarCoverageSegmentations",
+            "GrammarCoverageMeasurements", "GrammarCoverageNoAnalysisRank", "Assessments", "AssessedWords", "AssessmentWordPayloads", "AssessmentWordSetBindings", "AssessmentInvocations",
             "ParsedAnalyses", "AssessmentPins", "Proposals", "ProposalRevisions",
+            "ProposalRationaleRevisions", "ProposalComments", "ProposalPictures",
             "Receipts", "Reports", "AppliedIndex", "Jobs", "Baselines", "RetainedInvocations",
-            "RetainedInvocationMembers", "NamedSelections", "DefaultSelection", "AssessmentObjectTimings",
-            "BaselineSummaries", "BaselineTextWords", "BaselineTextWordforms", "BaselineTextReadIndex", "GrammarChecks", "PendingChangeFits", "ReviewMarks",
+            "RetainedInvocationMembers", "NamedSelections", "DefaultSelection", "ParsimonySelection", "AssessmentObjectTimings",
+            "BaselineSummaries", "BaselineTextWords", "BaselineTextWordforms", "BaselineTextReadIndex", "ProgressState", "ProgressTexts", "GrammarChecks", "PendingChangeFits", "ReviewMarks",
             "ReadOccurrences", "ActiveParse", "ParserRefusals", "ParsimonyBundles", "ParsimonyBundleReferences",
-            "ParsimonyReaderLeases", "ParsimonyBuildClaims", "CurrentParsimonyBundles",
+            "ParsimonyFrozenViews", "ParsimonyReaderLeases", "ParsimonyBuildClaims", "CurrentParsimonyBundles",
             "ProposalDifferences", "ProposalDifferenceCases", "ProposalDifferenceOccurrences", "ProposalDifferenceBuckets",
+            "ReviewReports", "ReviewReportCases", "ReviewReportMemberships", "ReviewReportEvents",
             "PhonologyExampleSets", "PhonologyExampleSetRevisions", "PhonologyExamples",
-            "PhonologyAssessmentBindings", "PhonologyAssessmentRows", "PhonologyAssessmentDependencies"
+            "PhonologyAssessmentBindings", "PhonologyAssessmentRows", "PhonologyAssessmentDependencies", "BeforeAssessmentBinding",
+            "Requests", "Hypotheses", "HypothesisProposals", "HypothesisTests", "StoreRelocations", "WordTypeDispositions",
+            "SourceIndexState", "SourcePassages", "SourceWordforms", "SourceWordPlaces",
+            "IndexedCorpusHeads", "IndexedCorpusGenerations", "IndexedCorpusDocuments", "IndexedCorpusShards",
+            "IndexedCorpusForms", "IndexedCorpusOccurrences", "IndexedCorpusWeights", "IndexedCorpusShardWeights",
+            "query_snapshot", "query_forms", "query_stems", "query_uses", "query_objects"
         };
         var expectedIndexes = new HashSet<string>(StringComparer.Ordinal)
         {
-            "IX_AssessedWords_Assessment", "IX_AssessedWords_Word", "IX_ParsedAnalyses_Word",
+            "IX_AssessedWords_Assessment", "IX_AssessedWords_Word", "IX_ParsedAnalyses_Word", "IX_AssessmentWordSetBindings_Owner",
+            "IX_AssessedWords_MorphologyJson", "IX_AssessedWords_CorrectnessJson", "IX_AssessedWords_ReadingGradesJson",
+            "IX_AssessedWords_AnalysisComparisonJson", "IX_AssessedWords_MissedApprovedJson",
             "IX_Jobs_Lineage_Attempt", "IX_Jobs_Status_Updated", "IX_Jobs_Lease", "IX_Jobs_QueueOrder",
-            "IX_Proposals_DraftName", "IX_Proposals_OpenRole", "IX_Assessments_Proposal", "IX_Assessments_Kind",
+            "IX_Proposals_DraftName", "IX_Proposals_OpenRole", "IX_ProposalRationaleRevisions_Proposal",
+            "IX_ProposalComments_Proposal", "IX_ProposalPictures_Proposal", "IX_Assessments_Proposal", "IX_Assessments_Kind",
             "IX_RetainedInvocations_Project", "IX_RetainedInvocationMembers_Assessment",
             "IX_ParsimonyBundles_ProjectCreated", "IX_ParsimonyReaderLeases_BundleExpiry",
             "IX_ParsimonyBuildClaims_Project", "IX_GrammarChecks_Project", "IX_GrammarChecks_Proposal",
-            "IX_ProposalDifferences_Proposal", "IX_ProposalDifferenceOccurrences_Order", "IX_ProposalDifferenceBuckets_Bucket",
+            "IX_ProposalDifferences_ProposalText", "IX_ProposalDifferenceOccurrences_Order", "IX_ProposalDifferenceBuckets_Bucket",
+            "IX_ReviewReports_ProjectManifest", "IX_ReviewReportCases_Order", "IX_ReviewReportMemberships_Cell",
             "IX_PhonologyExampleSets_Name", "IX_PhonologyExampleSetRevisions_SetRevision",
-            "IX_PhonologyExamples_RevisionExampleId"
+            "IX_PhonologyExamples_RevisionExampleId", "IX_Requests_Status",
+            "IX_Hypotheses_Shape", "IX_Hypotheses_Seq", "IX_Hypotheses_StatusSeq", "IX_HypothesisProposals_Proposal",
+            "IX_WordTypeDispositions_Current", "IX_WordTypeDispositions_History", "IX_WordTypeDispositions_Category",
+            "IX_IndexedCorpusOccurrences_Form", "IX_IndexedCorpusOccurrences_Anchor",
+            "IX_IndexedCorpusDocuments_Shard", "IX_IndexedCorpusShards_Stage"
         };
         var expectedTriggers = new HashSet<string>(StringComparer.Ordinal)
         {
@@ -218,10 +255,11 @@ public static class MotifSchema
     {
         var requiredSql = table switch
         {
-            "MotifMetadata" or "DefaultSelection" or "ActiveParse" => "CHECK (Id = 1)",
+            "MotifMetadata" or "DefaultSelection" or "ParsimonySelection" or "ActiveParse" => "CHECK (Id = 1)",
             "AssessedWords" => "AUTOINCREMENT",
             "RetainedInvocationMembers" => "UNIQUE (AssessmentId)",
             "ReadOccurrences" => "CHECK (WordIndex >= 0)",
+            "ProposalRationaleRevisions" or "ProposalComments" or "ProposalPictures" or "WordTypeDispositions" => "AUTOINCREMENT",
             _ => null
         };
         using var command = connection.CreateCommand();
@@ -249,6 +287,15 @@ public static class MotifSchema
         }
         var requiredInvariants = table switch
         {
+            "SourceIndexState" or "SourceWordforms" => new[] { "SourceId TEXT COLLATE NOCASE NOT NULL" },
+            "SourcePassages" => new[] { "SourceId TEXT COLLATE NOCASE NOT NULL", "CHECK (TotalPlaces >= 0 AND EligiblePlaces BETWEEN 0 AND TotalPlaces)" },
+            "SourceWordPlaces" => new[] { "SourceId TEXT COLLATE NOCASE NOT NULL", "CHECK (Ordinal >= 0)", "UNIQUE (SourceId, PassageId, Anchor)" },
+            "GrammarCoverageNoAnalysisRank" => new[] { "WITHOUT ROWID" },
+            "IndexedCorpusGenerations" => new[] { "CHECK (Published IN (0, 1))", "CHECK (ProjectionValid IN (0, 1))" },
+            "IndexedCorpusDocuments" => new[] { "UNIQUE (Generation, DocumentId)" },
+            "IndexedCorpusForms" => new[] { "FormKey TEXT NOT NULL UNIQUE" },
+            "IndexedCorpusOccurrences" => new[] { "CHECK (ByteOffset > 0)", "CHECK (ByteLength > 0)" },
+            "IndexedCorpusShardWeights" or "IndexedCorpusWeights" => new[] { "CHECK (Frequency > 0)" },
             "PhonologyAssessmentBindings" => new[] { "UNIQUE (AssessmentId, RevisionId)" },
             "PhonologyAssessmentRows" => new[] { "CHECK (Ordinal >= 0)", "PRIMARY KEY (AssessmentId, Ordinal)",
                 "UNIQUE (AssessmentId, ExampleId)", "FOREIGN KEY (AssessmentId, RevisionId)",
@@ -339,10 +386,19 @@ public static class MotifSchema
 
     private static string IndexTableFor(string index) => index switch
     {
-        "IX_AssessedWords_Assessment" or "IX_AssessedWords_Word" => "AssessedWords",
+        "IX_IndexedCorpusOccurrences_Form" or "IX_IndexedCorpusOccurrences_Anchor" => "IndexedCorpusOccurrences",
+        "IX_IndexedCorpusDocuments_Shard" => "IndexedCorpusDocuments",
+        "IX_IndexedCorpusShards_Stage" => "IndexedCorpusShards",
+        "IX_AssessedWords_Assessment" or "IX_AssessedWords_Word" or "IX_AssessedWords_MorphologyJson" or
+            "IX_AssessedWords_CorrectnessJson" or "IX_AssessedWords_ReadingGradesJson" or
+            "IX_AssessedWords_AnalysisComparisonJson" or "IX_AssessedWords_MissedApprovedJson" => "AssessedWords",
         "IX_ParsedAnalyses_Word" => "ParsedAnalyses",
+        "IX_AssessmentWordSetBindings_Owner" => "AssessmentWordSetBindings",
         "IX_Jobs_Lineage_Attempt" or "IX_Jobs_Status_Updated" or "IX_Jobs_Lease" or "IX_Jobs_QueueOrder" => "Jobs",
         "IX_Proposals_DraftName" or "IX_Proposals_OpenRole" => "Proposals",
+        "IX_ProposalRationaleRevisions_Proposal" => "ProposalRationaleRevisions",
+        "IX_ProposalComments_Proposal" => "ProposalComments",
+        "IX_ProposalPictures_Proposal" => "ProposalPictures",
         "IX_Assessments_Proposal" or "IX_Assessments_Kind" => "Assessments",
         "IX_RetainedInvocations_Project" => "RetainedInvocations",
         "IX_RetainedInvocationMembers_Assessment" => "RetainedInvocationMembers",
@@ -350,33 +406,53 @@ public static class MotifSchema
         "IX_ParsimonyReaderLeases_BundleExpiry" => "ParsimonyReaderLeases",
         "IX_ParsimonyBuildClaims_Project" => "ParsimonyBuildClaims",
         "IX_GrammarChecks_Project" or "IX_GrammarChecks_Proposal" => "GrammarChecks",
-        "IX_ProposalDifferences_Proposal" => "ProposalDifferences",
+        "IX_ReviewReports_ProjectManifest" => "ReviewReports",
+        "IX_ReviewReportCases_Order" => "ReviewReportCases",
+        "IX_ReviewReportMemberships_Cell" => "ReviewReportMemberships",
+        "IX_ProposalDifferences_ProposalText" => "ProposalDifferences",
         "IX_ProposalDifferenceOccurrences_Order" => "ProposalDifferenceOccurrences",
         "IX_ProposalDifferenceBuckets_Bucket" => "ProposalDifferenceBuckets",
         "IX_PhonologyExampleSets_Name" => "PhonologyExampleSets",
         "IX_PhonologyExampleSetRevisions_SetRevision" => "PhonologyExampleSetRevisions",
         "IX_PhonologyExamples_RevisionExampleId" => "PhonologyExamples",
+        "IX_Requests_Status" => "Requests",
+        "IX_Hypotheses_Shape" or "IX_Hypotheses_Seq" or "IX_Hypotheses_StatusSeq" => "Hypotheses",
+        "IX_HypothesisProposals_Proposal" => "HypothesisProposals",
+        "IX_WordTypeDispositions_Current" or "IX_WordTypeDispositions_History" or "IX_WordTypeDispositions_Category" => "WordTypeDispositions",
         _ => throw new InvalidDataException($"Motif index {index} is not registered.")
     };
 
     private static bool IsUniqueIndex(string index) => index is "IX_Jobs_Lineage_Attempt" or
         "IX_Proposals_DraftName" or "IX_Proposals_OpenRole" or "IX_GrammarChecks_Project" or "IX_GrammarChecks_Proposal" or
-        "IX_PhonologyExampleSets_Name" or "IX_PhonologyExampleSetRevisions_SetRevision" or "IX_PhonologyExamples_RevisionExampleId";
+        "IX_PhonologyExampleSets_Name" or "IX_PhonologyExampleSetRevisions_SetRevision" or "IX_PhonologyExamples_RevisionExampleId" or
+        "IX_ProposalDifferences_ProposalText" or "IX_ReviewReports_ProjectManifest" or "IX_IndexedCorpusOccurrences_Anchor" or
+        "IX_WordTypeDispositions_Current";
 
-    private static bool IsPartialIndex(string index) => index is "IX_Proposals_OpenRole" or "IX_GrammarChecks_Project" or
-        "IX_GrammarChecks_Proposal";
+    private static bool IsPartialIndex(string index) => index is "IX_WordTypeDispositions_Current" or
+        "IX_WordTypeDispositions_Category" or "IX_Proposals_OpenRole" or "IX_GrammarChecks_Project" or
+        "IX_GrammarChecks_Proposal" or "IX_AssessedWords_MorphologyJson" or "IX_AssessedWords_CorrectnessJson" or
+        "IX_AssessedWords_ReadingGradesJson" or "IX_AssessedWords_AnalysisComparisonJson" or "IX_AssessedWords_MissedApprovedJson";
 
     private static IReadOnlyList<string> IndexColumnsFor(string index) => index switch
     {
         "IX_AssessedWords_Assessment" => ["AssessmentId"],
         "IX_AssessedWords_Word" => ["AssessmentId", "Word"],
+        "IX_AssessedWords_MorphologyJson" => ["MorphologyJson"],
+        "IX_AssessedWords_CorrectnessJson" => ["CorrectnessJson"],
+        "IX_AssessedWords_ReadingGradesJson" => ["ReadingGradesJson"],
+        "IX_AssessedWords_AnalysisComparisonJson" => ["AnalysisComparisonJson"],
+        "IX_AssessedWords_MissedApprovedJson" => ["MissedApprovedJson"],
         "IX_ParsedAnalyses_Word" => ["AssessedWordId"],
+        "IX_AssessmentWordSetBindings_Owner" => ["OwnerAssessmentId"],
         "IX_Jobs_Lineage_Attempt" => ["LineageId", "Attempt"],
         "IX_Jobs_Status_Updated" => ["Status", "UpdatedUtc"],
         "IX_Jobs_Lease" => ["Status", "LeaseUntilUtc"],
         "IX_Jobs_QueueOrder" => ["QueueOrder"],
         "IX_Proposals_DraftName" => ["DraftName"],
         "IX_Proposals_OpenRole" => ["Role"],
+        "IX_ProposalRationaleRevisions_Proposal" => ["ProposalId", "RevisionId"],
+        "IX_ProposalComments_Proposal" => ["ProposalId", "CommentId"],
+        "IX_ProposalPictures_Proposal" => ["ProposalId", "PictureId"],
         "IX_Assessments_Proposal" => ["ProposalId"],
         "IX_Assessments_Kind" => ["Kind"],
         "IX_RetainedInvocations_Project" => ["ProjectKey"],
@@ -386,17 +462,37 @@ public static class MotifSchema
         "IX_ParsimonyBuildClaims_Project" => ["ProjectKey"],
         "IX_GrammarChecks_Project" => ["BaselineToken"],
         "IX_GrammarChecks_Proposal" => ["BaselineToken", "ProposalId", "IntentDigest"],
-        "IX_ProposalDifferences_Proposal" => ["ProposalId", "CreatedUtc"],
+        "IX_ReviewReports_ProjectManifest" => ["ProjectKey", "ManifestDigest"],
+        "IX_ReviewReportCases_Order" => ["ReportId", "WordSort", "WritingSystemSort", "CaseKey"],
+        "IX_ReviewReportMemberships_Cell" => ["ReportId", "Role", "SetId", "CellId", "CaseKey", "Ordinal"],
+        "IX_ProposalDifferences_ProposalText" => ["ProposalId", "TextId", "Reference"],
         "IX_ProposalDifferenceOccurrences_Order" => ["DifferenceId", "TextId", "LineNumber", "OccurrenceIndex"],
         "IX_ProposalDifferenceBuckets_Bucket" => ["DifferenceId", "Bucket", "CaseKey"],
         "IX_PhonologyExampleSets_Name" => ["Name"],
         "IX_PhonologyExampleSetRevisions_SetRevision" => ["SetId", "RevisionNumber"],
         "IX_PhonologyExamples_RevisionExampleId" => ["RevisionId", "ExampleId"],
+        "IX_Requests_Status" => ["Status", "CreatedUtc"],
+        "IX_IndexedCorpusOccurrences_Form" => ["FormId", "ShardId", "Ordinal"],
+        "IX_IndexedCorpusOccurrences_Anchor" => ["ShardId", "Segment", "Word"],
+        "IX_IndexedCorpusDocuments_Shard" => ["ShardId"],
+        "IX_IndexedCorpusShards_Stage" => ["StageGeneration"],
+        "IX_Hypotheses_Shape" => ["ChangeText", "Environment", "HostClass", "Slot"],
+        "IX_Hypotheses_Seq" => ["Seq"],
+        "IX_Hypotheses_StatusSeq" => ["Status", "Seq"],
+        "IX_HypothesisProposals_Proposal" => ["ProposalId"],
+        "IX_WordTypeDispositions_Current" => ["FormKey"],
+        "IX_WordTypeDispositions_History" => ["FormKey", "DispositionId"],
+        "IX_WordTypeDispositions_Category" => ["Category", "FormKey"],
         _ => throw new InvalidDataException($"Motif index {index} is not registered.")
     };
 
     private static IReadOnlyList<ForeignKeyShape> ForeignKeysFor(string table) => table switch
     {
+        "SourceWordPlaces" => [new("SourceWordforms", "SourceId", "SourceId", "NO ACTION", "NO ACTION", "NONE"), new("SourceWordforms", "WordformKey", "WordformKey", "NO ACTION", "NO ACTION", "NONE"),
+            new("SourcePassages", "SourceId", "SourceId", "NO ACTION", "NO ACTION", "NONE"), new("SourcePassages", "PassageId", "PassageId", "NO ACTION", "NO ACTION", "NONE")],
+        "BeforeAssessmentBinding" => [new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE")],
+        "GrammarCoverageNoAnalysisRank" =>
+            [new("GrammarCoverageMeasurements", "StampId", "StampId", "NO ACTION", "CASCADE", "NONE")],
         "CorpusDocuments" => [new("Corpora", "CorpusId", "CorpusId", "NO ACTION", "NO ACTION", "NONE")],
         "PhonologyAssessmentBindings" => [new("PhonologyExampleSetRevisions", "RevisionId", "RevisionId", "NO ACTION", "NO ACTION", "NONE"),
             new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE")],
@@ -412,19 +508,45 @@ public static class MotifSchema
         "RetainedInvocations" => [new("AssessmentInvocations", "ArtifactInvocationId", "InvocationId", "NO ACTION", "NO ACTION", "NONE")],
         "RetainedInvocationMembers" => [new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE"),
             new("RetainedInvocations", "InvocationId", "InvocationId", "NO ACTION", "NO ACTION", "NONE")],
-        "DefaultSelection" => [new("NamedSelections", "SelectionName", "SelectionName", "NO ACTION", "NO ACTION", "NONE")],
+        "DefaultSelection" or "ParsimonySelection" =>
+            [new("NamedSelections", "SelectionName", "SelectionName", "NO ACTION", "NO ACTION", "NONE")],
         "AssessmentObjectTimings" => [new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE")],
         "BaselineSummaries" => [new("Baselines", "ProjectKey", "ProjectKey", "NO ACTION", "NO ACTION", "NONE")],
         "BaselineTextWords" => [new("Baselines", "ProjectKey", "ProjectKey", "NO ACTION", "NO ACTION", "NONE")],
         "BaselineTextWordforms" => [new("Baselines", "ProjectKey", "ProjectKey", "NO ACTION", "NO ACTION", "NONE")],
         "BaselineTextReadIndex" => [new("Baselines", "ProjectKey", "ProjectKey", "NO ACTION", "NO ACTION", "NONE")],
-        "AssessedWords" => [new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE")],
+        "AssessmentWordSetBindings" => [new("Assessments", "OwnerAssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE"),
+            new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE")],
+        "IndexedCorpusHeads" => [new("IndexedCorpusGenerations", "Generation", "Id", "NO ACTION", "NO ACTION", "NONE")],
+        "IndexedCorpusDocuments" => [new("IndexedCorpusShards", "ShardId", "Id", "NO ACTION", "NO ACTION", "NONE"),
+            new("IndexedCorpusGenerations", "Generation", "Id", "NO ACTION", "CASCADE", "NONE")],
+        "IndexedCorpusShards" => [new("IndexedCorpusGenerations", "StageGeneration", "Id", "NO ACTION", "NO ACTION", "NONE")],
+        "IndexedCorpusOccurrences" => [new("IndexedCorpusForms", "FormId", "Id", "NO ACTION", "NO ACTION", "NONE"),
+            new("IndexedCorpusShards", "ShardId", "Id", "NO ACTION", "CASCADE", "NONE")],
+        "IndexedCorpusWeights" => [new("IndexedCorpusForms", "FormId", "Id", "NO ACTION", "NO ACTION", "NONE"),
+            new("IndexedCorpusGenerations", "Generation", "Id", "NO ACTION", "CASCADE", "NONE")],
+        "IndexedCorpusShardWeights" => [new("IndexedCorpusForms", "FormId", "Id", "NO ACTION", "NO ACTION", "NONE"),
+            new("IndexedCorpusShards", "ShardId", "Id", "NO ACTION", "CASCADE", "NONE")],
+        "AssessedWords" => [new("AssessmentWordPayloads", "MissedApprovedJson", "Hash", "NO ACTION", "NO ACTION", "NONE"),
+            new("AssessmentWordPayloads", "AnalysisComparisonJson", "Hash", "NO ACTION", "NO ACTION", "NONE"),
+            new("AssessmentWordPayloads", "ReadingGradesJson", "Hash", "NO ACTION", "NO ACTION", "NONE"),
+            new("AssessmentWordPayloads", "CorrectnessJson", "Hash", "NO ACTION", "NO ACTION", "NONE"),
+            new("AssessmentWordPayloads", "MorphologyJson", "Hash", "NO ACTION", "NO ACTION", "NONE"),
+            new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE")],
         "ParsedAnalyses" => [new("AssessedWords", "AssessedWordId", "AssessedWordId", "NO ACTION", "NO ACTION", "NONE")],
         "AssessmentPins" => [new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE")],
         "ParsimonyBundleReferences" => [new("ParsimonyBundles", "BundleId", "BundleId", "NO ACTION", "CASCADE", "NONE")],
+        "ParsimonyFrozenViews" => [new("ParsimonyBundles", "BundleId", "BundleId", "NO ACTION", "CASCADE", "NONE")],
         "ParsimonyReaderLeases" => [new("ParsimonyBundles", "BundleId", "BundleId", "NO ACTION", "CASCADE", "NONE")],
         "CurrentParsimonyBundles" => [new("ParsimonyBundles", "BundleId", "BundleId", "NO ACTION", "CASCADE", "NONE")],
         "ProposalRevisions" => [new("Proposals", "ProposalId", "ProposalId", "NO ACTION", "NO ACTION", "NONE")],
+        "ProposalRationaleRevisions" or "ProposalComments" =>
+            [new("Proposals", "ProposalId", "ProposalId", "NO ACTION", "NO ACTION", "NONE")],
+        "ProposalPictures" => [new("ProposalComments", "CommentId", "CommentId", "NO ACTION", "NO ACTION", "NONE"),
+            new("Proposals", "ProposalId", "ProposalId", "NO ACTION", "NO ACTION", "NONE")],
+        "ReviewReports" => [new("Proposals", "ProposalId", "ProposalId", "NO ACTION", "NO ACTION", "NONE")],
+        "ReviewReportCases" or "ReviewReportMemberships" or "ReviewReportEvents" =>
+            [new("ReviewReports", "ReportId", "ReportId", "NO ACTION", "CASCADE", "NONE")],
         "ProposalDifferences" => [new("Proposals", "ProposalId", "ProposalId", "NO ACTION", "NO ACTION", "NONE")],
         "ProposalDifferenceCases" => [new("ProposalDifferences", "DifferenceId", "DifferenceId", "NO ACTION", "CASCADE", "NONE")],
         "ProposalDifferenceOccurrences" => [new("ProposalDifferences", "DifferenceId", "DifferenceId", "NO ACTION", "CASCADE", "NONE")],
@@ -442,20 +564,59 @@ public static class MotifSchema
 
     private static IReadOnlyList<ColumnShape> ColumnsFor(string table) => table switch
     {
+        "GrammarCoverageSegmentations" => [C("Id", "TEXT", true, 1), C("Payload", "TEXT", true)],
+        "GrammarCoverageMeasurements" => [C("StampId", "TEXT", true, 1), C("Payload", "TEXT", true)],
+        "GrammarCoverageNoAnalysisRank" =>
+            [C("StampId", "TEXT", true, 1), C("NegativeWeight", "INTEGER", true, 2), C("WordformId", "TEXT", true, 3),
+                C("WritingSystemId", "TEXT", true), C("FormNfd", "TEXT", true)],
+        "IndexedCorpusHeads" => [C("SourceId", "TEXT", true, 1), C("Generation", "TEXT", true),
+            C("CheckedUtc", "TEXT", true), C("Freshness", "INTEGER", true)],
+        "IndexedCorpusGenerations" => [C("Id", "TEXT", true, 1), C("SourceId", "TEXT", true),
+            C("BindingJson", "TEXT", true), C("InventoryJson", "TEXT", true), C("DocumentDigest", "TEXT", true),
+            C("DocumentCount", "INTEGER", true), C("TypeCount", "INTEGER", true), C("TokenCount", "INTEGER", true),
+            C("Published", "INTEGER", true),
+            C("PublishedUtc", "TEXT", true), C("ProjectionValid", "INTEGER", true)],
+        "IndexedCorpusDocuments" => [C("Generation", "TEXT", true, 1), C("Ordinal", "INTEGER", true, 2),
+            C("DocumentId", "TEXT", true), C("Container", "TEXT", true), C("Position", "INTEGER", true),
+            C("RawHash", "TEXT", true), C("TextHash", "TEXT", true), C("Metadata", "TEXT"),
+            C("ShardId", "INTEGER", true), C("Tokens", "INTEGER", true)],
+        "IndexedCorpusShards" => [C("Id", "INTEGER", false, 1), C("StageGeneration", "TEXT", true), C("Digest", "TEXT", true)],
+        "IndexedCorpusForms" => [C("Id", "INTEGER", false, 1), C("FormKey", "TEXT", true),
+            C("WritingSystem", "TEXT", true), C("FormNfd", "TEXT")],
+        "IndexedCorpusOccurrences" => [C("ShardId", "INTEGER", true, 1), C("Ordinal", "INTEGER", true, 2),
+            C("FormId", "INTEGER", true), C("Segment", "INTEGER", true), C("Word", "INTEGER", true),
+            C("ByteOffset", "INTEGER"), C("ByteLength", "INTEGER"), C("Verse", "TEXT"), C("Surface", "TEXT")],
+        "IndexedCorpusWeights" => [C("Generation", "TEXT", true, 1), C("FormId", "INTEGER", true, 2),
+            C("Frequency", "INTEGER", true)],
+        "IndexedCorpusShardWeights" => [C("ShardId", "INTEGER", true, 1), C("FormId", "INTEGER", true, 2),
+            C("Frequency", "INTEGER", true)],
+        "SourceIndexState" => [C("SourceId", "TEXT", true, 1), C("Kind", "TEXT", true), C("Generation", "TEXT", true), C("SourceDigest", "TEXT", true), C("IdentityJson", "TEXT", true), C("Status", "TEXT", true), C("TokenizerVersion", "TEXT", true), C("AnchorVersion", "TEXT", true)],
+        "SourcePassages" => [C("SourceId", "TEXT", true, 1), C("PassageId", "TEXT", true, 2), C("Locator", "TEXT", true), C("ContentHash", "TEXT", true), C("TotalPlaces", "INTEGER", true), C("EligiblePlaces", "INTEGER", true)],
+        "SourceWordforms" => [C("SourceId", "TEXT", true, 1), C("WordformKey", "TEXT", true, 2), C("WritingSystem", "TEXT", true), C("Normalized", "TEXT", true), C("Display", "TEXT", true), C("FieldWorksId", "TEXT", false)],
+        "SourceWordPlaces" => [C("SourceId", "TEXT", true, 1), C("PassageId", "TEXT", true, 2), C("Ordinal", "INTEGER", true, 3), C("Anchor", "TEXT", true), C("Verse", "TEXT", true), C("Surface", "TEXT", true), C("WordformKey", "TEXT", true), C("ReadingKey", "TEXT", false), C("Signature", "TEXT", false), C("State", "TEXT", true)],
+
+        "query_snapshot" => [C("Id", "INTEGER", false, 1), C("TrialId", "TEXT", true),
+            C("GrammarHash", "TEXT", true), C("BundleId", "TEXT", true), C("WritingSystem", "TEXT", true),
+            C("GraphemesJson", "TEXT", true), C("UnresolvedVariants", "INTEGER", true), C("SourceWriteTicks", "INTEGER", true),
+            C("TrialCreatedUtc", "TEXT", true), C("TrialQueueOrder", "REAL", true), C("CoverageJson", "TEXT", true)],
+        "query_uses" => [C("Ordinal", "INTEGER", false, 1), C("TargetKind", "TEXT", true), C("RowJson", "TEXT", true)],
+        "query_forms" or "query_stems" or "query_objects" => [C("Ordinal", "INTEGER", false, 1), C("RowJson", "TEXT", true)],
         "MotifMetadata" =>
         [C("Id", "INTEGER", false, 1), C("FullFwDataPath", "TEXT", true),
             C("FieldWorksProjectIdentity", "TEXT", true), C("MinimumWorkerVersion", "TEXT", true),
             C("CreatedUtc", "TEXT", true), C("CurrentAssessmentId", "TEXT"), C("SetupSkippedUtc", "TEXT")],
+        // This default repeats the Contract constant; MotifDatabaseOpenTests pins both.
         "NamedSelections" =>
         [C("SelectionName", "TEXT", false, 1), C("TextIdsJson", "TEXT", true), C("AddedWordsJson", "TEXT", true),
             C("CreatedUtc", "TEXT", true), C("UpdatedUtc", "TEXT", true),
             C("TimeLimitMode", "TEXT", true), C("ExplicitPerWordLimitMs", "INTEGER"),
-            C("PerWordStepLimit", "INTEGER"), C("Revision", "INTEGER", true)],
-        "DefaultSelection" => [C("Id", "INTEGER", false, 1), C("SelectionName", "TEXT", true)],
+            C("PerWordParserWorkLimit", "INTEGER"), C("Revision", "INTEGER", true), C("AssessBudgetSeconds", "INTEGER", true, defaultValue: "3600"),
+            C("WordListJson", "TEXT")],
+        "DefaultSelection" or "ParsimonySelection" => [C("Id", "INTEGER", false, 1), C("SelectionName", "TEXT", true)],
         "ParserRefusals" => [C("BaselineToken", "TEXT", false, 1), C("RefusalJson", "TEXT", true)],
         "GrammarChecks" =>
         [C("BaselineToken", "TEXT", true), C("ProposalId", "TEXT"), C("IntentDigest", "TEXT"),
-            C("SelectionSha256", "TEXT", true), C("ParserStamp", "TEXT"), C("ResponseJson", "TEXT", true),
+            C("SelectionSha256", "TEXT", true), C("ParserStamp", "TEXT"), C("ResponseGzip", "BLOB", true),
             C("CheckedUtc", "TEXT", true)],
         "PendingChangeFits" =>
         [C("DraftRevision", "TEXT", true, 1), C("ProjectLastWriteUtcTicks", "INTEGER", true, 2),
@@ -470,12 +631,13 @@ public static class MotifSchema
         [C("TextId", "TEXT", true, 1), C("ParagraphId", "TEXT", true, 2),
             C("SegmentId", "TEXT", true, 3), C("WordIndex", "INTEGER", true, 4),
             C("FingerprintJson", "TEXT", true)],
-        "Corpora" => [C("CorpusId", "TEXT", false, 1), C("ProvenanceJson", "TEXT", true)],
+        "Corpora" => [C("CorpusId", "TEXT", false, 1), C("ProvenanceJson", "TEXT", true),
+            C("FileBacked", "INTEGER", true, defaultValue: "0")],
         "CorpusDocuments" =>
         [C("CorpusId", "TEXT", true, 1), C("DocumentId", "TEXT", true, 2), C("OrdinalIndex", "INTEGER", true),
             C("Title", "TEXT", true), C("Source", "TEXT", true), C("Text", "TEXT", true),
             C("ContentSha256", "TEXT", true), C("IngestedUtc", "TEXT", true), C("Licence", "TEXT"),
-            C("CapabilitiesJson", "TEXT"), C("AttributesJson", "TEXT")],
+            C("CapabilitiesJson", "TEXT"), C("AttributesJson", "TEXT"), C("FileBacked", "INTEGER", true, defaultValue: "0")],
         "PhonologyAssessmentBindings" => [C("AssessmentId", "TEXT", true, 1), C("RevisionId", "TEXT", true),
             C("HeaderJson", "TEXT", true)],
         "PhonologyAssessmentRows" => [C("AssessmentId", "TEXT", true, 1), C("RevisionId", "TEXT", true),
@@ -483,7 +645,9 @@ public static class MotifSchema
             C("SummaryJson", "TEXT", true)],
         "PhonologyAssessmentDependencies" => [C("AssessmentId", "TEXT", true, 1), C("Ordinal", "INTEGER", true, 2),
             C("Path", "TEXT", true), C("Sha256", "TEXT", true)],
-        "AssessmentInvocations" => [C("InvocationId", "TEXT", false, 1), C("EvidenceJson", "TEXT", true)],
+        "BeforeAssessmentBinding" => [C("Id", "INTEGER", false, 1), C("AssessmentId", "TEXT", true),
+            C("SemanticIdentityJson", "TEXT", true)],
+        "AssessmentInvocations" => [C("InvocationId", "TEXT", false, 1), C("EvidenceJson", "TEXT", true), C("InputProfileJson", "TEXT", false)],
         "Assessments" =>
         [C("AssessmentId", "TEXT", false, 1), C("SelectionName", "TEXT"), C("SelectionWordsJson", "TEXT"),
             C("SelectionSha256", "TEXT"), C("SelectionProvenanceJson", "TEXT"), C("OutcomeDigest", "TEXT"),
@@ -493,19 +657,18 @@ public static class MotifSchema
             C("Assessor", "TEXT", true), C("Kind", "TEXT", true), C("ScopeJson", "TEXT", true),
             C("ScopeDigest", "TEXT", true), C("TokeniserName", "TEXT"), C("TokeniserVersion", "TEXT"),
             C("BaselineToken", "TEXT", true), C("CachePath", "TEXT"), C("CacheDigest", "TEXT"), C("InvocationId", "TEXT"), C("ReplacesAssessmentId", "TEXT"), C("SubjectKind", "TEXT", true), C("SubjectJson", "TEXT")],
+        "AssessmentWordPayloads" => [C("Hash", "BLOB", true, 1), C("Payload", "BLOB", true)],
+        "AssessmentWordSetBindings" => [C("AssessmentId", "TEXT", true, 1), C("OwnerAssessmentId", "TEXT", true)],
         "AssessedWords" =>
         [C("AssessedWordId", "INTEGER", false, 1), C("AssessmentId", "TEXT", true), C("OrdinalIndex", "INTEGER", true),
             C("Word", "TEXT", true), C("Outcome", "TEXT", true), C("ElapsedMs", "INTEGER"), C("ElapsedNs", "INTEGER"),
             C("RawSignature", "TEXT"),
-            C("MorphologyJson", "TEXT"), C("CorrectnessJson", "TEXT"), C("ProjectStanding", "TEXT"),
-            C("OccurrenceCount", "INTEGER"), C("ReadingGradesJson", "TEXT"), C("AnalysisComparisonJson", "TEXT"), C("MissedApprovedCount", "INTEGER"),
-            C("MissedApprovedJson", "TEXT"), C("IsIncomplete", "INTEGER", true, defaultValue: "0"),
-            C("Attempts", "INTEGER"), C("Passes", "INTEGER"), C("WorkSteps", "INTEGER")],
-        "AssessmentObjectTimings" =>
-        [C("AssessmentId", "TEXT", true, 1), C("OrdinalIndex", "INTEGER", true, 2), C("Kind", "TEXT", true),
-            C("Key", "TEXT", true), C("IdentityQuality", "TEXT", true), C("Direction", "TEXT", true),
-            C("Object", "TEXT", true), C("Word", "TEXT", true), C("Attempts", "INTEGER"), C("Passes", "INTEGER"),
-            C("ElapsedNs", "INTEGER")],
+            C("MorphologyJson", "BLOB"), C("CorrectnessJson", "BLOB"), C("ProjectStanding", "TEXT"),
+            C("OccurrenceCount", "INTEGER"), C("ReadingGradesJson", "BLOB"), C("AnalysisComparisonJson", "BLOB"), C("MissedApprovedCount", "INTEGER"),
+            C("MissedApprovedJson", "BLOB"), C("IsIncomplete", "INTEGER", true, defaultValue: "0"),
+            C("Attempts", "INTEGER"), C("Passes", "INTEGER"), C("ParserWork", "INTEGER"), C("LowercaseOf", "TEXT")],
+        "AssessmentObjectTimings" => [C("AssessmentId", "TEXT", true, 1), C("Detail", "BLOB", true),
+            C("Evidence", "BLOB")],
         "BaselineSummaries" => [C("ProjectKey", "TEXT", false, 1), C("SummaryJson", "TEXT", true)],
         "BaselineTextWords" => [C("ProjectKey", "TEXT", true, 1), C("TextId", "TEXT", true, 2),
             C("BundleDigest", "TEXT", true), C("TextJson", "TEXT", true)],
@@ -513,6 +676,11 @@ public static class MotifSchema
             C("BundleDigest", "TEXT", true), C("WordformJson", "TEXT", true)],
         "BaselineTextReadIndex" => [C("ProjectKey", "TEXT", true, 1), C("TextId", "TEXT", true, 2),
             C("BundleDigest", "TEXT", true), C("IndexJson", "TEXT", true)],
+        "ProgressState" => [C("Id", "INTEGER", false, 1), C("Revision", "TEXT", true), C("ContentRevision", "TEXT", true),
+            C("JudgementRevision", "TEXT", true), C("SourceLastWriteUtc", "TEXT", true), C("PendingReceiptId", "TEXT"),
+            C("TotalsJson", "TEXT", true), C("ExcludedJson", "TEXT", true), C("SourceIdentityJson", "TEXT")],
+        "ProgressTexts" => [C("TextId", "TEXT", false, 1), C("Title", "TEXT", true), C("CountsJson", "TEXT", true),
+            C("IncidenceJson", "TEXT", true), C("ExcludedJson", "TEXT", true)],
         "ParsimonyBundles" => [C("BundleId", "TEXT", false, 1), C("BaselineTokenJson", "TEXT", true),
             C("ProjectKey", "TEXT", true), C("BaselineDigest", "TEXT", true), C("MaterialKey", "TEXT", true),
             C("EvidenceDirectory", "TEXT", true), C("GrammarFactsPath", "TEXT", true), C("EvidencePath", "TEXT", true),
@@ -521,6 +689,9 @@ public static class MotifSchema
             C("GrammarFactsSha256", "TEXT", true), C("EvidenceSchemaVersion", "INTEGER", true),
             C("EvidenceSha256", "TEXT", true), C("CreatedUtc", "TEXT", true),
             C("State", "TEXT", true, defaultValue: "'available'"), C("UnavailableReason", "TEXT")],
+        "ParsimonyFrozenViews" => [C("BundleId", "TEXT", true, 1), C("ViewCode", "TEXT", true, 2),
+            C("FilterDigest", "TEXT", true, 3), C("ViewVersion", "INTEGER", true), C("ItemsDigest", "TEXT", true),
+            C("RowCount", "INTEGER", true), C("ResultJson", "TEXT", true)],
         "ParsimonyBundleReferences" => [C("BundleId", "TEXT", true, 1), C("ReferenceKind", "TEXT", true, 2),
             C("ReferenceId", "TEXT", true, 3), C("CreatedUtc", "TEXT", true)],
         "ParsimonyReaderLeases" => [C("LeaseId", "TEXT", false, 1), C("BundleId", "TEXT", true),
@@ -532,11 +703,27 @@ public static class MotifSchema
             C("CreatedUtc", "TEXT", true)],
         "CurrentParsimonyBundles" => [C("ProjectKey", "TEXT", true, 1), C("InputKind", "TEXT", true, 2),
             C("BundleId", "TEXT", true)],
+        "ReviewReports" =>
+        [C("ReportId", "TEXT", false, 1), C("ProjectKey", "TEXT", true), C("ProposalId", "TEXT", true),
+            C("TrialJobId", "TEXT", true), C("ManifestDigest", "TEXT", true), C("SummaryJson", "TEXT", true),
+            C("SummaryDigest", "TEXT", true), C("InputReferencesJson", "TEXT", true),
+            C("DetailAvailable", "INTEGER", true), C("DetailBytes", "INTEGER", true), C("CreatedUtc", "TEXT", true)],
+        "ReviewReportCases" =>
+        [C("ReportId", "TEXT", true, 1), C("CaseKey", "TEXT", true, 2), C("WordKey", "TEXT", true),
+            C("Word", "TEXT", true), C("WritingSystemId", "TEXT"), C("WordSort", "BLOB", true),
+            C("WritingSystemSort", "BLOB", true), C("FactsJson", "TEXT", true)],
+        "ReviewReportMemberships" =>
+        [C("ReportId", "TEXT", true, 1), C("CaseKey", "TEXT", true, 2), C("Ordinal", "INTEGER", true, 3),
+            C("SetId", "TEXT", true), C("Role", "TEXT", true), C("CellId", "TEXT"), C("VariantId", "TEXT"),
+            C("FactsJson", "TEXT", true)],
+        "ReviewReportEvents" =>
+        [C("ReportId", "TEXT", true, 1), C("CaseKey", "TEXT", true, 2), C("Ordinal", "INTEGER", true, 3),
+            C("FactsJson", "TEXT", true)],
         "ProposalDifferences" =>
         [C("DifferenceId", "TEXT", false, 1), C("ProposalId", "TEXT", true), C("TrialJobId", "TEXT", true),
             C("BeforeAssessmentId", "TEXT", true), C("AfterAssessmentId", "TEXT", true), C("TextId", "TEXT", true),
-            C("BaselineToken", "TEXT", true), C("SummaryJson", "TEXT", true), C("SummaryDigest", "TEXT", true),
-            C("CreatedUtc", "TEXT", true)],
+            C("Reference", "TEXT", true), C("BaselineToken", "TEXT", true), C("SummaryJson", "TEXT", true), C("SummaryDigest", "TEXT", true),
+            C("CreatedUtc", "TEXT", true), C("WordDetailDroppedUtc", "TEXT", false)],
         "ProposalDifferenceCases" =>
         [C("DifferenceId", "TEXT", true, 1), C("CaseKey", "TEXT", true, 2), C("Word", "TEXT", true),
             C("OccurrenceCount", "INTEGER", true), C("BeforeState", "TEXT", true), C("AfterState", "TEXT", true),
@@ -554,12 +741,56 @@ public static class MotifSchema
         "Proposals" =>
         [C("ProposalId", "TEXT", false, 1), C("CurrentIntentDigest", "TEXT"), C("Status", "TEXT", true),
             C("Label", "TEXT"), C("Rationale", "TEXT"), C("RationaleIntentDigest", "TEXT"),
-            C("RationaleUpdatedUtc", "TEXT"), C("Note", "TEXT"), C("NoteIntentDigest", "TEXT"), C("NoteUpdatedUtc", "TEXT"),
+            C("RationaleUpdatedUtc", "TEXT"),
             C("SupersededBy", "TEXT"), C("AnchorJson", "TEXT"),
-            C("ArchivedUtc", "TEXT"), C("DraftName", "TEXT"), C("DraftJson", "TEXT"), C("Role", "TEXT")],
+            C("ArchivedUtc", "TEXT"), C("DraftName", "TEXT"), C("DraftJson", "TEXT"), C("Role", "TEXT"), C("RequestId", "TEXT")],
+        "Requests" =>
+        [C("RequestId", "TEXT", false, 1), C("TargetKind", "TEXT", true), C("TargetId", "TEXT", true),
+            C("TargetLabel", "TEXT", true), C("Note", "TEXT"), C("Status", "TEXT", true, defaultValue: "'open'"),
+            C("CreatedUtc", "TEXT", true), C("ClosedUtc", "TEXT"), C("AskedAgainOf", "TEXT")],
+        "Hypotheses" =>
+        [C("HypothesisId", "TEXT", false, 1), C("Seq", "INTEGER", true), C("Pattern", "TEXT"),
+            C("Statement", "TEXT", true), C("Mechanism", "TEXT", true), C("ChangeText", "TEXT", true),
+            C("Environment", "TEXT", true, defaultValue: "''"), C("HostClass", "TEXT", true, defaultValue: "''"),
+            C("Slot", "TEXT", true, defaultValue: "''"), C("Neighbour", "TEXT"),
+            C("PredictionsJson", "TEXT", true, defaultValue: "'[]'"), C("Falsifier", "TEXT"), C("Exceptions", "TEXT"),
+            C("ObjectsAdded", "INTEGER"), C("AttestedTypesGained", "INTEGER"),
+            C("QuestionsJson", "TEXT", true, defaultValue: "'[]'"),
+            C("Status", "TEXT", true, defaultValue: "'proposed'"), C("Decision", "TEXT"), C("SupersededBy", "TEXT"),
+            C("GdrId", "TEXT"), C("GdrSection", "TEXT"), C("GdrNone", "TEXT"),
+            C("SealedVerdict", "TEXT"), C("VerdictSource", "TEXT"), C("WordQuestionsAsked", "INTEGER"),
+            C("ObjectsBefore", "INTEGER"), C("TypesBefore", "INTEGER"), C("ObjectsAfter", "INTEGER"),
+            C("TypesAfter", "INTEGER"), C("AgentHours", "REAL"), C("AlternativeHours", "REAL"),
+            C("CreatedUtc", "TEXT", true), C("UpdatedUtc", "TEXT", true)],
+        "WordTypeDispositions" =>
+        [C("DispositionId", "INTEGER", false, 1), C("FormKey", "TEXT", true), C("Form", "TEXT", true),
+            C("Category", "TEXT", true), C("Evidence", "TEXT", true), C("Intended", "TEXT"),
+            C("RecordedBy", "TEXT", true), C("RecordedUtc", "TEXT", true), C("EndedUtc", "TEXT"),
+            C("EndedKind", "TEXT"), C("EndedBy", "TEXT"), C("EndedNote", "TEXT")],
+        "StoreRelocations" =>
+        [C("RelocationId", "INTEGER", false, 1), C("OldFwDataPath", "TEXT", true), C("NewFwDataPath", "TEXT", true),
+            C("RelocatedUtc", "TEXT", true), C("Basis", "TEXT", true)],
+        "HypothesisProposals" =>
+        [C("HypothesisId", "TEXT", true, 1), C("ProposalId", "TEXT", true, 2), C("LinkedUtc", "TEXT", true)],
+        "HypothesisTests" =>
+        [C("HypothesisId", "TEXT", true, 1), C("TestNumber", "INTEGER", true, 2), C("Verdict", "TEXT", true),
+            C("PredictedForms", "INTEGER", true), C("RuleHits", "INTEGER", true), C("ControlHitsJson", "TEXT", true),
+            C("Margin", "INTEGER", true), C("TrialAttestedLosses", "INTEGER"), C("TrialNewReadings", "INTEGER"),
+            C("TrialWorkSteps", "INTEGER"), C("Command", "TEXT"), C("RecordedUtc", "TEXT", true)],
         "ProposalRevisions" =>
         [C("ProposalId", "TEXT", true, 1), C("IntentDigest", "TEXT", true, 2),
             C("ProposalJson", "BLOB", true), C("CreatedUtc", "TEXT", true)],
+        "ProposalRationaleRevisions" =>
+        [C("RevisionId", "INTEGER", false, 1), C("ProposalId", "TEXT", true), C("Text", "TEXT", true),
+            C("IntentDigest", "TEXT"), C("AuthorLabel", "TEXT"), C("PersonName", "TEXT", true), C("CreatedUtc", "TEXT", true)],
+        "ProposalComments" =>
+        [C("CommentId", "INTEGER", false, 1), C("ProposalId", "TEXT", true), C("Kind", "TEXT", true, defaultValue: "'standard'"),
+            C("AuthorLabel", "TEXT"), C("PersonName", "TEXT", true), C("Text", "TEXT", true), C("IntentDigest", "TEXT"),
+            C("CreatedUtc", "TEXT", true), C("EditedUtc", "TEXT")],
+        "ProposalPictures" =>
+        [C("PictureId", "INTEGER", false, 1), C("ProposalId", "TEXT", true), C("CommentId", "INTEGER"),
+            C("MediaType", "TEXT", true), C("Width", "INTEGER", true), C("Height", "INTEGER", true),
+            C("Bytes", "BLOB", true), C("CreatedUtc", "TEXT", true), C("Caption", "TEXT")],
         "Receipts" =>
         [C("ReceiptId", "TEXT", false, 1), C("ProposalId", "TEXT", true),
             C("IntentDigest", "TEXT", true), C("ReceiptJson", "TEXT", true), C("RecordedUtc", "TEXT", true)],
@@ -638,6 +869,131 @@ public static class MotifSchema
         string OnDelete,
         string Match);
 
+    private const string IndexedCorpusDdl = """
+        CREATE TABLE IndexedCorpusGenerations (
+            Id TEXT NOT NULL PRIMARY KEY,
+            SourceId TEXT NOT NULL,
+            BindingJson TEXT NOT NULL,
+            InventoryJson TEXT NOT NULL,
+            DocumentDigest TEXT NOT NULL,
+            DocumentCount INTEGER NOT NULL,
+            TypeCount INTEGER NOT NULL,
+            TokenCount INTEGER NOT NULL,
+            Published INTEGER NOT NULL CHECK (Published IN (0, 1)),
+            PublishedUtc TEXT NOT NULL,
+            ProjectionValid INTEGER NOT NULL CHECK (ProjectionValid IN (0, 1))
+        );
+        CREATE TABLE IndexedCorpusHeads (
+            SourceId TEXT NOT NULL PRIMARY KEY,
+            Generation TEXT NOT NULL REFERENCES IndexedCorpusGenerations(Id),
+            CheckedUtc TEXT NOT NULL,
+            Freshness INTEGER NOT NULL
+        );
+        CREATE TABLE IndexedCorpusShards (
+            Id INTEGER PRIMARY KEY,
+            StageGeneration TEXT NOT NULL REFERENCES IndexedCorpusGenerations(Id),
+            Digest TEXT NOT NULL
+        );
+        CREATE INDEX IX_IndexedCorpusShards_Stage ON IndexedCorpusShards (StageGeneration);
+        CREATE TABLE IndexedCorpusDocuments (
+            Generation TEXT NOT NULL REFERENCES IndexedCorpusGenerations(Id) ON DELETE CASCADE,
+            Ordinal INTEGER NOT NULL,
+            DocumentId TEXT NOT NULL,
+            Container TEXT NOT NULL,
+            Position INTEGER NOT NULL,
+            RawHash TEXT NOT NULL,
+            TextHash TEXT NOT NULL,
+            Metadata TEXT,
+            ShardId INTEGER NOT NULL REFERENCES IndexedCorpusShards(Id),
+            Tokens INTEGER NOT NULL,
+            PRIMARY KEY (Generation, Ordinal),
+            UNIQUE (Generation, DocumentId)
+        ) WITHOUT ROWID;
+        CREATE INDEX IX_IndexedCorpusDocuments_Shard ON IndexedCorpusDocuments (ShardId);
+        CREATE TABLE IndexedCorpusForms (
+            Id INTEGER PRIMARY KEY,
+            FormKey TEXT NOT NULL UNIQUE,
+            WritingSystem TEXT NOT NULL,
+            FormNfd TEXT
+        );
+        CREATE TABLE IndexedCorpusOccurrences (
+            ShardId INTEGER NOT NULL REFERENCES IndexedCorpusShards(Id) ON DELETE CASCADE,
+            Ordinal INTEGER NOT NULL,
+            FormId INTEGER NOT NULL REFERENCES IndexedCorpusForms(Id),
+            Segment INTEGER NOT NULL,
+            Word INTEGER NOT NULL,
+            ByteOffset INTEGER CHECK (ByteOffset > 0),
+            ByteLength INTEGER CHECK (ByteLength > 0),
+            Verse TEXT,
+            Surface TEXT,
+            PRIMARY KEY (ShardId, Ordinal)
+        ) WITHOUT ROWID;
+        CREATE INDEX IX_IndexedCorpusOccurrences_Form ON IndexedCorpusOccurrences (FormId, ShardId, Ordinal);
+        CREATE UNIQUE INDEX IX_IndexedCorpusOccurrences_Anchor ON IndexedCorpusOccurrences (ShardId, Segment, Word);
+        CREATE TABLE IndexedCorpusShardWeights (
+            ShardId INTEGER NOT NULL REFERENCES IndexedCorpusShards(Id) ON DELETE CASCADE,
+            FormId INTEGER NOT NULL REFERENCES IndexedCorpusForms(Id),
+            Frequency INTEGER NOT NULL CHECK (Frequency > 0),
+            PRIMARY KEY (ShardId, FormId)
+        ) WITHOUT ROWID;
+        CREATE TABLE IndexedCorpusWeights (
+            Generation TEXT NOT NULL REFERENCES IndexedCorpusGenerations(Id) ON DELETE CASCADE,
+            FormId INTEGER NOT NULL REFERENCES IndexedCorpusForms(Id),
+            Frequency INTEGER NOT NULL CHECK (Frequency > 0),
+            PRIMARY KEY (Generation, FormId)
+        ) WITHOUT ROWID;
+        """;
+
+    internal const string SourceIndexDdl = """
+        CREATE TABLE SourceIndexState (
+            SourceId TEXT COLLATE NOCASE NOT NULL,
+            Kind TEXT NOT NULL,
+            Generation TEXT NOT NULL,
+            SourceDigest TEXT NOT NULL,
+            IdentityJson TEXT NOT NULL,
+            Status TEXT NOT NULL,
+            TokenizerVersion TEXT NOT NULL,
+            AnchorVersion TEXT NOT NULL,
+            PRIMARY KEY (SourceId)
+        );
+        CREATE TABLE SourcePassages (
+            SourceId TEXT COLLATE NOCASE NOT NULL,
+            PassageId TEXT NOT NULL,
+            Locator TEXT NOT NULL,
+            ContentHash TEXT NOT NULL,
+            TotalPlaces INTEGER NOT NULL,
+            EligiblePlaces INTEGER NOT NULL,
+            PRIMARY KEY (SourceId, PassageId),
+            CHECK (TotalPlaces >= 0 AND EligiblePlaces BETWEEN 0 AND TotalPlaces)
+        );
+        CREATE TABLE SourceWordforms (
+            SourceId TEXT COLLATE NOCASE NOT NULL,
+            WordformKey TEXT NOT NULL,
+            WritingSystem TEXT NOT NULL,
+            Normalized TEXT NOT NULL,
+            Display TEXT NOT NULL,
+            FieldWorksId TEXT,
+            PRIMARY KEY (SourceId, WordformKey)
+        );
+        CREATE TABLE SourceWordPlaces (
+            SourceId TEXT COLLATE NOCASE NOT NULL,
+            PassageId TEXT NOT NULL,
+            Ordinal INTEGER NOT NULL,
+            Anchor TEXT NOT NULL,
+            Verse TEXT NOT NULL,
+            Surface TEXT NOT NULL,
+            WordformKey TEXT NOT NULL,
+            ReadingKey TEXT,
+            Signature TEXT,
+            State TEXT NOT NULL,
+            PRIMARY KEY (SourceId, PassageId, Ordinal),
+            CHECK (Ordinal >= 0),
+            UNIQUE (SourceId, PassageId, Anchor),
+            FOREIGN KEY (SourceId, PassageId) REFERENCES SourcePassages (SourceId, PassageId),
+            FOREIGN KEY (SourceId, WordformKey) REFERENCES SourceWordforms (SourceId, WordformKey)
+        );
+        """;
+
     private const string ParserRefusalDdl = """
         CREATE TABLE ParserRefusals (
             BaselineToken TEXT PRIMARY KEY,
@@ -654,6 +1010,18 @@ public static class MotifSchema
         );
         """;
 
+    private const string GrammarCoverageDdl = """
+        CREATE TABLE GrammarCoverageSegmentations (Id TEXT PRIMARY KEY, Payload TEXT NOT NULL) WITHOUT ROWID;
+        CREATE TABLE GrammarCoverageMeasurements (StampId TEXT PRIMARY KEY, Payload TEXT NOT NULL) WITHOUT ROWID;
+        CREATE TABLE GrammarCoverageNoAnalysisRank (
+            StampId TEXT NOT NULL REFERENCES GrammarCoverageMeasurements(StampId) ON DELETE CASCADE,
+            NegativeWeight INTEGER NOT NULL, WordformId TEXT NOT NULL,
+            WritingSystemId TEXT NOT NULL, FormNfd TEXT NOT NULL,
+            PRIMARY KEY (StampId, NegativeWeight, WordformId)
+        ) WITHOUT ROWID;
+
+        """;
+
     private const string MetadataDdl = """
         CREATE TABLE MotifMetadata (
             Id INTEGER PRIMARY KEY CHECK (Id = 1),
@@ -667,10 +1035,50 @@ public static class MotifSchema
 
         """;
 
+    /// <summary>The table <c>store relocate</c> appends to; it is also created on demand in an older-schema store.</summary>
+    internal const string StoreRelocationDdl = """
+        CREATE TABLE IF NOT EXISTS StoreRelocations (
+            RelocationId INTEGER PRIMARY KEY AUTOINCREMENT,
+            OldFwDataPath TEXT NOT NULL,
+            NewFwDataPath TEXT NOT NULL,
+            RelocatedUtc TEXT NOT NULL,
+            Basis TEXT NOT NULL CHECK (Basis IN ('project-guid', 'name'))
+        );
+
+        """;
+
+    /// <summary>
+    /// A word type's disposition. A row stands until <c>EndedUtc</c> is set, and an ended row is history, so one
+    /// type has at most one standing row and any number of ended ones.
+    /// </summary>
+    internal const string WordTypeDispositionDdl = """
+        CREATE TABLE WordTypeDispositions (
+            DispositionId INTEGER PRIMARY KEY AUTOINCREMENT,
+            FormKey TEXT NOT NULL,
+            Form TEXT NOT NULL,
+            Category TEXT NOT NULL CHECK (Category IN
+                ('name', 'loan', 'other-language', 'abbreviation', 'numeral', 'non-word', 'misspelling')),
+            Evidence TEXT NOT NULL CHECK (length(trim(Evidence)) > 0),
+            Intended TEXT NULL,
+            RecordedBy TEXT NOT NULL,
+            RecordedUtc TEXT NOT NULL,
+            EndedUtc TEXT NULL,
+            EndedKind TEXT NULL CHECK (EndedKind IS NULL OR EndedKind IN ('replaced', 'cleared')),
+            EndedBy TEXT NULL,
+            EndedNote TEXT NULL,
+            CHECK ((Category = 'misspelling') = (Intended IS NOT NULL)),
+            CHECK ((EndedUtc IS NULL) = (EndedKind IS NULL))
+        );
+        CREATE UNIQUE INDEX IX_WordTypeDispositions_Current ON WordTypeDispositions(FormKey) WHERE EndedUtc IS NULL;
+        CREATE INDEX IX_WordTypeDispositions_History ON WordTypeDispositions(FormKey, DispositionId);
+        CREATE INDEX IX_WordTypeDispositions_Category ON WordTypeDispositions(Category, FormKey) WHERE EndedUtc IS NULL;
+        """;
+
     private const string CorpusDdl = """
         CREATE TABLE IF NOT EXISTS Corpora (
             CorpusId TEXT PRIMARY KEY,
-            ProvenanceJson TEXT NOT NULL
+            ProvenanceJson TEXT NOT NULL,
+            FileBacked INTEGER NOT NULL DEFAULT 0
         );
 
         CREATE TABLE IF NOT EXISTS CorpusDocuments (
@@ -685,6 +1093,7 @@ public static class MotifSchema
             Licence TEXT NULL,
             CapabilitiesJson TEXT NULL,
             AttributesJson TEXT NULL,
+            FileBacked INTEGER NOT NULL DEFAULT 0,
             PRIMARY KEY (CorpusId, DocumentId)
         );
 
@@ -699,15 +1108,13 @@ public static class MotifSchema
             Rationale TEXT NULL,
             RationaleIntentDigest TEXT NULL,
             RationaleUpdatedUtc TEXT NULL,
-            Note TEXT NULL,
-            NoteIntentDigest TEXT NULL,
-            NoteUpdatedUtc TEXT NULL,
             SupersededBy TEXT NULL,
             AnchorJson TEXT NULL,
             ArchivedUtc TEXT NULL,
             DraftName TEXT NULL,
             DraftJson TEXT NULL,
-            Role TEXT NULL CHECK (Role IS NULL OR Role = 'pending-changes')
+            Role TEXT NULL CHECK (Role IS NULL OR Role = 'pending-changes'),
+            RequestId TEXT NULL
         );
         CREATE UNIQUE INDEX IX_Proposals_DraftName ON Proposals(DraftName);
         CREATE UNIQUE INDEX IX_Proposals_OpenRole ON Proposals(Role) WHERE DraftName IS NOT NULL;
@@ -719,6 +1126,43 @@ public static class MotifSchema
             CreatedUtc TEXT NOT NULL,
             PRIMARY KEY (ProposalId, IntentDigest)
         );
+
+        CREATE TABLE ProposalRationaleRevisions (
+            RevisionId INTEGER PRIMARY KEY AUTOINCREMENT,
+            ProposalId TEXT NOT NULL REFERENCES Proposals(ProposalId),
+            Text TEXT NOT NULL,
+            IntentDigest TEXT NULL,
+            AuthorLabel TEXT NULL,
+            PersonName TEXT NOT NULL,
+            CreatedUtc TEXT NOT NULL
+        );
+        CREATE INDEX IX_ProposalRationaleRevisions_Proposal ON ProposalRationaleRevisions(ProposalId, RevisionId);
+
+        CREATE TABLE ProposalComments (
+            CommentId INTEGER PRIMARY KEY AUTOINCREMENT,
+            ProposalId TEXT NOT NULL REFERENCES Proposals(ProposalId),
+            Kind TEXT NOT NULL DEFAULT 'standard' CHECK (Kind IN ('standard', 'system')),
+            AuthorLabel TEXT NULL,
+            PersonName TEXT NOT NULL,
+            Text TEXT NOT NULL,
+            IntentDigest TEXT NULL,
+            CreatedUtc TEXT NOT NULL,
+            EditedUtc TEXT NULL
+        );
+        CREATE INDEX IX_ProposalComments_Proposal ON ProposalComments(ProposalId, CommentId);
+
+        CREATE TABLE ProposalPictures (
+            PictureId INTEGER PRIMARY KEY AUTOINCREMENT,
+            ProposalId TEXT NOT NULL REFERENCES Proposals(ProposalId),
+            CommentId INTEGER NULL REFERENCES ProposalComments(CommentId),
+            MediaType TEXT NOT NULL,
+            Width INTEGER NOT NULL CHECK (Width > 0),
+            Height INTEGER NOT NULL CHECK (Height > 0),
+            Bytes BLOB NOT NULL,
+            CreatedUtc TEXT NOT NULL,
+            Caption TEXT NULL
+        );
+        CREATE INDEX IX_ProposalPictures_Proposal ON ProposalPictures(ProposalId, PictureId);
 
         CREATE TABLE Receipts (
             ReceiptId TEXT PRIMARY KEY,
@@ -737,6 +1181,7 @@ public static class MotifSchema
 
         """;
 
+    // This default repeats the Contract constant; MotifDatabaseOpenTests pins both.
     private const string SelectionDdl = """
         CREATE TABLE NamedSelections (
             SelectionName TEXT PRIMARY KEY,
@@ -746,11 +1191,18 @@ public static class MotifSchema
             UpdatedUtc TEXT NOT NULL,
             TimeLimitMode TEXT NOT NULL CHECK (TimeLimitMode IN ('Estimated', 'Explicit')),
             ExplicitPerWordLimitMs INTEGER NULL CHECK (ExplicitPerWordLimitMs IS NULL OR ExplicitPerWordLimitMs > 0),
-            PerWordStepLimit INTEGER NULL CHECK (PerWordStepLimit IS NULL OR PerWordStepLimit > 0),
-            Revision INTEGER NOT NULL CHECK (Revision > 0)
+            PerWordParserWorkLimit INTEGER NULL CHECK (PerWordParserWorkLimit IS NULL OR PerWordParserWorkLimit > 0),
+            Revision INTEGER NOT NULL CHECK (Revision > 0),
+            AssessBudgetSeconds INTEGER NOT NULL DEFAULT 3600 CHECK (AssessBudgetSeconds >= 60),
+            WordListJson TEXT NULL
         );
 
         CREATE TABLE DefaultSelection (
+            Id INTEGER PRIMARY KEY CHECK (Id = 1),
+            SelectionName TEXT NOT NULL REFERENCES NamedSelections(SelectionName)
+        );
+
+        CREATE TABLE ParsimonySelection (
             Id INTEGER PRIMARY KEY CHECK (Id = 1),
             SelectionName TEXT NOT NULL REFERENCES NamedSelections(SelectionName)
         );
@@ -760,7 +1212,8 @@ public static class MotifSchema
     private const string AssessmentDdl = """
         CREATE TABLE AssessmentInvocations (
             InvocationId TEXT PRIMARY KEY,
-            EvidenceJson TEXT NOT NULL
+            EvidenceJson TEXT NOT NULL,
+            InputProfileJson TEXT NULL
         );
         CREATE TABLE Assessments (
             AssessmentId TEXT PRIMARY KEY,
@@ -803,6 +1256,17 @@ public static class MotifSchema
         CREATE INDEX IX_Assessments_Proposal ON Assessments(ProposalId);
         CREATE INDEX IX_Assessments_Kind ON Assessments(Kind);
 
+        CREATE TABLE AssessmentWordPayloads (
+            Hash BLOB NOT NULL PRIMARY KEY,
+            Payload BLOB NOT NULL
+        ) WITHOUT ROWID;
+
+        CREATE TABLE AssessmentWordSetBindings (
+            AssessmentId TEXT NOT NULL PRIMARY KEY REFERENCES Assessments(AssessmentId),
+            OwnerAssessmentId TEXT NOT NULL REFERENCES Assessments(AssessmentId)
+        ) WITHOUT ROWID;
+        CREATE INDEX IX_AssessmentWordSetBindings_Owner ON AssessmentWordSetBindings(OwnerAssessmentId);
+
         CREATE TABLE AssessedWords (
             AssessedWordId INTEGER PRIMARY KEY AUTOINCREMENT,
             AssessmentId TEXT NOT NULL REFERENCES Assessments(AssessmentId),
@@ -812,21 +1276,28 @@ public static class MotifSchema
             ElapsedMs INTEGER NULL,
             ElapsedNs INTEGER NULL,
             RawSignature TEXT NULL,
-            MorphologyJson TEXT NULL,
-            CorrectnessJson TEXT NULL,
+            MorphologyJson BLOB NULL REFERENCES AssessmentWordPayloads(Hash),
+            CorrectnessJson BLOB NULL REFERENCES AssessmentWordPayloads(Hash),
             ProjectStanding TEXT NULL,
             OccurrenceCount INTEGER NULL,
-            ReadingGradesJson TEXT NULL,
-            AnalysisComparisonJson TEXT NULL,
+            ReadingGradesJson BLOB NULL REFERENCES AssessmentWordPayloads(Hash),
+            AnalysisComparisonJson BLOB NULL REFERENCES AssessmentWordPayloads(Hash),
             MissedApprovedCount INTEGER NULL,
-            MissedApprovedJson TEXT NULL,
+            MissedApprovedJson BLOB NULL REFERENCES AssessmentWordPayloads(Hash),
             IsIncomplete INTEGER NOT NULL DEFAULT 0 CHECK (IsIncomplete IN (0, 1)),
             Attempts INTEGER NULL,
             Passes INTEGER NULL,
-            WorkSteps INTEGER NULL
+            ParserWork INTEGER NULL,
+            LowercaseOf TEXT NULL
         );
         CREATE INDEX IX_AssessedWords_Assessment ON AssessedWords(AssessmentId);
         CREATE INDEX IX_AssessedWords_Word ON AssessedWords(AssessmentId, Word);
+        -- Payload foreign keys: deleting an unused payload looks each child column up, so each needs an index.
+        CREATE INDEX IX_AssessedWords_MorphologyJson ON AssessedWords(MorphologyJson) WHERE MorphologyJson IS NOT NULL;
+        CREATE INDEX IX_AssessedWords_CorrectnessJson ON AssessedWords(CorrectnessJson) WHERE CorrectnessJson IS NOT NULL;
+        CREATE INDEX IX_AssessedWords_ReadingGradesJson ON AssessedWords(ReadingGradesJson) WHERE ReadingGradesJson IS NOT NULL;
+        CREATE INDEX IX_AssessedWords_AnalysisComparisonJson ON AssessedWords(AnalysisComparisonJson) WHERE AnalysisComparisonJson IS NOT NULL;
+        CREATE INDEX IX_AssessedWords_MissedApprovedJson ON AssessedWords(MissedApprovedJson) WHERE MissedApprovedJson IS NOT NULL;
 
         CREATE TABLE ParsedAnalyses (
             AssessedWordId INTEGER NOT NULL REFERENCES AssessedWords(AssessedWordId),
@@ -839,19 +1310,10 @@ public static class MotifSchema
         CREATE INDEX IX_ParsedAnalyses_Word ON ParsedAnalyses(AssessedWordId);
 
         CREATE TABLE AssessmentObjectTimings (
-            AssessmentId TEXT NOT NULL REFERENCES Assessments(AssessmentId),
-            OrdinalIndex INTEGER NOT NULL,
-            Kind TEXT NOT NULL,
-            Key TEXT NOT NULL,
-            IdentityQuality TEXT NOT NULL,
-            Direction TEXT NOT NULL,
-            Object TEXT NOT NULL,
-            Word TEXT NOT NULL,
-            Attempts INTEGER NULL,
-            Passes INTEGER NULL,
-            ElapsedNs INTEGER NULL,
-            PRIMARY KEY (AssessmentId, OrdinalIndex)
-        );
+            AssessmentId TEXT NOT NULL PRIMARY KEY REFERENCES Assessments(AssessmentId),
+            Detail BLOB NOT NULL,
+            Evidence BLOB NULL
+        ) WITHOUT ROWID;
 
         CREATE TABLE AssessmentPins (
             AssessmentId TEXT NOT NULL REFERENCES Assessments(AssessmentId),
@@ -958,6 +1420,27 @@ public static class MotifSchema
         );
         """;
 
+    private const string ProgressDdl = """
+        CREATE TABLE ProgressState (
+            Id INTEGER PRIMARY KEY CHECK (Id = 1),
+            Revision TEXT NOT NULL,
+            ContentRevision TEXT NOT NULL,
+            JudgementRevision TEXT NOT NULL,
+            SourceLastWriteUtc TEXT NOT NULL,
+            PendingReceiptId TEXT NULL,
+            TotalsJson TEXT NOT NULL,
+            ExcludedJson TEXT NOT NULL,
+            SourceIdentityJson TEXT NULL
+        );
+        CREATE TABLE ProgressTexts (
+            TextId TEXT PRIMARY KEY,
+            Title TEXT NOT NULL,
+            CountsJson TEXT NOT NULL,
+            IncidenceJson TEXT NOT NULL,
+            ExcludedJson TEXT NOT NULL
+        );
+        """;
+
     private const string RetainedInvocationDdl = """
         CREATE TABLE RetainedInvocations (
             InvocationId TEXT PRIMARY KEY,
@@ -995,7 +1478,7 @@ public static class MotifSchema
             IntentDigest TEXT NULL,
             SelectionSha256 TEXT NOT NULL,
             ParserStamp TEXT NULL,
-            ResponseJson TEXT NOT NULL,
+            ResponseGzip BLOB NOT NULL,
             CheckedUtc TEXT NOT NULL
         );
         CREATE UNIQUE INDEX IX_GrammarChecks_Project ON GrammarChecks(BaselineToken) WHERE ProposalId IS NULL;
@@ -1021,12 +1504,15 @@ public static class MotifSchema
             BeforeAssessmentId TEXT NOT NULL,
             AfterAssessmentId TEXT NOT NULL,
             TextId TEXT NOT NULL,
+            Reference TEXT NOT NULL,
             BaselineToken TEXT NOT NULL,
             SummaryJson TEXT NOT NULL,
             SummaryDigest TEXT NOT NULL,
-            CreatedUtc TEXT NOT NULL
+            CreatedUtc TEXT NOT NULL,
+            WordDetailDroppedUtc TEXT
         );
-        CREATE INDEX IX_ProposalDifferences_Proposal ON ProposalDifferences(ProposalId, CreatedUtc);
+        -- A Proposal keeps one Difference per Text and reference; a new one replaces only that one.
+        CREATE UNIQUE INDEX IX_ProposalDifferences_ProposalText ON ProposalDifferences(ProposalId, TextId, Reference);
 
         CREATE TABLE ProposalDifferenceCases (
             DifferenceId TEXT NOT NULL REFERENCES ProposalDifferences(DifferenceId) ON DELETE CASCADE,
@@ -1060,6 +1546,135 @@ public static class MotifSchema
             PRIMARY KEY (DifferenceId, CaseKey, Bucket)
         );
         CREATE INDEX IX_ProposalDifferenceBuckets_Bucket ON ProposalDifferenceBuckets(DifferenceId, Bucket, CaseKey);
+        """;
+
+    private const string ReviewReportDdl = """
+        CREATE TABLE ReviewReports (
+            ReportId TEXT PRIMARY KEY,
+            ProjectKey TEXT NOT NULL,
+            ProposalId TEXT NOT NULL REFERENCES Proposals(ProposalId),
+            TrialJobId TEXT NOT NULL,
+            ManifestDigest TEXT NOT NULL,
+            SummaryJson TEXT NOT NULL,
+            SummaryDigest TEXT NOT NULL,
+            InputReferencesJson TEXT NOT NULL,
+            DetailAvailable INTEGER NOT NULL,
+            DetailBytes INTEGER NOT NULL,
+            CreatedUtc TEXT NOT NULL
+        );
+        CREATE UNIQUE INDEX IX_ReviewReports_ProjectManifest ON ReviewReports(ProjectKey, ManifestDigest);
+        CREATE TABLE ReviewReportCases (
+            ReportId TEXT NOT NULL REFERENCES ReviewReports(ReportId) ON DELETE CASCADE,
+            CaseKey TEXT NOT NULL,
+            WordKey TEXT NOT NULL,
+            Word TEXT NOT NULL,
+            WritingSystemId TEXT,
+            WordSort BLOB NOT NULL,
+            WritingSystemSort BLOB NOT NULL,
+            FactsJson TEXT NOT NULL,
+            PRIMARY KEY (ReportId, CaseKey)
+        );
+        CREATE INDEX IX_ReviewReportCases_Order ON ReviewReportCases(ReportId, WordSort, WritingSystemSort, CaseKey);
+        CREATE TABLE ReviewReportMemberships (
+            ReportId TEXT NOT NULL REFERENCES ReviewReports(ReportId) ON DELETE CASCADE,
+            CaseKey TEXT NOT NULL,
+            Ordinal INTEGER NOT NULL,
+            SetId TEXT NOT NULL,
+            Role TEXT NOT NULL,
+            CellId TEXT,
+            VariantId TEXT,
+            FactsJson TEXT NOT NULL,
+            PRIMARY KEY (ReportId, CaseKey, Ordinal)
+        );
+        CREATE INDEX IX_ReviewReportMemberships_Cell
+            ON ReviewReportMemberships(ReportId, Role, SetId, CellId, CaseKey, Ordinal);
+        CREATE TABLE ReviewReportEvents (
+            ReportId TEXT NOT NULL REFERENCES ReviewReports(ReportId) ON DELETE CASCADE,
+            CaseKey TEXT NOT NULL,
+            Ordinal INTEGER NOT NULL,
+            FactsJson TEXT NOT NULL,
+            PRIMARY KEY (ReportId, CaseKey, Ordinal)
+        );
+        """;
+
+    private const string RequestDdl = """
+        CREATE TABLE Requests (
+            RequestId TEXT PRIMARY KEY,
+            TargetKind TEXT NOT NULL CHECK (TargetKind IN ('word', 'warning', 'matrix-cell')),
+            TargetId TEXT NOT NULL,
+            TargetLabel TEXT NOT NULL,
+            Note TEXT NULL,
+            Status TEXT NOT NULL DEFAULT 'open' CHECK (Status IN ('open', 'answered', 'withdrawn')),
+            CreatedUtc TEXT NOT NULL,
+            ClosedUtc TEXT NULL,
+            AskedAgainOf TEXT NULL
+        );
+        CREATE INDEX IX_Requests_Status ON Requests(Status, CreatedUtc);
+        """;
+
+    private const string HypothesisDdl = """
+        CREATE TABLE Hypotheses (
+            HypothesisId TEXT PRIMARY KEY,
+            Seq INTEGER NOT NULL,
+            Pattern TEXT NULL,
+            Statement TEXT NOT NULL,
+            Mechanism TEXT NOT NULL,
+            ChangeText TEXT NOT NULL,
+            Environment TEXT NOT NULL DEFAULT '',
+            HostClass TEXT NOT NULL DEFAULT '',
+            Slot TEXT NOT NULL DEFAULT '',
+            Neighbour TEXT NULL,
+            PredictionsJson TEXT NOT NULL DEFAULT '[]',
+            Falsifier TEXT NULL,
+            Exceptions TEXT NULL,
+            ObjectsAdded INTEGER NULL,
+            AttestedTypesGained INTEGER NULL,
+            QuestionsJson TEXT NOT NULL DEFAULT '[]',
+            Status TEXT NOT NULL DEFAULT 'proposed' CHECK (Status IN ('proposed', 'passed', 'failed', 'superseded')),
+            Decision TEXT NULL,
+            SupersededBy TEXT NULL,
+            GdrId TEXT NULL,
+            GdrSection TEXT NULL,
+            GdrNone TEXT NULL,
+            SealedVerdict TEXT NULL CHECK (SealedVerdict IS NULL OR SealedVerdict IN ('match', 'mismatch')),
+            VerdictSource TEXT NULL,
+            WordQuestionsAsked INTEGER NULL,
+            ObjectsBefore INTEGER NULL,
+            TypesBefore INTEGER NULL,
+            ObjectsAfter INTEGER NULL,
+            TypesAfter INTEGER NULL,
+            AgentHours REAL NULL,
+            AlternativeHours REAL NULL,
+            CreatedUtc TEXT NOT NULL,
+            UpdatedUtc TEXT NOT NULL
+        );
+        -- NOCASE so the neighbour check seeks the index instead of scanning the table.
+        CREATE INDEX IX_Hypotheses_Shape ON Hypotheses(
+            ChangeText COLLATE NOCASE, Environment COLLATE NOCASE, HostClass COLLATE NOCASE, Slot COLLATE NOCASE);
+        CREATE INDEX IX_Hypotheses_Seq ON Hypotheses(Seq);
+        CREATE INDEX IX_Hypotheses_StatusSeq ON Hypotheses(Status, Seq);
+        CREATE TABLE HypothesisProposals (
+            HypothesisId TEXT NOT NULL,
+            ProposalId TEXT NOT NULL,
+            LinkedUtc TEXT NOT NULL,
+            PRIMARY KEY (HypothesisId, ProposalId)
+        );
+        CREATE INDEX IX_HypothesisProposals_Proposal ON HypothesisProposals(ProposalId);
+        CREATE TABLE HypothesisTests (
+            HypothesisId TEXT NOT NULL,
+            TestNumber INTEGER NOT NULL,
+            Verdict TEXT NOT NULL CHECK (Verdict IN ('PASS', 'FAIL', 'UNDECIDED')),
+            PredictedForms INTEGER NOT NULL,
+            RuleHits INTEGER NOT NULL,
+            ControlHitsJson TEXT NOT NULL,
+            Margin INTEGER NOT NULL,
+            TrialAttestedLosses INTEGER NULL,
+            TrialNewReadings INTEGER NULL,
+            TrialWorkSteps INTEGER NULL,
+            Command TEXT NULL,
+            RecordedUtc TEXT NOT NULL,
+            PRIMARY KEY (HypothesisId, TestNumber)
+        );
         """;
 
     private const string ReviewMarkDdl = """
@@ -1111,6 +1726,17 @@ public static class MotifSchema
         """;
 
     private const string ParsimonyBundleLifetimeDdl = """
+        CREATE TABLE ParsimonyFrozenViews (
+            BundleId TEXT NOT NULL REFERENCES ParsimonyBundles(BundleId) ON DELETE CASCADE,
+            ViewCode TEXT NOT NULL,
+            FilterDigest TEXT NOT NULL,
+            ViewVersion INTEGER NOT NULL CHECK (ViewVersion > 0),
+            ItemsDigest TEXT NOT NULL,
+            RowCount INTEGER NOT NULL CHECK (RowCount >= 0),
+            ResultJson TEXT NOT NULL,
+            PRIMARY KEY (BundleId, ViewCode, FilterDigest)
+        );
+
         CREATE TABLE ParsimonyBundleReferences (
             BundleId TEXT NOT NULL REFERENCES ParsimonyBundles(BundleId) ON DELETE CASCADE,
             ReferenceKind TEXT NOT NULL,
@@ -1227,6 +1853,14 @@ public static class MotifSchema
         END;
         """;
 
+    private const string BeforeAssessmentBindingDdl = """
+        CREATE TABLE BeforeAssessmentBinding (
+            Id INTEGER PRIMARY KEY,
+            AssessmentId TEXT NOT NULL REFERENCES Assessments(AssessmentId),
+            SemanticIdentityJson TEXT NOT NULL
+        );
+        """;
+
     private const string PhonologyAssessmentDdl = """
         CREATE TABLE PhonologyAssessmentBindings (
             AssessmentId TEXT NOT NULL PRIMARY KEY REFERENCES Assessments(AssessmentId),
@@ -1255,4 +1889,24 @@ public static class MotifSchema
             UNIQUE (AssessmentId, Path)
         );
         """;
+    private const string QueryDdl = """
+        CREATE TABLE query_snapshot (
+            Id INTEGER PRIMARY KEY CHECK (Id = 1),
+            TrialId TEXT NOT NULL,
+            GrammarHash TEXT NOT NULL,
+            BundleId TEXT NOT NULL,
+            WritingSystem TEXT NOT NULL,
+            GraphemesJson TEXT NOT NULL,
+            UnresolvedVariants INTEGER NOT NULL,
+            SourceWriteTicks INTEGER NOT NULL,
+            TrialCreatedUtc TEXT NOT NULL,
+            TrialQueueOrder REAL NOT NULL,
+            CoverageJson TEXT NOT NULL
+        );
+        CREATE TABLE query_forms (Ordinal INTEGER PRIMARY KEY, RowJson TEXT NOT NULL);
+        CREATE TABLE query_stems (Ordinal INTEGER PRIMARY KEY, RowJson TEXT NOT NULL);
+        CREATE TABLE query_uses (Ordinal INTEGER PRIMARY KEY, TargetKind TEXT NOT NULL, RowJson TEXT NOT NULL);
+        CREATE TABLE query_objects (Ordinal INTEGER PRIMARY KEY, RowJson TEXT NOT NULL);
+        """;
+
 }

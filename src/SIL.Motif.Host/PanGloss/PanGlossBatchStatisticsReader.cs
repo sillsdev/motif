@@ -1,12 +1,18 @@
 using Microsoft.Data.Sqlite;
+using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.Host.PanGloss;
 
 /// <summary>Reads word counters and per-object timings from one retained PanGloss batch statistics cache.</summary>
 public static class PanGlossBatchStatisticsReader
 {
-    /// <summary>The most object timing rows kept from one cache, so a very large project cannot exhaust memory.</summary>
-    public const int DefaultMaxObjectTimingRows = 1_000_000;
+    /// <summary>
+    /// The one budget of object timing rows Motif keeps or expects from one run, so a large grammar cannot exhaust
+    /// memory. A kept row costs about 0.6 KB once read back, so 250,000 rows is roughly 150 MB at most: it holds the
+    /// 2,000 detail words of a grammar where each word touches about 125 objects, several times what a healthy run
+    /// produces, while a grammar that makes every word touch thousands of objects is cut off or skipped.
+    /// </summary>
+    public const int DefaultObjectTimingRowBudget = 250_000;
 
     /// <summary>Reads the batch rows and validates exact Selection coverage in the cache.</summary>
     /// <param name="cachePath">The statistics cache written by the batch invocation.</param>
@@ -15,7 +21,7 @@ public static class PanGlossBatchStatisticsReader
     /// <exception cref="InvalidDataException">The cache does not contain exactly the requested word rows.</exception>
     public static PanGlossBatchStatistics<PanGlossObjectTiming> Read(
         string cachePath, IReadOnlyCollection<string> expectedWords) =>
-        Read(cachePath, expectedWords, timing => timing, DefaultMaxObjectTimingRows);
+        Read(cachePath, expectedWords, timing => timing, DefaultObjectTimingRowBudget);
 
     /// <summary>
     /// Reads the batch rows, converting each object timing as it is read so only one list is held, and keeping
@@ -35,37 +41,185 @@ public static class PanGlossBatchStatisticsReader
     {
         ArgumentNullException.ThrowIfNull(convert);
         ArgumentOutOfRangeException.ThrowIfNegative(maxObjectTimingRows);
+        using var connection = OpenValidated(cachePath, expectedWords, out var words);
+
+        var (timings, total) = ReadObjectTimings(connection, words, convert, maxObjectTimingRows);
+        return new PanGlossBatchStatistics<T>(words, timings, total);
+    }
+
+    /// <summary>Reads exact object totals while keeping detail for the words with the most work.</summary>
+    /// <param name="cachePath">The PanGloss statistics cache.</param>
+    /// <param name="expectedWords">The exact Selection measured by this invocation.</param>
+    /// <param name="detailWordLimit">Maximum number of words whose object facts are retained.</param>
+    /// <param name="detailRowBudget">Maximum number of object timing rows retained across those words.</param>
+    /// <returns>Exact per-object totals and the bounded word detail.</returns>
+    public static BoundedPanGlossStatistics<PanGlossObjectTiming> ReadBounded(string cachePath,
+        IReadOnlyCollection<string> expectedWords, int detailWordLimit,
+        int detailRowBudget = DefaultObjectTimingRowBudget) =>
+        ReadBounded(cachePath, expectedWords, detailWordLimit, detailRowBudget, timing => timing);
+
+    /// <summary>
+    /// Reads exact object totals while keeping detail for the words with the most work, converting each kept row as
+    /// it is read so only one copy of the detail is ever held.
+    /// </summary>
+    /// <param name="cachePath">The PanGloss statistics cache.</param>
+    /// <param name="expectedWords">The exact Selection measured by this invocation.</param>
+    /// <param name="detailWordLimit">Maximum number of words whose object facts are retained.</param>
+    /// <param name="detailRowBudget">
+    /// Maximum number of object timing rows retained across those words. Words are admitted costliest first and
+    /// whole, so the budget stops at the first word that no longer fits.
+    /// </param>
+    /// <param name="convert">Maps each kept row to the caller's own shape.</param>
+    /// <returns>Exact per-object totals and the bounded word detail.</returns>
+    public static BoundedPanGlossStatistics<T> ReadBounded<T>(string cachePath,
+        IReadOnlyCollection<string> expectedWords, int detailWordLimit, int detailRowBudget,
+        Func<PanGlossObjectTiming, T> convert)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(detailWordLimit);
+        ArgumentOutOfRangeException.ThrowIfNegative(detailRowBudget);
+        ArgumentNullException.ThrowIfNull(convert);
+        using var connection = OpenValidated(cachePath, expectedWords, out var words);
+        var rowsPerWord = ReadRowsPerWord(connection);
+        var selected = new HashSet<string>(StringComparer.Ordinal);
+        long plannedRows = 0;
+        var truncatedByRows = false;
+        foreach (var word in words.OrderByDescending(pair => pair.Value.ParserWork.HasValue)
+            .ThenByDescending(pair => pair.Value.ParserWork)
+            .ThenByDescending(pair => pair.Value.ParserWork is null ? pair.Value.ElapsedNs : 0)
+            .ThenBy(pair => pair.Key, StringComparer.Ordinal).Take(detailWordLimit).Select(pair => pair.Key))
+        {
+            plannedRows += rowsPerWord.GetValueOrDefault(word);
+            if (plannedRows > detailRowBudget) { truncatedByRows = true; break; }
+            selected.Add(word);
+        }
+        var pool = new Dictionary<string, string>(StringComparer.Ordinal);
+        var detail = new List<T>();
+        var attributedByWord = new Dictionary<string, long>(StringComparer.Ordinal);
+        var hasTimer = false;
+        var aggregates = new Dictionary<(ObjectIdentity Identity, string Direction), PanGlossObjectTimingAggregate>();
+        var workMissing = new HashSet<(ObjectIdentity Identity, string Direction)>();
+        var directionWords = new Dictionary<(ObjectIdentity Identity, string Direction), string>();
+        var directionWordTotals = new Dictionary<(ObjectIdentity Identity, string Direction), (string Word, long Attempts, long Elapsed)>();
+        var objectWords = new Dictionary<ObjectIdentity, (string Word, int Count)>();
+        var kindWords = new Dictionary<string, (string Word, int Count)>(StringComparer.Ordinal);
+        long total = 0;
+        using var command = connection.CreateCommand();
+        command.CommandText = BoundedObjectTimingsQuery;
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            var row = ReadTiming(reader, words, pool);
+            total = checked(total + 1);
+            if (selected.Contains(row.Word)) detail.Add(convert(row));
+            var touched = row.Attempts is > 0 || row.ElapsedNs is > 0;
+            if (touched && row.ElapsedNs is { } duration)
+            {
+                hasTimer = true;
+                attributedByWord[row.Word] = checked(attributedByWord.GetValueOrDefault(row.Word) + duration);
+            }
+            var identity = ObjectIdentity.Create(row.Kind, row.Key, row.IdentityQuality)
+                ?? throw new InvalidDataException("The batch statistics cache contains an unscoped object identity.");
+            var key = (identity, row.Direction);
+            if (!aggregates.TryGetValue(key, out var prior))
+                prior = new(row.Kind, row.Key, row.IdentityQuality, row.Direction, row.Object, 0, null, null, null, null);
+            if (touched)
+            {
+                var priorObject = objectWords.GetValueOrDefault(identity);
+                if (priorObject.Word != row.Word) objectWords[identity] = (row.Word, checked(priorObject.Count + 1));
+                var priorKind = kindWords.GetValueOrDefault(row.Kind);
+                if (priorKind.Word != row.Word) kindWords[row.Kind] = (row.Word, checked(priorKind.Count + 1));
+            }
+            var newDirectionWord = touched && directionWords.GetValueOrDefault(key) != row.Word;
+            if (newDirectionWord) directionWords[key] = row.Word;
+            var wordTotals = directionWordTotals.GetValueOrDefault(key);
+            if (wordTotals.Word != row.Word) wordTotals = (row.Word, 0, 0);
+            wordTotals.Attempts = checked(wordTotals.Attempts + row.Attempts.GetValueOrDefault());
+            wordTotals.Elapsed = checked(wordTotals.Elapsed + row.ElapsedNs.GetValueOrDefault());
+            directionWordTotals[key] = wordTotals;
+            aggregates[key] = prior with
+            {
+                Object = string.CompareOrdinal(row.Object, prior.Object) < 0 ? row.Object : prior.Object,
+                WordsTouched = checked(prior.WordsTouched + (newDirectionWord ? 1 : 0)),
+                Attempts = row.Attempts is { } attempts ? checked((prior.Attempts ?? 0) + attempts) : prior.Attempts,
+                MaxAttempts = row.Attempts is not null ? Math.Max(prior.MaxAttempts ?? 0, wordTotals.Attempts) : prior.MaxAttempts,
+                ElapsedNs = row.ElapsedNs is { } elapsed ? checked((prior.ElapsedNs ?? 0) + elapsed) : prior.ElapsedNs,
+                MaxElapsedNs = row.ElapsedNs is not null ? Math.Max(prior.MaxElapsedNs ?? 0, wordTotals.Elapsed) : prior.MaxElapsedNs,
+                ParserWork = row.ParserWork is { } work ? checked((prior.ParserWork ?? 0) + work) : prior.ParserWork,
+            };
+            if (row.ParserWork is null) workMissing.Add(key);
+        }
+        var completed = aggregates.Select(pair => pair.Value with
+        {
+            Key = pair.Key.Identity.Key,
+            ParserWork = workMissing.Contains(pair.Key) ? null : pair.Value.ParserWork,
+            WordsTouchedAcrossDirections = objectWords.GetValueOrDefault(pair.Key.Identity).Count,
+            WordsTouchedForKind = kindWords.GetValueOrDefault(pair.Value.Kind).Count,
+        }).ToArray();
+        long attributed = 0, unattributed = 0, overrun = 0;
+        foreach (var (word, stats) in words)
+        {
+            var objectTime = attributedByWord.GetValueOrDefault(word);
+            attributed = checked(attributed + objectTime);
+            var residual = stats.ElapsedNs - objectTime;
+            if (residual >= 0) unattributed = checked(unattributed + residual);
+            else overrun = checked(overrun - residual);
+        }
+        return new(words, detail, completed, selected.Count, selected.Count == words.Count, total)
+        {
+            DetailRowBudget = detailRowBudget, DetailTruncatedByRows = truncatedByRows,
+            AttributedNs = hasTimer ? attributed : null,
+            UnattributedNs = hasTimer ? unattributed : null,
+            OverrunNs = hasTimer ? overrun : null,
+        };
+    }
+
+    /// <summary>Reads validated per-word counters without reading object timing facts.</summary>
+    /// <param name="cachePath">The statistics cache written by the batch invocation.</param>
+    /// <param name="expectedWords">The exact Selection measured by the invocation.</param>
+    /// <returns>The per-word counters stored in the cache.</returns>
+    public static IReadOnlyDictionary<string, PanGlossWordStatistics> ReadWords(
+        string cachePath, IReadOnlyCollection<string> expectedWords)
+    {
+        using var connection = OpenValidated(cachePath, expectedWords, out var words);
+        return words;
+    }
+
+    private static SqliteConnection OpenValidated(string cachePath, IReadOnlyCollection<string> expectedWords,
+        out Dictionary<string, PanGlossWordStatistics> words)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(cachePath);
         ArgumentNullException.ThrowIfNull(expectedWords);
         var expected = expectedWords.ToHashSet(StringComparer.Ordinal);
         if (expected.Count != expectedWords.Count)
             throw new ArgumentException("The resolved Selection must not contain duplicate words.", nameof(expectedWords));
         if (!File.Exists(cachePath)) throw new FileNotFoundException("The PanGloss batch statistics cache is missing.", cachePath);
-
-        using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+        var connection = new SqliteConnection(new SqliteConnectionStringBuilder
         {
-            DataSource = Path.GetFullPath(cachePath),
-            Mode = SqliteOpenMode.ReadOnly,
-            Pooling = false,
+            DataSource = Path.GetFullPath(cachePath), Mode = SqliteOpenMode.ReadOnly, Pooling = false,
         }.ToString());
-        connection.Open();
-
-        var schemaVersion = ReadSchemaVersion(connection);
-        if (schemaVersion != PanGlossInterfaceVersions.StatsCacheVersion)
-            throw new InvalidDataException(
-                $"The PanGloss batch statistics cache has schema version {schemaVersion}; " +
-                $"Motif requires version {PanGlossInterfaceVersions.StatsCacheVersion}.");
-
-        var words = ReadWords(connection);
-        var unexpected = words.Keys.FirstOrDefault(word => !expected.Contains(word));
-        if (unexpected is not null)
-            throw new InvalidDataException($"The batch statistics cache contains unrequested word '{unexpected}'.");
-        var missing = expected.FirstOrDefault(word => !words.ContainsKey(word));
-        if (missing is not null)
-            throw new InvalidDataException($"The batch statistics cache has no per-word row for selected word '{missing}'.");
-
-        var (timings, total) = ReadObjectTimings(connection, words, convert, maxObjectTimingRows);
-        return new PanGlossBatchStatistics<T>(words, timings, total);
+        try
+        {
+            connection.Open();
+            var version = ReadSchemaVersion(connection);
+            if (version != PanGlossInterfaceVersions.StatsCacheVersion)
+                throw new InvalidDataException($"The PanGloss batch statistics cache has schema version {version}; " +
+                    $"Motif requires full version {PanGlossInterfaceVersions.StatsCacheVersion}. Run a new Assessment.");
+            ValidateCounterSemantics(connection);
+            var loadedWords = ReadWords(connection);
+            var unexpected = loadedWords.Keys.FirstOrDefault(word => !expected.Contains(word));
+            if (unexpected is not null)
+                throw new InvalidDataException($"The batch statistics cache contains unrequested word '{unexpected}'.");
+            var missing = expected.FirstOrDefault(word => !loadedWords.ContainsKey(word));
+            if (missing is not null)
+                throw new InvalidDataException($"The batch statistics cache has no per-word row for selected word '{missing}'.");
+            words = loadedWords;
+            return connection;
+        }
+        catch
+        {
+            connection.Dispose();
+            throw;
+        }
     }
 
     private static int ReadSchemaVersion(SqliteConnection connection)
@@ -82,31 +236,44 @@ public static class PanGlossBatchStatisticsReader
         throw new InvalidDataException("The PanGloss batch statistics cache has no valid cache identity.");
     }
 
-    // The word table's work column is read only where the cache declares it, so a cache without one still reads.
-    private static bool WordTableHasWork(SqliteConnection connection)
+    private static void ValidateCounterSemantics(SqliteConnection connection)
     {
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT COUNT(*) FROM pragma_table_info('word') WHERE name = 'work'";
-        return (long)(command.ExecuteScalar() ?? 0L) > 0;
+        command.CommandText = "SELECT counter_semantics FROM run";
+        try
+        {
+            using var reader = command.ExecuteReader();
+            var found = false;
+            while (reader.Read())
+            {
+                found = true;
+                if (reader.GetValue(0) is not long version)
+                    throw new InvalidDataException("The PanGloss batch statistics cache has no valid counter semantics.");
+                if (version != PanGlossInterfaceVersions.StatsCounterSemanticsVersion)
+                    throw new InvalidDataException($"The PanGloss batch statistics cache has counter semantics {version}; " +
+                        $"Motif requires version {PanGlossInterfaceVersions.StatsCounterSemanticsVersion}.");
+            }
+            if (!found) throw new InvalidDataException("The PanGloss batch statistics cache has no run counter semantics.");
+        }
+        catch (SqliteException exception)
+        {
+            throw new InvalidDataException("The PanGloss batch statistics cache has no valid counter semantics.", exception);
+        }
     }
 
     private static Dictionary<string, PanGlossWordStatistics> ReadWords(SqliteConnection connection)
     {
-        var hasWork = WordTableHasWork(connection);
         using var command = connection.CreateCommand();
-        command.CommandText = hasWork
-            ? "SELECT form, elapsed_ns, attempts, passes, work FROM word ORDER BY word_id"
-            : "SELECT form, elapsed_ns, attempts, passes FROM word ORDER BY word_id";
+        command.CommandText = "SELECT form, elapsed_ns, passes, work FROM word ORDER BY word_id";
         using var reader = command.ExecuteReader();
         var words = new Dictionary<string, PanGlossWordStatistics>(StringComparer.Ordinal);
         while (reader.Read())
         {
             var word = reader.GetString(0);
             if (string.IsNullOrWhiteSpace(word) || !words.TryAdd(word, new PanGlossWordStatistics(
-                    ReadCounter(reader, 2, "attempts", word), ReadCounter(reader, 3, "passes", word),
-                    ReadElapsedNs(reader, 1, "word", word))
+                    ReadCounter(reader, 2, "passes", word), ReadElapsedNs(reader, 1, "word", word))
                 {
-                    WorkSteps = hasWork && !reader.IsDBNull(4) ? ReadWork(reader, 4, word) : null,
+                    ParserWork = reader.IsDBNull(3) ? null : ReadWork(reader, 3, word),
                 }))
                 throw new InvalidDataException("The batch statistics cache contains an empty or duplicate word row.");
         }
@@ -120,12 +287,30 @@ public static class PanGlossBatchStatisticsReader
         GROUP BY w.form, o.key, o.identity_quality, o.kind, o.label, f.direction
         """;
 
-    internal const string ObjectTimingsQuery = """
-        SELECT w.form, o.key, o.identity_quality, o.kind, o.label, f.direction,
-               SUM(f.attempts), SUM(f.self_time_ns)
-        """ + "\n" + ObjectTimingsFrom + """
+    private const string ObjectTimingsQuery =
+        "SELECT w.form, o.key, o.identity_quality, o.kind, o.label, f.direction, " +
+        "SUM(f.attempts), SUM(f.self_time_ns), SUM(f.work_steps)\n" + ObjectTimingsFrom +
+        "\nORDER BY w.form, o.kind, o.key, f.direction;";
 
-        ORDER BY w.form, o.kind, o.key, f.direction;
+    private const string BoundedObjectTimingsQuery = """
+        WITH canonical AS (
+            SELECT MIN(object_id) AS id, key, identity_quality, kind, label
+            FROM object GROUP BY key, identity_quality, kind, label
+        ), object_ids AS (
+            SELECT o.object_id, c.id FROM object o JOIN canonical c
+              ON o.key = c.key AND o.identity_quality = c.identity_quality
+              AND o.kind = c.kind AND o.label = c.label
+        ), grouped AS (
+            SELECT f.word_id, ids.id, f.direction, SUM(f.attempts) AS attempts,
+                   SUM(f.self_time_ns) AS elapsed, SUM(f.work_steps) AS work
+            FROM fact f JOIN object_ids ids ON ids.object_id = f.object_id
+            JOIN word w ON w.word_id = f.word_id
+            GROUP BY f.word_id, ids.id, f.direction
+        )
+        SELECT w.form, o.key, o.identity_quality, o.kind, o.label, g.direction,
+               g.attempts, g.elapsed, g.work
+        FROM grouped g JOIN word w ON w.word_id = g.word_id JOIN object o ON o.object_id = g.id
+        ORDER BY w.form, o.kind, o.key, g.direction;
         """;
 
     private static (IReadOnlyList<T> Rows, long Total) ReadObjectTimings<T>(
@@ -144,24 +329,53 @@ public static class PanGlossBatchStatisticsReader
                 reader.Close();
                 return (rows, CountObjectTimings(connection));
             }
-            var word = reader.GetString(0);
-            var key = reader.GetString(1);
-            var identityQuality = reader.GetString(2);
-            var kind = reader.GetString(3);
-            var label = reader.GetString(4);
-            var direction = reader.GetString(5);
-            if (string.IsNullOrWhiteSpace(key) ||
-                !IsKnownIdentityQuality(identityQuality) || !IsKnownKind(kind) || !IsKnownDirection(direction) ||
-                !words.ContainsKey(word))
-                throw new InvalidDataException("The batch statistics cache contains an invalid object fact row.");
-            if (string.IsNullOrWhiteSpace(label)) label = key;
-            int? attempts = SupportsCounter(kind, "attempts") ? ReadCounter(reader, 6, "object attempts", word) : null;
-            long? nanoseconds = SupportsTimer(kind, direction)
-                ? ReadElapsedNs(reader, 7, "object", word) : null;
-            rows.Add(convert(new PanGlossObjectTiming(kind, key, identityQuality, direction, label, word, attempts,
-                null, nanoseconds)));
+            rows.Add(convert(ReadTiming(reader, words)));
         }
         return (rows, rows.Count);
+    }
+
+    // One instance per distinct text: a million rows repeat a few thousand keys, labels and words.
+    private static string Pooled(Dictionary<string, string>? pool, string value) =>
+        pool is null ? value : pool.TryGetValue(value, out var known) ? known : pool[value] = value;
+
+    private static PanGlossObjectTiming ReadTiming(SqliteDataReader reader,
+        IReadOnlyDictionary<string, PanGlossWordStatistics> words, Dictionary<string, string>? pool = null)
+    {
+        var word = Pooled(pool, reader.GetString(0));
+        var key = Pooled(pool, reader.GetString(1));
+        var identityQuality = Pooled(pool, reader.GetString(2));
+        var kind = Pooled(pool, reader.GetString(3));
+        var label = Pooled(pool, reader.GetString(4));
+        var direction = Pooled(pool, reader.GetString(5));
+        var unattributed = kind == "unattributed" && key == "unattributed" &&
+            identityQuality == "synthetic" && direction == "unattributed";
+        if (string.IsNullOrWhiteSpace(key) || !IsKnownIdentityQuality(identityQuality) ||
+            (!unattributed && (!IsKnownKind(kind) || !IsKnownDirection(direction))) || !words.ContainsKey(word))
+            throw new InvalidDataException("The batch statistics cache contains an invalid object fact row.");
+        if (kind == "parser" && (identityQuality != "synthetic" || reader.GetInt64(6) != 0 ||
+                !key.StartsWith("parser:", StringComparison.Ordinal)))
+            throw new InvalidDataException("The batch statistics cache contains an invalid parser fact row.");
+        if (string.IsNullOrWhiteSpace(label)) label = key;
+        int? attempts = SupportsCounter(kind, "attempts") ? ReadCounter(reader, 6, "object attempts", word) : null;
+        long? nanoseconds = SupportsTimer(kind, direction) ? ReadElapsedNs(reader, 7, "object", word) : null;
+        return new PanGlossObjectTiming(kind, key, identityQuality, direction, label, word, attempts, null, nanoseconds)
+        { ParserWork = reader.IsDBNull(8) ? null : ReadWork(reader, 8, word) };
+    }
+
+    // Counted before objects with equal identity merge, so it never undercounts the rows a word will yield.
+    private static Dictionary<string, long> ReadRowsPerWord(SqliteConnection connection)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT w.form, COUNT(*)
+            FROM (SELECT DISTINCT word_id, object_id, direction FROM fact) AS g
+            JOIN word AS w ON w.word_id = g.word_id
+            GROUP BY w.form
+            """;
+        using var reader = command.ExecuteReader();
+        var counts = new Dictionary<string, long>(StringComparer.Ordinal);
+        while (reader.Read()) counts[reader.GetString(0)] = reader.GetInt64(1);
+        return counts;
     }
 
     private static long CountObjectTimings(SqliteConnection connection)
@@ -172,19 +386,21 @@ public static class PanGlossBatchStatisticsReader
     }
 
     internal static bool IsKnownKind(string kind) => kind is
-        "morph_rule" or "phon_rule" or "lex_entry" or "root_index" or "guesser" or "overlay";
+        "morph_rule" or "phon_rule" or "lex_entry" or "root_index" or "guesser" or "overlay" or "parser";
 
     internal static bool IsKnownIdentityQuality(string identityQuality) => identityQuality is
         "authored" or "structural" or "synthetic";
 
     internal static bool IsKnownDirection(string direction) => direction is "analysis" or "synthesis";
 
-    internal static bool SupportsCounter(string kind, string counter) => counter == "attempts" && IsKnownKind(kind);
+    // Parser rows carry only work and self time, so they have no attempts.
+    internal static bool SupportsCounter(string kind, string counter) =>
+        counter == "attempts" && IsKnownKind(kind) && kind != "parser";
 
     internal static bool SupportsTimer(string kind, string direction) => kind switch
     {
-        "morph_rule" or "phon_rule" => true,
-        "lex_entry" or "root_index" or "guesser" or "overlay" => direction == "analysis",
+        "morph_rule" or "phon_rule" or "lex_entry" or "parser" => true,
+        "root_index" or "guesser" or "overlay" => direction == "analysis",
         _ => false,
     };
 
@@ -228,11 +444,44 @@ public sealed record PanGlossBatchStatistics<T>(
 }
 
 /// <summary>PanGloss's whole-word counters and elapsed time for a batch result.</summary>
-/// <param name="Attempts">The analysis attempts recorded for the word.</param>
 /// <param name="Passes">The analyses returned for the word.</param>
 /// <param name="ElapsedNs">The exact whole-word elapsed time recorded by PanGloss.</param>
-public sealed record PanGlossWordStatistics(int Attempts, int Passes, long ElapsedNs)
+public sealed record PanGlossWordStatistics(int Passes, long ElapsedNs)
 {
-    /// <summary>The total work PanGloss recorded for the word, or null when the cache has no such column.</summary>
-    public long? WorkSteps { get; init; }
+    /// <summary>The total work PanGloss recorded for the word, or null when the cache holds none.</summary>
+    public long? ParserWork { get; init; }
+}
+
+/// <summary>Exact totals for an object and direction across one complete batch.</summary>
+public sealed record PanGlossObjectTimingAggregate(string Kind, string Key, string IdentityQuality, string Direction,
+    string Object, int WordsTouched, long? Attempts, long? MaxAttempts, long? ElapsedNs, long? MaxElapsedNs)
+{
+    /// <summary>Distinct words where this object did work in either direction.</summary>
+    public int WordsTouchedAcrossDirections { get; init; }
+    /// <summary>Distinct words where any object of this kind did work.</summary>
+    public int WordsTouchedForKind { get; init; }
+    /// <summary>
+    /// The parser work attributed to this object and direction across every word, or null when any of its fact rows
+    /// recorded none. It grows with the grammar, never with the number of words.
+    /// </summary>
+    public long? ParserWork { get; init; }
+}
+
+/// <summary>Exact batch totals and the selected words' object facts.</summary>
+public sealed record BoundedPanGlossStatistics<T>(
+    IReadOnlyDictionary<string, PanGlossWordStatistics> Words,
+    IReadOnlyList<T> ObjectTimings,
+    IReadOnlyList<PanGlossObjectTimingAggregate> Aggregates,
+    int DetailWordCount, bool DetailComplete, long TotalObjectTimingRows)
+{
+    /// <summary>The row budget the detail was held to.</summary>
+    public int DetailRowBudget { get; init; }
+    /// <summary>Whether a word was left out of the detail because its rows no longer fit the budget.</summary>
+    public bool DetailTruncatedByRows { get; init; }
+    /// <summary>Total object time for all measured words, when any timer was recorded.</summary>
+    public long? AttributedNs { get; init; }
+    /// <summary>Sum of each word's nonnegative residual outside object timers.</summary>
+    public long? UnattributedNs { get; init; }
+    /// <summary>Sum of object time exceeding each word's total.</summary>
+    public long? OverrunNs { get; init; }
 }

@@ -8,14 +8,14 @@ public sealed class PanGlossTracer : IPanGlossTracer
     public static readonly TimeSpan DefaultTimeout = Timeout.InfiniteTimeSpan;
 
     private readonly IPanGlossInvoker _invoker;
-    private readonly StepCap? _stepLimit;
+    private readonly ParserWorkLimit? _parserWorkLimit;
 
-    /// <summary>Traces through <paramref name="invoker"/>; <paramref name="stepLimit"/> is passed to the parser
+    /// <summary>Traces through <paramref name="invoker"/>; <paramref name="parserWorkLimit"/> is passed to the parser
     /// when given, and otherwise PanGloss's own runaway guard applies.</summary>
-    public PanGlossTracer(IPanGlossInvoker invoker, StepCap? stepLimit = null)
+    public PanGlossTracer(IPanGlossInvoker invoker, ParserWorkLimit? parserWorkLimit = null)
     {
         _invoker = invoker ?? throw new ArgumentNullException(nameof(invoker));
-        _stepLimit = stepLimit;
+        _parserWorkLimit = parserWorkLimit;
     }
 
     public async Task<PanGlossTraceOutcome> TraceAsync(
@@ -28,22 +28,27 @@ public sealed class PanGlossTracer : IPanGlossTracer
             throw new ArgumentOutOfRangeException(nameof(timeout), "A trace timeout must be positive or infinite.");
 
         var outcome = await _invoker.RunAsync(
-            new PanGlossRequest.Trace(grammarPath, word) { StepLimit = _stepLimit }, "trace:" + word, cancellationToken, cap).ConfigureAwait(false);
+            new PanGlossRequest.Trace(grammarPath, word) { ParserWorkLimit = _parserWorkLimit }, "trace:" + word, cancellationToken, cap).ConfigureAwait(false);
 
-        return outcome switch
+        return FromOutcome(word, outcome);
+    }
+
+    internal static PanGlossTraceOutcome FromOutcome(string word, PanGlossOutcome outcome) =>
+        outcome switch
         {
             PanGlossOutcome.Completed completed => Interpret(word, completed),
             PanGlossOutcome.Cancelled => new PanGlossTraceOutcome.Cancelled(word),
             PanGlossOutcome.TimedOut timedOut => new PanGlossTraceOutcome.Incomplete(word, null, null, timedOut.Message),
             PanGlossOutcome.Refused refused => new PanGlossTraceOutcome.Declined(word, refused.Message)
                 { ParserRefusal = refused },
+            PanGlossOutcome.MemoryLimit memory => new PanGlossTraceOutcome.Declined(word, memory.Message)
+                { MemoryKill = memory.Kill },
             PanGlossOutcome.Unavailable unavailable => new PanGlossTraceOutcome.Unavailable(word, unavailable.Message)
             {
                 ExecutableMissing = unavailable.ExecutableMissing,
             },
             _ => new PanGlossTraceOutcome.Incomplete(word, null, null, outcome.Message),
         };
-    }
 
     /// <summary>
     /// Reads what a resident parser returned as if it were a cold process's exit code and standard output: a nonzero exit
@@ -78,9 +83,7 @@ public sealed class PanGlossTracer : IPanGlossTracer
                 Document = document,
             };
 
-        var reason = details.Capped
-            ? $"The parser stopped at a search limit after {details.Steps:N0} analysis attempts, so this trace is not the whole search."
-            : "The parser stopped at its own time limit, so this trace is not the whole search.";
+        var reason = details.LimitStopReason + " This trace is not the whole search.";
         return new PanGlossTraceOutcome.Incomplete(word, document.Root, summary, reason)
         {
             Details = details,

@@ -21,7 +21,7 @@ public static class SqliteConnections
     {
         using var command = connection.CreateCommand();
         command.CommandText =
-            "PRAGMA journal_mode = WAL; PRAGMA busy_timeout = " + BusyTimeoutMilliseconds + "; PRAGMA foreign_keys = ON;";
+            "PRAGMA busy_timeout = " + BusyTimeoutMilliseconds + "; PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;";
         command.ExecuteNonQuery();
     }
 
@@ -44,6 +44,17 @@ public static class SqliteConnections
     /// busy timeout ran out, which a step that has saved nothing may refuse as retryable.
     /// </summary>
     public static bool IsBusy(Exception exception) => exception is SqliteException { SqliteErrorCode: 5 or 6 };
+
+    /// <summary>
+    /// Whether <paramref name="exception"/> or anything it wraps is a SQLite BUSY or LOCKED, so a caller that
+    /// saved nothing can refuse as retryable instead of reporting damage.
+    /// </summary>
+    public static bool IsBusyInChain(Exception? exception)
+    {
+        for (var current = exception; current is not null; current = current.InnerException)
+            if (IsBusy(current)) return true;
+        return false;
+    }
 
     internal static bool IsCorruption(SqliteException exception) => IsCorruptionCode(exception.SqliteErrorCode);
 

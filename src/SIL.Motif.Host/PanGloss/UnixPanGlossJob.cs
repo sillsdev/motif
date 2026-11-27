@@ -146,6 +146,20 @@ internal class UnixPanGlossJob : PanGlossContainmentJob
         foreach (var processGroup in _processGroups) KillProcessGroup(processGroup);
     }
 
+    internal override async Task WaitForTerminatedDescendantsAsync(int processId, CancellationToken cancellationToken)
+    {
+        while (HasLiveDescendants(processId))
+            await Task.Delay(TimeSpan.FromMilliseconds(50), cancellationToken).ConfigureAwait(false);
+    }
+
+    private bool HasLiveDescendants(int processId)
+    {
+        if (_cgroup?.IsPopulated == true) return true;
+        if (UnixNative.Kill(-processId, 0) != 0 && UnixNative.LastError == 3) return false;
+        if (OperatingSystem.IsLinux()) return LinuxProcessGroupMemory.HasLiveMember(processId);
+        return OperatingSystem.IsMacOS() && MacProcessGroupMemory.Instance.ListProcessIds(processId).Length != 0;
+    }
+
     public override void Dispose()
     {
         if (_disposed) return;
@@ -295,7 +309,7 @@ internal sealed class UnixPanGlossChildProcess : IPanGlossChildProcess
     private readonly FileStream _stdout;
     private readonly FileStream _stderr;
     private readonly Action _kill;
-    private readonly Task<int> _exitCode;
+    private readonly Task<int> _waitStatus;
     private readonly PanGlossMemoryWatchdog? _memoryWatchdog;
     private readonly Func<PanGlossMemoryKill?>? _cgroupMemoryKill;
     private bool _disposed;
@@ -309,7 +323,7 @@ internal sealed class UnixPanGlossChildProcess : IPanGlossChildProcess
         _stdout = stdout;
         _stderr = stderr;
         _kill = kill;
-        _exitCode = Task.Run(() => WaitForExitCode(processId));
+        _waitStatus = Task.Run(() => WaitForExitStatus(processId));
         if (groupMemory is not null)
             _memoryWatchdog = new PanGlossMemoryWatchdog(processId, memoryLimitBytes, groupMemory, kill);
     }
@@ -317,14 +331,27 @@ internal sealed class UnixPanGlossChildProcess : IPanGlossChildProcess
     public int Id { get; }
     public Stream? InteractiveInput { get; init; }
     public Stream? InteractiveOutput { get; init; }
-    public int ExitCode => _exitCode.GetAwaiter().GetResult();
+    public int ExitCode => TerminationSignal is { } signal
+        ? 128 + signal : (_waitStatus.GetAwaiter().GetResult() >> 8) & 0xff;
+
+    public int? TerminationSignal
+    {
+        get
+        {
+            var signal = _waitStatus.GetAwaiter().GetResult() & 0x7f;
+            return signal is > 0 and < 0x7f ? signal : null;
+        }
+    }
+
     public async Task WaitForExitAsync(CancellationToken cancellationToken) =>
-        _ = await _exitCode.WaitAsync(cancellationToken).ConfigureAwait(false);
+        _ = await _waitStatus.WaitAsync(cancellationToken).ConfigureAwait(false);
 
     public PanGlossMemoryKill? MemoryKill => _memoryWatchdog?.MemoryKill ?? _cgroupMemoryKill?.Invoke();
 
     public Task WaitForContainmentAsync(CancellationToken cancellationToken) =>
         _memoryWatchdog?.WaitForCompletionAsync(cancellationToken) ?? Task.CompletedTask;
+
+    internal Task StopContainmentMonitoringAsync() => _memoryWatchdog?.StopAsync() ?? Task.CompletedTask;
 
     public Task<string> ReadStandardOutputAsync() => ReadAsync(_stdout);
     public async Task<string> ReadStandardErrorAsync()
@@ -350,7 +377,7 @@ internal sealed class UnixPanGlossChildProcess : IPanGlossChildProcess
         _stderr.Dispose();
     }
 
-    private static int WaitForExitCode(int processId)
+    private static int WaitForExitStatus(int processId)
     {
         int status;
         while (UnixNative.WaitPid(processId, out status, 0) < 0)
@@ -358,12 +385,12 @@ internal sealed class UnixPanGlossChildProcess : IPanGlossChildProcess
             if (UnixNative.LastError == 4) continue;
             throw new IOException("Could not wait for the parser process.", UnixNative.LastError);
         }
-        return (status & 0x7f) == 0 ? (status >> 8) & 0xff : 128 + (status & 0x7f);
+        return status;
     }
 
     private async Task<string> ReadAsync(FileStream stream)
     {
-        await _exitCode.ConfigureAwait(false);
+        await _waitStatus.ConfigureAwait(false);
         await stream.FlushAsync().ConfigureAwait(false);
         stream.Position = 0;
         using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true,
@@ -409,6 +436,8 @@ internal sealed class UnixCgroup(string path) : IDisposable
             return null;
         }
     }
+
+    internal bool IsPopulated => File.ReadLines(System.IO.Path.Combine(Path, "cgroup.events")).Contains("populated 1");
 
     internal void Kill()
     {

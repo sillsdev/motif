@@ -52,14 +52,18 @@ internal sealed class PanGlossMemoryWatchdog : IDisposable
     internal Task WaitForCompletionAsync(CancellationToken cancellationToken) =>
         _sampling.WaitAsync(cancellationToken);
 
+    internal Task StopAsync()
+    {
+        _stop.Cancel();
+        return _sampling;
+    }
+
     public void Dispose()
     {
         if (_disposed) return;
         _disposed = true;
-        _stop.Cancel();
-        try { _sampling.GetAwaiter().GetResult(); }
-        catch (OperationCanceledException) { }
-        _stop.Dispose();
+        _ = StopAsync().ContinueWith(_ => _stop.Dispose(), CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
     }
 
     private async Task SampleAsync()
@@ -218,14 +222,16 @@ internal sealed class LinuxProcessGroupMemory : IProcessGroupMemory
         return _members;
     }
 
-    private static int[] ScanProcessGroup(int processGroupId)
+    internal static bool HasLiveMember(int processGroupId) => ScanProcessGroup(processGroupId, includeZombies: false).Length > 0;
+
+    private static int[] ScanProcessGroup(int processGroupId, bool includeZombies = true)
     {
         var processIds = new List<int>();
         foreach (var directory in Directory.EnumerateDirectories("/proc"))
         {
             if (!int.TryParse(Path.GetFileName(directory), NumberStyles.None, CultureInfo.InvariantCulture,
                     out var processId)) continue;
-            if (ReadProcessGroup(processId) == processGroupId) processIds.Add(processId);
+            if (ReadProcessGroup(processId, includeZombies) == processGroupId) processIds.Add(processId);
         }
         return [.. processIds];
     }
@@ -242,13 +248,14 @@ internal sealed class LinuxProcessGroupMemory : IProcessGroupMemory
     }
 
     // The stat fields after the parenthesised command are state, parent and process group.
-    private static int? ReadProcessGroup(int processId)
+    private static int? ReadProcessGroup(int processId, bool includeZombies = true)
     {
         string stat;
         try { stat = File.ReadAllText($"/proc/{processId}/stat"); }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { return null; }
         var fields = stat[(stat.LastIndexOf(')') + 1)..].Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        return fields.Length > 2 && int.TryParse(fields[2], NumberStyles.AllowLeadingSign,
+        return fields.Length > 2 && (includeZombies || fields[0] is not ("Z" or "X")) &&
+            int.TryParse(fields[2], NumberStyles.AllowLeadingSign,
             CultureInfo.InvariantCulture, out var group) ? group : null;
     }
 

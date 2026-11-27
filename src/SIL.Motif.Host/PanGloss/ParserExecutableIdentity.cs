@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Text.RegularExpressions;
+using SIL.Motif.Host.Assess;
 
 namespace SIL.Motif.Host.PanGloss;
 
@@ -26,23 +26,12 @@ public static partial class ParserExecutableIdentity
 
     /// <summary>The version the executable at <paramref name="path"/> reports for <c>--version</c>, or "unavailable".</summary>
     /// <remarks>Cached by path, modified time and length, so a rebuilt executable at the same path is read again.</remarks>
-    public static string ReadVersion(string path)
-    {
-        try
-        {
-            var file = new FileInfo(path);
-            if (!file.Exists) return "unavailable";
-            var key = (file.FullName, file.LastWriteTimeUtc.Ticks, file.Length);
-            if (Versions.TryGetValue(key, out var known)) return known;
-            var read = VersionOf(file.FullName);
-            if (read != "unavailable") Versions[key] = read;
-            return read;
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException)
-        {
-            return "unavailable";
-        }
-    }
+    /// <exception cref="AssessorUnavailableException">The probe was killed or exhausted memory.</exception>
+    public static string ReadVersion(string path) => ReadReportedVersion(path, fresh: false);
+
+    /// <summary>Reads the executable's reported version without using the cached observation.</summary>
+    /// <exception cref="AssessorUnavailableException">The probe was killed or exhausted memory.</exception>
+    public static string ReadFreshVersion(string path) => ReadReportedVersion(path, fresh: true);
 
     /// <summary>The version already read for the executable at <paramref name="path"/>, or null; it runs nothing.</summary>
     public static string? CachedVersion(string path)
@@ -59,32 +48,49 @@ public static partial class ParserExecutableIdentity
         }
     }
 
-    private static string VersionOf(string path)
+    internal static async Task<ParserVersionCheck> ReadVersionAsync(string path,
+        PanGlossContainmentJob containment, CancellationToken cancellationToken, bool fresh = false)
     {
         try
         {
-            var start = new ProcessStartInfo(path)
-            {
-                UseShellExecute = false, CreateNoWindow = true,
-                RedirectStandardOutput = true, RedirectStandardError = true,
-            };
-            PanGlossProcessEnvironment.Configure(start);
-            start.ArgumentList.Add("--version");
-            using var process = Process.Start(start);
-            if (process is null) return "unavailable";
-            var output = process.StandardOutput.ReadToEndAsync();
-            var error = process.StandardError.ReadToEndAsync();
-            if (!process.WaitForExit(3000))
-            {
-                process.Kill(entireProcessTree: true);
-                process.WaitForExit();
-                return "unavailable";
-            }
-            var match = VersionText().Match(output.GetAwaiter().GetResult() + " " + error.GetAwaiter().GetResult());
-            return process.ExitCode == 0 && match.Success ? match.Value : "unavailable";
+            var file = new FileInfo(path);
+            if (!file.Exists) return new("unavailable");
+            var key = (file.FullName, file.LastWriteTimeUtc.Ticks, file.Length);
+            if (!fresh && Versions.TryGetValue(key, out var known)) return new(known);
+            var outcome = await PanGlossProbe.RunAsync(file.FullName, "--version", containment,
+                TimeSpan.FromSeconds(3), cancellationToken).ConfigureAwait(false);
+            if (PanGlossProbe.FatalFailure(outcome) is { } failure) return new("unavailable", failure);
+            if (outcome is not PanGlossOutcome.Completed completed) return new("unavailable");
+            var match = VersionText().Match(completed.Output + " " + completed.StandardError);
+            if (!match.Success) return new("unavailable");
+            if (!fresh) Versions[key] = match.Value;
+            return new(match.Value);
         }
-        catch (Exception exception) when (exception is IOException or Win32Exception or InvalidOperationException
-                                              or UnauthorizedAccessException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            return new("unavailable");
+        }
+    }
+
+    private static string ReadReportedVersion(string path, bool fresh)
+    {
+        try
+        {
+            if (!File.Exists(path)) return "unavailable";
+            if (!fresh && CachedVersion(path) is { } cached) return cached;
+            using var containment = PanGlossContainment.CreateJob();
+            var check = ReadVersionAsync(path, containment, CancellationToken.None, fresh).GetAwaiter().GetResult();
+            return check.Failure switch
+            {
+                PanGlossOutcome.Refused refused => throw new AssessorUnavailableException(PanGlossAssessor.AssessorName,
+                    refused.Message) { ParserRefusal = refused },
+                PanGlossOutcome.MemoryLimit memory => throw new AssessorUnavailableException(PanGlossAssessor.AssessorName,
+                    memory.Message) { MemoryKill = memory.Kill },
+                _ => check.Version,
+            };
+        }
+        catch (Exception exception) when (exception is IOException or Win32Exception or InvalidOperationException or
+            UnauthorizedAccessException or ArgumentException or PanGlossMemoryLimitSettingException)
         {
             return "unavailable";
         }
@@ -93,3 +99,5 @@ public static partial class ParserExecutableIdentity
     [GeneratedRegex(@"\b\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?\b", RegexOptions.CultureInvariant)]
     private static partial Regex VersionText();
 }
+
+internal sealed record ParserVersionCheck(string Version, PanGlossOutcome? Failure = null);

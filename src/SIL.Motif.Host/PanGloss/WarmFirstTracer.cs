@@ -14,13 +14,14 @@ public interface IWarmPanGlossTracer : IPanGlossTracer
 }
 
 /// <summary>
-/// Asks the resident parser first and runs the cold tracer for any word it cannot answer. The reply is the same
+/// Asks the resident parser first and runs the cold tracer when an ordinary session failure leaves no answer.
+/// Fatal probe outcomes remain failures. The reply is the same
 /// document and exit code the cold <c>parse</c> produces, so both are read by <see cref="PanGlossTracer"/>'s own
-/// interpretation. <paramref name="stepLimit"/> is the cap the cold tracer passes as <c>--step-cap</c>; the resident
+/// interpretation. <paramref name="parserWorkLimit"/> is the cap the cold tracer passes as <c>--work-cap</c>; the resident
 /// parser starts with the same cap and is a different session from one started with another.
 /// </summary>
 public sealed class WarmFirstTracer(WarmPanGlossPool pool, IPanGlossTracer cold, PanGlossInvoker? ownedInvoker = null,
-    StepCap? stepLimit = null)
+    ParserWorkLimit? parserWorkLimit = null)
     : IWarmPanGlossTracer, IDisposable
 {
     public Task<PanGlossTraceOutcome> TraceAsync(string grammarPath, string word, CancellationToken cancellationToken,
@@ -30,15 +31,20 @@ public sealed class WarmFirstTracer(WarmPanGlossPool pool, IPanGlossTracer cold,
         string word, CancellationToken cancellationToken, TimeSpan? timeout = null)
     {
         var result = await pool.TryWordAsync(projectKey, stateToken, grammarPath, word, traceDetails: true,
-            cancellationToken, stepLimit).ConfigureAwait(false);
+            cancellationToken, parserWorkLimit).ConfigureAwait(false);
         switch (result)
         {
             case WarmParseResult.Cancelled:
                 return new PanGlossTraceOutcome.Cancelled(word);
+            case WarmParseResult.Fallback { ProbeFailure: { } failure }:
+                return PanGlossTracer.FromOutcome(word, failure);
             case WarmParseResult.Completed completed:
                 var interpreted = PanGlossTracer.Interpret(word, completed.ExitCode, completed.Json, completed.Elapsed);
+                if (completed.Status == "MEMCAP" && interpreted is PanGlossTraceOutcome.Incomplete incomplete)
+                    interpreted = incomplete with { Reason = "The parser reached its memory limit for the word. This trace is not the whole search." };
                 // A reply Motif cannot read is the resident parser's fault, not the word's: the cold path decides.
-                if (interpreted is not PanGlossTraceOutcome.Malformed) return interpreted;
+                if (interpreted is not PanGlossTraceOutcome.Malformed)
+                    return interpreted with { ParserWork = completed.ParserWork };
                 break;
         }
         return await cold.TraceAsync(grammarPath, word, cancellationToken, timeout).ConfigureAwait(false);

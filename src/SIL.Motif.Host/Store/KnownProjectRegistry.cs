@@ -63,7 +63,7 @@ public sealed class KnownProjectRegistry
             return existing with { FullFwDataPath = path, LastSeenUtc = lastSeenUtc };
         }
 
-        var tag = ProjectTags.Default(path, candidate => IsTaken(connection, transaction, candidate, null));
+        var tag = DefaultNamingHolder(connection, transaction, path);
         if (existing is null)
             Insert(connection, transaction, workspaceKey, path, seen, tag);
         else
@@ -85,7 +85,8 @@ public sealed class KnownProjectRegistry
         using var transaction = connection.BeginTransaction();
         var existing = Find(connection, transaction, workspaceKey);
         if (IsTaken(connection, transaction, tag, existing?.WorkspaceKey))
-            throw new ProjectTagException(ProjectTagProblem.Taken, tag, path);
+            throw new ProjectTagException(ProjectTagProblem.Taken, tag, path,
+                HolderOf(connection, transaction, tag));
 
         if (existing is null)
         {
@@ -185,7 +186,7 @@ public sealed class KnownProjectRegistry
     {
         try
         {
-            return ProjectTags.Default(path, candidate => IsTaken(connection, transaction, candidate, null));
+            return DefaultNamingHolder(connection, transaction, path);
         }
         catch (ProjectTagException exception) when (exception.Problem == ProjectTagProblem.Unavailable)
         {
@@ -193,9 +194,53 @@ public sealed class KnownProjectRegistry
         }
     }
 
+    private static string DefaultNamingHolder(SqliteConnection connection, SqliteTransaction transaction, string path)
+    {
+        try { return ProjectTags.Default(path, candidate => IsTaken(connection, transaction, candidate, null)); }
+        catch (ProjectTagException exception) when (exception.Problem == ProjectTagProblem.Taken)
+        {
+            throw new ProjectTagException(exception.Problem, exception.Tag, path,
+                HolderOf(connection, transaction, exception.Tag));
+        }
+    }
+
+    private static string? HolderOf(SqliteConnection connection, SqliteTransaction transaction, string tag)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "SELECT FullFwDataPath FROM KnownProjects WHERE ProjectTag = $tag LIMIT 1;";
+        command.Parameters.AddWithValue("$tag", tag);
+        return command.ExecuteScalar() as string;
+    }
+
+    /// <summary>A moved or deleted project leaves its row behind; its tag is free once its file is gone.</summary>
+    private static void ReleaseStaleHolder(
+        SqliteConnection connection, SqliteTransaction transaction, string tag, string? exceptWorkspaceKey)
+    {
+        using var find = connection.CreateCommand();
+        find.Transaction = transaction;
+        find.CommandText = "SELECT WorkspaceKey, FullFwDataPath FROM KnownProjects WHERE ProjectTag = $tag;";
+        find.Parameters.AddWithValue("$tag", tag);
+        string? staleKey = null;
+        using (var reader = find.ExecuteReader())
+        {
+            if (!reader.Read()) return;
+            var key = reader.GetString(0);
+            if (key == exceptWorkspaceKey || File.Exists(reader.GetString(1))) return;
+            staleKey = key;
+        }
+
+        using var release = connection.CreateCommand();
+        release.Transaction = transaction;
+        release.CommandText = "UPDATE KnownProjects SET ProjectTag = NULL WHERE WorkspaceKey = $key;";
+        release.Parameters.AddWithValue("$key", staleKey);
+        release.ExecuteNonQuery();
+    }
+
     private static bool IsTaken(
         SqliteConnection connection, SqliteTransaction transaction, string tag, string? exceptWorkspaceKey)
     {
+        ReleaseStaleHolder(connection, transaction, tag, exceptWorkspaceKey);
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = exceptWorkspaceKey is null

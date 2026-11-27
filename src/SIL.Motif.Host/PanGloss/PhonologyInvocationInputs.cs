@@ -87,7 +87,7 @@ internal sealed record PhonologyInvocationInputs(string GrammarPath, string Gram
                 dependencies.Add(new PhonologyGrammarDependency("WritingSystemStore/" + name, DigestFile(copied)));
             }
         }
-        var bytes = JsonSerializer.SerializeToUtf8Bytes(new PhonologyWireRequest(1, request.Limits,
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(new PhonologyWireRequest(2, request.Limits,
             request.Examples.Select(e => new PhonologyWireExample(e.Id, PhonologyWire.WriteContext(e.Context), e.Underlying, e.Expected)).ToArray()),
             PhonologyWire.Options);
         if (bytes.Length > MaxBytes) throw new IOException("Phonology request exceeds 32 MiB.");

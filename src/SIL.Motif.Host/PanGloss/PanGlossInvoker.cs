@@ -13,11 +13,6 @@ namespace SIL.Motif.Host.PanGloss;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Six launchers used to own copies of this sequence, and the containment they were each meant to call was
-/// wired at none of them. Here a caller cannot obtain a process at all, only an outcome, so admission and
-/// containment cannot be skipped and a failure cannot escape as an exception.
-/// </para>
-/// <para>
 /// The default cap is the parser's own ratified execution limit rather than a number Motif chose. A batch
 /// without a per-word time limit has no wall-clock deadline and remains cancellable. The per-word limit is a
 /// <see cref="PanGlossRequest.Batch"/> argument and bounds a word, not the process, so a batch with one is allowed
@@ -72,19 +67,43 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
         try { _ = PanGlossMemoryLimit.FromEnvironment(); }
         catch (PanGlossMemoryLimitSettingException exception) { return new PanGlossOutcome.Unavailable(exception.Message); }
 
+        var cleanup = PanGlossCleanupScope.Current;
         try
         {
             return await _queue.RunAsync(label,
                 async (containment, token) =>
                 {
+                    using var cleanupScope = PanGlossCleanupScope.Use(cleanup);
                     try
                     {
                         var surface = await VerifySurfaceAsync(_executable, containment, token).ConfigureAwait(false);
-                        var admission = PanGlossSurface.CheckRequest(_executable, request, surface);
+                        var effectiveRequest = request is PanGlossRequest.Batch batch &&
+                            surface.Capabilities?.BatchTsv >= PanGlossInterfaceVersions.BatchTsvWorkColumnsVersion &&
+                            surface.Capabilities.Commands.TryGetValue("batch", out var batchCommand) &&
+                            batchCommand.Flags.ContainsKey("--work-columns")
+                                ? batch with { WorkColumns = true } : request;
+                        if (request is PanGlossRequest.WhyNot whyNot && surface.IsValid && surface.Capabilities is { } described)
+                        {
+                            if (described.WhyNotRefusal() is { } incapable)
+                                return new PanGlossOutcome.Unavailable(
+                                    $"The installed PanGloss ('{_executable}') cannot answer why-not: {incapable}.")
+                                    { Containment = containment.Report, MissingCapability = "why-not" };
+                            if (described.GuidChoiceRefusal(whyNot.Candidates) is { } noGuidChoices)
+                                return new PanGlossOutcome.Unavailable(
+                                    $"The installed PanGloss ('{_executable}') cannot read a choice named by guid alone: {noGuidChoices}.")
+                                    { Containment = containment.Report, MissingCapability = "why-not-guid-choices" };
+                            effectiveRequest = whyNot with { AnswerableKinds = described.WhyNot!.Kinds };
+                        }
+                        if (request is PanGlossRequest.RejectionTrace describedTrace && surface.IsValid &&
+                            surface.Capabilities is { DiagnosticRejectReasons: { } reasons })
+                            effectiveRequest = describedTrace with { DescribedRejectReasons = reasons };
+                        var admission = PanGlossSurface.CheckRequest(_executable, effectiveRequest, surface);
+                        if (admission.Failure is { } probeFailure)
+                            return probeFailure with { Containment = containment.Report };
                         if (!admission.IsValid)
                             return new PanGlossOutcome.Unavailable(admission.Message)
                                 { Containment = containment.Report };
-                        var outcome = await LaunchAsync(_executable, request, containment, cap, token).ConfigureAwait(false);
+                        var outcome = await LaunchAsync(_executable, effectiveRequest, containment, cap, token).ConfigureAwait(false);
                         return outcome with { Containment = containment.Report };
                     }
                     catch (OperationCanceledException) when (token.IsCancellationRequested)
@@ -133,7 +152,7 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
         {
             if (_surfaceChecks.TryGetValue(path, out var cached)) return cached;
             var check = await PanGlossSurface.CheckAsync(path, containment, cancellationToken).ConfigureAwait(false);
-            _surfaceChecks[path] = check;
+            if (check.Failure is null) _surfaceChecks[path] = check;
             return check;
         }
         finally
@@ -150,12 +169,13 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
         CancellationToken cancellationToken, Action<PanGlossChildProcess>? onStarted = null)
     {
         var scratch = Path.Combine(Path.GetTempPath(), "SIL.Motif.PanGloss", Guid.NewGuid().ToString("N"));
-        var retained = request is PanGlossRequest.Batch { ArtifactDirectory: not null } or PanGlossRequest.Facts;
+        var retained = request is PanGlossRequest.Batch { ArtifactDirectory: not null } or PanGlossRequest.Facts or PanGlossRequest.GrammarHealth { FactsContextJson: not null };
         var created = false;
         var published = false;
         string? sourceDigest = null;
         string? executableDigest = null;
         string? wordsDigest = null;
+        WorkerMutexOwner? sharedLease = null;
         if (request is PanGlossRequest.Batch { ArtifactDirectory: { } artifactDirectory })
             scratch = Path.GetFullPath(artifactDirectory);
         if (request is PanGlossRequest.Facts { ArtifactDirectory: { } factsArtifactDirectory })
@@ -170,14 +190,45 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                 created = true;
                 if (retained && request is PanGlossRequest.Batch batch)
                 {
-                    var stagedSource = Path.Combine(scratch, "source.fwdata");
-                    File.Copy(batch.ProjectFilePath, stagedSource, overwrite: false);
-                    request = batch with { ProjectFilePath = stagedSource };
+                    var stagedSource = Path.Combine(scratch, "source" + Path.GetExtension(batch.ProjectFilePath));
+                    if (batch.SharedArtifactDirectory is { } sharedDirectory)
+                    {
+                        Directory.CreateDirectory(sharedDirectory);
+                        sharedLease = StatsCacheLock.CreateSharedSourceLock(sharedDirectory, exclusive: false);
+                        while (!sharedLease.TryAcquire())
+                        {
+                            cancellationToken.ThrowIfCancellationRequested();
+                            cancellationToken.WaitHandle.WaitOne(StatsCacheLock.RetryInterval);
+                        }
+                        try { stagedSource = SharedAssessmentArtifacts.Publish(sharedDirectory, batch.ProjectFilePath); }
+                        catch (InvalidDataException) { File.Copy(batch.ProjectFilePath, stagedSource, overwrite: false); }
+                    }
+                    else File.Copy(batch.ProjectFilePath, stagedSource, overwrite: false);
+                    var importedSnapshot = batch.ImportedSnapshot;
+                    if (importedSnapshot is not null)
+                    {
+                        if (!importedSnapshot.Matches(stagedSource))
+                            return new PanGlossOutcome.Incomplete("The imported snapshot's project changed before staging.", string.Empty);
+                        var stagedSnapshot = Path.Combine(scratch, "grammar-snapshot.json");
+                        if (batch.SharedArtifactDirectory is { } snapshotDirectory)
+                        {
+                            try { stagedSnapshot = SharedAssessmentArtifacts.Publish(snapshotDirectory, importedSnapshot.Path,
+                                importedSnapshot.TransferOwnership); }
+                            catch (InvalidDataException) { File.Copy(importedSnapshot.Path, stagedSnapshot, overwrite: false); }
+                        }
+                        else File.Copy(importedSnapshot.Path, stagedSnapshot, overwrite: false);
+                        importedSnapshot = importedSnapshot with { Path = stagedSnapshot };
+                        if (!importedSnapshot.Matches(stagedSource))
+                            return new PanGlossOutcome.Incomplete("The imported snapshot changed while staging.", string.Empty);
+                    }
+                    request = batch with { ProjectFilePath = stagedSource, ImportedSnapshot = importedSnapshot };
                     sourceDigest = BatchInvocationEvidence.DigestFile(stagedSource);
                     executableDigest = BatchInvocationEvidence.DigestFile(executable);
                 }
                 if (retained && request is PanGlossRequest.Facts facts)
                     sourceDigest = BatchInvocationEvidence.DigestFile(facts.SnapshotPath);
+                if (request is PanGlossRequest.GrammarHealth { SnapshotPath: not null } health)
+                    sourceDigest = BatchInvocationEvidence.DigestFile(health.GrammarPath);
                 if (request is PanGlossRequest.PhonologyExamples phonology)
                     request = await PhonologyInvocationInputs.PrepareAsync(phonology, scratch, executable, cancellationToken)
                         .ConfigureAwait(false);
@@ -217,6 +268,8 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
             using (process)
             {
                 onStarted?.Invoke(process);
+                if (request is PanGlossRequest.Batch dispatched)
+                    dispatched.OnDispatched?.Invoke(dispatched.Words, executableDigest);
                 using var progressStop = new CancellationTokenSource();
                 var progressTask = request is PanGlossRequest.Batch { OnProgress: not null } batch
                     ? MonitorBatchProgressAsync(batch, Path.Combine(scratch, "out.tsv"), progressStop.Token)
@@ -228,29 +281,29 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                 var stdErrTask = process.ReadStandardErrorAsync();
                 var stdOutTask = process.ReadStandardOutputAsync();
 
+                var outputDrained = Task.WhenAll(stdOutTask, stdErrTask);
                 using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 deadline.CancelAfter(cap);
                 try
                 {
                     await process.WaitForExitAsync(deadline.Token).ConfigureAwait(false);
+                    await containment.WaitForTerminatedDescendantsAsync(process.Id, deadline.Token).ConfigureAwait(false);
                     await process.WaitForContainmentAsync(deadline.Token).ConfigureAwait(false);
+                    await outputDrained.WaitAsync(deadline.Token).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
                 {
-                    containment.Terminate(process);
-                    using var stopped = new CancellationTokenSource(TimeSpan.FromSeconds(10));
                     try
                     {
-                        await process.WaitForExitAsync(stopped.Token).ConfigureAwait(false);
-                        await process.WaitForContainmentAsync(stopped.Token).ConfigureAwait(false);
-                        await Task.WhenAll(stdOutTask, stdErrTask).WaitAsync(stopped.Token).ConfigureAwait(false);
+                        await containment.TerminateAndConfirmAsync(process, outputDrained).ConfigureAwait(false);
                     }
-                    catch (OperationCanceledException)
+                    catch (Exception exception) when (exception is OperationCanceledException or Win32Exception or IOException)
                     {
                         return new PanGlossOutcome.Incomplete(
                             "Parser termination could not be confirmed after requesting cancellation.", string.Empty)
                         { Cause = PanGlossIncompleteCause.Infrastructure };
                     }
+                    if (request is PanGlossRequest.Batch interrupted) PublishPartial(interrupted, scratch);
                     return cancellationToken.IsCancellationRequested
                         ? new PanGlossOutcome.Cancelled()
                         : new PanGlossOutcome.TimedOut(cap,
@@ -260,25 +313,47 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                 var standardError = await stdErrTask.ConfigureAwait(false);
                 var standardOutput = await stdOutTask.ConfigureAwait(false);
                 if (process.ExitCode != 0 && process.MemoryKill is { } memoryKill)
-                    return new PanGlossOutcome.MemoryLimit(memoryKill);
-                if (process.ExitCode != 0 && !request.AcceptsNonzeroExit(standardOutput))
                 {
+                    if (request is PanGlossRequest.Batch interrupted) PublishPartial(interrupted, scratch);
+                    return new PanGlossOutcome.MemoryLimit(memoryKill);
+                }
+                if (process.ExitCode != 0 &&
+                    (PanGlossOutcome.Refused.Classify(process.ExitCode, standardError, process.TerminationSignal) is
+                        JobFailureCategory.ParserKilled or JobFailureCategory.OutOfMemory ||
+                     !request.AcceptsNonzeroExit(standardOutput, scratch)))
+                {
+                    if (request is PanGlossRequest.Batch interrupted) PublishPartial(interrupted, scratch);
                     return new PanGlossOutcome.Refused(process.ExitCode, StandardError: standardError,
                         StandardOutput: standardOutput,
                         Detail: PanGlossCompileError.TryRead(standardError)?.Describe(request.Subcommand, process.ExitCode) ??
                             $"pangloss {request.Subcommand} exited {process.ExitCode}:" + Environment.NewLine +
-                            standardError.Trim());
+                            standardError.Trim()) { TerminationSignal = process.TerminationSignal };
                 }
                 if (request is PanGlossRequest.PhonologyExamples { Inputs: { } inputs } && !inputs.Unchanged(executable))
                     return new PanGlossOutcome.Incomplete("The staged phonology inputs or executable changed during invocation.", standardError);
                 var outcome = request.Finish(scratch, standardOutput, standardError, clock.Elapsed,
                     out var batchFileDigests);
+                if (outcome is not PanGlossOutcome.Completed && request is PanGlossRequest.Batch incompleteBatch)
+                    PublishPartial(incompleteBatch, scratch);
                 if (process.ExitCode != 0 && outcome is not PanGlossOutcome.Completed)
                     return new PanGlossOutcome.Refused(process.ExitCode, standardError, standardOutput,
                         $"pangloss {request.Subcommand} exited {process.ExitCode}; {outcome.Message}" +
-                        (string.IsNullOrWhiteSpace(standardError) ? string.Empty : Environment.NewLine + standardError.Trim()));
+                        (string.IsNullOrWhiteSpace(standardError) ? string.Empty : Environment.NewLine + standardError.Trim()))
+                    { TerminationSignal = process.TerminationSignal };
+                if (request is PanGlossRequest.GrammarHealth { SnapshotPath: not null } healthRequest &&
+                    sourceDigest != BatchInvocationEvidence.DigestFile(healthRequest.GrammarPath))
+                    return new PanGlossOutcome.Incomplete("The project changed while grammar-health was running.", standardError);
                 if (!retained || outcome is not PanGlossOutcome.Completed completed)
                     return outcome;
+                if (request is PanGlossRequest.GrammarHealth { FactsContextJson: not null } healthFacts)
+                {
+                    if (completed.FactsArtifact is not { } artifact ||
+                        artifact.SourceSha256 != BatchInvocationEvidence.DigestFile(healthFacts.SnapshotPath!))
+                        return new PanGlossOutcome.Incomplete("The grammar-health snapshot changed while facts were read.", standardError);
+                    published = true;
+                    var lease = new Assess.AssessmentArtifactLease(scratch);
+                    return completed with { ArtifactLease = lease, FactsArtifactLease = lease };
+                }
                 if (request is PanGlossRequest.Facts factsRequest)
                 {
                     var factsArtifact = completed.FactsArtifact;
@@ -291,6 +366,8 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                     return completed with { ArtifactLease = lease, FactsArtifactLease = lease };
                 }
                 var capturedBatch = (PanGlossRequest.Batch)request;
+                if (capturedBatch.ImportedSnapshot is { } batchSnapshot && !batchSnapshot.Matches(capturedBatch.ProjectFilePath))
+                    return new PanGlossOutcome.Incomplete("The imported snapshot changed during the batch.", standardError);
                 if (sourceDigest != BatchInvocationEvidence.DigestFile(capturedBatch.ProjectFilePath) ||
                     executableDigest != BatchInvocationEvidence.DigestFile(executable) ||
                     wordsDigest != BatchInvocationEvidence.DigestFile(Path.Combine(scratch, "words.txt")))
@@ -308,6 +385,13 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                 if (batchFileDigests?.TsvSha256 != tsvDigest ||
                     batchFileDigests.AnalysesSha256 != analysesDigest)
                     return new PanGlossOutcome.Incomplete("The batch artifacts changed while being retained.", standardError);
+                var version = await ParserExecutableIdentity.ReadVersionAsync(executable, containment, cancellationToken)
+                    .ConfigureAwait(false);
+                if (version.Failure is { } probeFailure)
+                {
+                    PublishPartial(capturedBatch, scratch);
+                    return probeFailure;
+                }
                 var evidence = new BatchInvocationEvidence(
                     Path.GetFileName(scratch), capturedBatch.ProjectFilePath, sourceDigest!, executableDigest!,
                     wordsPath, wordsDigest!,
@@ -315,19 +399,24 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                     stderrPath, BatchInvocationEvidence.DigestFile(stderrPath),
                     capturedBatch.PerWordLimit is { } timeLimit
                         ? (int)timeLimit.TotalMilliseconds : null,
-                    capturedBatch.PerWordStepLimit ?? StepCap.Default,
+                    capturedBatch.PerWordParserWorkLimit ?? ParserWorkLimit.Default,
                     capturedBatch.ThreadCount, capturedBatch.StatsCachePath is not null)
                 {
+                    GrammarExportFormat = GrammarExportFormats.ForPath(capturedBatch.ProjectFilePath),
                     AnalysesPath = analysesPath,
                     AnalysesSha256 = analysesDigest,
-                    ExecutableVersion = ParserExecutableIdentity.ReadVersion(executable),
+                    ImportedSnapshotPath = capturedBatch.ImportedSnapshot?.Path,
+                    ImportedSnapshotSha256 = capturedBatch.ImportedSnapshot?.SnapshotSha256,
+                    ExecutableVersion = version.Version,
                     ExecutablePath = Path.GetFullPath(executable),
                 };
                 published = true;
+                var batchLease = new Assess.AssessmentArtifactLease(scratch, sharedLease);
+                sharedLease = null;
                 return completed with
                 {
                     BatchEvidence = evidence,
-                    ArtifactLease = new Assess.AssessmentArtifactLease(scratch)
+                    ArtifactLease = batchLease
                 };
                 }
                 finally
@@ -344,6 +433,7 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
         }
         finally
         {
+            sharedLease?.Dispose();
             // Best effort: a leaked scratch directory must not turn a completed run into a failure.
             try { if (created && !published) Directory.Delete(scratch, recursive: true); }
             catch (IOException) { }
@@ -380,4 +470,32 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
     }
 
     private static string MissingExecutableMessage => PanGlossExecutable.NotFoundMessage;
+
+    internal static void PublishPartial(PanGlossRequest.Batch batch, string scratch)
+    {
+        if (batch.OnPartial is null) return;
+        var path = Path.Combine(scratch, "analyses.jsonl");
+        if (!File.Exists(path)) return;
+        var text = File.ReadAllText(path);
+        var end = text.LastIndexOf('\n');
+        if (end < 0) return;
+        var rows = new Dictionary<int, SIL.Motif.Contract.Responses.ParseWordEvidence>();
+        var duplicates = new HashSet<int>();
+        foreach (var raw in text[..end].Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        {
+            try
+            {
+                var line = raw.TrimStart('\uFEFF');
+                var row = System.Text.Json.JsonSerializer.Deserialize<SIL.Motif.Contract.Responses.ParseWordEvidence>(line,
+                    SIL.Motif.Host.Parser.ParseMorphEvidence.JsonOptions);
+                if (row is null || row.Index < 0 || row.Index >= batch.Words.Count || row.Word != batch.Words[row.Index]) continue;
+                var normalized = System.Text.Json.JsonSerializer.Serialize(row with { Index = 0 }, SIL.Motif.Host.Parser.ParseMorphEvidence.JsonOptions);
+                _ = SIL.Motif.Host.Parser.ParseMorphEvidence.Read(normalized, [row.Word]);
+                if (!rows.TryAdd(row.Index, row)) duplicates.Add(row.Index);
+            }
+            catch (Exception exception) when (exception is System.Text.Json.JsonException or InvalidDataException or NotSupportedException) { }
+        }
+        foreach (var index in duplicates) rows.Remove(index);
+        if (rows.Count != 0) batch.OnPartial(rows.OrderBy(pair => pair.Key).Select(pair => pair.Value).ToArray());
+    }
 }

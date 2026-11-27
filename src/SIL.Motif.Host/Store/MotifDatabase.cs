@@ -11,15 +11,22 @@ namespace SIL.Motif.Host.Store;
 /// lease, connection lifecycle, and failure translation it delegates to are shared with
 /// <see cref="MachineDatabase"/>.
 /// </remarks>
-public sealed class MotifDatabase : IDisposable
+public sealed partial class MotifDatabase : IDisposable
 {
     private readonly MotifSqliteStore _store;
 
-    private MotifDatabase(MotifSqliteStore store) => _store = store;
+    private MotifDatabase(MotifSqliteStore store, ProjectLocator project)
+    {
+        _store = store;
+        Project = project;
+    }
+
+    /// <summary>The FieldWorks project paired with this database.</summary>
+    public ProjectLocator Project { get; }
 
     /// <summary>
-    /// Opens a project database with a shared active-use lease, creating it if absent. An existing database at
-    /// any other schema is refused rather than migrated: pre-1.0 Motif has no upgrade path.
+    /// Opens a project database with a shared active-use lease, creating it if absent. Older project stores
+    /// carry authored data into the current schema; newer stores are refused.
     /// </summary>
     /// <param name="path">The sibling Motif database path.</param>
     /// <param name="project">The project locator that must match persisted metadata.</param>
@@ -39,23 +46,36 @@ public sealed class MotifDatabase : IDisposable
         TimeProvider? timeProvider = null)
     {
         var descriptor = Describe(path, project, supportedSchema, workerVersion, timeProvider);
-        return new MotifDatabase(MotifSqliteStore.Open(path, descriptor, ownershipPatience));
+        return new MotifDatabase(MotifSqliteStore.Open(path, descriptor, ownershipPatience), project);
+    }
+
+    /// <summary>Opens a validated existing project store for read-only access without creating or upgrading it.</summary>
+    /// <param name="path">The existing sibling Motif database path.</param>
+    /// <param name="project">The project locator that must match persisted metadata.</param>
+    /// <returns>A database boundary whose connections cannot write to the store.</returns>
+    /// <exception cref="FileNotFoundException">The store's active-use lease does not exist.</exception>
+    /// <exception cref="InvalidDataException">The file identity, metadata, or project binding is invalid.</exception>
+    /// <exception cref="NotSupportedException">The store schema or worker compatibility is unsupported.</exception>
+    /// <exception cref="IOException">The existing store is unavailable.</exception>
+    public static MotifDatabase OpenExistingReadOnly(string path, ProjectLocator project)
+    {
+        var descriptor = Describe(path, project, MotifSchema.CurrentSchema, MotifProductVersion.Current);
+        return new MotifDatabase(MotifSqliteStore.OpenExistingReadOnly(path, descriptor), project);
     }
 
     /// <summary>
     /// Deletes a project database that <see cref="OpenOwned"/> would refuse with a
     /// <see cref="MotifStoreVersionException"/>, because another version of Motif made it. Any other refusal is
-    /// thrown as <see cref="OpenOwned"/> throws it, and nothing is deleted.
+    /// thrown as <see cref="OpenOwned"/> throws it, and nothing is deleted. An older store is kept for upgrade.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The guarantee is that this never deletes a database this version of Motif can use. A database refused as
-    /// another version's is never opened or written by this version, because <see cref="OpenOwned"/> refuses it,
-    /// and it is never migrated. So the only change that can turn the file at this path into a usable database is
-    /// creation, and creation holds the creation lock this method decides and deletes under. A database created
+    /// The guarantee is that this never deletes a database this version of Motif can use or upgrade. Creation
+    /// and upgrade hold the creation lock this method decides and deletes under. A database created
     /// while this waits for that lock is found usable and kept, pinned by
-    /// `ADatabaseCreatedWhileTheDeleteWaitsIsKept`; a delete that gets the lock first deletes, and the next open
-    /// creates a fresh database, pinned by `ADeleteThatWinsTheLockIsFollowedByACleanRecreate`.
+    /// `ADatabaseCreatedWhileTheDeleteWaitsIsKept`. A newer store is never deleted: it throws
+    /// <see cref="MotifStoreVersionException"/> with <see cref="MotifStoreVersionException.Newer"/> set, pinned by
+    /// `ANewerStoreIsNeverResetAndIsLeftByteForByte`.
     /// </para>
     /// <para>
     /// Each open holds a shared lease on the sibling <c>.use.lock</c> file for this store's lifetime. Other Motif
@@ -73,11 +93,12 @@ public sealed class MotifDatabase : IDisposable
     /// Called once, when another opener holds the creation lock and this call starts waiting for it, so a caller
     /// can order other work against the wait. Not called when the lock is free.
     /// </param>
-    /// <returns><c>true</c> when the file was deleted; <c>false</c> when it is absent, not yet created, or usable.</returns>
+    /// <returns>Whether the file was deleted (not when it is absent, not yet created, or usable), and the backup taken first.</returns>
+    /// <exception cref="MotifStoreUpgradeFailedException">The backup that must precede the deletion failed; nothing was deleted.</exception>
     /// <exception cref="MotifStoreLockException">The creation lock or active-use lease is held by another process.</exception>
     /// <exception cref="IOException">The file could not be read or deleted, for instance while it is open.</exception>
     /// <exception cref="InvalidDataException">The file identity, metadata, or project binding is invalid.</exception>
-    public static bool DeleteIfOtherVersion(
+    public static StoreDeletion DeleteIfOtherVersion(
         string path,
         ProjectLocator project,
         int supportedSchema,
@@ -85,7 +106,12 @@ public sealed class MotifDatabase : IDisposable
         TimeSpan? ownershipPatience = null,
         Action? onWaitingForOwnership = null) =>
         MotifSqliteStore.DeleteIfOtherVersion(path, Describe(path, project, supportedSchema, workerVersion),
-            ownershipPatience, onWaitingForOwnership);
+            ownershipPatience, onWaitingForOwnership, fullPath =>
+            {
+                var evidence = TrialExportDirectory(fullPath);
+                if (Directory.Exists(evidence))
+                    Directory.Delete(evidence, recursive: (File.GetAttributes(evidence) & FileAttributes.ReparsePoint) == 0);
+            });
 
     private static MotifSqliteStoreDescriptor Describe(
         string path, ProjectLocator project, int supportedSchema, Version workerVersion,
@@ -111,23 +137,92 @@ public sealed class MotifDatabase : IDisposable
             Name = "Motif database",
             ApplicationId = MotifSchema.ApplicationId,
             CurrentSchema = supportedSchema,
+            IncrementalVacuum = true,
             ValidateSchema = MotifSchema.ValidateSchema,
             Create = (connection, transaction) => MotifSchema.Create(connection, transaction, project, timeProvider),
             // Every job, progress and Proposal write goes through here, so its files stay open between calls.
             PooledConnections = true,
+            Upgrade = supportedSchema == MotifSchema.CurrentSchema
+                ? (output, _, backup, safety) =>
+                    MotifStoreUpgrade.Build(path, output, project, false, backup, workerVersion, safetyBackup: safety)
+                : null,
+            BackUp = reason =>
+            {
+                if (reason == StoreBackups.PreUpgrade) RefuseOtherProjectOrNewerWorker(path, project, workerVersion);
+                return StoreBackups.WriteHeldExclusively(project, path, reason, timeProvider);
+            },
+            Retain = safety => StoreBackupRetention.Prune(
+                Path.GetDirectoryName(safety.Directory)!, StoreBackups.PreUpgrade, safety.Directory, supportedSchema,
+                storePath: path),
             BeforeOpen = connection =>
             {
                 var metadata = MotifSchema.ReadMetadata(connection);
-                EnsureLocatorMatches(metadata.Project, project);
+                EnsureLocatorMatches(metadata.Project, project, path);
                 if (workerVersion < metadata.MinimumWorkerVersion)
                     throw new MotifStoreVersionException(Path.GetFullPath(path),
-                        $"Worker {workerVersion} is older than database minimum {metadata.MinimumWorkerVersion}.");
+                        $"Worker {workerVersion} is older than database minimum {metadata.MinimumWorkerVersion}. " +
+                        "Install the newer Motif, or restore a pre-upgrade backup with motif store restore.")
+                    { Newer = true };
             }
         };
     }
 
+    /// <summary>Returns the store-owned directory for durable Trial evidence.</summary>
+    public static string TrialExportDirectory(string storePath) => storePath + ".trial-exports";
+
     /// <summary>Opens a configured connection while this worker owns the database.</summary>
     public SqliteConnection OpenConnection() => _store.OpenConnection();
+
+    /// <summary>
+    /// Says what upgrading an older project store would do, without changing it: no backup, lock, rename or report is written.
+    /// The build runs into a scratch file that is deleted before this returns.
+    /// </summary>
+    /// <param name="path">The existing sibling Motif database path.</param>
+    /// <param name="project">The project locator that must match persisted metadata.</param>
+    /// <param name="workerVersion">The worker version used for compatibility checks.</param>
+    /// <returns>The report the real upgrade would produce, or <see langword="null"/> when the store is already current.</returns>
+    public static MotifStoreUpgrade.Report? DryRunUpgrade(string path, ProjectLocator project, Version workerVersion)
+    {
+        var descriptor = Describe(path, project, MotifSchema.CurrentSchema, workerVersion);
+        using var lease = MotifSqliteStore.AcquireExistingReadLease(path);
+        // Beside the store, as the real upgrade writes, so a store too large for the temp volume still has its dry run.
+        var scratch = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(path))!, ".motif-upgrade-dry-run-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(scratch);
+        try
+        {
+            using var probe = new SqliteConnection(new SqliteConnectionStringBuilder
+            {
+                DataSource = Path.GetFullPath(path), Mode = SqliteOpenMode.ReadOnly, Pooling = false, DefaultTimeout = 1,
+            }.ToString());
+            probe.Open();
+            using var command = probe.CreateCommand();
+            command.CommandText = "PRAGMA user_version;";
+            var schema = Convert.ToInt32(command.ExecuteScalar());
+            if (schema > MotifSchema.CurrentSchema)
+                throw new MotifStoreVersionException(Path.GetFullPath(path), 
+                    $"This {descriptor.Name} is at schema {schema} and this build understands {MotifSchema.CurrentSchema}. " +
+                    "Install the newer Motif, or restore a pre-upgrade backup with motif store restore.")
+                { Newer = true };
+            if (schema == MotifSchema.CurrentSchema)
+            {
+                // A store that needs a newer worker is refused here too.
+                if (workerVersion < MotifSchema.ReadMetadata(probe).MinimumWorkerVersion)
+                    throw new MotifStoreVersionException(Path.GetFullPath(path),
+                        $"Worker {workerVersion} is older than database minimum {MotifSchema.ReadMetadata(probe).MinimumWorkerVersion}. " +
+                        "Install the newer Motif, or restore a pre-upgrade backup with motif store restore.")
+                    { Newer = true };
+                return null;
+            }
+            probe.Close();
+            return MotifStoreUpgrade.Build(path, Path.Combine(scratch, "dry-run.db"), project, false, null, workerVersion);
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            try { Directory.Delete(scratch, recursive: true); }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
+        }
+    }
 
     /// <summary>Reads an existing project store without creating it or changing its journal mode.</summary>
     /// <param name="path">The existing sibling Motif database path.</param>
@@ -139,8 +234,7 @@ public sealed class MotifDatabase : IDisposable
     {
         ArgumentNullException.ThrowIfNull(read);
         var descriptor = Describe(path, project, MotifSchema.CurrentSchema, MotifProductVersion.Current);
-        using var lease = new FileStream(path + ".use.lock", FileMode.Open, FileAccess.Read,
-            FileShare.ReadWrite | FileShare.Delete);
+        using var lease = MotifSqliteStore.AcquireExistingReadLease(path);
         using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
         {
             DataSource = Path.GetFullPath(path),
@@ -157,12 +251,17 @@ public sealed class MotifDatabase : IDisposable
             if (Convert.ToInt32(command.ExecuteScalar()) != MotifSchema.ApplicationId)
                 throw new InvalidDataException("The file is not a Motif project database.");
             command.CommandText = "PRAGMA user_version;";
-            if (Convert.ToInt32(command.ExecuteScalar()) != MotifSchema.CurrentSchema)
+            var schema = Convert.ToInt32(command.ExecuteScalar());
+            if (schema > 0 && schema < MotifSchema.CurrentSchema)
+                throw new MotifStoreVersionException(Path.GetFullPath(path), StoreUpgradeMessages.Format(
+                    "OlderStore", descriptor.Name, Path.GetFileName(path), schema, MotifSchema.CurrentSchema))
+                { Upgradable = true };
+            if (schema != MotifSchema.CurrentSchema)
                 throw new NotSupportedException("The project database has another schema version.");
         }
-        descriptor.ValidateSchema(connection, transaction);
+        MotifSchema.ValidateReadSchema(connection, transaction);
         var metadata = MotifSchema.ReadMetadata(connection, transaction);
-        EnsureLocatorMatches(metadata.Project, project);
+        EnsureLocatorMatches(metadata.Project, project, path);
         if (MotifProductVersion.Current < metadata.MinimumWorkerVersion)
             throw new NotSupportedException("The project database requires a newer worker.");
         return read(connection, transaction);
@@ -180,10 +279,30 @@ public sealed class MotifDatabase : IDisposable
         string path,
         Action<SqliteConnection> configure) => MotifSqliteStore.OpenConnectionForTesting(path, configure);
 
-    private static void EnsureLocatorMatches(ProjectLocator stored, ProjectLocator requested)
+    // No backup is written of another project's store, or of one this worker may not read.
+    private static void RefuseOtherProjectOrNewerWorker(string path, ProjectLocator project, Version workerVersion)
+    {
+        using var connection = OpenReadOnlyUnpooled(Path.GetFullPath(path));
+        (ProjectLocator Project, Version MinimumWorkerVersion) metadata;
+        try
+        {
+            metadata = MotifSchema.ReadMetadata(connection);
+        }
+        catch (SqliteException exception)
+        {
+            throw new InvalidDataException(StoreUpgradeMessages.Get("MissingMetadata"), exception)
+            { Data = { [MotifSqliteStore.SourceInvalidKey] = true } };
+        }
+        EnsureLocatorMatches(metadata.Project, project, path);
+        if (workerVersion < metadata.MinimumWorkerVersion)
+            throw new MotifStoreVersionException(Path.GetFullPath(path), StoreUpgradeMessages.Get("NewerWorker"))
+            { Newer = true };
+    }
+
+    private static void EnsureLocatorMatches(ProjectLocator stored, ProjectLocator requested, string path)
     {
         if (!StringComparer.OrdinalIgnoreCase.Equals(stored.FullFwDataPath, requested.FullFwDataPath) ||
             !StringComparer.Ordinal.Equals(stored.FieldWorksProjectIdentity, requested.FieldWorksProjectIdentity))
-            throw new InvalidDataException("The database is registered to a different project locator.");
+            throw StoreProjectMismatch.Create(Path.GetFullPath(path), stored.FullFwDataPath);
     }
 }

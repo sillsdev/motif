@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using SIL.Motif.Contract.Assess;
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Host.Parser;
 
 namespace SIL.Motif.Host.PanGloss;
@@ -23,6 +24,8 @@ public enum WarmSessionPhase
 /// <summary>A resident parser's state, with the reason when it is <see cref="WarmSessionPhase.Failed"/>.</summary>
 public sealed record WarmSessionState(WarmSessionPhase Phase, string? FailureCode = null, string? FailureMessage = null)
 {
+    internal PanGlossOutcome? ProbeFailure { get; init; }
+
     public static readonly WarmSessionState Idle = new(WarmSessionPhase.Idle);
     public static readonly WarmSessionState Loading = new(WarmSessionPhase.Loading);
     public static readonly WarmSessionState Ready = new(WarmSessionPhase.Ready);
@@ -44,21 +47,105 @@ public abstract record WarmParseResult
     /// The parser's reply: <paramref name="Json"/> is exactly the JSON a cold <c>parse --trace-format json --trace-details</c> prints
     /// and <paramref name="ExitCode"/> the cold command's exit code, to be read as if from the cold process.
     /// </summary>
-    public sealed record Completed(string Json, int ExitCode, TimeSpan Elapsed) : WarmParseResult;
+    public sealed record Completed(string Json, int ExitCode, TimeSpan Elapsed) : WarmParseResult
+    {
+        /// <summary>The parser status from the serve envelope, when supplied.</summary>
+        public string? Status { get; init; }
+
+        /// <summary>The total parser work reported by the result envelope, if present.</summary>
+        public long? ParserWork { get; init; }
+    }
 
     /// <summary>The caller cancelled; the resident process was killed and the next call restarts it.</summary>
     public sealed record Cancelled : WarmParseResult;
 
-    /// <summary>The resident parser could not answer; the caller runs the cold path for this word.</summary>
-    public sealed record Fallback(string Code, string Message) : WarmParseResult;
+    /// <summary>The resident parser could not answer; a fatal probe outcome prevents a cold retry.</summary>
+    public sealed record Fallback(string Code, string Message) : WarmParseResult
+    {
+        internal PanGlossOutcome? ProbeFailure { get; init; }
+    }
+}
+
+/// <summary>What asking a resident parser to generate a word's forms with a rule trace came to.</summary>
+public abstract record WarmGenerateResult
+{
+    private WarmGenerateResult() { }
+
+    /// <summary>The parser's <c>result</c> object, exactly as it wrote it, for the caller to read.</summary>
+    public sealed record Completed(string Json) : WarmGenerateResult;
+
+    /// <summary>The installed parser's <c>--describe</c> does not declare a traced <c>generate</c> op; nothing was sent.</summary>
+    public sealed record Unsupported(string Detail) : WarmGenerateResult;
+
+    /// <summary>The parser answered the request with a typed error, such as <c>unknown_entry</c>; the session is still usable.</summary>
+    public sealed record Rejected(string Code, string Message) : WarmGenerateResult;
+
+    /// <summary>The session could not answer: it failed to load, died, timed out or sent a line Motif cannot read.</summary>
+    public sealed record Failed(string Code, string Message) : WarmGenerateResult
+    {
+        internal PanGlossOutcome? ProbeFailure { get; init; }
+    }
+
+    /// <summary>The caller cancelled; the resident process was killed and the next call restarts it.</summary>
+    public sealed record Cancelled : WarmGenerateResult;
+}
+
+/// <summary>What asking a resident parser which phonological rules may change a morpheme came to.</summary>
+public abstract record WarmEffectsResult
+{
+    private WarmEffectsResult() { }
+
+    /// <summary>The parser's whole <c>result</c> line, exactly as it wrote it, for <see cref="EffectsResult.Read"/>.</summary>
+    public sealed record Completed(string Json) : WarmEffectsResult;
+
+    /// <summary>The installed parser's <c>--describe</c> does not declare an <c>effects</c> op; nothing was sent.</summary>
+    public sealed record Unsupported(string Detail) : WarmEffectsResult;
+
+    /// <summary>The parser refused the request with a typed error such as <c>unknown_morpheme</c> or <c>authored_identity_unavailable</c>; the session is still usable.</summary>
+    public sealed record Rejected(string Code, string Message, string Json) : WarmEffectsResult;
+
+    /// <summary>The session could not answer: it failed to load, died, timed out or sent a line Motif cannot read.</summary>
+    public sealed record Failed(string Code, string Message) : WarmEffectsResult
+    {
+        internal PanGlossOutcome? ProbeFailure { get; init; }
+    }
+
+    /// <summary>The caller cancelled; the resident process was killed and the next call restarts it.</summary>
+    public sealed record Cancelled : WarmEffectsResult;
+}
+
+/// <summary>What asking a resident parser to match pattern text over a word list, or to list its grammar's inventory, came to.</summary>
+public abstract record WarmMatchResult
+{
+    private WarmMatchResult() { }
+
+    /// <summary>The parser's whole <c>result</c> line, exactly as it wrote it, for the caller to read.</summary>
+    public sealed record Completed(string Json) : WarmMatchResult;
+
+    /// <summary>The installed parser's <c>--describe</c> does not declare a <c>match</c> op; nothing was sent.</summary>
+    public sealed record Unsupported(string Detail) : WarmMatchResult;
+
+    /// <summary>The parser refused the request with a typed error, such as <c>pattern_parse</c>; <paramref name="Json"/> is its whole <c>error</c> line.</summary>
+    public sealed record Rejected(string Code, string Message, string Json) : WarmMatchResult;
+
+    /// <summary>The session could not answer: it failed to load, died, timed out or sent a line Motif cannot read.</summary>
+    public sealed record Failed(string Code, string Message) : WarmMatchResult
+    {
+        internal PanGlossOutcome? ProbeFailure { get; init; }
+    }
+
+    /// <summary>The caller cancelled; the resident process was killed and the next call restarts it.</summary>
+    public sealed record Cancelled : WarmMatchResult;
 }
 
 /// <summary>Limits of the resident parsers, with the owner-decided defaults.</summary>
 public sealed record WarmPanGlossOptions
 {
-    /// <summary>The memory ceiling for the life of a session (3 GB, ADR 0044).</summary>
+    /// <summary>The memory ceiling for the life of a session (3 GB, ADR 0019).</summary>
     public ulong MemoryCeilingBytes { get; init; } = 3UL * 1024 * 1024 * 1024;
-    /// <summary>A session unused this long is stopped.</summary>
+    /// <summary>
+    /// A session unused this long is stopped. Submitted words keep it in use while waiting or parsing.
+    /// </summary>
     public TimeSpan IdleTimeout { get; init; } = TimeSpan.FromMinutes(10);
     /// <summary>A load still not ready after this long becomes Failed.</summary>
     public TimeSpan LoadTimeout { get; init; } = TimeSpan.FromSeconds(120);
@@ -66,19 +153,22 @@ public sealed record WarmPanGlossOptions
     public TimeSpan ParseTimeout { get; init; } = TimeSpan.FromMinutes(5);
     /// <summary>After a failure a word takes the cold path for this long before the session is tried again.</summary>
     public TimeSpan RetryCooldown { get; init; } = TimeSpan.FromSeconds(30);
+    /// <summary>How long a kill waits for the parser to be gone, so a caller can delete its files; exceeding it is logged.</summary>
+    public TimeSpan KillWait { get; init; } = TimeSpan.FromSeconds(30);
 }
 
 /// <summary>
-/// Resident <c>pangloss serve</c> processes, one per project, so a word costs a parse instead of a load (ADR 0044,
+/// Resident <c>pangloss serve</c> processes, one per project, so a word costs a parse instead of a load (ADR 0019,
 /// long-lived parser session). Each request takes machine-queue admission; the process lives in its own containment
 /// job with the memory ceiling for its whole life. Requests to one session run one at a time, in order.
-/// A cancel kills the process; any failure falls back to the cold path for that word. A session is keyed by project and
-/// by the step cap it was started with, because <c>serve</c> applies its caps to every request.
+/// A cancel kills the process; ordinary session failures fall back to the cold path for that word. Fatal probe
+/// outcomes remain failures. A session is keyed by project and
+/// by the parser work limit it was started with, because <c>serve</c> applies its caps to every request.
 /// </summary>
 public sealed class WarmPanGlossPool : IDisposable
 {
     /// <summary>The <c>serve</c> protocol version Motif speaks.</summary>
-    public const int ServeProtocol = 1;
+    public const int ServeProtocol = 2;
 
     private readonly string? _executable;
     private readonly MachinePanGlossQueue _queue;
@@ -104,17 +194,20 @@ public sealed class WarmPanGlossPool : IDisposable
         _ownsQueue = ownsQueue;
         _options = options ?? new WarmPanGlossOptions();
         var period = TimeSpan.FromMilliseconds(Math.Clamp(_options.IdleTimeout.TotalMilliseconds / 4, 25, 30_000));
-        _sweeper = new Timer(_ => SweepIdle(), null, period, period);
+        _sweeper = new Timer(_ => SweepIdle(DateTime.UtcNow), null, period, period);
     }
 
     /// <summary>Raised off the caller's thread when any project's state changes.</summary>
     public event EventHandler<WarmSessionStateChangedEventArgs>? StateChanged;
 
+    /// <summary>Allows a test to pause a selected word before it enters the session request queue.</summary>
+    internal Func<CancellationToken, Task>? BeforeRequestAdmission { get; set; }
+
     /// <summary>The state of a project's session; <see cref="WarmSessionState.Idle"/> when it has none.</summary>
-    public WarmSessionState GetState(string projectKey, StepCap? stepCap = null)
+    public WarmSessionState GetState(string projectKey, ParserWorkLimit? parserWorkLimit = null)
     {
         lock (_gate)
-            return _sessions.TryGetValue(SessionKey(projectKey, stepCap), out var session) ? session.State : WarmSessionState.Idle;
+            return _sessions.TryGetValue(SessionKey(projectKey, parserWorkLimit), out var session) ? session.State : WarmSessionState.Idle;
     }
 
     /// <summary>
@@ -123,10 +216,10 @@ public sealed class WarmPanGlossPool : IDisposable
     /// or <see cref="WarmSessionPhase.Failed"/> (with code and message) and never faults. A Failed session is retried.
     /// A different <paramref name="stateToken"/> or grammar replaces the session.
     /// </summary>
-    public Task<WarmSessionState> Prewarm(string projectKey, string stateToken, string grammarPath, StepCap? stepCap = null)
+    public Task<WarmSessionState> Prewarm(string projectKey, string stateToken, string grammarPath, ParserWorkLimit? parserWorkLimit = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectKey);
-        return Acquire(projectKey, stateToken, grammarPath, stepCap, retryFailed: true).Loaded;
+        return Acquire(projectKey, stateToken, grammarPath, parserWorkLimit, retryFailed: true).Loaded;
     }
 
     /// <summary>
@@ -134,46 +227,185 @@ public sealed class WarmPanGlossPool : IDisposable
     /// <paramref name="cancellationToken"/>, which then abandons only the wait), starts one if there is none, and
     /// returns <see cref="WarmParseResult.Fallback"/> when the session failed, the parser answered the word with an error,
     /// or a reply line was malformed or unterminated, so the caller runs the cold path.
-    /// <paramref name="stepCap"/> is passed to <c>serve</c> as <c>--step-cap</c> and is part of the session key.
+    /// <paramref name="parserWorkLimit"/> is passed to <c>serve</c> as <c>--work-cap</c> and is part of the session key.
     /// Cancelling during a parse kills the process.
     /// </summary>
     public async Task<WarmParseResult> TryWordAsync(string projectKey, string stateToken, string grammarPath,
-        string word, bool traceDetails, CancellationToken cancellationToken, StepCap? stepCap = null)
+        string word, bool traceDetails, CancellationToken cancellationToken, ParserWorkLimit? parserWorkLimit = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectKey);
         ArgumentException.ThrowIfNullOrEmpty(word);
-        var session = Acquire(projectKey, stateToken, grammarPath, stepCap, retryFailed: false);
-        if (session.CoolingDown(_options.RetryCooldown) is { } cooling) return cooling;
+        var session = Acquire(projectKey, stateToken, grammarPath, parserWorkLimit, retryFailed: false, reserveWord: true);
         try
         {
+            if (session.CoolingDown(_options.RetryCooldown) is { } cooling) return cooling;
             var state = await session.Loaded.WaitAsync(cancellationToken).ConfigureAwait(false);
             if (state.Phase != WarmSessionPhase.Ready)
                 return new WarmParseResult.Fallback(state.FailureCode ?? "session-unavailable",
-                    state.FailureMessage ?? "The resident parser is not available.");
+                    state.FailureMessage ?? "The resident parser is not available.") { ProbeFailure = state.ProbeFailure };
+            if (BeforeRequestAdmission is { } beforeAdmission)
+                await beforeAdmission(cancellationToken).ConfigureAwait(false);
             return await session.ParseAsync(word, traceDetails, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
             return new WarmParseResult.Cancelled();
         }
+        finally
+        {
+            session.ReleaseWord();
+        }
     }
 
-    /// <summary>Kills and drops every session of the project, whatever its caps, so nothing holds its Baseline files open. Idempotent.</summary>
-    public void Evict(string projectKey)
+    /// <summary>Generates every form of <paramref name="request"/> on the project's resident parser, with rule steps.</summary>
+    public async Task<WarmGenerateResult> TryGenerateAsync(string projectKey, string stateToken, string grammarPath,
+        ServeGenerateRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(projectKey);
+        ArgumentNullException.ThrowIfNull(request);
+        var session = Acquire(projectKey, stateToken, grammarPath, parserWorkLimit: null, retryFailed: false, reserveWord: true);
+        try
+        {
+            if (session.CoolingDown(_options.RetryCooldown) is { } cooling)
+                return new WarmGenerateResult.Failed(cooling.Code, cooling.Message) { ProbeFailure = cooling.ProbeFailure };
+            var state = await session.Loaded.WaitAsync(cancellationToken).ConfigureAwait(false);
+            if (state.Phase != WarmSessionPhase.Ready)
+                return new WarmGenerateResult.Failed(state.FailureCode ?? "session-unavailable",
+                    state.FailureMessage ?? "The resident parser is not available.") { ProbeFailure = state.ProbeFailure };
+            if (session.Capabilities?.ServeGenerateRefusal() is { } incapable)
+                return new WarmGenerateResult.Unsupported(incapable);
+            return await session.GenerateAsync(request, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            return new WarmGenerateResult.Cancelled();
+        }
+        finally
+        {
+            session.ReleaseWord();
+        }
+    }
+
+    /// <summary>Asks the project's resident parser which phonological rules may change a morpheme, once for all its allomorphs.</summary>
+    public async Task<WarmEffectsResult> TryEffectsAsync(string projectKey, string stateToken, string grammarPath,
+        ServeEffectsRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(projectKey);
+        ArgumentNullException.ThrowIfNull(request);
+        var session = Acquire(projectKey, stateToken, grammarPath, parserWorkLimit: null, retryFailed: false, reserveWord: true);
+        try
+        {
+            if (session.CoolingDown(_options.RetryCooldown) is { } cooling)
+                return new WarmEffectsResult.Failed(cooling.Code, cooling.Message) { ProbeFailure = cooling.ProbeFailure };
+            var state = await session.Loaded.WaitAsync(cancellationToken).ConfigureAwait(false);
+            if (state.Phase != WarmSessionPhase.Ready)
+                return new WarmEffectsResult.Failed(state.FailureCode ?? "session-unavailable",
+                    state.FailureMessage ?? "The resident parser is not available.") { ProbeFailure = state.ProbeFailure };
+            if (session.Capabilities?.ServeEffectsRefusal() is { } incapable)
+                return new WarmEffectsResult.Unsupported(incapable);
+            return await session.EffectsAsync(request, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            return new WarmEffectsResult.Cancelled();
+        }
+        finally
+        {
+            session.ReleaseWord();
+        }
+    }
+
+    /// <summary>Matches pattern text over a word list on the project's resident parser.</summary>
+    public async Task<WarmMatchResult> TryMatchAsync(string projectKey, string stateToken, string grammarPath,
+        ServeMatchRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(projectKey);
+        ArgumentNullException.ThrowIfNull(request);
+        var session = Acquire(projectKey, stateToken, grammarPath, parserWorkLimit: null, retryFailed: false, reserveWord: true);
+        try
+        {
+            if (session.CoolingDown(_options.RetryCooldown) is { } cooling)
+                return new WarmMatchResult.Failed(cooling.Code, cooling.Message) { ProbeFailure = cooling.ProbeFailure };
+            var state = await session.Loaded.WaitAsync(cancellationToken).ConfigureAwait(false);
+            if (state.Phase != WarmSessionPhase.Ready)
+                return new WarmMatchResult.Failed(state.FailureCode ?? "session-unavailable",
+                    state.FailureMessage ?? "The resident parser is not available.") { ProbeFailure = state.ProbeFailure };
+            if (session.Capabilities?.ServeMatchRefusal(request.Requires, request.SegmentTest) is { } incapable)
+                return new WarmMatchResult.Unsupported(incapable);
+            return await session.MatchAsync(request, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            return new WarmMatchResult.Cancelled();
+        }
+        finally
+        {
+            session.ReleaseWord();
+        }
+    }
+
+    /// <summary>Lists the grammar's natural classes and features through the resident parser's <c>inventory</c> op.</summary>
+    public async Task<WarmMatchResult> TryInventoryAsync(string projectKey, string stateToken, string grammarPath,
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(projectKey);
+        var session = Acquire(projectKey, stateToken, grammarPath, parserWorkLimit: null, retryFailed: false, reserveWord: true);
+        try
+        {
+            if (session.CoolingDown(_options.RetryCooldown) is { } cooling)
+                return new WarmMatchResult.Failed(cooling.Code, cooling.Message) { ProbeFailure = cooling.ProbeFailure };
+            var state = await session.Loaded.WaitAsync(cancellationToken).ConfigureAwait(false);
+            if (state.Phase != WarmSessionPhase.Ready)
+                return new WarmMatchResult.Failed(state.FailureCode ?? "session-unavailable",
+                    state.FailureMessage ?? "The resident parser is not available.") { ProbeFailure = state.ProbeFailure };
+            if (session.Capabilities?.ServeInventoryRefusal() is { } incapable)
+                return new WarmMatchResult.Unsupported(incapable);
+            return await session.InventoryAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            return new WarmMatchResult.Cancelled();
+        }
+        finally
+        {
+            session.ReleaseWord();
+        }
+    }
+
+    /// <summary>Kills and drops every session of the project, whatever its caps, so nothing holds its Baseline files open. Idempotent. Returns only after the parsers are gone; never call it from the UI thread.</summary>
+    public void Evict(string projectKey) => EvictAsync(projectKey).GetAwaiter().GetResult();
+
+    /// <summary>
+    /// Drops every session of the project at once, so a new session for it starts clean, and kills their processes on the
+    /// thread pool. The task completes when the parsers are gone, or when the kill wait has passed and logged a warning.
+    /// </summary>
+    public Task EvictAsync(string projectKey)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectKey);
         var project = Normalize(projectKey);
         List<Session> evicted;
         lock (_gate)
         {
-            if (_disposed) return;
+            if (_disposed) return Task.CompletedTask;
             evicted = _sessions.Values.Where(session => string.Equals(session.ProjectKey, project,
                 StringComparison.OrdinalIgnoreCase)).ToList();
             foreach (var session in evicted) _sessions.Remove(session.Key);
         }
-        if (evicted.Count == 0) return;
-        foreach (var session in evicted) session.Kill(WarmSessionState.Idle, raise: false);
+        if (evicted.Count == 0) return Task.CompletedTask;
         Raise(project, WarmSessionState.Idle);
+        return Task.Run(() =>
+        {
+            // Nobody observes this task from the UI, so one failing kill must neither skip the rest nor vanish silently.
+            foreach (var session in evicted)
+            {
+                try { session.Kill(WarmSessionState.Idle, raise: false); }
+                catch (Exception exception)
+                {
+                    Trace.TraceWarning("Stopping the resident parser of session '{0}' for project '{1}' failed: {2}",
+                        session.Key, session.ProjectKey, exception.Message);
+                }
+            }
+        });
     }
 
     public void Dispose()
@@ -191,19 +423,31 @@ public sealed class WarmPanGlossPool : IDisposable
         if (_ownsQueue) _queue.Dispose();
     }
 
+    /// <summary>Stops the process, then waits for it to be gone, because a caller that deletes the parser copy next would meet "access denied". Logs when it outlives the wait.</summary>
+    internal static bool TerminateAndWait(PanGlossContainmentJob job, PanGlossChildProcess process, TimeSpan wait,
+        string projectKey, string sessionKey)
+    {
+        job.Terminate(process);
+        if (process.WaitForExitAsync().Wait(wait)) return true;
+        Trace.TraceWarning("The resident parser (pid {0}) of session '{1}' for project '{2}' was still running {3} seconds after it was killed.",
+            process.Id, sessionKey, projectKey, wait.TotalSeconds);
+        return false;
+    }
+
     private static string Normalize(string projectKey) => Path.GetFullPath(projectKey);
 
-    /// <summary>PanGloss's own per-word runaway guard, which a parse without <c>--step-cap</c> applies.</summary>
-    private const long ParserDefaultSteps = 50_000_000;
+    /// <summary>PanGloss's own per-word guard for a parse without a cap: 50,000,000 attempts times 100.</summary>
+    private const long ParserDefaultWork = 5_000_000_000;
 
     /// <summary>No cap and the parser's default cap share a session; any other cap has its own.</summary>
-    private static string SessionKey(string projectKey, StepCap? stepCap) =>
-        Normalize(projectKey) + "\n" + (stepCap is null || stepCap.Steps == ParserDefaultSteps
-            ? string.Empty : stepCap.ToArgument());
+    private static string SessionKey(string projectKey, ParserWorkLimit? parserWorkLimit) =>
+        Normalize(projectKey) + "\n" + (parserWorkLimit is null || parserWorkLimit.Work == ParserDefaultWork
+            ? string.Empty : parserWorkLimit.ToArgument());
 
-    private Session Acquire(string projectKey, string token, string grammarPath, StepCap? stepCap, bool retryFailed)
+    private Session Acquire(string projectKey, string token, string grammarPath, ParserWorkLimit? parserWorkLimit,
+        bool retryFailed, bool reserveWord = false)
     {
-        var key = SessionKey(projectKey, stepCap);
+        var key = SessionKey(projectKey, parserWorkLimit);
         Session? stale = null;
         Session session;
         lock (_gate)
@@ -230,24 +474,34 @@ public sealed class WarmPanGlossPool : IDisposable
             }
             if (existing is null)
             {
-                existing = new Session(this, key, Normalize(projectKey), token, grammarPath, stepCap?.ToArgument());
+                existing = new Session(this, key, Normalize(projectKey), token, grammarPath, parserWorkLimit?.ToArgument());
                 _sessions[key] = existing;
             }
             session = existing;
+            // Reserve while the pool lock still prevents idle eviction of the selected session.
+            if (reserveWord) session.ReserveWord();
         }
-        stale?.Kill(WarmSessionState.Idle, raise: false);
-        session.StartLoadOnce();
-        return session;
+        try
+        {
+            stale?.Kill(WarmSessionState.Idle, raise: false);
+            session.StartLoadOnce();
+            return session;
+        }
+        catch when (reserveWord)
+        {
+            session.ReleaseWord();
+            throw;
+        }
     }
 
-    private void SweepIdle()
+    internal void SweepIdle(DateTime utcNow)
     {
         List<Session> idle = [];
         lock (_gate)
         {
             if (_disposed) return;
             foreach (var session in _sessions.Values)
-                if (session.IsIdleFor(_options.IdleTimeout)) idle.Add(session);
+                if (session.IsIdleFor(_options.IdleTimeout, utcNow)) idle.Add(session);
             foreach (var session in idle) _sessions.Remove(session.Key);
         }
         foreach (var session in idle) session.Shutdown();
@@ -275,7 +529,7 @@ public sealed class WarmPanGlossPool : IDisposable
     }
 
     private sealed class Session(WarmPanGlossPool pool, string key, string projectKey, string token, string grammarPath,
-        string? stepCapArgument)
+        string? parserWorkLimitArgument)
     {
         private readonly object _lock = new();
         private readonly TaskCompletionSource<WarmSessionState> _loaded =
@@ -288,7 +542,7 @@ public sealed class WarmPanGlossPool : IDisposable
         private WarmSessionState _state = WarmSessionState.Loading;
         private DateTime _lastUsedUtc = DateTime.UtcNow;
         private DateTime _failedUtc;
-        private int _busy;
+        private int _pendingWords;
         private bool _started;
         private bool _retired;
 
@@ -297,19 +551,37 @@ public sealed class WarmPanGlossPool : IDisposable
         public string Token { get; } = token;
         public string GrammarPath { get; } = grammarPath;
         public Task<WarmSessionState> Loaded => _loaded.Task;
+
+        /// <summary>What the parser's <c>--describe</c> declared when the session loaded; null before then.</summary>
+        internal PanGlossCapabilities? Capabilities { get; private set; }
         public WarmSessionState State { get { lock (_lock) return _state; } }
 
         public WarmParseResult.Fallback? CoolingDown(TimeSpan cooldown)
         {
             lock (_lock)
                 return _state.Phase == WarmSessionPhase.Failed && DateTime.UtcNow - _failedUtc < cooldown
-                    ? new WarmParseResult.Fallback(_state.FailureCode!, _state.FailureMessage!) : null;
+                    ? new WarmParseResult.Fallback(_state.FailureCode!, _state.FailureMessage!)
+                        { ProbeFailure = _state.ProbeFailure } : null;
         }
 
-        public bool IsIdleFor(TimeSpan idle)
+        public bool IsIdleFor(TimeSpan idle, DateTime utcNow)
         {
             lock (_lock)
-                return _state.Phase == WarmSessionPhase.Ready && _busy == 0 && DateTime.UtcNow - _lastUsedUtc >= idle;
+                return _state.Phase == WarmSessionPhase.Ready && _pendingWords == 0 && utcNow - _lastUsedUtc >= idle;
+        }
+
+        public void ReserveWord()
+        {
+            lock (_lock) _pendingWords++;
+        }
+
+        public void ReleaseWord()
+        {
+            lock (_lock)
+            {
+                _lastUsedUtc = DateTime.UtcNow;
+                _pendingWords--;
+            }
         }
 
         public void StartLoadOnce()
@@ -347,6 +619,28 @@ public sealed class WarmPanGlossPool : IDisposable
             }
         }
 
+        /// <summary>Each fatal probe outcome keeps its own code: a ceiling stop is memory-ceiling, as in serve.</summary>
+        internal static string ProbeFailureCode(PanGlossOutcome failure) => failure switch
+        {
+            PanGlossOutcome.MemoryLimit => "memory-ceiling",
+            PanGlossOutcome.Refused refused => JobFailureCategoryJson.ToWire(refused.FailureCategory),
+            _ => JobFailureCategoryJson.ToWire(JobFailureCategory.Infrastructure),
+        };
+
+        /// <summary>The probe's message with its outcome type, exit code, signal and first stderr lines, for a CI log.</summary>
+        internal static string ProbeFailureDetail(PanGlossOutcome failure)
+        {
+            var detail = new System.Text.StringBuilder(failure.Message).Append(" [probe outcome ").Append(failure.GetType().Name);
+            if (failure is PanGlossOutcome.Refused refused)
+            {
+                detail.Append(", exit ").Append(refused.ExitCode);
+                if (refused.TerminationSignal is { } signal) detail.Append(", signal ").Append(signal);
+                var lines = refused.StandardError.Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+                if (lines.Length > 0) detail.Append(", stderr: ").Append(string.Join(" | ", lines.Take(3)));
+            }
+            return detail.Append(']').ToString();
+        }
+
         private async Task<bool> StartAndAwaitReadyAsync(CancellationToken token)
         {
             var executable = pool._executable!;
@@ -356,8 +650,16 @@ public sealed class WarmPanGlossPool : IDisposable
                 if (_retired) { job.Dispose(); return false; }
                 _job = job;
             }
-            var surface = pool._surfaces.TryGetValue(executable, out var known) ? known
-                : pool._surfaces[executable] = await PanGlossSurface.CheckAsync(executable, job, token).ConfigureAwait(false);
+            if (!pool._surfaces.TryGetValue(executable, out var surface))
+            {
+                surface = await PanGlossSurface.CheckAsync(executable, job, token).ConfigureAwait(false);
+                if (surface.Failure is null) pool._surfaces[executable] = surface;
+            }
+            if (surface.Failure is { } probeFailure)
+            {
+                Fail(ProbeFailureCode(probeFailure), ProbeFailureDetail(probeFailure), probeFailure);
+                return false;
+            }
             if (!surface.IsValid)
             {
                 Fail("serve-unsupported", surface.Message);
@@ -371,6 +673,7 @@ public sealed class WarmPanGlossPool : IDisposable
                 return false;
             }
 
+            Capabilities = surface.Capabilities;
             var start = new ProcessStartInfo(executable)
             {
                 RedirectStandardInput = true,
@@ -383,12 +686,11 @@ public sealed class WarmPanGlossPool : IDisposable
             start.ArgumentList.Add("serve");
             start.ArgumentList.Add("--project");
             start.ArgumentList.Add(GrammarPath);
-            if (stepCapArgument is not null)
+            if (parserWorkLimitArgument is not null)
             {
-                start.ArgumentList.Add("--step-cap");
-                start.ArgumentList.Add(stepCapArgument);
+                var limit = ParserWorkLimit.Parse(parserWorkLimitArgument);
                 start.ArgumentList.Add("--work-cap");
-                start.ArgumentList.Add(StepCap.Parse(stepCapArgument).ToWorkCapArgument());
+                start.ArgumentList.Add(limit.ToWorkCapArgument());
             }
             PanGlossChildProcess process;
             try { process = job.Start(start); }
@@ -448,81 +750,151 @@ public sealed class WarmPanGlossPool : IDisposable
             return false;
         }
 
-        public async Task<WarmParseResult> ParseAsync(string word, bool traceDetails, CancellationToken cancellationToken)
+        public Task<WarmParseResult> ParseAsync(string word, bool traceDetails, CancellationToken cancellationToken) =>
+            ExchangeAsync("warm-parse:" + word,
+                id => JsonSerializer.Serialize(new { id, op = "parse", word, traceDetails }),
+                ReadParseReply, (code, message) => new WarmParseResult.Fallback(code, message),
+                () => new WarmParseResult.Cancelled(), cancellationToken);
+
+        public Task<WarmGenerateResult> GenerateAsync(ServeGenerateRequest request, CancellationToken cancellationToken) =>
+            ExchangeAsync("warm-generate", request.ToLine, ReadGenerateReply,
+                (code, message) => new WarmGenerateResult.Failed(code, message),
+                () => new WarmGenerateResult.Cancelled(), cancellationToken);
+
+        public Task<WarmMatchResult> MatchAsync(ServeMatchRequest request, CancellationToken cancellationToken) =>
+            ExchangeAsync("warm-match", request.ToLine, ReadMatchReply,
+                (code, message) => new WarmMatchResult.Failed(code, message),
+                () => new WarmMatchResult.Cancelled(), cancellationToken, request.Timeout(pool._options.ParseTimeout));
+
+        public Task<WarmEffectsResult> EffectsAsync(ServeEffectsRequest request, CancellationToken cancellationToken) =>
+            ExchangeAsync("warm-effects", request.ToLine, ReadEffectsReply,
+                (code, message) => new WarmEffectsResult.Failed(code, message),
+                () => new WarmEffectsResult.Cancelled(), cancellationToken, request.Timeout(pool._options.ParseTimeout));
+
+        private static WarmEffectsResult ReadEffectsReply(JsonElement root, TimeSpan elapsed)
+        {
+            var type = root.TryGetProperty("type", out var t) ? t.GetString() : null;
+            if (type == "result") return new WarmEffectsResult.Completed(root.GetRawText());
+            var code = root.TryGetProperty("code", out var c) ? c.GetString() ?? "error" : "error";
+            var message = root.TryGetProperty("message", out var m) ? m.GetString() ?? "" : "";
+            return new WarmEffectsResult.Rejected(code, message, root.GetRawText());
+        }
+
+        public Task<WarmMatchResult> InventoryAsync(CancellationToken cancellationToken) =>
+            ExchangeAsync("warm-inventory", id => ServeInventoryRequest.ToLine(id), ReadMatchReply,
+                (code, message) => new WarmMatchResult.Failed(code, message),
+                () => new WarmMatchResult.Cancelled(), cancellationToken);
+
+        private static WarmMatchResult ReadMatchReply(JsonElement root, TimeSpan elapsed)
+        {
+            var type = root.TryGetProperty("type", out var t) ? t.GetString() : null;
+            if (type == "result") return new WarmMatchResult.Completed(root.GetRawText());
+            var code = root.TryGetProperty("code", out var c) ? c.GetString() ?? "error" : "error";
+            var message = root.TryGetProperty("message", out var m) ? m.GetString() ?? "" : "";
+            return new WarmMatchResult.Rejected(code, message, root.GetRawText());
+        }
+
+        private static WarmParseResult ReadParseReply(JsonElement root, TimeSpan elapsed)
+        {
+            var type = root.TryGetProperty("type", out var t) ? t.GetString() : null;
+            if (type == "result" && root.TryGetProperty("result", out var result))
+            {
+                if (!root.TryGetProperty("exitCode", out var exit) || !exit.TryGetInt32(out var exitCode))
+                    return new WarmParseResult.Fallback("serve-protocol", "A result line carried no exit code.");
+                return new WarmParseResult.Completed(result.GetRawText(), exitCode, elapsed)
+                {
+                    ParserWork = ReadOptionalCount(root, "workSteps"),
+                    Status = root.TryGetProperty("status", out var status) && status.ValueKind == JsonValueKind.String
+                        ? status.GetString() : null,
+                };
+            }
+            var code = root.TryGetProperty("code", out var c) ? c.GetString() ?? "error" : "error";
+            var message = root.TryGetProperty("message", out var m) ? m.GetString() ?? "" : "";
+            return new WarmParseResult.Fallback(code, message);
+        }
+
+        private static WarmGenerateResult ReadGenerateReply(JsonElement root, TimeSpan elapsed)
+        {
+            var type = root.TryGetProperty("type", out var t) ? t.GetString() : null;
+            if (type == "result") return new WarmGenerateResult.Completed(root.GetRawText());
+            var code = root.TryGetProperty("code", out var c) ? c.GetString() ?? "error" : "error";
+            var message = root.TryGetProperty("message", out var m) ? m.GetString() ?? "" : "";
+            return new WarmGenerateResult.Rejected(code, message);
+        }
+
+        // One request and its reply on the resident process, after queue admission and in order with the others.
+        private async Task<T> ExchangeAsync<T>(string label, Func<string, string> requestLine,
+            Func<JsonElement, TimeSpan, T> read, Func<string, string, T> failed, Func<T> cancelled,
+            CancellationToken cancellationToken, TimeSpan? timeout = null)
         {
             await _requests.WaitAsync(cancellationToken).ConfigureAwait(false);
-            Interlocked.Increment(ref _busy);
             try
             {
-                return await pool._queue.RunAsync("warm-parse:" + word,
-                    (_, token) => RequestAsync(word, traceDetails, token), cancellationToken).ConfigureAwait(false);
+                return await pool._queue.RunAsync(label,
+                    (_, token) => RequestAsync(requestLine, read, failed, cancelled, token, timeout ?? pool._options.ParseTimeout), cancellationToken)
+                    .ConfigureAwait(false);
             }
             finally
             {
-                lock (_lock) _lastUsedUtc = DateTime.UtcNow;
-                Interlocked.Decrement(ref _busy);
                 _requests.Release();
             }
         }
 
-        private async Task<WarmParseResult> RequestAsync(string word, bool traceDetails, CancellationToken token)
+        private async Task<T> RequestAsync<T>(Func<string, string> requestLine, Func<JsonElement, TimeSpan, T> read,
+            Func<string, string, T> failed, Func<T> cancelled, CancellationToken token, TimeSpan limit)
         {
             PanGlossChildProcess? process;
             TerminatedLineReader? reader;
             lock (_lock) { process = _process; reader = _reader; }
             if (State.Phase != WarmSessionPhase.Ready || process is null || reader is null)
-                return new WarmParseResult.Fallback("session-ended", "The resident parser is no longer running.");
+                return failed("session-ended", "The resident parser is no longer running.");
             var id = Interlocked.Increment(ref pool._nextId).ToString(System.Globalization.CultureInfo.InvariantCulture);
             var clock = Stopwatch.StartNew();
             using var registration = token.Register(() => Kill(WarmSessionState.Idle, raise: true));
             var timedOut = false;
-            using var deadline = new CancellationTokenSource(pool._options.ParseTimeout);
+            using var deadline = new CancellationTokenSource(limit);
             using var deadlineRegistration = deadline.Token.Register(() =>
             {
                 timedOut = true;
-                Fail(ParseTimedOut.Code, ParseTimedOut.Message(pool._options.ParseTimeout));
+                Fail(ParseTimedOut.Code, ParseTimedOut.Message(limit));
             });
             try
             {
-                var request = JsonSerializer.Serialize(new { id, op = "parse", word, traceDetails }) + "\n";
-                var bytes = PanGlossProcessEnvironment.StreamEncoding.GetBytes(request);
+                var bytes = PanGlossProcessEnvironment.StreamEncoding.GetBytes(requestLine(id) + "\n");
                 await process.InteractiveInput!.WriteAsync(bytes, CancellationToken.None).ConfigureAwait(false);
                 await process.InteractiveInput.FlushAsync(CancellationToken.None).ConfigureAwait(false);
                 while (true)
                 {
                     var line = await reader.ReadLineAsync().ConfigureAwait(false);
-                    if (token.IsCancellationRequested) return new WarmParseResult.Cancelled();
-                    if (Volatile.Read(ref timedOut)) return ParseTimedOut.Result(pool._options.ParseTimeout);
+                    if (token.IsCancellationRequested) return cancelled();
+                    if (Volatile.Read(ref timedOut))
+                        return failed(ParseTimedOut.Code, ParseTimedOut.Message(limit));
                     if (line is null)
                     {
                         var died = Died();
                         Fail(died.Code, died.Message);
-                        return new WarmParseResult.Fallback(died.Code, died.Message);
+                        return failed(died.Code, died.Message);
                     }
                     using var document = JsonDocument.Parse(line);
                     var root = document.RootElement;
                     if (!root.TryGetProperty("id", out var replyId) || replyId.GetString() != id) continue;
-                    var type = root.TryGetProperty("type", out var t) ? t.GetString() : null;
-                    if (type == "result" && root.TryGetProperty("result", out var result))
-                    {
-                        if (!root.TryGetProperty("exitCode", out var exit) || !exit.TryGetInt32(out var exitCode))
-                            return new WarmParseResult.Fallback("serve-protocol", "A result line carried no exit code.");
-                        return new WarmParseResult.Completed(result.GetRawText(), exitCode, clock.Elapsed);
-                    }
-                    var code = root.TryGetProperty("code", out var c) ? c.GetString() ?? "error" : "error";
-                    var message = root.TryGetProperty("message", out var m) ? m.GetString() ?? "" : "";
-                    return new WarmParseResult.Fallback(code, message);
+                    return read(root, clock.Elapsed);
                 }
             }
             catch (Exception exception) when (exception is IOException or ObjectDisposedException or JsonException)
             {
-                if (token.IsCancellationRequested) return new WarmParseResult.Cancelled();
-                if (Volatile.Read(ref timedOut)) return ParseTimedOut.Result(pool._options.ParseTimeout);
+                if (token.IsCancellationRequested) return cancelled();
+                if (Volatile.Read(ref timedOut))
+                    return failed(ParseTimedOut.Code, ParseTimedOut.Message(limit));
                 var died = Died();
                 Fail(died.Code, died.Message);
-                return new WarmParseResult.Fallback(died.Code, died.Message);
+                return failed(died.Code, died.Message);
             }
         }
+
+        private static long? ReadOptionalCount(JsonElement root, string name) =>
+            root.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Number &&
+            value.TryGetInt64(out var count) && count >= 0 ? count : null;
 
         private (string Code, string Message) Died()
         {
@@ -566,9 +938,9 @@ public sealed class WarmPanGlossPool : IDisposable
             pool.Raise(ProjectKey, state);
         }
 
-        private void Fail(string code, string message)
+        private void Fail(string code, string message, PanGlossOutcome? probeFailure = null)
         {
-            var state = new WarmSessionState(WarmSessionPhase.Failed, code, message);
+            var state = new WarmSessionState(WarmSessionPhase.Failed, code, message) { ProbeFailure = probeFailure };
             Kill(state, raise: true);
             _loaded.TrySetResult(state);
         }
@@ -595,11 +967,14 @@ public sealed class WarmPanGlossPool : IDisposable
             }
             try
             {
-                if (job is not null && process is not null) job.Terminate(process);
+                if (job is not null && process is not null)
+                {
+                    TerminateAndWait(job, process, pool._options.KillWait, ProjectKey, Key);
+                }
                 job?.Dispose();
                 process?.Dispose();
             }
-            catch (Exception exception) when (exception is IOException or ObjectDisposedException)
+            catch (Exception exception) when (exception is IOException or ObjectDisposedException or AggregateException)
             {
                 Trace.TraceWarning("Stopping the resident parser failed: {0}", exception.Message);
             }

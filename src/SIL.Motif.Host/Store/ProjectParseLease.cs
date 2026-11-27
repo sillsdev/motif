@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
+using Microsoft.Data.Sqlite;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 
@@ -11,10 +12,15 @@ namespace SIL.Motif.Host.Store;
 public sealed class ProjectParseLease : IDisposable
 {
     private readonly MotifDatabase _database;
+    private readonly string _dataSource;
     private readonly string _token = Guid.NewGuid().ToString("N");
     private bool _disposed;
 
-    private ProjectParseLease(MotifDatabase database) => _database = database;
+    private ProjectParseLease(MotifDatabase database, string dataSource)
+    {
+        _database = database;
+        _dataSource = Path.GetFullPath(dataSource);
+    }
 
     public static ProjectParseLease? TryAcquire(MotifDatabase database)
     {
@@ -27,7 +33,7 @@ public sealed class ProjectParseLease : IDisposable
             using var row = read.ExecuteReader();
             if (row.Read() && OwnerExists(row.GetInt32(0), row.GetString(1))) return null;
         }
-        var lease = new ProjectParseLease(database);
+        var lease = new ProjectParseLease(database, connection.DataSource);
         using var process = Process.GetCurrentProcess();
         using var insert = connection.CreateCommand();
         insert.Transaction = transaction;
@@ -46,6 +52,32 @@ public sealed class ProjectParseLease : IDisposable
     public static Refusal BusyRefusal() => new(RefusalCodes.ParseAlreadyRunning, FailureReason.Busy,
         "A parse is already running for this project in another Motif window or process. " +
         "Use that window to see its progress or cancel it.");
+
+    /// <summary>Checks that this lease still admits writes to the transaction's project store.</summary>
+    public void EnsureHeld(SqliteConnection connection, SqliteTransaction transaction)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        var comparison = OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
+            ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        if (!string.Equals(Path.GetFullPath(connection.DataSource), _dataSource, comparison))
+            throw new InvalidOperationException("The parse lease belongs to another project store.");
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "SELECT Token FROM ActiveParse WHERE Id = 1;";
+        if (!string.Equals(command.ExecuteScalar() as string, _token, StringComparison.Ordinal))
+            throw new InvalidOperationException("The project parse lease is no longer held.");
+    }
+
+    /// <summary>Releases this admission in the transaction that publishes its successor's work.</summary>
+    public void ReleaseInTransaction(SqliteConnection connection, SqliteTransaction transaction)
+    {
+        EnsureHeld(connection, transaction);
+        using var delete = connection.CreateCommand();
+        delete.Transaction = transaction;
+        delete.CommandText = "DELETE FROM ActiveParse WHERE Id = 1 AND Token = $token;";
+        delete.Parameters.AddWithValue("$token", _token);
+        delete.ExecuteNonQuery();
+    }
 
     public void Dispose()
     {

@@ -16,7 +16,7 @@ namespace SIL.Motif.Host.PanGloss;
 /// </summary>
 public abstract record PanGlossRequest
 {
-    public const long DefaultPerWordStepLimit = StepCap.DefaultSteps;
+    public const long DefaultPerWordParserWorkLimit = ParserWorkLimit.DefaultWork;
 
     private PanGlossRequest() { }
 
@@ -29,6 +29,9 @@ public abstract record PanGlossRequest
 
     /// <summary>Whether a nonzero exit that wrote <paramref name="standardOutput"/> still produced a usable result.</summary>
     internal virtual bool AcceptsNonzeroExit(string standardOutput) => false;
+
+    /// <summary>The same question for a request that must look at what it wrote into <paramref name="scratch"/>.</summary>
+    internal virtual bool AcceptsNonzeroExit(string standardOutput, string scratch) => AcceptsNonzeroExit(standardOutput);
 
     /// <summary>Throws for a request a caller has built wrongly; this is programmer error, not an outcome.</summary>
     internal abstract void Validate();
@@ -84,10 +87,20 @@ public abstract record PanGlossRequest
     /// </summary>
     public sealed record Batch(
         string ProjectFilePath, IReadOnlyList<string> Words, TimeSpan? PerWordLimit, string? StatsCachePath = null,
-        StepCap? PerWordStepLimit = null, string? ArtifactDirectory = null)
+        ParserWorkLimit? PerWordParserWorkLimit = null, string? ArtifactDirectory = null)
         : PanGlossRequest
     {
         public bool CollectAnalyses { get; init; }
+
+        /// <summary>A snapshot produced from this run's project, bound to both files' exact bytes.</summary>
+        public PanGlossImportedSnapshot? ImportedSnapshot { get; init; }
+
+        internal string? SharedArtifactDirectory { get; init; }
+
+        /// <summary>Optional provenance manifest binding the statistics cache to its exact grammar input bytes.</summary>
+        public string? StatsManifestPath { get; init; }
+
+        internal bool WorkColumns { get; init; }
 
         /// <summary>Allows a retry to finish without a statistics cache, leaving its unavailable counters unknown.</summary>
         internal bool AllowMissingStatsCache { get; init; }
@@ -98,6 +111,12 @@ public abstract record PanGlossRequest
         /// <summary>Receives progress from the batch's flushed word rows.</summary>
         public Action<TrialWordProgress>? OnProgress { get; init; }
 
+        /// <summary>Receives validated, attributable morphology rows from an interrupted batch.</summary>
+        public Action<IReadOnlyList<SIL.Motif.Contract.Responses.ParseWordEvidence>>? OnPartial { get; init; }
+
+        /// <summary>Receives the exact words and any available executable digest when the batch child starts.</summary>
+        public Action<IReadOnlyList<string>, string?>? OnDispatched { get; init; }
+
         public override string Subcommand => "batch";
 
         internal override void Validate()
@@ -105,10 +124,16 @@ public abstract record PanGlossRequest
             if (string.IsNullOrWhiteSpace(ProjectFilePath)) throw new ArgumentException("Required.", nameof(ProjectFilePath));
             ArgumentNullException.ThrowIfNull(Words);
             ArgumentOutOfRangeException.ThrowIfNegativeOrZero(ThreadCount);
+            if (StatsManifestPath is not null &&
+                (string.IsNullOrWhiteSpace(StatsManifestPath) || string.IsNullOrWhiteSpace(StatsCachePath)))
+                throw new ArgumentException("A statistics manifest requires an output path and statistics cache.",
+                    nameof(StatsManifestPath));
             if (PerWordLimit is { } timeLimit && timeLimit <= TimeSpan.Zero)
                 throw new ArgumentOutOfRangeException(nameof(PerWordLimit), "A per-word limit must be positive.");
             if (!File.Exists(ProjectFilePath))
                 throw new FileNotFoundException("The project file the parser must read does not exist.", ProjectFilePath);
+            if (ImportedSnapshot is { } snapshot && !snapshot.Matches(ProjectFilePath))
+                throw new InvalidDataException("The imported snapshot or its project changed.");
         }
 
         internal override Task PrepareAsync(string scratch, CancellationToken cancellationToken) =>
@@ -117,7 +142,7 @@ public abstract record PanGlossRequest
         internal override void AddArguments(ProcessStartInfo startInfo, string scratch)
         {
             startInfo.ArgumentList.Add("batch");
-            startInfo.ArgumentList.Add(ProjectFilePath);
+            startInfo.ArgumentList.Add(ImportedSnapshot?.Path ?? ProjectFilePath);
             startInfo.ArgumentList.Add(Path.Combine(scratch, "words.txt"));
             startInfo.ArgumentList.Add(Path.Combine(scratch, "out.tsv"));
             if (PerWordLimit is { } timeLimit)
@@ -125,10 +150,9 @@ public abstract record PanGlossRequest
                 startInfo.ArgumentList.Add("--word-timeout-ms");
                 startInfo.ArgumentList.Add(((int)timeLimit.TotalMilliseconds).ToString(CultureInfo.InvariantCulture));
             }
-            startInfo.ArgumentList.Add("--step-cap");
-            startInfo.ArgumentList.Add((PerWordStepLimit ?? StepCap.Default).ToArgument());
             startInfo.ArgumentList.Add("--work-cap");
-            startInfo.ArgumentList.Add((PerWordStepLimit ?? StepCap.Default).ToWorkCapArgument());
+            startInfo.ArgumentList.Add((PerWordParserWorkLimit ?? ParserWorkLimit.Default).ToWorkCapArgument());
+            if (WorkColumns) startInfo.ArgumentList.Add("--work-columns");
             startInfo.ArgumentList.Add("--threads");
             startInfo.ArgumentList.Add(ThreadCount.ToString(CultureInfo.InvariantCulture));
             if (CollectAnalyses)
@@ -140,12 +164,17 @@ public abstract record PanGlossRequest
             startInfo.ArgumentList.Add("--stats");
             startInfo.ArgumentList.Add("--cache");
             startInfo.ArgumentList.Add(StatsCachePath);
+            if (StatsManifestPath is null) return;
+            startInfo.ArgumentList.Add("--stats-manifest");
+            startInfo.ArgumentList.Add(StatsManifestPath);
         }
 
         internal override PanGlossOutcome Finish(string scratch, string standardOutput, string standardError,
             TimeSpan elapsed, out BatchInvocationEvidence.BatchFileDigests? batchFileDigests)
         {
             batchFileDigests = null;
+            if (StatsManifestPath is not null && !File.Exists(StatsManifestPath))
+                return new PanGlossOutcome.Incomplete("The batch wrote no requested statistics manifest.", standardError);
             if (StatsCachePath is not null && !File.Exists(StatsCachePath) && !AllowMissingStatsCache)
             {
                 return new PanGlossOutcome.Incomplete(
@@ -227,15 +256,15 @@ public abstract record PanGlossRequest
     /// <c>--trace</c> flag, and tracing runs unmerged deliberately, so this must stay a single-word request
     /// rather than growing a word list. Needs PanGloss 0.3.3 or later.
     /// </summary>
-    /// <remarks>PanGloss signals a search stopped at its analysis-attempt cap, derived search-work cap, or time limit with a nonzero exit after writing its
+    /// <remarks>PanGloss signals a search stopped at its parser work limit, derived search-work cap, or time limit with a nonzero exit after writing its
     /// output, as an ordinary trace does from 0.5.2. A nonzero exit is accepted only when standard output holds a
     /// well-formed document reporting that stop, so the word shows as stopped; any other nonzero exit is refused.
     /// </remarks>
     public sealed record Trace(string GrammarPath, string Word) : PanGlossRequest
     {
-        /// <summary>The parser's analysis-attempt cap for this word; <see langword="null"/> passes none and keeps PanGloss's own
+        /// <summary>The parser's parser work limit for this word; <see langword="null"/> passes none and keeps PanGloss's own
         /// runaway guard.</summary>
-        public StepCap? StepLimit { get; init; }
+        public ParserWorkLimit? ParserWorkLimit { get; init; }
 
         public override string Subcommand => "parse";
 
@@ -261,11 +290,9 @@ public abstract record PanGlossRequest
             startInfo.ArgumentList.Add("--trace-format");
             startInfo.ArgumentList.Add("json");
             startInfo.ArgumentList.Add("--trace-details");
-            if (StepLimit is null) return;
-            startInfo.ArgumentList.Add("--step-cap");
-            startInfo.ArgumentList.Add(StepLimit.ToArgument());
+            if (ParserWorkLimit is null) return;
             startInfo.ArgumentList.Add("--work-cap");
-            startInfo.ArgumentList.Add(StepLimit.ToWorkCapArgument());
+            startInfo.ArgumentList.Add(ParserWorkLimit.ToWorkCapArgument());
         }
 
         internal override PanGlossOutcome Finish(string scratch, string standardOutput, string standardError,
@@ -273,6 +300,187 @@ public abstract record PanGlossRequest
         {
             batchFileDigests = null;
             return new PanGlossOutcome.Completed(standardOutput, standardError, elapsed);
+        }
+    }
+
+    /// <summary>
+    /// <c>pangloss parse &lt;grammar&gt; &lt;word&gt; --trace-rejections &lt;file&gt; --trace-max-paths &lt;n&gt;</c>: one
+    /// word parsed by the same engine that answers an ordinary parse, with PanGloss's bounded rejection witnesses written
+    /// as <c>pangloss.diagnostic.v1</c> JSON lines. Motif never runs a second tracing parser; this is the only source of
+    /// first-rejection evidence. Needs the pinned PanGloss, which advertises <c>interfaces.diagnostic</c>.
+    /// </summary>
+    /// <param name="GrammarPath">The grammar, or saved project, PanGloss parses against.</param>
+    /// <param name="Word">The single spelling to parse, exactly as written.</param>
+    /// <param name="MaxPaths">How many terminal path witnesses PanGloss may keep, 1 through 64.</param>
+    public sealed record RejectionTrace(string GrammarPath, string Word, int MaxPaths) : PanGlossRequest
+    {
+        /// <summary>The largest capture PanGloss may write; it is also the most Motif will read back.</summary>
+        public const int MaxCaptureBytes = 16 * 1024 * 1024;
+
+        /// <summary>The scratch file name PanGloss writes the JSON lines to.</summary>
+        public const string ArtifactName = "rejections.jsonl";
+
+        /// <summary>The rejection reasons the parser's description lists; set by the invoker, never by a caller.</summary>
+        internal IReadOnlyList<string>? DescribedRejectReasons { get; init; }
+
+        /// <summary>The per-word work limit to pass; null leaves the parser's own default.</summary>
+        public ParserWorkLimit? WorkLimit { get; init; }
+
+        public override string Subcommand => "parse";
+
+        /// <summary>The stop reasons that make PanGloss exit 1 after it writes the trace.</summary>
+        private static readonly string[] AcceptedStopReasons = ["work_limit", "timed_out", "invalid_shape"];
+
+        /// <summary>
+        /// PanGloss exits 1 for a parse that stopped at the work limit, timed out or hit an invalid shape, yet writes a
+        /// trace that names the stop. Only such a trace is read; a compile or load failure, or a missing trace, keeps the
+        /// typed refusal.
+        /// </summary>
+        internal override bool AcceptsNonzeroExit(string standardOutput, string scratch) =>
+            RecordsAcceptedStop(Path.Combine(scratch, ArtifactName));
+
+        internal static bool RecordsAcceptedStop(string tracePath)
+        {
+            try
+            {
+                var info = new FileInfo(tracePath);
+                if (!info.Exists || info.Length > MaxCaptureBytes + 4096 + 3072) return false;
+                foreach (var line in File.ReadLines(tracePath))
+                {
+                    if (!line.Contains("\"word_end\"", StringComparison.Ordinal)) continue;
+                    using var json = JsonDocument.Parse(line);
+                    if (!json.RootElement.TryGetProperty("search", out var search) ||
+                        !search.TryGetProperty("stopReasons", out var reasons) || reasons.ValueKind != JsonValueKind.Array)
+                        continue;
+                    if (reasons.EnumerateArray().Any(r => r.ValueKind == JsonValueKind.String &&
+                        AcceptedStopReasons.Contains(r.GetString(), StringComparer.Ordinal))) return true;
+                }
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException)
+            {
+                return false;
+            }
+            return false;
+        }
+
+        internal override void Validate()
+        {
+            if (string.IsNullOrWhiteSpace(GrammarPath)) throw new ArgumentException("Required.", nameof(GrammarPath));
+            if (string.IsNullOrEmpty(Word)) throw new ArgumentException("Required.", nameof(Word));
+            if (MaxPaths is < 1 or > 64) throw new ArgumentOutOfRangeException(nameof(MaxPaths), "Must be 1 through 64.");
+            if (!File.Exists(GrammarPath))
+                throw new FileNotFoundException("The grammar the parser must read does not exist.", GrammarPath);
+        }
+
+        internal override void AddArguments(ProcessStartInfo startInfo, string scratch)
+        {
+            startInfo.ArgumentList.Add("parse");
+            startInfo.ArgumentList.Add(GrammarPath);
+            startInfo.ArgumentList.Add(Word);
+            startInfo.ArgumentList.Add("--trace-rejections");
+            startInfo.ArgumentList.Add(Path.Combine(scratch, ArtifactName));
+            startInfo.ArgumentList.Add("--trace-max-paths");
+            startInfo.ArgumentList.Add(MaxPaths.ToString(CultureInfo.InvariantCulture));
+            if (WorkLimit is null) return;
+            startInfo.ArgumentList.Add("--work-cap");
+            startInfo.ArgumentList.Add(WorkLimit.ToWorkCapArgument());
+        }
+
+        internal override PanGlossOutcome Finish(string scratch, string standardOutput, string standardError,
+            TimeSpan elapsed, out BatchInvocationEvidence.BatchFileDigests? batchFileDigests)
+        {
+            batchFileDigests = null;
+            var path = Path.Combine(scratch, ArtifactName);
+            try
+            {
+                var info = new FileInfo(path);
+                if (!info.Exists)
+                    return new PanGlossOutcome.Incomplete("PanGloss wrote no rejection trace.", standardError);
+                if (info.Length > MaxCaptureBytes + 4096 + 3072)
+                    return new PanGlossOutcome.Incomplete(
+                        $"The rejection trace is {info.Length} bytes, over Motif's {MaxCaptureBytes}-byte capture limit.",
+                        standardError);
+                return new PanGlossOutcome.Completed(File.ReadAllText(path), standardError, elapsed)
+                    { DescribedRejectReasons = DescribedRejectReasons };
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                return new PanGlossOutcome.Incomplete("The rejection trace could not be read: " + exception.Message,
+                    standardError);
+            }
+        }
+    }
+
+    /// <summary>
+    /// <c>pangloss why-not &lt;grammar&gt; &lt;word&gt; --expect-json &lt;file&gt; --json</c>: whether the word parses along
+    /// each expected morph sequence and, where it does not, the first failing constraint as a
+    /// <c>pangloss.whynot.v1</c> report on standard output. A choice named by guid alone is written as a
+    /// <c>guid</c>-only JSON choice, so id and guid candidates share one call. Needs a PanGloss whose <c>--describe</c> declares
+    /// <c>interfaces.whyNot</c>.
+    /// </summary>
+    /// <param name="GrammarPath">The grammar, or saved project, PanGloss answers against.</param>
+    /// <param name="Word">The single spelling the candidates were expected to parse.</param>
+    /// <param name="Candidates">The expected morph sequences, one to <see cref="MaxCandidates"/>.</param>
+    public sealed record WhyNot(string GrammarPath, string Word, IReadOnlyList<WhyNotCandidate> Candidates) : PanGlossRequest
+    {
+        /// <summary>The most candidates one call may judge.</summary>
+        public const int MaxCandidates = 16;
+
+        /// <summary>The largest report Motif reads back from standard output.</summary>
+        public const int MaxReportBytes = 1024 * 1024;
+
+        /// <summary>The time PanGloss may spend on each concrete morph sequence before it answers unknown.</summary>
+        public const int SequenceTimeoutMs = 30_000;
+
+        /// <summary>The scratch file name the candidates are written to.</summary>
+        public const string ExpectArtifactName = "expect.json";
+
+        /// <summary>The failure kinds the parser's description says it answers; set by the invoker, never by a caller.</summary>
+        internal IReadOnlyList<string> AnswerableKinds { get; init; } = [];
+
+        public override string Subcommand => "why-not";
+
+        internal override void Validate()
+        {
+            if (string.IsNullOrWhiteSpace(GrammarPath)) throw new ArgumentException("Required.", nameof(GrammarPath));
+            if (string.IsNullOrEmpty(Word) || Word.StartsWith('-')) throw new ArgumentException("Required.", nameof(Word));
+            if (Candidates.Count is < 1 or > MaxCandidates)
+                throw new ArgumentOutOfRangeException(nameof(Candidates), $"Must be 1 through {MaxCandidates}.");
+            if (WhyNotInput.Problem(Candidates) is { } problem) throw new ArgumentException(problem, nameof(Candidates));
+            if (!File.Exists(GrammarPath))
+                throw new FileNotFoundException("The grammar the parser must read does not exist.", GrammarPath);
+        }
+
+        internal override async Task PrepareAsync(string scratch, CancellationToken cancellationToken)
+        {
+            await File.WriteAllTextAsync(Path.Combine(scratch, ExpectArtifactName), WhyNotInput.ToJson(Candidates),
+                cancellationToken).ConfigureAwait(false);
+        }
+
+        internal override void AddArguments(ProcessStartInfo startInfo, string scratch)
+        {
+            startInfo.ArgumentList.Add(Subcommand);
+            startInfo.ArgumentList.Add(GrammarPath);
+            startInfo.ArgumentList.Add(Word);
+            startInfo.ArgumentList.Add("--expect-json");
+            startInfo.ArgumentList.Add(Path.Combine(scratch, ExpectArtifactName));
+            startInfo.ArgumentList.Add("--json");
+            startInfo.ArgumentList.Add("--work-cap");
+            startInfo.ArgumentList.Add(ParserWorkLimit.Default.ToWorkCapArgument());
+            startInfo.ArgumentList.Add("--word-timeout-ms");
+            startInfo.ArgumentList.Add(SequenceTimeoutMs.ToString(CultureInfo.InvariantCulture));
+        }
+
+        internal override PanGlossOutcome Finish(string scratch, string standardOutput, string standardError,
+            TimeSpan elapsed, out BatchInvocationEvidence.BatchFileDigests? batchFileDigests)
+        {
+            batchFileDigests = null;
+            if (string.IsNullOrWhiteSpace(standardOutput))
+                return new PanGlossOutcome.Incomplete("PanGloss wrote no why-not report.", standardError);
+            if (System.Text.Encoding.UTF8.GetByteCount(standardOutput) > MaxReportBytes)
+                return new PanGlossOutcome.Incomplete(
+                    $"The why-not report is over Motif's {MaxReportBytes}-byte limit.", standardError);
+            return new PanGlossOutcome.Completed(standardOutput, standardError, elapsed) { WhyNotKinds = AnswerableKinds };
         }
     }
 
@@ -289,6 +497,15 @@ public abstract record PanGlossRequest
     public sealed record GrammarHealth(string GrammarPath, string FieldWorksProjectName,
         StoredAnalysisComparison StoredAnalyses = StoredAnalysisComparison.Budget) : PanGlossRequest
     {
+        /// <summary>The current run's snapshot output, or null when only a report is needed.</summary>
+        public string? SnapshotPath { get; init; }
+
+        /// <summary>The frozen facts context; requires a snapshot output and retains the facts under a lease.</summary>
+        public string? FactsContextJson { get; init; }
+
+        /// <summary>Whether facts omit the sections no Parsimony measure reads.</summary>
+        public bool FactsLight { get; init; }
+
         public override string Subcommand => "grammar-health";
         internal override bool AcceptsNonzeroExit(string standardOutput) => true;
 
@@ -298,9 +515,20 @@ public abstract record PanGlossRequest
             if (string.IsNullOrWhiteSpace(FieldWorksProjectName))
                 throw new ArgumentException("Required.", nameof(FieldWorksProjectName));
             if (!Enum.IsDefined(StoredAnalyses)) throw new ArgumentException("Unknown mode.", nameof(StoredAnalyses));
+            if (FactsContextJson is not null && SnapshotPath is null)
+                throw new ArgumentException("Grammar facts require a snapshot output.", nameof(SnapshotPath));
+            if (FactsLight && FactsContextJson is null)
+                throw new ArgumentException("Light facts require a facts context.", nameof(FactsLight));
+            if (SnapshotPath is not null && (string.IsNullOrWhiteSpace(SnapshotPath) ||
+                Path.GetExtension(GrammarPath).ToLowerInvariant() is not (".fwdata" or ".fwbackup")))
+                throw new ArgumentException("Snapshot output requires a FieldWorks project input.", nameof(SnapshotPath));
             if (!File.Exists(GrammarPath))
                 throw new FileNotFoundException("The grammar the parser must read does not exist.", GrammarPath);
         }
+
+        internal override Task PrepareAsync(string scratch, CancellationToken cancellationToken) =>
+            FactsContextJson is null ? Task.CompletedTask :
+                File.WriteAllTextAsync(Path.Combine(scratch, "facts-context.json"), FactsContextJson, cancellationToken);
 
         internal override void AddArguments(ProcessStartInfo startInfo, string scratch)
         {
@@ -315,16 +543,47 @@ public abstract record PanGlossRequest
                 StoredAnalysisComparison.All => "all",
                 _ => "off",
             });
+            if (SnapshotPath is not null)
+            {
+                startInfo.ArgumentList.Add("--snapshot-out");
+                startInfo.ArgumentList.Add(Path.GetFullPath(SnapshotPath));
+            }
+            if (FactsContextJson is not null)
+            {
+                startInfo.ArgumentList.Add("--facts-out");
+                startInfo.ArgumentList.Add(Path.Combine(scratch, "grammar-facts.sqlite"));
+                startInfo.ArgumentList.Add("--facts-context");
+                startInfo.ArgumentList.Add(Path.Combine(scratch, "facts-context.json"));
+                if (FactsLight) startInfo.ArgumentList.Add("--facts-light");
+            }
         }
 
         internal override PanGlossOutcome Finish(string scratch, string standardOutput, string standardError,
             TimeSpan elapsed, out BatchInvocationEvidence.BatchFileDigests? batchFileDigests)
         {
             batchFileDigests = null;
-            return string.IsNullOrWhiteSpace(standardOutput)
-                ? new PanGlossOutcome.Incomplete(
-                    "pangloss grammar-health exited 0 but wrote no findings to standard output.", standardError)
-                : new PanGlossOutcome.Completed(standardOutput, standardError, elapsed);
+            if (string.IsNullOrWhiteSpace(standardOutput))
+                return new PanGlossOutcome.Incomplete(
+                    "pangloss grammar-health exited 0 but wrote no findings to standard output.", standardError);
+            if (SnapshotPath is not null && !File.Exists(SnapshotPath))
+                return new PanGlossOutcome.Incomplete("pangloss grammar-health wrote no requested snapshot.", standardError);
+            var completed = new PanGlossOutcome.Completed(standardOutput, standardError, elapsed);
+            if (FactsContextJson is null) return completed;
+            try
+            {
+                var artifact = GrammarFactsReader.ReadProduced(Path.Combine(scratch, "grammar-facts.sqlite"), SnapshotPath!);
+                return completed with
+                {
+                    FactsArtifact = artifact,
+                    Facts = new PanGlossFactsArtifact(artifact.Path, artifact.SchemaVersion,
+                        artifact.SourceSha256, artifact.ModelFingerprint, artifact.OutputBytes, artifact.OutputSha256),
+                };
+            }
+            catch (InvalidDataException exception)
+            {
+                return new PanGlossOutcome.Incomplete(
+                    $"pangloss grammar-health wrote invalid facts: {exception.Message}", standardError);
+            }
         }
     }
 
@@ -363,8 +622,10 @@ public abstract record PanGlossRequest
     /// <param name="SnapshotPath">The exact current pg-snapshot JSON input.</param>
     /// <param name="ContextJson">The versioned facts context passed to PanGloss.</param>
     /// <param name="ArtifactDirectory">An optional new directory to own the database and its invocation inputs.</param>
+    /// <param name="Light">Whether to pass <c>--light</c>, which leaves out the tables and rows no Parsimony measure reads
+    /// and marks the sections they narrow <c>partial</c> with reason <c>light</c>.</param>
     public sealed record Facts(string SnapshotPath, string ContextJson, string? ArtifactDirectory = null,
-        string? StatsCachePath = null, string? StatsManifestPath = null)
+        string? StatsCachePath = null, string? StatsManifestPath = null, bool Light = false)
         : PanGlossRequest
     {
         public override string Subcommand => "facts";
@@ -406,6 +667,7 @@ public abstract record PanGlossRequest
                 startInfo.ArgumentList.Add("--stats-manifest");
                 startInfo.ArgumentList.Add(Path.GetFullPath(StatsManifestPath!));
             }
+            if (Light) startInfo.ArgumentList.Add("--light");
             startInfo.ArgumentList.Add("--json");
         }
 

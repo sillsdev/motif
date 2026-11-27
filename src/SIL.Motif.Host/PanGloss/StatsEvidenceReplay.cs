@@ -2,7 +2,7 @@ using System.Security.Cryptography;
 
 namespace SIL.Motif.Host.PanGloss;
 
-/// <summary>Verified disposable copies of retained source and statistics for a parser query that may write to its inputs.</summary>
+/// <summary>Verified disposable copies of retained source and, when collected, statistics for a parser query.</summary>
 public sealed class StatsEvidenceReplay : IDisposable
 {
     private readonly string _directory;
@@ -21,19 +21,45 @@ public sealed class StatsEvidenceReplay : IDisposable
     /// Copies the artifacts while hashing the bytes streamed through the copy, then verifies those digests, so
     /// a large statistics cache is read once rather than copied and read again.
     /// </summary>
-    public static StatsEvidenceReplay Create(BatchInvocationEvidence evidence, string cachePath, string cacheDigest)
+    public static StatsEvidenceReplay Create(BatchInvocationEvidence evidence, string cachePath, string cacheDigest,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(cachePath) || string.IsNullOrWhiteSpace(cacheDigest))
+            throw new InvalidDataException("The Assessment is missing retained source or statistics evidence.");
+        return CreateCore(evidence, cachePath, cacheDigest, cancellationToken);
+    }
+
+    /// <summary>Copies and verifies retained source for a Handoff whose Assessment skipped object timing.</summary>
+    public static StatsEvidenceReplay CreateSourceOnly(BatchInvocationEvidence evidence,
+        CancellationToken cancellationToken = default) => CreateCore(evidence, null, null, cancellationToken);
+
+    private static StatsEvidenceReplay CreateCore(BatchInvocationEvidence evidence, string? cachePath,
+        string? cacheDigest, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(evidence);
-        if (string.IsNullOrWhiteSpace(evidence.SourcePath) || string.IsNullOrWhiteSpace(evidence.SourceBytesSha256) ||
-            string.IsNullOrWhiteSpace(cachePath) || string.IsNullOrWhiteSpace(cacheDigest))
-            throw new InvalidDataException("The Assessment is missing retained source or statistics evidence.");
+        if (string.IsNullOrWhiteSpace(evidence.SourcePath) || string.IsNullOrWhiteSpace(evidence.SourceBytesSha256))
+            throw new InvalidDataException("The Assessment is missing retained source evidence.");
         var replay = new StatsEvidenceReplay(Directory.CreateTempSubdirectory("motif-stats-replay-").FullName);
         try
         {
-            var sourceDigest = CopyAndDigest(evidence.SourcePath, replay.GrammarPath);
-            var statsDigest = CopyAndDigest(cachePath, replay.CachePath);
-            if (!string.Equals(sourceDigest, evidence.SourceBytesSha256, StringComparison.Ordinal) ||
-                !string.Equals(statsDigest, cacheDigest, StringComparison.Ordinal))
+            string sourceDigest;
+            using (StatsCacheLock.AcquireForFile(evidence.SourcePath, cancellationToken))
+                sourceDigest = CopyAndDigest(evidence.SourcePath, replay.GrammarPath);
+            if (!string.Equals(sourceDigest, evidence.SourceBytesSha256, StringComparison.Ordinal))
+                throw new InvalidDataException("The retained source bytes do not match the recorded Assessment.");
+            if (cachePath is null) return replay;
+            string statsDigest;
+            using var cacheLock = StatsCacheLock.AcquireForFile(cachePath, cancellationToken);
+            try { statsDigest = CopyAndDigest(cachePath, replay.CachePath); }
+            catch (FileNotFoundException exception)
+            {
+                throw new InvalidDataException("The statistics cache is no longer available; run a new Assessment.", exception);
+            }
+            catch (DirectoryNotFoundException exception)
+            {
+                throw new InvalidDataException("The statistics cache is no longer available; run a new Assessment.", exception);
+            }
+            if (!string.Equals(statsDigest, cacheDigest, StringComparison.Ordinal))
                 throw new InvalidDataException("The retained source or statistics bytes do not match the recorded Assessment.");
             return replay;
         }

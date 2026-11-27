@@ -1,22 +1,82 @@
 using System.Collections.Immutable;
-using System.ComponentModel;
 using System.Diagnostics;
-using System.Globalization;
 using System.Text.Json;
 using SIL.Motif.Host.Parsimony;
 
 namespace SIL.Motif.Host.PanGloss;
 
 internal sealed record PanGlossSurfaceCheck(
-    bool IsValid, string Message, PanGlossCapabilities? Capabilities = null);
+    bool IsValid, string Message, PanGlossCapabilities? Capabilities = null)
+{
+    internal PanGlossOutcome? Failure { get; init; }
+}
 
 internal sealed record PanGlossCapabilities(
     ImmutableDictionary<string, PanGlossCommandCapabilities> Commands,
-    bool FactsContractSupported, int? ServeProtocol = null)
+    bool FactsContractSupported, int? ServeProtocol = null, int? BatchTsv = null,
+    PanGlossWhyNotCapability? WhyNot = null, PanGlossServeGenerateCapability? ServeGenerate = null,
+    PanGlossServeMatchCapability? ServeMatch = null, PanGlossServeInventoryCapability? ServeInventory = null,
+    ImmutableArray<string>? DiagnosticRejectReasons = null,
+    PanGlossServeEffectsCapability? ServeEffects = null)
 {
+    /// <summary>Why this parser cannot say which phonological rules may change a morpheme on <c>serve</c>, or null when it can: the description must declare <c>interfaces.serveOps.effects</c>.</summary>
+    internal string? ServeEffectsRefusal() =>
+        ServeEffects is null ? "its description declares no interfaces.serveOps.effects" : null;
+
+    /// <summary>
+    /// Why this parser cannot match pattern text over a word list on <c>serve</c>, or null when it can: the description must
+    /// declare <c>interfaces.serveOps.match</c>, and list every construct the pattern needs (<c>environment</c>,
+    /// <c>featureBundle</c>, <c>alphaVariable</c>) under its <c>constructs.supported</c>.
+    /// </summary>
+    internal string? ServeMatchRefusal(IReadOnlyCollection<string>? needs = null, string? segmentTest = null)
+    {
+        if (ServeMatch is null) return "its description declares no interfaces.serveOps.match";
+        if (segmentTest is not null && !ServeMatch.SegmentTests.Contains(segmentTest))
+            return $"its interfaces.serveOps.match does not list {segmentTest} under segmentTests";
+        foreach (var need in needs ?? [])
+            if (!ServeMatch.Supported.Contains(need))
+                return $"its interfaces.serveOps.match does not list {need} among its supported constructs";
+        return null;
+    }
+
+    /// <summary>Why this parser cannot list a grammar's natural classes and features on <c>serve</c>, or null when it can.</summary>
+    internal string? ServeInventoryRefusal() =>
+        ServeInventory is null ? "its description declares no interfaces.serveOps.inventory" : null;
+
+    /// <summary>
+    /// Why this parser cannot answer a traced <c>generate</c> over <c>serve</c>, or null when it can: the description must
+    /// declare <c>interfaces.serveOps.generate</c> with <c>trace</c> true.
+    /// </summary>
+    internal string? ServeGenerateRefusal() =>
+        ServeGenerate is null ? "its description declares no interfaces.serveOps.generate"
+        : !ServeGenerate.Trace ? "it declares serveOps.generate without a rule trace"
+        : null;
+
+    /// <summary>
+    /// Why this parser cannot answer why-not, or null when it can: the description must expose a visible
+    /// <c>why-not</c> command and declare <c>interfaces.whyNot</c> with Motif's schema and the <c>grammar-xml</c> id promise.
+    /// </summary>
+    internal string? WhyNotRefusal()
+    {
+        if (!Commands.TryGetValue("why-not", out var command) || command.Hidden)
+            return "its description has no why-not command";
+        if (WhyNot is null) return "its description declares no interfaces.whyNot";
+        if (WhyNot.Schema != PanGlossInterfaceVersions.WhyNotSchemaId)
+            return $"it declares why-not schema '{WhyNot.Schema ?? "none"}', and Motif reads {PanGlossInterfaceVersions.WhyNotSchemaId}";
+        return WhyNot.Ids == PanGlossInterfaceVersions.WhyNotIds
+            ? null
+            : $"it declares why-not ids '{WhyNot.Ids ?? "none"}', and Motif needs {PanGlossInterfaceVersions.WhyNotIds}";
+    }
+
+    /// <summary>Why these candidates cannot be sent, when one is named by guid alone and the parser does not declare it reads that.</summary>
+    internal string? GuidChoiceRefusal(IReadOnlyList<WhyNotCandidate> candidates) =>
+        WhyNotInput.HasGuidOnlyChoice(candidates) && WhyNot is { ExpectGuidChoices: false }
+            ? "its description does not declare interfaces.whyNot.expectGuidChoices"
+            : null;
+
     internal string? ValidateRequest(PanGlossRequest request)
     {
-        if (request is PanGlossRequest.Facts && !FactsContractSupported)
+        if ((request is PanGlossRequest.Facts or PanGlossRequest.GrammarHealth { FactsContextJson: not null }) && !FactsContractSupported)
             return "the description does not declare the supported grammar-facts and context identity.";
         var startInfo = new ProcessStartInfo();
         request.AddArguments(startInfo, "scratch");
@@ -70,6 +130,42 @@ internal sealed record PanGlossCapabilities(
     }
 }
 
+/// <summary>What <c>interfaces.whyNot</c> declares.</summary>
+/// <param name="Schema">The report schema id, or null when the key is missing.</param>
+/// <param name="Ids">The id promise, or null when the key is missing.</param>
+/// <param name="Kinds">The failure kinds the parser answers; every other kind comes back unknown.</param>
+/// <param name="SuiteRows">Whether the parser also runs the shared suite's why-not rows.</param>
+internal sealed record PanGlossWhyNotCapability(string? Schema, string? Ids, ImmutableArray<string> Kinds, bool SuiteRows, bool ExpectGuidChoices = false);
+
+/// <summary>What <c>interfaces.serveOps.match</c> declares.</summary>
+/// <param name="Version">The op's own version, or null when the key is missing.</param>
+/// <param name="Supported">The constructs <c>constructs.supported</c> lists, such as <c>environment</c>, <c>featureBundle</c> and <c>alphaVariable</c>.</param>
+/// <param name="SegmentTestsListed">The segment tests <c>segmentTests</c> lists (<c>engine</c>, <c>identity</c>); empty on a release before v0.31.0, which has none.</param>
+internal sealed record PanGlossServeMatchCapability(int? Version, ImmutableHashSet<string>? SupportedConstructs = null,
+    ImmutableHashSet<string>? SegmentTestsListed = null)
+{
+    /// <summary>The segment tests the op declares; empty when the description lists none.</summary>
+    internal ImmutableHashSet<string> SegmentTests => SegmentTestsListed ?? [];
+
+    /// <summary>The constructs the op declares supported; empty when the description lists none.</summary>
+    internal ImmutableHashSet<string> Supported => SupportedConstructs ?? [];
+}
+
+/// <summary>What <c>interfaces.serveOps.inventory</c> declares.</summary>
+/// <param name="Version">The op's own version, or null when the key is missing.</param>
+internal sealed record PanGlossServeInventoryCapability(int? Version);
+
+/// <summary>What <c>interfaces.serveOps.effects</c> declares.</summary>
+/// <param name="Version">The op's own version, or null when the key is missing.</param>
+/// <param name="NonLocalCriteria">The names of the criteria under which a rule reaches beyond a morpheme's edges: <c>unboundedQuantifier</c>, <c>alphaAgreement</c>, <c>iterativeSpreading</c>.</param>
+internal sealed record PanGlossServeEffectsCapability(int? Version, ImmutableArray<string> NonLocalCriteria);
+
+/// <summary>What <c>interfaces.serveOps.generate</c> declares.</summary>
+/// <param name="Version">The op's own version, or null when the key is missing.</param>
+/// <param name="Trace">Whether the op can return each surface's rule steps.</param>
+/// <param name="RequestSchema">The <c>generate --request</c> schema version the op reads, or null.</param>
+internal sealed record PanGlossServeGenerateCapability(int? Version, bool Trace, int? RequestSchema);
+
 internal sealed record PanGlossCommandCapabilities(
     bool Hidden, ImmutableArray<string> Positionals, ImmutableDictionary<string, bool> Flags);
 
@@ -82,78 +178,27 @@ internal static class PanGlossSurface
         string executable, PanGlossContainmentJob containment, CancellationToken cancellationToken,
         TimeSpan? descriptionCap = null)
     {
-        cancellationToken.ThrowIfCancellationRequested();
         var cap = descriptionCap ?? TimeSpan.FromSeconds(DefaultDescriptionCapSeconds);
-        var startInfo = new ProcessStartInfo(executable)
-        {
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-        PanGlossProcessEnvironment.Configure(startInfo);
-        startInfo.ArgumentList.Add("--describe");
-
-        PanGlossChildProcess? process;
+        var outcome = await PanGlossProbe.RunAsync(executable, "--describe", containment, cap, cancellationToken)
+            .ConfigureAwait(false);
+        if (PanGlossProbe.FatalFailure(outcome) is { } failure)
+            return Invalid(executable, failure.Message) with { Failure = failure };
+        if (outcome is not PanGlossOutcome.Completed completed)
+            return Invalid(executable, outcome.Message);
+        var standardOutput = completed.Output;
         try
         {
-            process = containment.Start(startInfo);
+            using var description = JsonDocument.Parse(standardOutput);
+            var capabilities = Validate(description.RootElement, out var detail);
+            return capabilities is not null
+                ? new PanGlossSurfaceCheck(true, string.Empty, capabilities)
+                : Invalid(executable, detail!);
         }
         catch (Exception exception) when (
-            exception is Win32Exception or InvalidOperationException or ArgumentException or UnauthorizedAccessException)
+            exception is JsonException or InvalidOperationException or ArgumentException or KeyNotFoundException or
+            FormatException or OverflowException or NotSupportedException)
         {
-            return Invalid(executable, $"could not start --describe: {exception.Message}");
-        }
-        if (process is null) return Invalid(executable, "could not start --describe.");
-
-        using (process)
-        {
-            var output = process.ReadStandardOutputAsync();
-            var error = process.ReadStandardErrorAsync();
-            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            deadline.CancelAfter(cap);
-            try
-            {
-                await process.WaitForExitAsync(deadline.Token).ConfigureAwait(false);
-                await process.WaitForContainmentAsync(deadline.Token).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                containment.Terminate(process);
-                using var stopped = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-                try
-                {
-                    await process.WaitForExitAsync(stopped.Token).ConfigureAwait(false);
-                    await process.WaitForContainmentAsync(stopped.Token).ConfigureAwait(false);
-                    await Task.WhenAll(output, error).WaitAsync(stopped.Token).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException) { }
-                if (cancellationToken.IsCancellationRequested)
-                    throw new OperationCanceledException(cancellationToken);
-                var seconds = cap.TotalSeconds.ToString("0.###", CultureInfo.InvariantCulture);
-                var unit = cap == TimeSpan.FromSeconds(1) ? "second" : "seconds";
-                return Invalid(executable, $"--describe did not finish within {seconds} {unit}.");
-            }
-
-            var standardOutput = await output.ConfigureAwait(false);
-            var standardError = await error.ConfigureAwait(false);
-            if (process.ExitCode != 0)
-                return Invalid(executable, $"--describe exited {process.ExitCode}: {standardError.Trim()}");
-
-            try
-            {
-                using var description = JsonDocument.Parse(standardOutput);
-                var capabilities = Validate(description.RootElement, out var detail);
-                return capabilities is not null
-                    ? new PanGlossSurfaceCheck(true, string.Empty, capabilities)
-                    : Invalid(executable, detail!);
-            }
-            catch (Exception exception) when (
-                exception is JsonException or InvalidOperationException or ArgumentException or KeyNotFoundException or
-                FormatException or OverflowException or NotSupportedException)
-            {
-                return Invalid(executable, "--describe returned invalid JSON: " + exception.Message);
-            }
+            return Invalid(executable, "--describe returned invalid JSON: " + exception.Message);
         }
     }
 
@@ -227,7 +272,111 @@ internal static class PanGlossSurface
         int? serveProtocol = root.TryGetProperty("interfaces", out var interfaces) &&
             interfaces.ValueKind == JsonValueKind.Object && interfaces.TryGetProperty("serveProtocol", out var serveElement) &&
             serveElement.ValueKind == JsonValueKind.Number && serveElement.TryGetInt32(out var served) ? served : null;
-        return new PanGlossCapabilities(byName.ToImmutable(), HasFactsIdentity(root), serveProtocol);
+        int? batchTsv = root.TryGetProperty("interfaces", out interfaces) &&
+            interfaces.ValueKind == JsonValueKind.Object && interfaces.TryGetProperty("batchTsv", out var batchElement) &&
+            batchElement.ValueKind == JsonValueKind.Number && batchElement.TryGetInt32(out var batchVersion) ? batchVersion : null;
+        return new PanGlossCapabilities(byName.ToImmutable(), HasFactsIdentity(root), serveProtocol, batchTsv,
+            ReadWhyNot(root), ReadServeGenerate(root), ReadServeMatch(root), ReadServeInventory(root),
+            ReadDiagnosticRejectReasons(root), ReadServeEffects(root));
+    }
+
+    /// <summary>The rejection reasons <c>interfaces.diagnostic.eventTuples</c> lists; null when none.</summary>
+    private static ImmutableArray<string>? ReadDiagnosticRejectReasons(JsonElement root)
+    {
+        if (!root.TryGetProperty("interfaces", out var interfaces) || interfaces.ValueKind != JsonValueKind.Object ||
+            !interfaces.TryGetProperty("diagnostic", out var diagnostic) || diagnostic.ValueKind != JsonValueKind.Object ||
+            !diagnostic.TryGetProperty("eventTuples", out var tuples) || tuples.ValueKind != JsonValueKind.Array)
+            return null;
+        var reasons = ImmutableHashSet.CreateBuilder<string>(StringComparer.Ordinal);
+        foreach (var tuple in tuples.EnumerateArray())
+        {
+            if (tuple.ValueKind != JsonValueKind.Array || tuple.GetArrayLength() < 4) continue;
+            var items = tuple.EnumerateArray().ToArray();
+            if (items[1].ValueKind == JsonValueKind.String && items[1].GetString() == "reject" &&
+                items[3].ValueKind == JsonValueKind.String)
+                reasons.Add(items[3].GetString()!);
+        }
+        return reasons.OrderBy(reason => reason, StringComparer.Ordinal).ToImmutableArray();
+    }
+
+    private static PanGlossServeMatchCapability? ReadServeMatch(JsonElement root)
+    {
+        if (!root.TryGetProperty("interfaces", out var interfaces) || interfaces.ValueKind != JsonValueKind.Object ||
+            !interfaces.TryGetProperty("serveOps", out var ops) || ops.ValueKind != JsonValueKind.Object ||
+            !ops.TryGetProperty("match", out var match) || match.ValueKind != JsonValueKind.Object)
+            return null;
+        var supported = ImmutableHashSet.CreateBuilder<string>(StringComparer.Ordinal);
+        if (match.TryGetProperty("constructs", out var constructs) && constructs.ValueKind == JsonValueKind.Object &&
+            constructs.TryGetProperty("supported", out var list) && list.ValueKind == JsonValueKind.Array)
+            foreach (var item in list.EnumerateArray())
+                if (item.ValueKind == JsonValueKind.String) supported.Add(item.GetString()!);
+        var tests = ImmutableHashSet.CreateBuilder<string>(StringComparer.Ordinal);
+        if (match.TryGetProperty("segmentTests", out var testList) && testList.ValueKind == JsonValueKind.Array)
+            foreach (var item in testList.EnumerateArray())
+                if (item.ValueKind == JsonValueKind.String) tests.Add(item.GetString()!);
+        return new PanGlossServeMatchCapability(match.TryGetProperty("version", out var version) &&
+            version.ValueKind == JsonValueKind.Number && version.TryGetInt32(out var number) ? number : null, supported.ToImmutable(), tests.ToImmutable());
+    }
+
+    private static PanGlossServeEffectsCapability? ReadServeEffects(JsonElement root)
+    {
+        if (!root.TryGetProperty("interfaces", out var interfaces) || interfaces.ValueKind != JsonValueKind.Object ||
+            !interfaces.TryGetProperty("serveOps", out var ops) || ops.ValueKind != JsonValueKind.Object ||
+            !ops.TryGetProperty("effects", out var effects) || effects.ValueKind != JsonValueKind.Object)
+            return null;
+        var criteria = ImmutableArray.CreateBuilder<string>();
+        if (effects.TryGetProperty("nonLocalCriteria", out var list) && list.ValueKind == JsonValueKind.Array)
+            foreach (var item in list.EnumerateArray())
+                if (item.ValueKind == JsonValueKind.String) criteria.Add(item.GetString()!);
+        return new PanGlossServeEffectsCapability(effects.TryGetProperty("version", out var version) &&
+            version.ValueKind == JsonValueKind.Number && version.TryGetInt32(out var number) ? number : null, criteria.ToImmutable());
+    }
+
+    private static PanGlossServeInventoryCapability? ReadServeInventory(JsonElement root)
+    {
+        if (!root.TryGetProperty("interfaces", out var interfaces) || interfaces.ValueKind != JsonValueKind.Object ||
+            !interfaces.TryGetProperty("serveOps", out var ops) || ops.ValueKind != JsonValueKind.Object ||
+            !ops.TryGetProperty("inventory", out var inventory) || inventory.ValueKind != JsonValueKind.Object)
+            return null;
+        return new PanGlossServeInventoryCapability(inventory.TryGetProperty("version", out var version) &&
+            version.ValueKind == JsonValueKind.Number && version.TryGetInt32(out var number) ? number : null);
+    }
+
+    private static PanGlossServeGenerateCapability? ReadServeGenerate(JsonElement root)
+    {
+        if (!root.TryGetProperty("interfaces", out var interfaces) || interfaces.ValueKind != JsonValueKind.Object ||
+            !interfaces.TryGetProperty("serveOps", out var ops) || ops.ValueKind != JsonValueKind.Object ||
+            !ops.TryGetProperty("generate", out var generate) || generate.ValueKind != JsonValueKind.Object)
+            return null;
+        int? Number(string name) =>
+            generate.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Number &&
+            value.TryGetInt32(out var number) ? number : null;
+        return new PanGlossServeGenerateCapability(Number("version"),
+            generate.TryGetProperty("trace", out var trace) && trace.ValueKind == JsonValueKind.True, Number("requestSchema"));
+    }
+
+    private static PanGlossWhyNotCapability? ReadWhyNot(JsonElement root)
+    {
+        if (!root.TryGetProperty("interfaces", out var interfaces) || interfaces.ValueKind != JsonValueKind.Object ||
+            !interfaces.TryGetProperty("whyNot", out var whyNot) || whyNot.ValueKind != JsonValueKind.Object)
+            return null;
+        string? Text(string name) =>
+            whyNot.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+        var kinds = ImmutableArray.CreateBuilder<string>();
+        if (whyNot.TryGetProperty("kinds", out var list) && list.ValueKind == JsonValueKind.Array)
+            foreach (var kind in list.EnumerateArray())
+                if (kind.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(kind.GetString()))
+                    kinds.Add(kind.GetString()!);
+        var suite = whyNot.TryGetProperty("suiteRows", out var rows) && rows.ValueKind == JsonValueKind.True;
+        var guidChoices = whyNot.TryGetProperty("expectGuidChoices", out var flag) && flag.ValueKind == JsonValueKind.True;
+        return new PanGlossWhyNotCapability(Text("schema"), Text("ids"), kinds.ToImmutable(), suite, guidChoices);
+    }
+
+    /// <summary>Reads one <c>--describe</c> document; the seam tests drive with a recorded description.</summary>
+    internal static PanGlossCapabilities? ReadDescription(string json, out string? detail)
+    {
+        using var description = JsonDocument.Parse(json);
+        return Validate(description.RootElement, out detail);
     }
 
     private static bool HasFactsIdentity(JsonElement root)

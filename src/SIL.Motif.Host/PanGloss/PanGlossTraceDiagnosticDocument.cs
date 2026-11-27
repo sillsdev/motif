@@ -88,7 +88,7 @@ public sealed record PanGlossTraceDiagnosticDocument(
     IReadOnlyList<PanGlossTraceAttempt> Attempts,
     string RawJson)
 {
-    public bool IsV3 => string.Equals(SchemaVersion, PanGlossTraceDiagnosticReader.SchemaV3, StringComparison.Ordinal);
+    public bool IsV5 => string.Equals(SchemaVersion, PanGlossTraceDiagnosticReader.SchemaV5, StringComparison.Ordinal);
 }
 
 public sealed class PanGlossTraceDiagnosticFormatException : FormatException
@@ -99,7 +99,7 @@ public sealed class PanGlossTraceDiagnosticFormatException : FormatException
 
 public static class PanGlossTraceDiagnosticReader
 {
-    public const string SchemaV3 = PanGlossInterfaceVersions.TraceDetailsSchemaId;
+    public const string SchemaV5 = PanGlossInterfaceVersions.TraceDetailsSchemaId;
 
     public static PanGlossTraceDiagnosticDocument Read(string json)
     {
@@ -134,9 +134,9 @@ public static class PanGlossTraceDiagnosticReader
             throw new PanGlossTraceDiagnosticFormatException("The diagnostic document must be a JSON object.");
 
         var schema = RequiredString(envelope, "schemaVersion");
-        if (schema != SchemaV3)
+        if (schema != SchemaV5)
             throw new PanGlossTraceDiagnosticFormatException(
-                $"Unsupported diagnostic schema '{schema}'. Motif requires {SchemaV3}. Update PanGloss and Motif together.");
+                $"Unsupported diagnostic schema '{schema}'. Motif requires {SchemaV5}. Update PanGloss and Motif together.");
 
         var search = RequiredObject(envelope, "search");
         var result = RequiredObject(envelope, "result");
@@ -149,13 +149,12 @@ public static class PanGlossTraceDiagnosticReader
             RequiredBool(search, "capped"),
             RequiredBool(search, "timedOut"),
             RequiredBool(search, "invalidShape"),
-            RequiredLong(search, "steps"),
             RequiredLong(search, "elapsedNs"),
             RequiredBool(result, "guessed"),
             categories.EnumerateObject().Select(ReadCategory).ToArray())
         {
             ReportedCompleted = RequiredBool(search, "completed"),
-            WorkSteps = OptionalLong(search, "workSteps"),
+            ParserWork = OptionalLong(search, "workSteps"),
         };
 
         var analyses = ReadAnalyses(result);
@@ -434,6 +433,9 @@ public static class PanGlossTraceDiagnosticReader
         var value = property.Value;
         if (value.ValueKind != JsonValueKind.Object)
             throw new PanGlossTraceDiagnosticFormatException($"Category '{property.Name}' must be a JSON object.");
+        if (property.Name == "unattributed")
+            return new PanGlossTraceCategory(property.Name, 0, 0, 0, 0, 0, 0, 0, null)
+                { ParserWork = OptionalLong(value, "work_steps") };
         var timed = RequiredBool(value, "timingAvailable");
         var self = Required(value, "selfElapsedNs", timed ? JsonValueKind.Number : JsonValueKind.Null);
         return new PanGlossTraceCategory(
@@ -445,7 +447,7 @@ public static class PanGlossTraceDiagnosticReader
             RequiredLong(value, "noRoot"),
             RequiredLong(value, "surfaceMismatch"),
             RequiredLong(value, "uses"),
-            timed ? self.GetInt64() : null);
+            timed ? self.GetInt64() : null) { ParserWork = OptionalLong(value, "work_steps") };
     }
 
     private static JsonElement Required(JsonElement owner, string name, JsonValueKind kind) =>

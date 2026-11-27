@@ -23,10 +23,14 @@ public sealed class WorkerMutexOwner : IDisposable
     /// <summary>Creates a root owner that uses a lock file shared across temporary-directory overrides.</summary>
     public static WorkerMutexOwner ForRoot(string name) => new(name, machineWide: true);
 
-    internal WorkerMutexOwner(string name, bool machineWide)
+    /// <summary>Creates a root owner whose lock file, on Unix, is removed when the lease is released.</summary>
+    /// <remarks>For names that are unique per resource, so lock files do not pile up in the temporary folder.</remarks>
+    public static WorkerMutexOwner ForTransientRoot(string name) => new(name, machineWide: true, deleteLockFile: true);
+
+    internal WorkerMutexOwner(string name, bool machineWide, bool deleteLockFile = false)
     {
         if (OperatingSystem.IsWindows()) _mutex = new Mutex(false, name);
-        else _unixLock = new UnixFileLock(name, machineWide);
+        else _unixLock = new UnixFileLock(name, machineWide, deleteLockFile);
         _thread = new Thread(Run) { IsBackground = true, Name = "Motif worker mutex owner" };
         _thread.Start();
     }
@@ -152,6 +156,7 @@ internal enum WorkerLockAccess
 internal static class WorkerLockPaths
 {
     internal const string TestRegistryNamespaceVariable = "MOTIF_TEST_WORKER_LOCK_REGISTRY_NAMESPACE";
+    internal const string TestLockNamespaceVariable = "MOTIF_TEST_WORKER_LOCK_NAMESPACE";
 
     internal static string GetLockPath(string name, bool machineWide)
     {
@@ -159,6 +164,12 @@ internal static class WorkerLockPaths
             OperatingSystem.IsWindows() ? "user:" + Environment.UserName + ":" + name :
                 "user:" + UnixNative.GetEffectiveUserId() + ":" + name;
         var directory = machineWide && !OperatingSystem.IsWindows() ? "/tmp" : Path.GetTempPath();
+        var testNamespace = Environment.GetEnvironmentVariable(TestLockNamespaceVariable);
+        if (!string.IsNullOrWhiteSpace(testNamespace))
+        {
+            directory = Path.GetFullPath(testNamespace);
+            Directory.CreateDirectory(directory);
+        }
         var digest = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(identity))).ToLowerInvariant();
         return Path.Combine(directory, "motif-lock-" + digest);
     }
@@ -201,9 +212,8 @@ internal sealed class WindowsFileLock : IDisposable
 
         try
         {
-            _stream = new FileStream(_path, FileMode.OpenOrCreate,
-                _access == WorkerLockAccess.Shared ? FileAccess.Read : FileAccess.ReadWrite,
-                _access == WorkerLockAccess.Shared ? FileShare.Read : FileShare.None);
+            _stream = new FileStream(_path, FileMode.OpenOrCreate, FileAccess.ReadWrite,
+                _access == WorkerLockAccess.Shared ? FileShare.ReadWrite : FileShare.None);
             return true;
         }
         catch (IOException exception) when (IsSharingViolation(exception))
