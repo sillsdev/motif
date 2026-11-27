@@ -27,4 +27,3 @@ The response identifies the project, Baseline digest, capture time, source save 
 ## Related commands
 
 - [Measure a Selection](cmd:assess) ensures a Baseline exists before recording parser evidence.
-- [Queue a Baseline Refresh](cmd:baseline-refresh) requests a durable queued capture.

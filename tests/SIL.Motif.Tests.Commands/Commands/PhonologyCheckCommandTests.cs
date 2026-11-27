@@ -63,20 +63,6 @@ public sealed class PhonologyCheckCommandTests(PristineProjectFixture pristine)
         Assert.Equal("phonology-examples.baseline-changed", stale.Refusal?.Code);
     }
 
-    [Fact]
-    public void AJobQueuedBeforeTheStepCapWasRemovedStillReadsItsInput()
-    {
-        const string queuedBefore = """
-            {"revisionId":"r1","baselineToken":null,"limits":{"stepCap":500,"workCap":1000,"timeoutMs":5000}}
-            """;
-
-        var input = PhonologyCheckJobHandler.ReadInput(queuedBefore);
-
-        Assert.Equal("r1", input.RevisionId);
-        Assert.Equal(1000UL, input.Limits.WorkCap);
-        Assert.Equal(5000u, input.Limits.TimeoutMs);
-    }
-
     private static string SaveSet(string projectPath)
     {
         var saved = PhonologyExampleCommands.Save(new SavePhonologyExamplesRequest(projectPath, "Set",

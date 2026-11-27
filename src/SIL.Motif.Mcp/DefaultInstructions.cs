@@ -10,6 +10,8 @@ internal static class DefaultInstructions
         motif_open(path), asking for the exact path if needed. Then use that path as project on later calls. Pass a
         Known project's name or recorded path as project on each call.
         Read motif_overview, motif_grammar and motif_lexicon before drafting. Copy exact ids from their results.
+        Check one word cheaply with motif_try_word. When no named composer fits a change, ask motif_find_composer with a
+        goal in the linguist's words.
         Make one small Proposal with motif_start_proposal and the matching semantic composer. Dry Run and Trial
         the Draft before Finalize. Read the ordered Trial summary and page motif_difference by category; unfinished
         cases prove no absence. Revise and repeat, then use motif_finalize_proposal for a person to review and Apply.

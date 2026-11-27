@@ -257,7 +257,7 @@ public sealed class PhonologyAssessmentRepository(MotifDatabase database)
     private static T Decode<T>(string json)
     {
         RepositoryReadCounters.RecordDeserialized();
-        try { return JsonSerializer.Deserialize<T>(PhonologyStoredJson.DropRemovedStepMembers(json), JsonOptions) ?? throw new JsonException("Missing evidence."); }
+        try { return JsonSerializer.Deserialize<T>(json, JsonOptions) ?? throw new JsonException("Missing evidence."); }
         catch (JsonException exception) { throw new InvalidDataException("The retained phonology evidence is invalid.", exception); }
     }
 

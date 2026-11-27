@@ -435,7 +435,7 @@ public static class CliVerbCatalog
                 "[--collect <name>[,<name>...]] [--time-limit-ms <ms>] [--parser-work-limit <work|unbounded>] [--max-seconds <seconds>] [--summary [--offset <n>] [--limit <n>]] [--no-background] [--json]",
                 "The default per-word limit is 20,000,000 parser work.",
                 "--collect names the collectors for this run and wins over the project's .motif.toml collect, which wins over the built-in default; ParseTime is always collected.",
-                "Reaching the parser work limit is a stop at the work limit, the same on every computer. --time-limit-ms is only a safety net, in milliseconds on this computer; --max-seconds is the whole run's time budget.",
+                "Reaching the parser work limit is a stop at the work limit, the same on every computer. --time-limit-ms is the per-word limit (per-word-limit-ms in .motif.toml, perWordLimitMs in stored selections), only a safety net, in milliseconds on this computer; --max-seconds is the whole run's time budget.",
             }),
 
         new CliVerbDescriptor(
@@ -675,9 +675,6 @@ public static class CliVerbCatalog
             "Corpus", "show-corpus", "show-corpus",
             new[] { "show-corpus --project <fwdata> <corpusId> [--json]" }),
 
-        new CliVerbDescriptor(
-            "Jobs", "baseline-refresh", "baseline-refresh",
-            new[] { "baseline-refresh --project <fwdata>" }),
         new CliVerbDescriptor(
             "Jobs", "jobs", "jobs wait", new[] { "jobs wait <jobId> --project <fwdata> [--wait-terminal] [--wait-timeout-ms <ms>] [--json]" }),
         new CliVerbDescriptor(

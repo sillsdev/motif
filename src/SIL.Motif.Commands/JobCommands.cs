@@ -60,21 +60,6 @@ public static class JobCommands
     /// <summary><c>--wait</c>'s default bound before it gives up and reports the job still unfinished.</summary>
     public static readonly TimeSpan DefaultWaitTimeout = TimeSpan.FromMinutes(2);
 
-    /// <summary>Queues a Baseline refresh for one project and returns the job id that names it.</summary>
-    public static CommandOutcome<JobEnqueuedResponse> EnqueueBaselineRefresh(EnqueueBaselineRefreshRequest request)
-    {
-        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
-        {
-            var jobs = new JobRepository(database);
-            var jobId = CanonicalId.Mint("job/").Value;
-            var workspaceKey = ProjectWorkspaceKey.Compute(project);
-            var created = jobs.Create(jobId, workspaceKey, BaselineRefreshKind,
-                "{}", NowStamp());
-            return CommandOutcome<JobEnqueuedResponse>.Success(
-                new JobEnqueuedResponse(created.JobId, BaselineRefreshKind, workspaceKey));
-        });
-    }
-
     // A Dry Run or Trial measures the stored Baseline; one older than the saved project would test the old grammar.
     internal static Refusal? StaleBaselineRefusal(ProjectLocator project, BaselineRecord? baseline, string measure) =>
         baseline is not null && File.Exists(project.FullFwDataPath) &&

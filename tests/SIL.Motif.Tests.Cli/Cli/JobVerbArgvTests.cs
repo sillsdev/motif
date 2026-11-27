@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using SIL.Motif.Cli;
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.PanGloss;
@@ -31,16 +32,6 @@ public sealed class JobVerbArgvTests : IDisposable
     }
 
     private string Project => Path.Combine(_root, "project.fwdata");
-
-    [Fact]
-    public void EnqueueingARefreshPrintsAJobIdAndSucceeds()
-    {
-        var result = Run($"baseline-refresh --project \"{Project}\"");
-
-        Assert.Equal(0, result.ExitCode);
-        Assert.Equal(string.Empty, result.Error);
-        Assert.False(string.IsNullOrWhiteSpace(result.Output));
-    }
 
     [Fact]
     public void EnqueueingADryRunLoadsAndValidatesTheProposalFirstThenPrintsAJobIdAndSucceeds()
@@ -394,9 +385,8 @@ public sealed class JobVerbArgvTests : IDisposable
 
     private string Enqueue()
     {
-        var result = RunInProcess($"baseline-refresh --project \"{Project}\"");
-        Assert.Equal(0, result.ExitCode);
-        return result.Output.Trim();
+        var queuedId = JobProgress.QueueJob(Project);
+        return queuedId;
     }
 
     private CliProcessResult RunInProcess(string arguments) =>

@@ -86,16 +86,6 @@ public sealed class AssessArgvTests : IDisposable
     }
 
     [Fact]
-    public void TheRemovedStepCapFlagNamesItsReplacement()
-    {
-        var missing = Path.Combine(_workerRoot, "absent.fwdata");
-        var result = Run($"assess \"{missing}\" --step-cap 100");
-
-        Assert.Equal(1, result.ExitCode);
-        Assert.Contains("--step-cap was renamed --parser-work-limit", result.Error, StringComparison.Ordinal);
-    }
-
-    [Fact]
     public void OmittingTheProjectIsAUsageFailureNamingTheVerb()
     {
         var result = Run("assess");
