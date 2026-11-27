@@ -1,12 +1,11 @@
 using Microsoft.Data.Sqlite;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.Store;
-using SIL.Motif.Projection.Usage;
 using Xunit;
 
 namespace SIL.Motif.Tests.Store;
 
-/// <summary>Covers the machine store: one database per logged-in user, holding Known projects and usage.</summary>
+/// <summary>Covers the machine store: one database per logged-in user, holding Known projects.</summary>
 public sealed class MachineStoreTests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-machine-" + Guid.NewGuid().ToString("N"));
@@ -134,39 +133,6 @@ public sealed class MachineStoreTests : IDisposable
     }
 
     [Fact]
-    public async Task ConcurrentUsageAppendsFromTwoConnectionsBothLand()
-    {
-        using var first = MachineDatabase.Open(_root);
-        using var second = MachineDatabase.Open(_root);
-        var firstLog = new MachineUsageLog(first);
-        var secondLog = new MachineUsageLog(second);
-
-        const int perWriter = 50;
-        var writers = new[]
-        {
-            Task.Run(() => { for (var i = 0; i < perWriter; i++) firstLog.Append(Entry("first", i)); }),
-            Task.Run(() => { for (var i = 0; i < perWriter; i++) secondLog.Append(Entry("second", i)); })
-        };
-        await Task.WhenAll(writers);
-
-        var recorded = firstLog.ReadAll();
-        Assert.Equal(perWriter * 2, recorded.Count);
-        Assert.Equal(perWriter, recorded.Count(entry => entry.Command == "first"));
-        Assert.Equal(perWriter, recorded.Count(entry => entry.Command == "second"));
-    }
-
-    [Fact]
-    public void UsageKeepsTheNewestRowsWithinTheLimit()
-    {
-        using var database = MachineDatabase.Open(_root);
-        var log = new MachineUsageLog(database, 3);
-        for (var i = 0; i < 8; i++) log.Append(Entry("usage", i));
-
-        Assert.Equal(new[] { "index:5", "index:6", "index:7" },
-            log.ReadAll().Select(entry => Assert.Single(entry.ArgumentShape)));
-    }
-
-    [Fact]
     public void OpeningAProjectDatabaseAsAMachineDatabaseIsRefused()
     {
         var path = Path.Combine(_root, "motif.db");
@@ -190,9 +156,6 @@ public sealed class MachineStoreTests : IDisposable
         Assert.Contains("Motif database", refusal.Message, StringComparison.Ordinal);
         Assert.DoesNotContain("machine", refusal.Message, StringComparison.OrdinalIgnoreCase);
     }
-
-    private static UsageLogEntry Entry(string command, int index) =>
-        new(DateTime.UtcNow.ToString("yyyyMMddTHHmmssZ"), command, new[] { $"index:{index}" });
 
     public void Dispose()
     {

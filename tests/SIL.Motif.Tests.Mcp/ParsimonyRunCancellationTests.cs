@@ -30,7 +30,7 @@ public sealed class ParsimonyRunCancellationTests : IDisposable
         var fwDataPath = CreateProject();
         var tool = ParsimonyTools.All.Single(item => item.Name == "motif_run_parsimony_measure");
         var context = new ServerContext(fwDataPath, "1.0",
-            new NoRunnerLauncher(new JobRunnerLaunchOptions(_root, null)), new ActivityLog(null),
+            new NoRunnerLauncher(new JobRunnerLaunchOptions(_root, null)), new ActivityLog(),
             ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
         var args = new ToolArgs(new JsonObject { ["measure_id"] = measureId, ["wait_seconds"] = 300 },
             tool.ArgumentNames);

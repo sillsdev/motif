@@ -496,7 +496,7 @@
   },
   "activity": {
     "title": "Summarize agent activity",
-    "description": "Reads an activity log written by motif mcp --activity-log and reports calls by tool, errors, refusals by code, and how often the agent followed the advice it was given. Nothing is sent anywhere.",
+    "description": "Reads the call log Motif writes by itself and reports calls by tool, errors, refusals by code, and how often the agent followed the advice it was given. Nothing is sent anywhere.",
     "source": "Authored from the agent activity log contract."
   },
   "handoff": {

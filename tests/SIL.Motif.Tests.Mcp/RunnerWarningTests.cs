@@ -10,7 +10,7 @@ public sealed class RunnerWarningTests
     public void AWarningFromAFailedStartDoesNotOutliveALaterSuccessfulStart()
     {
         var launcher = new ScriptedLauncher();
-        var context = new ServerContext("unused.fwdata", "1.0", launcher, new ActivityLog(null), ToolProfile.Builtin,
+        var context = new ServerContext("unused.fwdata", "1.0", launcher, new ActivityLog(), ToolProfile.Builtin,
             TextWriter.Null, advancedAiModeEnabled: true);
 
         launcher.Warning = "no runner";

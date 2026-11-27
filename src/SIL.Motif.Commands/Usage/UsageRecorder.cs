@@ -1,15 +1,16 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
-using Microsoft.Data.Sqlite;
-using SIL.Motif.Host.Store;
+using SIL.Motif.Host;
 using SIL.Motif.Projection.Usage;
 
 namespace SIL.Motif.Commands;
 
 /// <summary>
 /// Records the outer explicit CLI or window action. Nested scopes share the outer entry, so a composed workflow
-/// stays one observation. Argument shapes contain parameter names and kinds, never supplied values.
+/// stays one observation. Argument shapes contain parameter names and kinds, never supplied values. The window
+/// writes its actions to the daily call log under the surface <c>window</c>.
 /// </summary>
 public sealed class UsageRecorder
 {
@@ -19,10 +20,11 @@ public sealed class UsageRecorder
     public UsageRecorder(IUsageLogSink sink) =>
         _sink = sink ?? throw new ArgumentNullException(nameof(sink));
 
-    public static UsageRecorder ForMachineRoot(string workerRoot)
+    /// <summary>A recorder that writes each action to <paramref name="calls"/> as a <c>window</c> call.</summary>
+    public static UsageRecorder ForCallLog(CallLog calls)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(workerRoot);
-        return new UsageRecorder(new MachineUsageLogSink(workerRoot));
+        ArgumentNullException.ThrowIfNull(calls);
+        return new UsageRecorder(new CallLogSink(calls));
     }
 
     /// <summary>Begins an explicit user action; dispose the returned scope after its outcome is known.</summary>
@@ -33,28 +35,20 @@ public sealed class UsageRecorder
 
         var parent = _current.Value;
         if (parent is null)
-            _sink.Append(UsageLog.CreateEntry(command, argumentShape));
+            _sink.Append(new UsageLogEntry(DateTime.UtcNow.ToString("yyyyMMddTHHmmssZ"), command, argumentShape));
 
         var frame = new ScopeFrame(parent);
         _current.Value = frame;
         return new ActionScope(this, frame);
     }
 
-    private sealed class MachineUsageLogSink(string workerRoot) : IUsageLogSink
+    // A window action has no outcome to report: its line carries the command and argument names only.
+    private sealed class CallLogSink(CallLog calls) : IUsageLogSink
     {
-        public void Append(UsageLogEntry entry)
-        {
-            try
-            {
-                using var machine = MachineDatabase.Open(workerRoot);
-                new MachineUsageLog(machine).Append(entry);
-            }
-            catch (Exception exception) when (exception is IOException or InvalidDataException or
-                                               NotSupportedException or UnauthorizedAccessException or ArgumentException or
-                                               InvalidOperationException or SqliteException or MotifStoreVersionException)
-            {
-            }
-        }
+        public void Append(UsageLogEntry entry) =>
+            calls.Record(new CallRecord("window", entry.Command, null,
+                entry.ArgumentShape.ToDictionary(shape => shape, _ => string.Empty), null, null, false, null, 0, null, null,
+                Outcome: "unknown"));
     }
 
     private sealed class ScopeFrame(ScopeFrame? parent)

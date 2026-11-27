@@ -40,7 +40,6 @@ using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Review;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Store;
-using SIL.Motif.Projection.Usage;
 using SIL.Motif.Worker;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Help;
@@ -94,8 +93,8 @@ public static int Main(string[] args)
         string.IsNullOrWhiteSpace(preferencePath))
         environment[FileAdvancedAiModePreferenceStore.PathEnvironmentVariable] =
             FileAdvancedAiModePreferenceStore.DefaultPath;
-    return Run(args, Console.Out, Console.Error, environment,
-        static (project, reportWarning) => ProcessRunnerLauncher.FromEnvironment().Start(project, reportWarning));
+    return CliCallNote.Run(environment, args, () => Run(args, Console.Out, Console.Error, environment,
+        static (project, reportWarning) => ProcessRunnerLauncher.FromEnvironment().Start(project, reportWarning)));
 }
 
 /// <summary>The exit code a waited Trial's gate maps to: 0 green, <see cref="FailureEnvelope.TrialLossExitCode"/> loss, the refusal code unmeasured.</summary>
@@ -144,11 +143,7 @@ var usageCommand = resolvedUsageCommand == "help" ||
     CommandCatalog.All.Any(command => command.Name == resolvedUsageCommand)
         ? resolvedUsageCommand
         : "unknown";
-var usageRecorder = UsageRecorder.ForMachineRoot(ResolveRoot());
-using var usageAction = usageRecorder.BeginAction(
-    usageCommand,
-    CliUsageArgumentShapes(usageCommand, usageVerb, usageArguments.Item1,
-        usageArguments.Item2, usageArguments.Item3));
+CliCallNote.Current?.Name(usageCommand, usageArguments.Item1, usageArguments.Item2);
 
 var autonomousFlag = usageArguments.Item1.TryGetValue("autonomous", out var autonomousRaw) && IsTruthyFlag(autonomousRaw);
 var commandPolicy = CommandSurfacePolicy.FromEnvironment(
@@ -232,6 +227,7 @@ try
         bool includeEffects = false) where T : class
     {
         alreadyRendered = true;
+        CliCallNote.Current?.Refused(outcome.Refusal);
         return ProposalCommandRenderer.Render(outcome, asJson, successAsJson, includeEffects);
     }
 
@@ -239,6 +235,7 @@ try
         bool includeEffects = false) where T : class?
     {
         alreadyRendered = true;
+        CliCallNote.Current?.Refused(outcome.Refusal);
         return CommandTextRenderer.Render(outcome, asJson, successAsJson, includeEffects);
     }
 
@@ -4055,109 +4052,6 @@ static InspectorSubject? InspectSubjectFrom(IReadOnlyDictionary<string, string> 
             ? new InspectorSubject(InspectorSubjectKind.Warning) { WarningCode = code, ObjectId = rest.FirstOrDefault() }
             : null,
     };
-}
-
-static IReadOnlyList<string> CliUsageArgumentShapes(
-    string commandName,
-    string verb,
-    IReadOnlyDictionary<string, string> flags,
-    IReadOnlyList<string> positionals,
-    IReadOnlyList<string> forwardedArguments)
-{
-    var shapes = new List<string>();
-    var catalogEntry = CliVerbCatalog.All.FirstOrDefault(entry => entry.CommandName == commandName);
-    if (commandName is not "help" && catalogEntry is null)
-    {
-        if (flags.Count > 0) shapes.Add(UsageArgumentShape.List("flags", flags.Count));
-        if (positionals.Count > 0) shapes.Add(UsageArgumentShape.List("arguments", positionals.Count));
-        if (forwardedArguments.Count > 0)
-            shapes.Add(UsageArgumentShape.List("forwardedArguments", forwardedArguments.Count));
-        return shapes;
-    }
-
-    if (commandName == "help")
-    {
-        if (flags.Count > 0) shapes.Add(UsageArgumentShape.List("flags", flags.Count));
-        if (positionals.Count > 0) shapes.Add(UsageArgumentShape.List("arguments", positionals.Count));
-        if (forwardedArguments.Count > 0)
-            shapes.Add(UsageArgumentShape.List("forwardedArguments", forwardedArguments.Count));
-        return shapes;
-    }
-
-    var allowedFlags = Regex.Matches(
-            string.Join(" ", catalogEntry!.UsageLines), "--([a-z0-9][a-z0-9-]*)",
-            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)
-        .Select(match => match.Groups[1].Value)
-        .ToHashSet(StringComparer.Ordinal);
-    var unrecognizedFlagCount = 0;
-    foreach (var (flag, value) in flags)
-    {
-        if (flag == "json") continue;
-        if (!allowedFlags.Contains(flag))
-        {
-            unrecognizedFlagCount++;
-            continue;
-        }
-        var name = UsageParameterName(flag);
-        if (value == "true")
-            shapes.Add(UsageArgumentShape.Flag(name));
-        else if (flag is "depends-on" or "words" or "texts" or "text-ids" or "occurrences")
-            shapes.Add(UsageArgumentShape.List(name,
-                value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Length));
-        else
-            shapes.Add(UsageArgumentShape.Text(name));
-    }
-    if (unrecognizedFlagCount > 0)
-        shapes.Add(UsageArgumentShape.List("unrecognizedFlags", unrecognizedFlagCount));
-
-    var positionalOffset = positionals.Count > 0 &&
-        commandName == $"{verb} {positionals[0]}" &&
-        CliVerbCatalog.All.Any(entry => entry.CommandName == commandName) ? 1 : 0;
-    var usageLine = CliVerbCatalog.All.FirstOrDefault(entry => entry.CommandName == commandName)
-        ?.UsageLines.FirstOrDefault();
-    var positionalNames = usageLine is null ? Array.Empty<string>() : PositionalParameterNames(usageLine);
-    var declaredPositionals = Math.Min(positionalNames.Count, Math.Max(0, positionals.Count - positionalOffset));
-    for (var index = positionalOffset; index < positionalOffset + declaredPositionals; index++)
-    {
-        shapes.Add(UsageArgumentShape.Text(positionalNames[index - positionalOffset]));
-    }
-    var extraPositionals = positionals.Count - positionalOffset - declaredPositionals;
-    if (extraPositionals > 0)
-        shapes.Add(UsageArgumentShape.List("extraArguments", extraPositionals));
-
-    if (forwardedArguments.Count > 0)
-        shapes.Add(UsageArgumentShape.List("forwardedArguments", forwardedArguments.Count));
-    return shapes;
-}
-
-static IReadOnlyList<string> PositionalParameterNames(string usageLine)
-{
-    var names = new List<string>();
-    foreach (Match match in Regex.Matches(usageLine, "<([^<>]+)>"))
-    {
-        var prefix = usageLine[..match.Index].TrimEnd();
-        var previousToken = prefix.Split(' ', StringSplitOptions.RemoveEmptyEntries).LastOrDefault();
-        if (previousToken?.StartsWith("--", StringComparison.Ordinal) == true) continue;
-        names.Add(UsageParameterName(match.Groups[1].Value));
-    }
-    return names;
-}
-
-static string UsageParameterName(string source)
-{
-    if (source == "project") return "fwDataPath";
-    if (source == "assessment") return "assessmentId";
-    if (source == "current-grammar-sha256") return "currentGrammarSourceSha256";
-    if (source.Contains("fwdata", StringComparison.OrdinalIgnoreCase) ||
-        source.Contains("path-to", StringComparison.OrdinalIgnoreCase))
-        return "fwDataPath";
-
-    var segments = Regex.Split(source, "[-_]+")
-        .Where(segment => segment.Length > 0)
-        .ToArray();
-    if (segments.Length == 0) return "argument";
-    return char.ToLowerInvariant(segments[0][0]) + segments[0][1..] + string.Concat(
-        segments.Skip(1).Select(segment => char.ToUpperInvariant(segment[0]) + segment[1..]));
 }
 
 static int RefuseUnavailableCommand(

@@ -90,7 +90,7 @@ public sealed class TrialReviewToolTests
             File.WriteAllText(path, "");
             var version = SIL.Motif.Host.MotifProductVersion.CurrentText;
             var runner = new CountingRunner(root);
-            var context = new ServerContext(path, version, runner, new ActivityLog(null), ToolProfile.Builtin,
+            var context = new ServerContext(path, version, runner, new ActivityLog(), ToolProfile.Builtin,
                 TextWriter.Null, advancedAiModeEnabled: true);
             var proposal = CanonicalId.Mint("proposal/").Value;
             const string jobId = "job/resume";

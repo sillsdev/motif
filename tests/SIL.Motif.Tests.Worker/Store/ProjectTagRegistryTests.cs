@@ -9,7 +9,7 @@ namespace SIL.Motif.Tests.Store;
 
 public sealed class ProjectTagRegistryTests : IDisposable
 {
-    private const int TaggedMachineSchema = 2;
+    private const int TaggedMachineSchema = 3;
     private const int OriginalMachineSchema = 1;
     private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-project-tags-" + Guid.NewGuid().ToString("N"));
 

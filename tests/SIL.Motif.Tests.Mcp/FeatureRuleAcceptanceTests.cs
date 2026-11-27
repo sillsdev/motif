@@ -67,7 +67,7 @@ public sealed class FeatureRuleAcceptanceTests(PristineProjectFixture pristine)
             "--draft", "cli-alpha", "--intent", intent.ToJsonString(), "--json");
         Assert.True(cli.ExitCode == 0, cli.Error + cli.Output);
         var context = new ServerContext(path, "1.0", new NoRunnerLauncher(new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)),
-            new ActivityLog(null), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
+            new ActivityLog(), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
         var tools = MotifMcpServer.Expose(ToolProfile.Builtin);
         var arguments = intent.DeepClone().AsObject();
         arguments["draft"] = "mcp-alpha";

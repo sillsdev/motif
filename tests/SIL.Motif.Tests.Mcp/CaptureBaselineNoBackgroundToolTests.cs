@@ -22,7 +22,7 @@ public sealed class CaptureBaselineNoBackgroundToolTests(PristineProjectFixture 
         using var privateRoot = PrivateManagedRoot.Use(Path.GetDirectoryName(path)!);
         KnownProjectTestSetup.AssignUniqueTag(RunnerOptions.ResolveRoot(), path, "nobg");
         var context = new ServerContext(path, "1.0", new NoRunnerLauncher(
-            new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(null), ToolProfile.Builtin,
+            new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(), ToolProfile.Builtin,
             TextWriter.Null, advancedAiModeEnabled: true);
         var tools = MotifMcpServer.Expose(ToolProfile.Builtin);
 

@@ -15,7 +15,8 @@ $hostResultPath = '/session/output/host.json'
 $motifExe = '/opt/product/motif'
 $task = $manifest.task
 $serverCommand = $motifExe
-$serverArguments = Get-ABServerArguments $manifest.profile $activityPath
+$serverArguments = Get-ABServerArguments $manifest.profile
+$env:MOTIF_CALL_LOG = 'full:/session/output/calls'
 $systemAppend = $manifest.systemAppend
 $hostPlan = New-ABHostPlan $manifest.arm ([string]$task.promptText) $task.limits $systemAppend
 
@@ -70,6 +71,7 @@ if ($manifest.arm.host -eq 'fake') {
 }
 $hostRun = Invoke-ABBudgetedAgent '/usr/bin/python3' @('/opt/client/agent-boundary.py', $agentLaunchPath) $agentDirectory $agentBudget `
     '/session/output/mcp-transcript.jsonl' '/session/output/budget.json'
+ConvertTo-ABActivityLines '/session/output/calls' $activityPath
 if ($manifest.arm.host -eq 'fake') {
     foreach ($line in @($hostRun.Stdout -split "`r?`n" | Where-Object { $_ })) {
         Add-ABJsonl $transcriptPath ([ordered]@{ source = 'host-output'; stream = 'stdout'; payload = $line })

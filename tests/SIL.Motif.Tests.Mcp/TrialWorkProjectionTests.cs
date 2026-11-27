@@ -99,7 +99,7 @@ public sealed class TrialWorkProjectionTests
             });
             Assert.True(recorded.Succeeded, recorded.Refusal?.Message);
             var context = new ServerContext(project, "1.0", new NoRunnerLauncher(new JobRunnerLaunchOptions(root, null)),
-                new ActivityLog(null), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
+                new ActivityLog(), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
             var outcome = TrialResults.Complete(context, "trial", proposalId.Value);
             Assert.Null(outcome.Refusal);
             var work = outcome.Value!["work"];
@@ -170,7 +170,7 @@ public sealed class TrialWorkProjectionTests
             });
             Assert.True(recorded.Succeeded, recorded.Refusal?.Message);
             var context = new ServerContext(project, "1.0", new NoRunnerLauncher(new JobRunnerLaunchOptions(root, null)),
-                new ActivityLog(null), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
+                new ActivityLog(), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
 
             var outcome = TrialResults.Complete(context, "trial", proposalId.Value);
 
