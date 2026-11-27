@@ -1,3 +1,5 @@
+using SIL.Motif.Host.Assess;
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.PanGloss;
@@ -15,23 +17,34 @@ internal static class TrialGrammarCheck
     /// <param name="projectName">The FieldWorks project name PanGloss puts in its deep links.</param>
     /// <param name="cancellationToken">Cancels the check.</param>
     /// <param name="onAdmissionWait">Reports actual waits for machine parser capacity.</param>
+    /// <param name="snapshotPath">This Trial's optional snapshot output for its Assessment.</param>
     /// <returns>The grammar-health response, or null when the parser reports no response.</returns>
     internal static async Task<GrammarCheckResponse?> RunAsync(IPanGlossInvoker invoker, string label,
         StoredAnalysisComparison storedAnalyses, string grammarPath, string projectName,
-        CancellationToken cancellationToken, Action<bool>? onAdmissionWait = null)
+        CancellationToken cancellationToken, Action<bool>? onAdmissionWait = null, string? snapshotPath = null)
     {
         var outcome = await invoker.RunAsync(
             new PanGlossRequest.GrammarHealth(grammarPath, projectName, storedAnalyses)
             {
-                OnAdmissionWait = onAdmissionWait,
+                OnAdmissionWait = onAdmissionWait, SnapshotPath = snapshotPath,
             }, label, cancellationToken)
             .ConfigureAwait(false);
+        // A cancelled run is thrown as a cancellation, so the caller can tell its own cancel from a stage limit.
+        if (outcome is PanGlossOutcome.Cancelled) throw new OperationCanceledException(cancellationToken);
         var output = outcome switch
         {
             PanGlossOutcome.Completed completed => completed.Output,
-            PanGlossOutcome.Refused refused when !string.IsNullOrWhiteSpace(refused.StandardOutput) =>
+            PanGlossOutcome.Refused { FailureCategory: JobFailureCategory.ParserRefusal } refused
+                when !string.IsNullOrWhiteSpace(refused.StandardOutput) =>
                 refused.StandardOutput,
-            _ => throw new InvalidOperationException(outcome.Message),
+            _ => throw (outcome is PanGlossOutcome.MemoryLimit or PanGlossOutcome.Refused
+                { FailureCategory: JobFailureCategory.ParserKilled or JobFailureCategory.OutOfMemory }
+                ? new AssessorUnavailableException("pangloss", outcome.Message)
+                {
+                    ParserRefusal = outcome as PanGlossOutcome.Refused,
+                    MemoryKill = (outcome as PanGlossOutcome.MemoryLimit)?.Kill,
+                }
+                : new InvalidOperationException(outcome.Message)),
         };
         return GrammarHealthReportReader.ReadResponse(output);
     }

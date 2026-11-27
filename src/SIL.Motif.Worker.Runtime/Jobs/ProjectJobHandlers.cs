@@ -1,4 +1,6 @@
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Projects;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Baselines;
 using SIL.Motif.Host.Config;
@@ -14,6 +16,7 @@ using SIL.Motif.Worker.Scheduling;
 using SIL.Motif.Worker.Store;
 using SIL.Motif.Worker.Parsimony;
 using SIL.Motif.Worker.Projects;
+using SIL.Motif.Worker.Runtime.Review;
 
 namespace SIL.Motif.Worker.Jobs;
 
@@ -30,6 +33,38 @@ public static class ProjectJobHandlers
 
     /// <summary>The job kind that measures a Parsimony Report from the current Baseline.</summary>
     public const string ParsimonyKind = ParsimonyJobHandler.JobKind;
+
+    /// <summary>
+    /// Queues the Baseline-side prebuild the automatic Parsimony job will reuse when a Dry Run starts (the fallback
+    /// for a Baseline captured before the prebuild existed), then runs the Dry Run. The queueing is advisory: a store or file error never fails the Dry Run, and the
+    /// automatic job builds its own Baseline side when none is stored.
+    /// </summary>
+    internal static JobRunnerLoop.Handler WithBaselineBundlePrebuild(JobRunnerLoop.Handler dryRun, Action enqueue,
+        Func<ClaimedJob, bool>? foregroundOnly = null) =>
+        (job, token) =>
+        {
+            try { if (foregroundOnly?.Invoke(job) != true) enqueue(); }
+            catch (Exception exception) when (exception is Microsoft.Data.Sqlite.SqliteException or IOException or
+                                                  InvalidOperationException) { }
+            return dryRun(job, token);
+        };
+
+    /// <summary>
+    /// Queues the Baseline-side prebuild as soon as a Capture (Baseline refresh) completes, so it runs while the owner
+    /// composes and reads, not ahead of the Trial. Advisory in the same way as <see cref="WithBaselineBundlePrebuild"/>.
+    /// </summary>
+    internal static JobRunnerLoop.Handler WithBaselineBundlePrebuildAfter(JobRunnerLoop.Handler capture, Action enqueue) =>
+        async (job, token) =>
+        {
+            var outcome = await capture(job, token).ConfigureAwait(false);
+            if (outcome is null || outcome.Status == JobStatus.Completed)
+            {
+                try { enqueue(); }
+                catch (Exception exception) when (exception is Microsoft.Data.Sqlite.SqliteException or IOException or
+                                                      InvalidOperationException) { }
+            }
+            return outcome;
+        };
 
     /// <summary>Builds the loop that claims and runs one project's queued jobs.</summary>
     /// <param name="database">The project's opened Motif store.</param>
@@ -56,9 +91,12 @@ public static class ProjectJobHandlers
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(invoker);
         ArgumentNullException.ThrowIfNull(lanes);
+        // A foreground Dry Run or Trial is waiting: reconciling now would commit jobs after it returns.
+        var foreground = HasActiveForegroundJob(database, workspaceKey);
+        if (!foreground) _ = SIL.Motif.Worker.Sources.SourceIndexRefresh.Reconcile(database);
         var publish = new BaselineRefresh(baselines, options.Root);
         var refresh = new BaselineRefreshJobHandler(
-            new BaselineRefreshBarrier(locator => new FwDataProjectLoader().LoadCache(locator.FullFwDataPath)),
+            new BaselineRefreshBarrier(publish.LoadProject),
             (cache, token) => publish.RefreshAsync(cache, project, token));
         var proposals = new ProposalRepository(database);
         var dryRun = new DryRunJobHandler(baselines, proposals, lanes, _ => null,
@@ -72,10 +110,20 @@ public static class ProjectJobHandlers
             },
             (scratch, plan, _) => Task.FromResult(ProposalDryRunner.Run(scratch!, plan)));
 
+        void enqueuePrebuild()
+        {
+            if (baselines.GetCurrentPublished(workspaceKey)?.Token is { } current)
+                _ = ParsimonyAutoRun.EnqueueBaselineBundle(database, workspaceKey, current, options.ParserPath);
+        }
+
         var handlers = new Dictionary<string, JobRunnerLoop.Handler>(StringComparer.Ordinal)
         {
-            [BaselineRefreshKind] = (_, token) => refresh.RunAsync(project, token),
-            [DryRunKind] = (job, token) => dryRun.RunAsync(job, project, token),
+            [SIL.Motif.Worker.Sources.SourceIndexRefresh.JobKind] = (_, token) =>
+                Task.FromResult<JobOutcome?>(SIL.Motif.Worker.Sources.SourceIndexRefresh.Run(database, token)),
+            [BaselineRefreshKind] = WithBaselineBundlePrebuildAfter((_, token) => refresh.RunAsync(project, token),
+                enqueuePrebuild),
+            [DryRunKind] = WithBaselineBundlePrebuild((job, token) => dryRun.RunAsync(job, project, token),
+                enqueuePrebuild, job => IsForeground(job.Job.InputJson)),
             [ParsimonyKind] = (job, token) => new ParsimonyJobHandler(database, baselines, workspaceKey,
                 project, options, invoker).RunAsync(job, token),
             [PhonologyCheckJobHandler.JobKind] = (job, token) =>
@@ -87,10 +135,60 @@ public static class ProjectJobHandlers
 
         if (TryBuildTrialHandler(database, baselines, proposals, lanes, project, options, invoker,
                 defaultChecks ?? FileDefaultProposalChecksStore.ForInstallation()) is { } trial)
+        {
+            trial.AfterCommit = (claim, baseline) =>
+            {
+                if (IsForeground(claim.Job.InputJson)) return;
+                _ = ParsimonyAutoRun.Enqueue(database, claim.Job, baseline, retryFailed: true);
+            };
             handlers[TrialJobHandler.TrialKind] = (job, token) => trial.RunAsync(job, project, token);
+            if (!foreground && Reconciled.TryAdd(workspaceKey, 0)) _ = TryReconcile(database, baselines, workspaceKey);
+        }
 
-        return new JobRunnerLoop(new JobClaims(database, parserKey: ParserIdentity.KeyOf(options.ParserPath)), workspaceKey, ownerId: ownerId,
+        var loop = new JobRunnerLoop(new JobClaims(database, parserKey: ParserIdentity.KeyOf(options.ParserPath)), workspaceKey, ownerId: ownerId,
             lease: options.Lease, poll: TimeSpan.Zero, handlers: handlers);
+        loop.AfterTerminal = async claimed =>
+        {
+            if (claimed.Kind != TrialJobHandler.TrialKind) return;
+            var job = new JobRepository(database).Get(claimed.JobId);
+            if (job is null || !JobStateMachine.IsTerminal(job.Status) || TrialJobInput.Parse(job.InputJson).ReviewInputs is null) return;
+            await new TrialReviewPublisher(database).PublishAsync(new ReviewPublishRequest(job.JobId), CancellationToken.None).ConfigureAwait(false);
+        };
+        return loop;
+    }
+
+    private static bool HasActiveForegroundJob(MotifDatabase database, string workspaceKey) =>
+        new JobRepository(database).ListActive(workspaceKey).Any(job => IsForeground(job.InputJson));
+
+    /// <summary>Whether a queued Dry Run or Trial carries the foreground-only marker, which keeps it from queuing child jobs.</summary>
+    internal static bool IsForeground(string inputJson)
+    {
+        try
+        {
+            using var document = System.Text.Json.JsonDocument.Parse(inputJson);
+            return document.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object &&
+                document.RootElement.TryGetProperty("noBackground", out var marker) &&
+                marker.ValueKind == System.Text.Json.JsonValueKind.True;
+        }
+        catch (System.Text.Json.JsonException) { return false; }
+    }
+
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> Reconciled = new();
+
+    // A runner that stopped between a Trial's commit and its enqueue catches up once per process.
+    private static bool TryReconcile(MotifDatabase database, BaselineRepository baselines, string workspaceKey)
+    {
+        try
+        {
+            _ = ParsimonyAutoRun.Reconcile(database, workspaceKey, baselines.GetCurrentPublished(workspaceKey)?.Token,
+                DateTimeOffset.UtcNow);
+            return true;
+        }
+        catch (Exception exception) when (exception is Microsoft.Data.Sqlite.SqliteException or IOException or
+                                              InvalidOperationException)
+        {
+            return false;
+        }
     }
 
     /// <summary>Builds a Trial handler, or null when the parser or root is not usable.</summary>
@@ -106,7 +204,7 @@ public static class ProjectJobHandlers
             var ownership = WorkspaceOwnership.Bootstrap(options.Root);
             catalog = new AssessorCatalog(new IAssessor[]
             {
-                new PanGlossAssessor(new StatsCacheStore(ownership), invoker),
+                new PanGlossAssessor(new StatsCacheStore(ownership, database.FullPath), invoker),
             });
         }
         catch (ArgumentException)
@@ -139,6 +237,32 @@ public static class ProjectJobHandlers
                 return Task.FromResult(directory);
             }, options.Root, (grammarPath, projectName, onAdmissionWait, cancellationToken) =>
                 TrialGrammarCheck.RunAsync(invoker, "trial-grammar:" + ProjectWorkspaceKey.Compute(project),
-                    defaultChecks.StoredAnalyses, grammarPath, projectName, cancellationToken, onAdmissionWait));
+                    defaultChecks.StoredAnalyses, grammarPath, projectName, cancellationToken, onAdmissionWait),
+            grammarHealthWithSnapshot: (grammarPath, projectName, snapshotPath, onAdmissionWait, cancellationToken) =>
+                TrialGrammarCheck.RunAsync(invoker, "trial-grammar:" + ProjectWorkspaceKey.Compute(project),
+                    defaultChecks.StoredAnalyses, grammarPath, projectName, cancellationToken, onAdmissionWait, snapshotPath),
+            baselineCheckIdentity: () => BaselineCheckIdentity(options.ParserPath, defaultChecks.StoredAnalyses));
+    }
+
+    /// <summary>The parser's bytes (SHA-256) and reported version, plus the stored-analysis setting, a Baseline grammar check was made with.</summary>
+    /// <param name="parserPath">The parser executable; the bytes are hashed afresh, so a file replaced in place gets a new identity.</param>
+    /// <param name="storedAnalyses">The stored-analysis comparison the check ran with.</param>
+    /// <param name="readVersion">Reads the version the executable reports; tests substitute one.</param>
+    /// <returns>The identity, or null when the parser or its version is unavailable, so nothing is reused.</returns>
+    internal static string? BaselineCheckIdentity(string? parserPath, StoredAnalysisComparison storedAnalyses,
+        Func<string, string>? readVersion = null)
+    {
+        if (parserPath is not { } exe || !File.Exists(exe)) return null;
+        try
+        {
+            var version = (readVersion ?? ParserExecutableIdentity.ReadFreshVersion)(exe);
+            if (version == "unavailable") return null;
+            return $"trial-health|{BatchInvocationEvidence.DigestFile(exe)}|{version}|{storedAnalyses}";
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or
+            SIL.Motif.Host.Assess.AssessorUnavailableException)
+        {
+            return null;
+        }
     }
 }

@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
+using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Store;
@@ -25,12 +26,77 @@ public sealed class JobRepository
     internal MotifDatabase Database => _database;
 
     public JobRecord Create(JobRecord requested)
+        => Create(requested, null);
+
+    /// <summary>Queues a job atomically with the caller's project store changes.</summary>
+    internal void CreateInTransaction(SqliteConnection connection, SqliteTransaction transaction, JobRecord requested) =>
+        Insert(connection, transaction, Normalize(requested));
+
+    internal JobRecord Create(JobRecord requested, IReadOnlyList<string>? requiredAssessments)
+        => Create(requested, requiredAssessments, null, null, null, null, null);
+
+    private JobRecord Create(JobRecord requested, IReadOnlyList<string>? requiredAssessments,
+        CanonicalId? proposalId, string? draftName, ProjectParseLease? admission,
+        string? expectedDraftJson, string? expectedIntentDigest)
     {
         var record = Normalize(requested);
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction();
         try
         {
+            if (requiredAssessments is { Count: > 0 })
+            {
+                using var check = connection.CreateCommand();
+                check.Transaction = transaction;
+                check.CommandText = "SELECT value FROM json_each($ids) WHERE NOT EXISTS " +
+                    "(SELECT 1 FROM Assessments WHERE AssessmentId = value) LIMIT 1;";
+                check.Parameters.AddWithValue("$ids", JsonSerializer.Serialize(requiredAssessments));
+                if (check.ExecuteScalar() is string missing) throw new AssessmentExpiredException(missing);
+            }
+            if (proposalId is { } id && !ProposalStillThere(connection, transaction, id, draftName,
+                    expectedDraftJson, expectedIntentDigest))
+                throw new TrialProposalGoneException(id.Value, draftName);
+            Insert(connection, transaction, record);
+            admission?.ReleaseInTransaction(connection, transaction);
+            transaction.Commit();
+            return record;
+        }
+        catch
+        {
+            try { transaction.Rollback(); } catch (SqliteException) { }
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Queues a job unless one of the same kind and <c>$.note</c> is already waiting, running or done; the check and
+    /// the insert share one transaction, so two callers cannot both queue it.
+    /// </summary>
+    /// <param name="requested">The job to queue.</param>
+    /// <param name="note">The note that identifies the job.</param>
+    /// <returns>The new job, or null when a live one with this note exists.</returns>
+    internal JobRecord? CreateOncePerNote(JobRecord requested, string note)
+    {
+        var record = Normalize(requested);
+        using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        try
+        {
+            using (var find = connection.CreateCommand())
+            {
+                find.Transaction = transaction;
+                find.CommandText = "SELECT 1 FROM Jobs WHERE ProjectKey = $project AND Kind = $kind AND " +
+                    "json_extract(InputJson, '$.note') = $note AND Status NOT IN ('failed', 'cancelled', 'interrupted') " +
+                    "LIMIT 1;";
+                find.Parameters.AddWithValue("$project", record.ProjectKey);
+                find.Parameters.AddWithValue("$kind", record.Kind);
+                find.Parameters.AddWithValue("$note", note);
+                if (find.ExecuteScalar() is not null)
+                {
+                    transaction.Rollback();
+                    return null;
+                }
+            }
             Insert(connection, transaction, record);
             transaction.Commit();
             return record;
@@ -46,6 +112,69 @@ public sealed class JobRepository
         string? lineageId = null) => Create(new JobRecord(jobId, projectKey, kind, JobStatus.Queued, 1, inputJson,
             null, createdUtc, createdUtc, null, lineageId));
 
+    internal JobRecord CreateWithAssessments(string jobId, string projectKey, string kind, string inputJson,
+        string createdUtc, IReadOnlyList<string> requiredAssessments) =>
+        Create(new JobRecord(jobId, projectKey, kind, JobStatus.Queued, 1, inputJson, null, createdUtc, createdUtc,
+            null, null), requiredAssessments);
+
+    /// <summary>
+    /// Queues a Trial for a Proposal, or for the named Draft of one, after checking in the same write transaction
+    /// that it still exists, so a discard or delete that committed after the caller read it cannot leave a job behind.
+    /// </summary>
+    /// <exception cref="TrialProposalGoneException">The Proposal or its Draft no longer exists.</exception>
+    internal JobRecord CreateTrial(string jobId, string projectKey, string inputJson, string createdUtc,
+        IReadOnlyList<string>? requiredAssessments, CanonicalId proposalId, string? draftName,
+        ProjectParseLease? admission = null, string? expectedDraftJson = null, string? expectedIntentDigest = null) => Create(
+            new JobRecord(jobId, projectKey, TrialJobHandler.TrialKind, JobStatus.Queued, 1, inputJson, null,
+                createdUtc, createdUtc, null, null), requiredAssessments, proposalId, draftName, admission,
+            expectedDraftJson, expectedIntentDigest);
+
+    private static bool ProposalStillThere(SqliteConnection connection, SqliteTransaction transaction,
+        CanonicalId proposalId, string? draftName, string? expectedDraftJson, string? expectedIntentDigest)
+    {
+        using var find = connection.CreateCommand();
+        find.Transaction = transaction;
+        find.CommandText = "SELECT 1 FROM Proposals WHERE ProposalId = $id AND " +
+            "(($draft IS NULL AND DraftName IS NULL AND ($intent IS NULL OR CurrentIntentDigest = $intent)) OR " +
+            "(DraftName = $draft AND ($json IS NULL OR DraftJson = $json)));";
+        find.Parameters.AddWithValue("$id", proposalId.Value);
+        find.Parameters.AddWithValue("$draft", (object?)draftName ?? DBNull.Value);
+        find.Parameters.AddWithValue("$json", (object?)expectedDraftJson ?? DBNull.Value);
+        find.Parameters.AddWithValue("$intent", (object?)expectedIntentDigest ?? DBNull.Value);
+        return find.ExecuteScalar() is not null;
+    }
+
+    /// <summary>Records an Assessment that stopped before it could publish evidence.</summary>
+    public JobRecord RecordBudgetStop(string jobId, string projectKey, string kind, string inputJson,
+        string resultJson, string createdUtc)
+        => RecordInterrupted(jobId, projectKey, kind, inputJson, resultJson, createdUtc, JobStatus.StoppedByBudget);
+
+    /// <summary>Records a Trial interrupted before its worker could be queued.</summary>
+    public JobRecord RecordInterrupted(string jobId, string projectKey, string kind, string inputJson,
+        string resultJson, string createdUtc, JobStatus status, CanonicalId? proposalId = null,
+        string? draftName = null, string? expectedDraftJson = null, string? expectedIntentDigest = null,
+        JobFailureCategory? failureCategory = null)
+    {
+        if (status is not (JobStatus.StoppedByBudget or JobStatus.Cancelled or JobStatus.Failed))
+            throw new ArgumentOutOfRangeException(nameof(status));
+        JobJson.ValidateStructured(inputJson, nameof(inputJson));
+        JobJson.ValidateStructured(resultJson, nameof(resultJson));
+        var timestamp = JobTimestamp.FormatUtc(ValidateUtc(createdUtc, nameof(createdUtc)));
+        var record = new JobRecord(jobId, projectKey, kind, status, 1, inputJson,
+            resultJson, timestamp, timestamp, LineageId: jobId, ArchivedUtc: timestamp,
+            FailureCategory: status == JobStatus.Failed ? failureCategory ?? JobFailureCategory.ParserRefusal :
+                status == JobStatus.Cancelled ? JobFailureCategory.Cancellation : JobFailureCategory.None);
+        ValidateFailureCategory(record);
+        using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        if (proposalId is { } id && !ProposalStillThere(connection, transaction, id, draftName,
+                expectedDraftJson, expectedIntentDigest))
+            throw new TrialProposalGoneException(id.Value, draftName);
+        Insert(connection, transaction, record);
+        transaction.Commit();
+        return record;
+    }
+
     public JobRecord? Get(string jobId)
     {
         if (string.IsNullOrWhiteSpace(jobId)) throw new ArgumentException("A job id is required.", nameof(jobId));
@@ -55,6 +184,28 @@ public sealed class JobRepository
         command.Parameters.AddWithValue("$id", jobId);
         using var reader = command.ExecuteReader();
         return reader.Read() ? Read(reader) : null;
+    }
+
+    /// <summary>
+    /// Adds the phases that ran after a Trial committed to its committed result, without changing its status,
+    /// version or time. A Trial that is not Completed, or that changed since it was read, is left as it is.
+    /// </summary>
+    /// <returns>Whether the phases were recorded.</returns>
+    internal bool AppendCompletedTrialPhases(string jobId, string phasesJson)
+    {
+        var current = Get(jobId);
+        if (current is not { Kind: TrialJobHandler.TrialKind, Status: JobStatus.Completed, ResultJson: { } result }) return false;
+        var node = System.Text.Json.Nodes.JsonNode.Parse(result) as System.Text.Json.Nodes.JsonObject;
+        if (node is null) return false;
+        node["phases"] = System.Text.Json.Nodes.JsonNode.Parse(phasesJson);
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE Jobs SET ResultJson = $result WHERE JobId = $id AND Version = $version AND Status = $status;";
+        command.Parameters.AddWithValue("$result", node.ToJsonString());
+        command.Parameters.AddWithValue("$id", jobId);
+        command.Parameters.AddWithValue("$version", current.Version);
+        command.Parameters.AddWithValue("$status", JobStatusJson.ToWire(JobStatus.Completed));
+        return command.ExecuteNonQuery() == 1;
     }
 
     public IReadOnlyList<JobRecord> ListAttempts(string lineageId)
@@ -96,7 +247,7 @@ public sealed class JobRepository
         using var connection = _database.OpenConnection();
         using var command = connection.CreateCommand();
         command.CommandText = SelectSql + " WHERE Status NOT IN ('completed','completed-dry-run-only'," +
-            "'completed-with-assessment-failure','failed','cancelled','interrupted')" +
+            "'completed-with-assessment-failure','failed','cancelled','interrupted','stopped-by-budget')" +
             (projectKey is null ? "" : " AND ProjectKey = $project") + " ORDER BY UpdatedUtc;";
         if (projectKey is not null) command.Parameters.AddWithValue("$project", projectKey);
         using var reader = command.ExecuteReader();
@@ -115,8 +266,8 @@ public sealed class JobRepository
         using var connection = _database.OpenConnection();
         using var command = connection.CreateCommand();
         command.CommandText = SelectSqlWithQueueOrder + " WHERE Status NOT IN ('completed','completed-dry-run-only'," +
-            "'completed-with-assessment-failure','failed','cancelled','interrupted')" +
-            (projectKey is null ? "" : " AND ProjectKey = $project") + " ORDER BY QueueOrder, JobId;";
+            "'completed-with-assessment-failure','failed','cancelled','interrupted','stopped-by-budget')" +
+            (projectKey is null ? "" : " AND ProjectKey = $project") + " ORDER BY " + JobClaims.ClaimOrder + ";";
         if (projectKey is not null) command.Parameters.AddWithValue("$project", projectKey);
         using var reader = command.ExecuteReader();
         var records = new List<JobQueueEntry>();
@@ -285,25 +436,63 @@ public sealed class JobRepository
         return changed;
     }
 
-    public JobRecord CancelActive(string jobId)
+    public JobRecord CancelActive(string jobId, CancellationToken deadline = default,
+        long? terminalCleanupDeadline = null)
     {
         using var connection = _database.OpenConnection();
+        if (deadline.CanBeCanceled)
+        {
+            connection.DefaultTimeout = 1;
+            using var configure = connection.CreateCommand();
+            configure.CommandText = "PRAGMA busy_timeout = 100;";
+            configure.ExecuteNonQuery();
+        }
+        deadline.ThrowIfCancellationRequested();
         using var transaction = connection.BeginTransaction();
         var current = ReadRequired(connection, transaction, jobId);
         if (JobStateMachine.IsTerminal(current.Status)) return current;
-        var changed = current.Status == JobStatus.Running
+        var requiresAcknowledgement = current.ClaimToken is not null
+            ? current.IsHeldAt(JobTimestamp.FormatUtc(_clock.UtcNow))
+            : current.Status == JobStatus.Running;
+        var changed = requiresAcknowledgement
             ? _stateMachine.RequestCancellation(current)
             : PrepareTransition(current, _stateMachine.Transition(current, JobStatus.Cancelled)) with
             {
                 FailureCategory = JobFailureCategory.Cancellation,
             };
+        if (requiresAcknowledgement && terminalCleanupDeadline is { } cleanupDeadline &&
+            (JobCleanupProgress.Deadline(current.ProgressJson) is not { } prior || cleanupDeadline < prior))
+        {
+            changed = changed with
+            {
+                Version = checked(current.Version + 1),
+                ProgressJson = JobCleanupProgress.WithDeadline(current.ProgressJson, cleanupDeadline),
+            };
+        }
         if (changed == current) return current;
-        if (current.Status == JobStatus.Running)
+        if (requiresAcknowledgement)
             UpdateCancellation(connection, transaction, changed);
         else
             UpdateTransition(connection, transaction, changed);
+        deadline.ThrowIfCancellationRequested();
         transaction.Commit();
+        if (!deadline.CanBeCanceled && JobStateMachine.IsTerminal(changed.Status)) TrialScratchRetention.TrySweepReviewInputs(_database);
         return changed;
+    }
+
+    internal void MarkCleanupUnconfirmed(string jobId)
+    {
+        using var connection = _database.OpenConnection();
+        connection.DefaultTimeout = 1;
+        using var transaction = connection.BeginTransaction();
+        var job = ReadRequired(connection, transaction, jobId);
+        if (JobCleanupProgress.Unconfirmed(job.ProgressJson)) return;
+        UpdateProgressRow(connection, transaction, job with
+        {
+            Version = checked(job.Version + 1),
+            ProgressJson = JobCleanupProgress.WithUnconfirmedCleanup(job.ProgressJson),
+        });
+        transaction.Commit();
     }
 
     public JobRecord UpdateProgress(string jobId, string progressJson, long expectedVersion)
@@ -425,7 +614,8 @@ public sealed class JobRepository
         using var transaction = connection.BeginTransaction();
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
-        command.CommandText = SelectSql + " WHERE Status = 'running' AND CancellationRequested = 1 " +
+        command.CommandText = SelectSql + " WHERE Status IN ('running','waiting-for-baseline','waiting-for-project-host') " +
+            "AND CancellationRequested = 1 " +
             "AND ArchivedUtc IS NULL AND (LeaseUntilUtc IS NULL OR LeaseUntilUtc <= $now) ORDER BY JobId;";
         command.Parameters.AddWithValue("$now", JobTimestamp.FormatUtc(now.ToUniversalTime()));
         using var reader = command.ExecuteReader();
@@ -627,6 +817,7 @@ public sealed class JobRepository
             count += command.ExecuteNonQuery();
             ReleaseBundlePin(connection, transaction, candidate.JobId);
         }
+        BeforeAssessmentBindingRepository.Prune(connection, transaction);
         transaction.Commit();
         var removed = candidates.Select(candidate => candidate.JobId).ToHashSet(StringComparer.Ordinal);
         JobWordLists.RemoveUnreferenced(_database,
@@ -643,7 +834,7 @@ public sealed class JobRepository
         using var command = connection.CreateCommand();
         command.CommandText = "DELETE FROM ParsimonyBundleReferences WHERE ReferenceKind='job' AND NOT EXISTS (" +
             "SELECT 1 FROM Jobs AS j WHERE j.JobId=ParsimonyBundleReferences.ReferenceId AND j.Status NOT IN " +
-            "('completed','completed-dry-run-only','completed-with-assessment-failure','failed','cancelled','interrupted'));";
+            "('completed','completed-dry-run-only','completed-with-assessment-failure','failed','cancelled','interrupted','stopped-by-budget'));";
         return command.ExecuteNonQuery();
     }
 
@@ -699,6 +890,7 @@ public sealed class JobRepository
         using var transaction = connection.BeginTransaction();
         DeleteArchived(connection, transaction, jobId);
         transaction.Commit();
+        TrialScratchRetention.TrySweepReviewInputs(_database);
     }
 
     /// <summary>Deletes one terminal job and releases its pin inside the caller's transaction.</summary>
@@ -719,6 +911,7 @@ public sealed class JobRepository
         command.Parameters.AddWithValue("$version", current.Version);
         if (command.ExecuteNonQuery() != 1) throw new InvalidOperationException("The job changed concurrently; reload it before deleting.");
         ReleaseBundlePin(connection, transaction, jobId);
+        BeforeAssessmentBindingRepository.Prune(connection, transaction);
     }
 
     public JobRecord Retry(string terminalJobId, string? newJobId = null)
@@ -787,7 +980,7 @@ public sealed class JobRepository
 
     private static void UpdateCancellation(SqliteConnection connection, SqliteTransaction transaction, JobRecord record) =>
         ExecuteConcurrencyUpdate(connection, transaction, record,
-            "CancellationRequested = $cancel, UpdatedUtc = $updated, Version = $version");
+            "CancellationRequested = $cancel, ProgressJson = $progress, UpdatedUtc = $updated, Version = $version");
 
     private static void UpdateProgressRow(SqliteConnection connection, SqliteTransaction transaction, JobRecord record) =>
         ExecuteConcurrencyUpdate(connection, transaction, record,
@@ -1006,3 +1199,9 @@ public sealed class JobRepository
 
 /// <summary>One job together with the <c>QueueOrder</c> it was read under.</summary>
 public readonly record struct JobQueueEntry(JobRecord Job, double QueueOrder);
+
+/// <summary>A Trial was to be queued for a Proposal or Draft that no longer exists.</summary>
+public sealed class TrialProposalGoneException(string proposalId, string? draftName)
+    : Exception(draftName is null
+        ? $"Proposal '{proposalId}' no longer exists."
+        : $"Draft '{draftName}' of Proposal '{proposalId}' no longer exists.");

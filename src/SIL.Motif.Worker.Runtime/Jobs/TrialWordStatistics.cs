@@ -24,8 +24,7 @@ internal static class TrialWordStatistics
         {
             try
             {
-                statistics = PanGlossBatchStatisticsReader.Read(cache.Path, words, _ => 0,
-                    maxObjectTimingRows: 0).Words;
+                statistics = PanGlossBatchStatisticsReader.ReadWords(cache.Path, words);
             }
             catch (Exception exception) when (exception is IOException or InvalidDataException or
                 UnauthorizedAccessException or SqliteException or ArgumentException)
@@ -43,10 +42,8 @@ internal static class TrialWordStatistics
         if (statistics is null || !statistics.TryGetValue(word.Word, out var found)) return word;
         return word with
         {
-            Attempts = found.Attempts,
             Passes = found.Passes,
-            WorkSteps = found.WorkSteps ?? word.WorkSteps,
-            Morphology = word.Morphology is { } morphology ? morphology with { Attempts = found.Attempts } : null,
+            ParserWork = found.ParserWork ?? word.ParserWork,
         };
     }
 }

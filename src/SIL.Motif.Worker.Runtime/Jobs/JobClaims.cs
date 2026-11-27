@@ -1,5 +1,8 @@
 using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 using SIL.Motif.Contract.Jobs;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Store;
 
 namespace SIL.Motif.Worker.Jobs;
@@ -33,6 +36,12 @@ public sealed class JobClaims : IJobClaimProtocol
         "(CASE WHEN json_valid(InputJson) THEN json_extract(InputJson, '" + JobParserPin.KeyPath + "') END IS NULL " +
         "OR json_extract(InputJson, '" + JobParserPin.KeyPath + "') = $parser)";
 
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<JobRecord, System.Diagnostics.Stopwatch> ClaimTimers = new();
+
+    internal static System.Diagnostics.Stopwatch TimerFor(JobRecord job) =>
+        ClaimTimers.TryGetValue(job, out var timer) ? timer
+            : throw new InvalidOperationException("The job record has no tracked claim time.");
+
     private readonly MotifDatabase _database;
     private readonly JobRepository _jobs;
     private readonly string? _parserKey;
@@ -48,6 +57,18 @@ public sealed class JobClaims : IJobClaimProtocol
         _jobs = new JobRepository(database, clock);
         _parserKey = parserKey;
     }
+
+    /// <summary>
+    /// Trials and every other kind come first, then the automatic candidate Parsimony job, and the Baseline-side
+    /// prebuild last: it is queued as soon as Capture completes, so it must never start ahead of a Trial or a
+    /// candidate job that is already queued (a prebuild already running is not preempted).
+    /// </summary>
+    internal const string ClaimOrder =
+        "(CASE WHEN Kind = 'parsimony-candidate' THEN 1 " +
+        "WHEN Kind = '" + SIL.Motif.Worker.Parsimony.ParsimonyJobHandler.JobKind + "' AND " +
+        "CASE WHEN json_valid(InputJson) THEN json_extract(InputJson, '$.note') END LIKE '" +
+        SIL.Motif.Worker.Parsimony.ParsimonyAutoRun.BaselineBundleNotePrefix + "%' THEN 2 ELSE 0 END), " +
+        "QueueOrder, JobId";
 
     /// <summary>Reads the identity and position of one project's next claimable row, without claiming it.</summary>
     /// <remarks>
@@ -66,7 +87,7 @@ public sealed class JobClaims : IJobClaimProtocol
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT JobId, QueueOrder FROM Jobs WHERE ProjectKey = $project AND " +
             "ArchivedUtc IS NULL AND (" + QueuedAndDue + " OR " + RunningAndExpired + ") AND " + ParserMatches + " " +
-            "ORDER BY QueueOrder, JobId LIMIT 1;";
+            "ORDER BY " + ClaimOrder + " LIMIT 1;";
         command.Parameters.AddWithValue("$parser", (object?)_parserKey ?? DBNull.Value);
         command.Parameters.AddWithValue("$now", now);
         command.Parameters.AddWithValue("$project", projectKey);
@@ -100,12 +121,12 @@ public sealed class JobClaims : IJobClaimProtocol
             claim.Transaction = transaction;
             claim.CommandText =
                 "UPDATE Jobs SET Status = 'running', OwnerId = $owner, ClaimToken = $token, " +
-                "LeaseUntilUtc = $until, HeartbeatUtc = $now, " +
+                "LeaseUntilUtc = $until, HeartbeatUtc = $now, NotBeforeUtc = NULL, " +
                 "UpdatedUtc = MAX(CreatedUtc, UpdatedUtc, $now), Version = Version + 1, " +
                 "Attempt = Attempt + CASE WHEN Status = 'running' THEN 1 ELSE 0 END " +
                 "WHERE JobId = (SELECT JobId FROM Jobs WHERE ProjectKey = $project AND ArchivedUtc IS NULL " +
                 "AND (" + QueuedAndDue + " OR " + RunningAndExpired + ") AND " + ParserMatches +
-                " ORDER BY QueueOrder, JobId LIMIT 1) " +
+                " ORDER BY " + ClaimOrder + " LIMIT 1) " +
                 "AND (" + QueuedAndDue + " OR " + RunningAndExpired + ");";
             claim.Parameters.AddWithValue("$parser", (object?)_parserKey ?? DBNull.Value);
             claim.Parameters.AddWithValue("$owner", ownerId);
@@ -131,12 +152,18 @@ public sealed class JobClaims : IJobClaimProtocol
             claimed = JobRepository.Read(reader);
         }
         transaction.Commit();
+        ClaimTimers.Add(claimed, System.Diagnostics.Stopwatch.StartNew());
         return claimed;
     }
 
     /// <summary>Reads whether a cancellation has been requested for one job, by id rather than by token.</summary>
     /// <remarks>This is what the loop's heartbeat polls to cancel a running handler's token.</remarks>
-    public bool IsCancellationRequested(string jobId) => _jobs.Get(jobId)?.CancellationRequested ?? false;
+    public bool IsCancellationRequested(string jobId) => ReadCancellation(jobId).Requested;
+
+    public (bool Requested, long? CleanupDeadline) ReadCancellation(string jobId) =>
+        _jobs.Get(jobId) is { CancellationRequested: true } job
+            ? (true, JobCleanupProgress.Deadline(job.ProgressJson))
+            : (false, null);
 
     /// <summary>Wraps an already-claimed row so a handler can drive it without ever seeing its version.</summary>
     internal ClaimedJob Wrap(JobRecord claimed) => new(_jobs, claimed);
@@ -176,6 +203,33 @@ public sealed class JobClaims : IJobClaimProtocol
         return extended;
     }
 
+    /// <summary>
+    /// Drops this runner's claim on a row its handler parked and walked away from, leaving its status alone.
+    /// </summary>
+    /// <remarks>
+    /// A parked row nobody is working on must not look held, or a sweep that would put it back in the queue has
+    /// to wait out a lease that no heartbeat renews, and another runner cannot tell it from one in flight.
+    /// </remarks>
+    public bool ReleaseParked(string jobId, string claimToken)
+    {
+        if (string.IsNullOrWhiteSpace(claimToken))
+            throw new ArgumentException("A claim token is required.", nameof(claimToken));
+
+        using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText =
+            "UPDATE Jobs SET OwnerId = NULL, ClaimToken = NULL, LeaseUntilUtc = NULL, HeartbeatUtc = NULL " +
+            "WHERE JobId = $id AND ClaimToken = $token " +
+            "AND Status IN ('waiting-for-baseline', 'waiting-for-project-host') AND CancellationRequested = 0;";
+        command.Parameters.AddWithValue("$id", jobId);
+        command.Parameters.AddWithValue("$token", claimToken);
+        var released = command.ExecuteNonQuery() == 1;
+        transaction.Commit();
+        return released;
+    }
+
     /// <summary>Moves a held job to its terminal state, or reports it was no longer this runner's to move.</summary>
     /// <remarks>
     /// The token authorises this for the same reason it authorises a renewal, and the danger is larger
@@ -193,12 +247,34 @@ public sealed class JobClaims : IJobClaimProtocol
         if (string.IsNullOrWhiteSpace(claimToken))
             throw new ArgumentException("A claim token is required.", nameof(claimToken));
 
-        var current = _jobs.Get(jobId);
-        if (current is null || current.Status is not (JobStatus.Running or JobStatus.WaitingForBaseline or
-                JobStatus.WaitingForProjectHost)) return false;
-        if (!string.Equals(current.ClaimToken, claimToken, StringComparison.Ordinal)) return false;
-        _jobs.Transition(jobId, status, current.Version, category, resultJson);
-        return true;
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            var current = _jobs.Get(jobId);
+            if (current is null || current.Status is not (JobStatus.Running or JobStatus.WaitingForBaseline or
+                    JobStatus.WaitingForProjectHost)) return false;
+            if (!string.Equals(current.ClaimToken, claimToken, StringComparison.Ordinal)) return false;
+            var cancelled = current.CancellationRequested;
+            try
+            {
+                _jobs.Transition(jobId, cancelled ? JobStatus.Cancelled : status, current.Version,
+                    cancelled ? JobFailureCategory.Cancellation : category, cancelled ? null : resultJson);
+                return true;
+            }
+            catch (InvalidOperationException) when (attempt < 2 &&
+                _jobs.Get(jobId) is { CancellationRequested: true } changed && changed.Version != current.Version)
+            {
+            }
+        }
+        return false;
+    }
+
+    internal static bool TracksExecution(string? kind) => kind is ProjectJobHandlers.DryRunKind or TrialJobHandler.TrialKind;
+
+    internal static WorkerMutexOwner ExecutionLock(string databasePath, string jobId)
+    {
+        var path = OperatingSystem.IsWindows() || OperatingSystem.IsMacOS() ? databasePath.ToUpperInvariant() : databasePath;
+        var key = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(path + "\n" + jobId)));
+        return WorkerMutexOwner.ForTransientRoot("Global\\Motif.JobExecution." + key);
     }
 
     private static string Normalize(string value) => JobTimestamp.FormatUtc(DateTimeOffset.Parse(value,
@@ -217,11 +293,16 @@ internal interface IJobClaimProtocol
 
     bool IsCancellationRequested(string jobId);
 
+    (bool Requested, long? CleanupDeadline) ReadCancellation(string jobId) =>
+        (IsCancellationRequested(jobId), null);
+
     ClaimedJob Wrap(JobRecord claimed);
 
     bool Renew(string jobId, string claimToken, string nowUtc, TimeSpan lease);
 
     bool Finish(string jobId, string claimToken, JobStatus status, JobFailureCategory category, string? resultJson);
+
+    bool ReleaseParked(string jobId, string claimToken);
 }
 
 /// <summary>
