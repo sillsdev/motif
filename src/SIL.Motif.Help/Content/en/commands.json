@@ -122,6 +122,11 @@
     "description": "Calculates a named report from an Assessment and project data. Use it to answer a focused question about words, Texts, or grammar without rerunning PanGloss.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
+  "id convert": {
+    "title": "Convert ids",
+    "description": "Prints each id in both forms: the canonical id a Proposal names and the guid a project file stores. It needs no project, and every command that takes an object id accepts either form.",
+    "source": "Hand-written from the id convert command behavior."
+  },
   "report --list-kinds": {
     "title": "List report kinds",
     "description": "Lists the report kinds accepted by report --kind. Run it first when you need to choose a report for stored evidence.",

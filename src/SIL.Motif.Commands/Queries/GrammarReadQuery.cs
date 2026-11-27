@@ -24,9 +24,12 @@ public static class GrammarReadQuery
         ArgumentNullException.ThrowIfNull(request);
         if (!Enum.IsDefined(request.Kind))
             return Invalid("Choose a supported grammar object kind.");
-        if (request.Id is not null && (string.IsNullOrWhiteSpace(request.Id) ||
-                !CanonicalId.TryParse(request.Id, out _)))
-            return Invalid("An exact id must be a canonical entity id.");
+        if (request.Id is not null)
+        {
+            if (string.IsNullOrWhiteSpace(request.Id) || !ObjectId.TryParse(request.Id, out var exactId))
+                return Invalid("An exact id must be a canonical entity id or a guid.");
+            request = request with { Id = exactId.Value };
+        }
         if (request.Id is not null && request.Query is not null)
             return Invalid("Choose either an exact id or a name query, not both.");
         if (request.Id is not null && (request.Exact is not null || request.MorphType is not null))

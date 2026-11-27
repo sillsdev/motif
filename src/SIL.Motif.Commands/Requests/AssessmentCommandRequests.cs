@@ -21,3 +21,7 @@ public sealed record ProduceReportRequest(
 /// <param name="ToAssessmentId">The later retained Assessment in the comparison.</param>
 public sealed record ProduceComparisonRequest(
     string FwDataPath, string ProductVersion, string FromAssessmentId, string ToAssessmentId);
+
+/// <summary>Converts ids between the canonical form a Proposal names and the guid form a project file stores.</summary>
+/// <param name="Ids">Each id, in either form.</param>
+public sealed record IdConvertRequest(IReadOnlyList<string> Ids);

@@ -976,9 +976,9 @@ try
             if (hasOccurrence)
             {
                 if (occurrenceFlags.Any(name => !flags.ContainsKey(name)) ||
-                    !Guid.TryParse(flags.GetValueOrDefault("occurrence-text-id"), out var textId) ||
-                    !Guid.TryParse(flags.GetValueOrDefault("occurrence-paragraph-id"), out var paragraphId) ||
-                    !Guid.TryParse(flags.GetValueOrDefault("occurrence-segment-id"), out var segmentId) ||
+                    !TryObjectGuid(flags.GetValueOrDefault("occurrence-text-id"), out var textId) ||
+                    !TryObjectGuid(flags.GetValueOrDefault("occurrence-paragraph-id"), out var paragraphId) ||
+                    !TryObjectGuid(flags.GetValueOrDefault("occurrence-segment-id"), out var segmentId) ||
                     !int.TryParse(flags.GetValueOrDefault("occurrence-index"), out var occurrenceIndex) ||
                     occurrenceIndex < 0)
                     return Usage("Occurrence requires --occurrence-text-id, --occurrence-paragraph-id, " +
@@ -1006,7 +1006,7 @@ try
                 hasSingleAnalysis && (!flags.ContainsKey("change-id") || !flags.ContainsKey("wordform-id") ||
                     !flags.ContainsKey("word")) ||
                 hasAnalysisSelection && removeAnalysisIds!.Length == 0 ||
-                hasAnalysisText && !Guid.TryParse(removeAnalysisTextId, out _))
+                hasAnalysisText && !TryObjectGuid(removeAnalysisTextId, out _))
                 return Usage("Usage: motif remove-analysis --project <fwdata> " +
                     "--expected-revision <revision> (--analysis-id <id> --change-id <id> " +
                     "--wordform-id <id> --word <word> | --analysis-ids <id,id,...> | --text-id <guid>) [--json]",
@@ -1015,7 +1015,7 @@ try
                 removeAnalysisProject, CliProductVersion(), removeAnalysisRevision,
                 flags.GetValueOrDefault("change-id"), flags.GetValueOrDefault("wordform-id"),
                 flags.GetValueOrDefault("word"), removeAnalysisId, removeAnalysisIds,
-                hasAnalysisText ? Guid.Parse(removeAnalysisTextId!) : null)));
+                hasAnalysisText ? ObjectGuid(removeAnalysisTextId!) : null)));
             break;
 
         case "accept-new-set":
@@ -1026,13 +1026,13 @@ try
                 !flags.TryGetValue("expected-revision", out var acceptRevision) ||
                 !flags.TryGetValue("assessment", out var acceptAssessment) ||
                 (hasWordformScope ? 1 : 0) + (hasTextScope ? 1 : 0) + (hasSelectionScope ? 1 : 0) != 1 ||
-                hasTextScope && !Guid.TryParse(acceptTextId, out _))
+                hasTextScope && !TryObjectGuid(acceptTextId, out _))
                 return Usage("Usage: motif accept-new-set --project <fwdata> " +
                     "--expected-revision <revision> --assessment <id> " +
                     "(--wordform-id <id> | --text-id <guid> | --selection) [--json]", asJson);
             result = RenderProposal(PendingChanges.AcceptNewSet(new AcceptNewSetRequest(
                 acceptProject, CliProductVersion(), acceptRevision, acceptAssessment,
-                acceptWordformId, hasTextScope ? Guid.Parse(acceptTextId!) : null, hasSelectionScope)));
+                acceptWordformId, hasTextScope ? ObjectGuid(acceptTextId!) : null, hasSelectionScope)));
             break;
 
         case "remove-pending-change":
@@ -1526,6 +1526,19 @@ try
 
                 default:
                     return Usage(ConfigUsage(), asJson);
+            }
+            break;
+
+        case "id":
+            if (positionals.Count < 2 || positionals[0] != "convert")
+                return Usage(UsageLineFor("id convert"), asJson);
+            var idConverted = IdConvertCommand.Convert(new IdConvertRequest(positionals.Skip(1).ToArray()));
+            result = RenderCommand(idConverted);
+            // An argument that is not an id fails the call, but every other argument has already printed.
+            if (result.ExitCode == 0 && idConverted.Value!.HasInvalid)
+            {
+                output.Write(result.Output);
+                return FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument);
             }
             break;
 
@@ -3328,7 +3341,7 @@ try
             if (flags.TryGetValue("texts", out var progressTexts))
                 foreach (var value in progressTexts.Split(','))
                 {
-                    if (!Guid.TryParse(value, out var parsedText)) return Usage(UsageLineFor("progress"), asJson);
+                    if (!TryObjectGuid(value, out var parsedText)) return Usage(UsageLineFor("progress"), asJson);
                     progressIds.Add(parsedText);
                 }
             var progressLimit = 50;
@@ -3358,7 +3371,7 @@ try
                 !flags.TryGetValue("project", out var readStateProject) ||
                 !flags.TryGetValue("text", out var readStateText))
                 return Usage(UsageLineFor("word read-state"), asJson);
-            if (!Guid.TryParse(readStateText, out var readStateTextId) ||
+            if (!TryObjectGuid(readStateText, out var readStateTextId) ||
                 flags.ContainsKey("read") && flags.ContainsKey("unread") ||
                 !TryParseReadOccurrences(flags.GetValueOrDefault("occurrences"), readStateTextId,
                     out var readStateOccurrences))
@@ -3870,6 +3883,20 @@ static bool TryParseCount(string? text, out int? count)
     return true;
 }
 
+// The one id parser for a typed object id: a guid or a canonical id names the same object (ObjectId).
+static bool TryObjectGuid(string? text, out Guid guid)
+{
+    if (ObjectId.TryParse(text, out var id))
+    {
+        guid = id.ToGuid();
+        return true;
+    }
+    guid = default;
+    return false;
+}
+
+static Guid ObjectGuid(string text) => ObjectId.TryParse(text, out var id) ? id.ToGuid() : Guid.Parse(text);
+
 static bool TryParseGuidList(string? raw, out List<Guid> guids)
 {
     guids = new List<Guid>();
@@ -3877,7 +3904,7 @@ static bool TryParseGuidList(string? raw, out List<Guid> guids)
 
     foreach (var token in raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
     {
-        if (!Guid.TryParse(token, out var guid)) return false;
+        if (!TryObjectGuid(token, out var guid)) return false;
         guids.Add(guid);
     }
     return true;
