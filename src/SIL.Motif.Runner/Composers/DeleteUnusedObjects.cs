@@ -34,6 +34,14 @@ public sealed record DeleteEnvironmentIntent(CanonicalId Environment, string Exp
 public sealed record DeleteNaturalClassIntent(CanonicalId NaturalClass, string ExpectedName);
 
 /// <summary>
+/// Deletes one inflection class that nothing uses and that has no subclass. FieldWorks path: Grammar, Category Browser or
+/// Inflection Classes, select the class, Delete (<c>IPartOfSpeech.InflectionClassesOC</c>, LibLCM <c>ICmObject.Delete</c>).
+/// </summary>
+/// <param name="InflectionClass">Canonical id of the inflection class.</param>
+/// <param name="ExpectedName">The name the class must still carry, in any writing system.</param>
+public sealed record DeleteInflectionClassIntent(CanonicalId InflectionClass, string ExpectedName);
+
+/// <summary>
 /// Deletes one Note of a Text Segment. FieldWorks path: Texts &amp; Words, Interlinear Text, the Free Translation and
 /// Note lines of a segment, clear the Note (<c>ISegment.NotesOS</c>, the objects <c>compose-edit-text-notes</c> sets).
 /// </summary>
@@ -64,6 +72,13 @@ public static class DeleteUnusedObjectsIntentParser
     {
         SoundSystemIntentParsing.Object(authored, "DeleteNaturalClass", "naturalClass", "expectedName");
         return new(SoundSystemIntentParsing.Id(authored, "naturalClass"), SoundSystemIntentParsing.Text(authored, "expectedName"));
+    }
+
+    /// <summary>Reads <c>{ "inflectionClass", "expectedName" }</c>.</summary>
+    public static DeleteInflectionClassIntent ParseInflectionClass(JsonElement authored)
+    {
+        SoundSystemIntentParsing.Object(authored, "DeleteInflectionClass", "inflectionClass", "expectedName");
+        return new(SoundSystemIntentParsing.Id(authored, "inflectionClass"), SoundSystemIntentParsing.Text(authored, "expectedName"));
     }
 
     /// <summary>Reads <c>{ "note", "expectedText" }</c>.</summary>
@@ -130,6 +145,18 @@ public static class DeleteUnusedObjectsComposer
         RequireMatch(construct, intent.NaturalClass, intent.ExpectedName, Alternatives(naturalClass.Name), "the name");
         UnusedObjects.RequireUnusedNaturalClass(cache, naturalClass, intent.NaturalClass, construct);
         return [Delete(UnusedObjectDeleteOperationKinds.DeleteNaturalClass, intent.NaturalClass, construct)];
+    }
+
+    /// <summary>Returns the deletion, or throws on a stale name, a subclass, or an inflection class something still uses.</summary>
+    public static IReadOnlyList<OperationEnvelope> BuildInflectionClass(LcmCache cache, DeleteInflectionClassIntent intent)
+    {
+        ArgumentNullException.ThrowIfNull(cache);
+        ArgumentNullException.ThrowIfNull(intent);
+        const string construct = "DeleteInflectionClass";
+        var inflectionClass = ReferenceFieldLowering.Resolve<IMoInflClass>(cache, intent.InflectionClass, construct);
+        RequireMatch(construct, intent.InflectionClass, intent.ExpectedName, Alternatives(inflectionClass.Name), "the name");
+        UnusedObjects.RequireUnusedInflectionClass(inflectionClass, intent.InflectionClass, construct);
+        return [Delete(UnusedObjectDeleteOperationKinds.DeleteInflectionClass, intent.InflectionClass, construct)];
     }
 
     /// <summary>Returns the deletion, or throws on a stale text or a target that is not a Segment's Note.</summary>
