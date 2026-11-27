@@ -64,6 +64,10 @@ public static class WorkerStopCommand
             storePath = ProjectDatabaseCatalog.DatabasePathFor(located.Value);
             foreach (var holder in StoreHolder.ReadLive(storePath, pid => processes.NameOf(pid) is not null))
                 targets.Add((new StoppedWorker(holder.Pid, holder.Build, holder.Root, "stopped"), holder.StartedUtc));
+            // Another build's runner on this root claims jobs without holding a store record.
+            if (RunnerIdentity.ReadLive(root, pid => processes.NameOf(pid) is not null) is { } other &&
+                !string.Equals(other.Build, RunnerIdentity.BuildId, StringComparison.Ordinal))
+                targets.Add((new StoppedWorker(other.Pid, other.Build, root, "stopped"), other.StartedUtc));
         }
         else if (RunnerIdentity.ReadLive(root, pid => processes.NameOf(pid) is not null) is { } runner)
         {
@@ -162,7 +166,7 @@ public static class WorkerStopCommand
     private static void Prune(string? storePath, string root, int pid)
     {
         if (storePath is not null) StoreHolder.Remove(storePath, pid);
-        else RunnerIdentity.Remove(root, pid);
+        RunnerIdentity.Remove(root, pid);
     }
 
     private static bool LooksLikeRunner(string processName)

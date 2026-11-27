@@ -163,6 +163,67 @@ public sealed class WorkerStopCommandTests : IDisposable
     }
 
     [Fact]
+    public void AProjectNamedAlsoStopsARunnerOfAnotherBuildOnTheWorkerRootThatHoldsNoStoreRecord()
+    {
+        var project = Project("otherbuild");
+        const int pid = 4501;
+        File.WriteAllText(RunnerIdentity.PathFor(_root), pid + "\nthe old build\n" + Started);
+        var processes = new FakeProcesses { Names = { [pid] = "SIL.Motif.Worker" } };
+
+        var stopped = WorkerStopCommand.Run(new WorkerStopRequest(project), _root, processes);
+
+        Assert.True(stopped.Succeeded, stopped.Refusal?.Message);
+        Assert.Equal([pid], processes.Terminated);
+        var worker = Assert.Single(stopped.Value!.Workers);
+        Assert.Equal((pid, "the old build", _root, "stopped"), (worker.Pid, worker.Build, worker.Root, worker.Outcome));
+        Assert.False(File.Exists(RunnerIdentity.PathFor(_root)));
+    }
+
+    [Fact]
+    public void AProjectNamedLeavesARunnerOfThisBuildOnTheRootAloneWhenItHoldsNoStoreRecord()
+    {
+        var project = Project("samebuild");
+        const int pid = 4502;
+        File.WriteAllText(RunnerIdentity.PathFor(_root), pid + "\n" + RunnerIdentity.BuildId + "\n" + Started);
+        var processes = new FakeProcesses { Names = { [pid] = "SIL.Motif.Worker" } };
+
+        var stopped = WorkerStopCommand.Run(new WorkerStopRequest(project), _root, processes);
+
+        Assert.Empty(processes.Terminated);
+        Assert.Empty(stopped.Value!.Workers);
+    }
+
+    [Fact]
+    public void ARootRecordWhosePidNowBelongsToAnotherProcessIsNotKilledAndItsRecordIsPruned()
+    {
+        var project = Project("stalepid");
+        const int pid = 4503;
+        File.WriteAllText(RunnerIdentity.PathFor(_root), pid + "\nthe old build\n" + Started);
+        var processes = new FakeProcesses { Names = { [pid] = "bash" } };
+
+        var stopped = WorkerStopCommand.Run(new WorkerStopRequest(project), _root, processes);
+
+        Assert.Empty(processes.Terminated);
+        Assert.Equal("skipped", Assert.Single(stopped.Value!.Workers).Outcome);
+        Assert.False(File.Exists(RunnerIdentity.PathFor(_root)));
+    }
+
+    [Fact]
+    public void ARootRecordWhosePidWasReusedByAnotherRunnerStartIsNotKilled()
+    {
+        var project = Project("reusedroot");
+        const int pid = 4504;
+        File.WriteAllText(RunnerIdentity.PathFor(_root), pid + "\nthe old build\n" + Started);
+        var processes = new FakeProcesses { Names = { [pid] = "SIL.Motif.Worker" }, Starts = { [pid] = StartedAt.AddDays(2) } };
+
+        var stopped = WorkerStopCommand.Run(new WorkerStopRequest(project), _root, processes);
+
+        Assert.Empty(processes.Terminated);
+        Assert.Equal("skipped", Assert.Single(stopped.Value!.Workers).Outcome);
+        Assert.True(File.Exists(RunnerIdentity.PathFor(_root)));
+    }
+
+    [Fact]
     public void ARunnerThatDoesNotExitIsRefusedNamingItsPid()
     {
         var project = Project("stuck");

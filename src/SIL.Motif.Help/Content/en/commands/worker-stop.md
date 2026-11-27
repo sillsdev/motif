@@ -13,7 +13,7 @@ motif worker stop --project "C:\FieldWorks\Projects\Koro\Koro.fwdata"
 motif worker stop
 ```
 
-With `--project`, it stops every runner that records itself as holding that project's store, whichever worker root it serves. Without it, it stops the runner the current worker root (`MOTIF_WORKER_ROOT`, or the per-user default) records.
+With `--project`, it stops every runner that records itself as holding that project's store, whichever worker root it serves, and also the runner the current worker root records when that runner is from a different build than this one (a lane that keeps one root across builds finds the old build's runner there). Without it, it stops the runner the current worker root (`MOTIF_WORKER_ROOT`, or the per-user default) records.
 
 ## What it prints
 
