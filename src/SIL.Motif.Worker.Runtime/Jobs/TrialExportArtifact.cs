@@ -49,6 +49,45 @@ public static class TrialExportArtifact
         return page is { } number ? receipt with { Page = ReadPage(stream, binding, number) } : receipt;
     }
 
+    /// <summary>
+    /// Visits every word of a retained export in order, one parsed line at a time. The element is valid only inside the
+    /// callback, so nothing but the current word is held, unlike <see cref="Read"/>, which keeps a whole page of words.
+    /// </summary>
+    internal static void ForEachWord(MotifDatabase database, string jobId, Action<JsonElement> visit)
+    {
+        if (LoadBinding(database, jobId) is not { } binding) throw new InvalidDataException("A retained Trial export page is missing.");
+        var path = database.FullPath + FileSuffix(JobKey(jobId), binding.Sha256);
+        if (!File.Exists(path)) throw new InvalidDataException("A retained Trial export page is missing.");
+        RequireRegular(Path.GetDirectoryName(path)!);
+        RequireRegular(path);
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
+        if (stream.Length != binding.Bytes || !MatchesHeader(stream, binding))
+            throw new InvalidDataException("The retained Trial export does not match its store binding.");
+        for (var number = 1; number <= binding.PageOffsets.Length; number++)
+        {
+            var start = binding.PageOffsets[number - 1];
+            var end = number < binding.PageOffsets.Length ? binding.PageOffsets[number] : stream.Length;
+            var count = Math.Min(TrialExportPage.Size, binding.Denominators.Submitted - (number - 1) * TrialExportPage.Size);
+            var buffer = System.Buffers.ArrayPool<byte>.Shared.Rent((int)(end - start));
+            try
+            {
+                stream.Position = start;
+                stream.ReadExactly(buffer, 0, (int)(end - start));
+                var offset = 0;
+                for (var index = 0; index < count; index++)
+                {
+                    var length = buffer.AsSpan(offset, (int)(end - start) - offset).IndexOf((byte)'\n');
+                    if (length < 0) throw new InvalidDataException("A retained Trial export page ended early.");
+                    var skip = buffer[offset] == (byte)',' ? 1 : 0;
+                    using var word = JsonDocument.Parse(buffer.AsMemory(offset + skip, length - skip));
+                    visit(word.RootElement);
+                    offset += length + 1;
+                }
+            }
+            finally { System.Buffers.ArrayPool<byte>.Shared.Return(buffer); }
+        }
+    }
+
     /// <summary>Keeps the serialized receipt under its bound by swapping an over-long, JSON-escaped path for the store suffix.</summary>
     internal static TrialExportReceipt WithinBound(TrialExportReceipt receipt, string suffix) =>
         ProjectionJson.ToUtf8Bytes(receipt).Length > 1950 ? receipt with { Path = suffix, PathIsStoreSuffix = true } : receipt;
