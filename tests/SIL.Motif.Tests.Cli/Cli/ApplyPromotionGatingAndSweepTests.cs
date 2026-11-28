@@ -760,7 +760,7 @@ public sealed class ApplyPromotionGatingAndSweepTests
         var job = Trials.NewestFirst(Trials.JobsFor(database, project, CanonicalId.Parse(proposalId))).First();
         var baseline = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project))!.Token;
         var receipt = TrialReceiptFile.Build(proposalId, Trials.ReadCurrentIntentDigest(record)!, baseline.SemanticSnapshotDigest,
-            job.JobId, new TrialExpectations([], []), new ReadingDeltaCounts(1, 1, 0, 0, 0, 0, 0, 0, 0, 0));
+            job.JobId, new TrialExpectations([], []), new ReadingDeltaCounts(1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0));
         var path = Path.Combine(Path.GetDirectoryName(_fwDataPath)!, name);
         Assert.Null(TrialReceiptFile.Write(path, receipt));
         return path;

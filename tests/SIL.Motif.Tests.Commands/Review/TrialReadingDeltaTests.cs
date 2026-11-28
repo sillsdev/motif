@@ -48,13 +48,75 @@ public sealed class TrialReadingDeltaTests
 
         Assert.True(result.Succeeded, result.Refusal?.Message);
         var delta = result.Value!;
-        Assert.Equal(new ReadingDeltaCounts(6, 5, 1, 1, 1, 1, 0, 3, 3, 0), delta.Counts);
+        Assert.Equal(new ReadingDeltaCounts(6, 5, 1, 1, 1, 1, 0, 3, 3, 0, 0), delta.Counts);
         Assert.Equal(["lost"], delta.Classes.Single(item => item.Class == "lost").Rows.Select(row => row.Word));
         Assert.Equal(["doubled"], delta.Classes.Single(item => item.Class == "doubled").Rows.Select(row => row.Word));
         var changed = delta.Classes.Single(item => item.Class == "changed").Rows.Single();
         Assert.Equal(Sig(3).Id, changed.Retired.Single().Id);
         Assert.Equal(Sig(4).Id, changed.Added.Single().Id);
         Assert.StartsWith("case/", changed.CaseKey);
+    }
+
+    private static ReadingSignature AmbiguousSig(int number) => new([new ReadingMorpheme(Id(number), null, [Id(900001), Id(900002)],
+        ReadingSenseStatus.Ambiguous, Id(number + 100), Id(number + 200), null, true, null,
+        [new ReadingFeatureValue(ReadingFeatureRole.Inflection, [Id(7)], [Id(9), Id(8)])])]);
+
+    [Fact]
+    public void AFormWhoseSenseBecameAmbiguousCountsAsOneChangeNotALossAndAGain()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var become = new ProposalCompareExports.FormSpec("become", [], []) { BeforeSignatures = [Sig(1)], AfterSignatures = [AmbiguousSig(1)] };
+        var proposal = Publish(fixture.Project, become, Form("other", [3], [4]));
+
+        var delta = TrialReadingDelta.Read(new ReadTrialDeltaRequest(fixture.Project, ProposalId: proposal)).Value!;
+
+        Assert.NotEqual(Sig(1).Id, AmbiguousSig(1).Id);
+        Assert.Equal(Sig(1).SenseFree(), AmbiguousSig(1).SenseFree());
+        Assert.Equal(4, delta.Counts.RetiredReadings + delta.Counts.AddedReadings);
+        Assert.Equal(1, delta.Counts.SenseChanged);
+        Assert.Equal(3, delta.Counts.ReadingChanges);
+        var row = delta.Classes.Single(item => item.Class == "changed").Rows.Single(item => item.Word == "become");
+        Assert.Equal(1, row.SenseChanged);
+        Assert.Equal(Sig(1).Id, row.Retired.Single().Id);
+        Assert.Equal(AmbiguousSig(1).Id, row.Added.Single().Id);
+        Assert.Equal(0, delta.Classes.Single(item => item.Class == "changed").Rows.Single(item => item.Word == "other").SenseChanged);
+    }
+
+    private static ReadingSignature SenseSig(int number, int sense) => new([new ReadingMorpheme(Id(number), Id(sense), [],
+        ReadingSenseStatus.Resolved, Id(number + 100), Id(number + 200), null, true, null,
+        [new ReadingFeatureValue(ReadingFeatureRole.Inflection, [Id(7)], [Id(9), Id(8)])])]);
+
+    [Fact]
+    public void SeveralReadingsOfOneSenseFreeIdentityPairOneToOneAndTheRestStayUnpaired()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var form = new ProposalCompareExports.FormSpec("many", [], [])
+        {
+            BeforeSignatures = [SenseSig(1, 900001), SenseSig(1, 900002), SenseSig(1, 900003)],
+            AfterSignatures = [AmbiguousSig(1), AmbiguousSig(1)]
+        };
+        var proposal = Publish(fixture.Project, form);
+
+        var delta = TrialReadingDelta.Read(new ReadTrialDeltaRequest(fixture.Project, ProposalId: proposal)).Value!;
+
+        Assert.Equal(3, delta.Counts.RetiredReadings);
+        Assert.Equal(2, delta.Counts.AddedReadings);
+        Assert.Equal(2, delta.Counts.SenseChanged);
+        Assert.Equal(3, delta.Counts.ReadingChanges);
+        Assert.Equal(2, delta.Classes.Single(item => item.Class == "changed").Rows.Single().SenseChanged);
+    }
+
+    [Fact]
+    public void ReadingsThatDifferBeyondSenseAreNotPaired()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var proposal = Publish(fixture.Project, new ProposalCompareExports.FormSpec("apart", [], [])
+            { BeforeSignatures = [Sig(1)], AfterSignatures = [AmbiguousSig(2)] });
+
+        var delta = TrialReadingDelta.Read(new ReadTrialDeltaRequest(fixture.Project, ProposalId: proposal)).Value!;
+
+        Assert.Equal(0, delta.Counts.SenseChanged);
+        Assert.Equal(2, delta.Counts.ReadingChanges);
     }
 
     [Fact]
@@ -314,7 +376,7 @@ public sealed class TrialReadingDeltaTests
         var copy = new ReadingCopy(Sig(1).Id, Sig(1));
         var forms = ReadingDeltaBuilder.Compute([new ReadingDeltaInput("bad", "case/0", true, [copy], [])]);
         Assert.Contains(ReadingDeltaClasses.Rejected, forms.Single().Classes);
-        var counts = new ReadingDeltaCounts(1, 1, 0, 0, 0, 0, 1, 1, 0, 0);
+        var counts = new ReadingDeltaCounts(1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0);
         Assert.Equal(ReadingExpectationStates.Green, TrialExpectationCheck.Evaluate(forms, counts, new TrialExpectations([], []),
             [], [], null, false).State);
 
