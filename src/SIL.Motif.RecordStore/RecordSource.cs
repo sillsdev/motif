@@ -16,13 +16,17 @@ internal sealed class RecordSource
     private readonly StoreState? expected;
     private readonly ImmutableDictionary<Guid, GenericRecord> overlay;
     private volatile Dictionary<Guid, GenericRecord>? all;
+    // A decoded point's dictionary, shared unchanged by later writes; those live in the overlay.
+    private readonly Dictionary<Guid, GenericRecord>? baseRecords;
+    // Ids the overlay adds to the base, in first-write order, so Loaded enumerates as a copy would.
+    private readonly ImmutableList<Guid> added;
 
     private RecordSource(Dictionary<Guid, GenericRecord>? all, Func<StoreState, CancellationToken, Task<Dictionary<Guid, GenericRecord>>>? readAll,
         Func<Guid, StoreState, CancellationToken, Task<GenericRecord?>>? readOne,
         Func<IReadOnlyList<Guid>, StoreState, CancellationToken, Task<GenericRecord?[]>>? readMany, StoreState? expected,
-        ImmutableDictionary<Guid, GenericRecord> overlay)
+        ImmutableDictionary<Guid, GenericRecord> overlay, Dictionary<Guid, GenericRecord>? baseRecords = null, ImmutableList<Guid>? added = null)
     {
-        this.all = all; this.readAll = readAll; this.readOne = readOne; this.readMany = readMany; this.expected = expected; this.overlay = overlay;
+        this.all = all; this.readAll = readAll; this.readOne = readOne; this.readMany = readMany; this.expected = expected; this.overlay = overlay; this.baseRecords = baseRecords; this.added = added ?? ImmutableList<Guid>.Empty;
     }
 
     public static RecordSource Eager(Dictionary<Guid, GenericRecord> records) =>
@@ -34,16 +38,26 @@ internal sealed class RecordSource
         new(null, readAll, readOne, readMany, expected, ImmutableDictionary<Guid, GenericRecord>.Empty);
 
     /// <summary>False while this source can still answer by keyed reads only.</summary>
-    public bool IsLoaded => all is not null;
+    public bool IsLoaded => all is not null || baseRecords is not null;
 
     /// <summary>The records, once <see cref="AllAsync"/> has completed (always, for a fully decoded point).</summary>
     public IReadOnlyDictionary<Guid, GenericRecord> Loaded =>
-        all is { } records ? records : throw new InvalidOperationException("The point's records have not been loaded.");
+        all is { } records ? records : baseRecords is { } basis ? all = Merged(basis) :
+            throw new InvalidOperationException("The point's records have not been loaded.");
+
+    private Dictionary<Guid, GenericRecord> Merged(Dictionary<Guid, GenericRecord> basis)
+    {
+        var merged = new Dictionary<Guid, GenericRecord>(basis);
+        foreach (var (id, record) in overlay) if (basis.ContainsKey(id)) merged[id] = record;
+        foreach (var id in added) merged[id] = overlay[id];
+        return merged;
+    }
 
     public async Task<GenericRecord?> GetAsync(Guid id, CancellationToken ct)
     {
         if (overlay.TryGetValue(id, out var updated)) return updated;
         if (all is { } records) return records.GetValueOrDefault(id);
+        if (baseRecords is { } basis) return basis.GetValueOrDefault(id);
         return await readOne!(id, expected!, ct);
     }
 
@@ -56,6 +70,7 @@ internal sealed class RecordSource
         {
             if (overlay.TryGetValue(ids[i], out var updated)) found[i] = updated;
             else if (all is { } records) found[i] = records.GetValueOrDefault(ids[i]);
+            else if (baseRecords is { } basis) found[i] = basis.GetValueOrDefault(ids[i]);
             else missing.Add(i);
         }
         if (missing.Count == 0) return found;
@@ -67,6 +82,7 @@ internal sealed class RecordSource
     public async Task<IReadOnlyDictionary<Guid, GenericRecord>> AllAsync(CancellationToken ct)
     {
         if (all is { } loaded) return loaded;
+        if (baseRecords is not null) return Loaded;
         await loading.WaitAsync(ct);
         try
         {
@@ -78,10 +94,14 @@ internal sealed class RecordSource
         finally { loading.Release(); }
     }
 
-    /// <summary>The same records with one replaced; a decoded point copies its dictionary, a lazy one keeps its keyed reads.</summary>
+    /// <summary>The same records with one replaced; a decoded point shares its dictionary and records the write in an overlay, a lazy one keeps its keyed reads.</summary>
     public RecordSource With(GenericRecord updated, StoreState published)
     {
-        if (all is { } records) return Eager(new Dictionary<Guid, GenericRecord>(records) { [updated.Id] = updated });
+        if ((baseRecords ?? all) is { } basis)
+        {
+            var grown = basis.ContainsKey(updated.Id) || overlay.ContainsKey(updated.Id) ? added : added.Add(updated.Id);
+            return new(null, null, null, null, null, overlay.SetItem(updated.Id, updated), basis, grown);
+        }
         return new(null, readAll, readOne, readMany, published, overlay.SetItem(updated.Id, updated));
     }
 }

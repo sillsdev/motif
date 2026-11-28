@@ -392,7 +392,8 @@ public sealed partial class RecordStore : IAsyncDisposable
     }
 
     /// <summary>Reads and verifies the published point; a trusted result is retained for reuse.</summary>
-    private async Task<VerifiedPoint> AcquireAsync(StoreState state, CancellationToken ct = default, Action<string, string>? observe = null)
+    private async Task<VerifiedPoint> AcquireAsync(StoreState state, CancellationToken ct = default, Action<string, string>? observe = null,
+        Action<IReadOnlyList<GenericRecord>>? observeRecords = null)
     {
         point = null;
         // A verification (observe) always decodes and digests everything; so does any point that cannot be certified.
@@ -406,6 +407,7 @@ public sealed partial class RecordStore : IAsyncDisposable
         await EnsureContentAsync(state, ct);
         var decoded = await DecodeLatestAsync(digest: true, ct, derived: observe is not null);
         var records = decoded.Records;
+        observeRecords?.Invoke(records);
         // A verification reports the digests it computed instead of refusing at the first mismatch.
         observe?.Invoke("snapshot", decoded.Digest.Final("snapshot"));
         var snapshot = observe is null ? VerifySnapshots(state, decoded.Digest) : decoded.Digest;
