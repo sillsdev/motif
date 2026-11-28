@@ -15,6 +15,10 @@ internal static class ReadingDeltaText
         text.AppendLine(string.Create(CultureInfo.InvariantCulture,
             $"Lost {counts.Lost}, gained {counts.Gained}, changed {counts.Changed}, doubled {counts.Doubled}; " +
             $"{counts.RetiredReadings} Readings retired, {counts.AddedReadings} added; {counts.Unmeasured} unmeasured."));
+        if (counts.SenseChanged > 0)
+            text.AppendLine(string.Create(CultureInfo.InvariantCulture,
+                $"{counts.SenseChanged} retired and added Reading pairs differ only in sense resolution (a sense became ambiguous or resolved); " +
+                $"each is one change, so {counts.ReadingChanges} Reading changes."));
         if (counts.RejectedNegatives > 0)
             text.AppendLine(string.Create(CultureInfo.InvariantCulture, $"{counts.RejectedNegatives} known non-words stopped parsing."));
         foreach (var group in delta.Classes)
@@ -24,7 +28,8 @@ internal static class ReadingDeltaText
             foreach (var row in group.Rows)
                 text.AppendLine(string.Create(CultureInfo.InvariantCulture,
                     $"  {row.Word} ({row.CaseKey}): {row.BeforeCount} before, {row.AfterCount} after, " +
-                    $"{row.Retired.Sum(item => item.Count)} retired, {row.Added.Sum(item => item.Count)} added"));
+                    $"{row.Retired.Sum(item => item.Count)} retired, {row.Added.Sum(item => item.Count)} added" +
+                    $"{(row.SenseChanged > 0 ? $", {row.SenseChanged} of them one sense change" : "")}"));
             var rest = group.Total - group.Offset - group.Rows.Count;
             if (rest > 0) text.AppendLine(string.Create(CultureInfo.InvariantCulture, $"  {rest} more; use --offset or --page."));
         }
