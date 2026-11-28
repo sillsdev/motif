@@ -22,24 +22,26 @@ public sealed record GainSummary(
     [JsonIgnore]
     public double? ObjectsPerAttestedType => AttestedGained == 0 ? null : (double)Size.ObjectsAdded / AttestedGained;
 
-    /// <summary>Evaluates the gate over the attested gains and the objects added.</summary>
+    /// <summary>Evaluates the gate over the attested gains and the objects added; a Proposal wholly written by the record import is exempt, as an added rule is.</summary>
     public static GainSummary Create(long attested, long generated, GrammarSizeDelta size, GainGatePolicy policy,
-        bool incomplete)
+        bool incomplete, bool recordImport = false)
     {
         ArgumentNullException.ThrowIfNull(size);
         ArgumentNullException.ThrowIfNull(policy);
-        var outcome = Evaluate(attested, size, policy, incomplete);
+        var outcome = Evaluate(attested, size, policy, incomplete, recordImport);
         var gate = new GainGateResult(outcome, policy.Mode, policy.MinAttestedPerObject,
             policy.Mode == GainGateMode.Hold && outcome == GainOutcome.UnderThreshold);
         return new GainSummary(attested, generated, size, gate);
     }
 
-    private static GainOutcome Evaluate(long attested, GrammarSizeDelta size, GainGatePolicy policy, bool incomplete)
+    private static GainOutcome Evaluate(long attested, GrammarSizeDelta size, GainGatePolicy policy, bool incomplete,
+        bool recordImport)
     {
         if (policy.Mode == GainGateMode.Off) return GainOutcome.NotEvaluated;
         if (incomplete) return GainOutcome.Incomplete;
         if (size.ObjectsAdded == 0) return GainOutcome.NoObjectsAdded;
         if (size.AddsRule) return GainOutcome.RuleAdded;
+        if (recordImport) return GainOutcome.RecordImport;
         return (double)attested / size.ObjectsAdded >= policy.MinAttestedPerObject
             ? GainOutcome.WithinThreshold
             : GainOutcome.UnderThreshold;

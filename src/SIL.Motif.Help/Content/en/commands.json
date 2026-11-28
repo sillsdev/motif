@@ -534,11 +534,6 @@
     "description": "Asks PanGloss whether a word parses as each morph sequence you expected, and for a rejection names the first failing constraint, the morphs and the grammar object it is about. Use it to see why a word did not parse as these morphs.",
     "source": "Hand-written from command behavior."
   },
-  "generate": {
-    "title": "Explain a root's forms",
-    "description": "Generates the forms of one root alone and shows the rules that made each, the same as forms explain with a root and nothing else. Use it for a quick look at what a stem becomes.",
-    "source": "Hand-written from command behavior."
-  },
   "forms explain": {
     "title": "Explain a morpheme's forms",
     "description": "Asks PanGloss to generate every form of a root, alone or with the morphemes you list, and shows each surface, the allomorphs chosen and the rules that fired in order. Use it to see why a morpheme surfaces as it does, and to learn whether a cap stopped the generation.",
@@ -574,11 +569,6 @@
     "description": "Reads the provenance, tokeniser, and licence capabilities recorded for one Corpus. Use it to verify what a Corpus allows before using its text as evidence.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
-  "baseline-refresh": {
-    "title": "Queue a Baseline Refresh",
-    "description": "Queues a job to capture the project's saved state as a Baseline. Use it when you want to monitor the capture through the job queue.",
-    "source": "Hand-written from docs/cli-api.md and command behavior."
-  },
   "jobs wait": {
     "title": "Wait for a job",
     "description": "Waits for a job to reach a terminal state and reports its result. A parsing time limit returns exit code 5 with word counts.",
@@ -586,7 +576,7 @@
   },
   "jobs show": {
     "title": "Inspect a job",
-    "description": "Reads the stored status of one durable job. Use it to inspect a Baseline Refresh, Dry Run, Trial, or Parsimony job's current lifecycle state.",
+    "description": "Reads the stored status of one durable job. Use it to inspect a Dry Run, Trial, or Parsimony job's current lifecycle state.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
   "jobs assessments": {

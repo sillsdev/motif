@@ -36,7 +36,8 @@ forms`; `motif group suffix --ending <text>` and `motif group prefix --start <te
 and are never stored. A directive must name a defined `id`. The Proposal's before and after rerun each query with
 `--as-of <base revision>` and `--as-of <result revision>` (a project revision, distinct from `query stems --at`). The exact syntax is in ADR 0005 D2.
 
-The CLI verbs are `guide list`, `guide show` and `guide check`; there are no `gdr` aliases. The developer command
+The CLI verbs are `guide list`, `guide show` and `guide check`; there are no `gdr` aliases. `guide list` and `guide check`
+are Autonomous commands (set `MOTIF_AUTONOMOUS=1` or pass `--autonomous`); `guide show` is a Released command.
 `motif guide check --project <fwdata>` runs the check. The check reads the
 captured project and existing Trial rows; it does not parse. Missing links, unverified examples and other
 findings are advisory, including in the Trial review report. Include relevant words in a subsequent Trial when

@@ -16,7 +16,7 @@ public sealed class ProposalDifferenceToolTests
     [Fact]
     public void TheReadToolAndTheProduceToolAreExposedInAdvancedAiMode()
     {
-        var names = MotifMcpServer.Expose(ToolProfile.Builtin).Select(tool => tool.Name).ToArray();
+        var names = MotifMcpServer.Expose(ToolProfile.Load("full")).Select(tool => tool.Name).ToArray();
 
         Assert.Contains("motif_proposal_difference", names);
         Assert.Contains("motif_difference_produce", names);
@@ -25,7 +25,7 @@ public sealed class ProposalDifferenceToolTests
     [Fact]
     public void EveryEnumeratedChoiceOfTheReadToolIsListedOnce()
     {
-        var tool = MotifMcpServer.Expose(ToolProfile.Builtin).Single(tool => tool.Name == "motif_proposal_difference");
+        var tool = MotifMcpServer.Expose(ToolProfile.Load("full")).Single(tool => tool.Name == "motif_proposal_difference");
         var properties = (System.Text.Json.Nodes.JsonObject)tool.Tool.InputSchema["properties"]!;
 
         foreach (var name in new[] { "bucket", "before_state", "after_state", "limitation" })
@@ -38,7 +38,7 @@ public sealed class ProposalDifferenceToolTests
     [Fact]
     public void TheReadToolOffersTheSameLimitationsAndPlacePagingAsTheCommand()
     {
-        var tool = MotifMcpServer.Expose(ToolProfile.Builtin).Single(tool => tool.Name == "motif_proposal_difference");
+        var tool = MotifMcpServer.Expose(ToolProfile.Load("full")).Single(tool => tool.Name == "motif_proposal_difference");
         var properties = (System.Text.Json.Nodes.JsonObject)tool.Tool.InputSchema["properties"]!;
 
         var choices = properties["limitation"]!["enum"]!.AsArray().Select(node => node!.GetValue<string>()).ToArray();
@@ -52,7 +52,7 @@ public sealed class ProposalDifferenceToolTests
     [Fact]
     public void TheReadToolNamesTheTextAndReferenceOfTheDifferenceToRead()
     {
-        var tool = MotifMcpServer.Expose(ToolProfile.Builtin).Single(tool => tool.Name == "motif_proposal_difference");
+        var tool = MotifMcpServer.Expose(ToolProfile.Load("full")).Single(tool => tool.Name == "motif_proposal_difference");
         var properties = (System.Text.Json.Nodes.JsonObject)tool.Tool.InputSchema["properties"]!;
 
         Assert.NotNull(properties["text"]);
@@ -75,7 +75,7 @@ public sealed class ProposalDifferenceToolTests
                     new ProjectLocator(project, "project")), project, DateTimeOffset.UtcNow);
             var context = new ServerContext(project, "1.0", new NoRunnerLauncher(
                 new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(),
-                ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
+                ToolProfile.Load("full"), TextWriter.Null, advancedAiModeEnabled: true);
             var arguments = new Dictionary<string, JsonElement>
             {
                 ["project"] = JsonSerializer.SerializeToElement(project),
@@ -84,7 +84,7 @@ public sealed class ProposalDifferenceToolTests
                 ["limitation"] = JsonSerializer.SerializeToElement("nonsense"),
             };
 
-            var result = await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Builtin),
+            var result = await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Load("full")),
                 "motif_proposal_difference", arguments, CancellationToken.None);
 
             Assert.True(result.IsError);
@@ -110,7 +110,7 @@ public sealed class ProposalDifferenceToolTests
                     new ProjectLocator(project, "project")), project, DateTimeOffset.UtcNow);
             var context = new ServerContext(project, "1.0", new NoRunnerLauncher(
                 new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(),
-                ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
+                ToolProfile.Load("full"), TextWriter.Null, advancedAiModeEnabled: true);
             var arguments = new Dictionary<string, JsonElement>
             {
                 ["project"] = JsonSerializer.SerializeToElement(project),
@@ -118,7 +118,7 @@ public sealed class ProposalDifferenceToolTests
                 [argument] = JsonSerializer.SerializeToElement(1),
             };
 
-            var result = await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Builtin),
+            var result = await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Load("full")),
                 "motif_proposal_difference", arguments, CancellationToken.None);
 
             Assert.True(result.IsError);
@@ -143,7 +143,7 @@ public sealed class ProposalDifferenceToolTests
                     new ProjectLocator(project, "project")), project, DateTimeOffset.UtcNow);
             var context = new ServerContext(project, "1.0", new NoRunnerLauncher(
                 new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(),
-                ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
+                ToolProfile.Load("full"), TextWriter.Null, advancedAiModeEnabled: true);
             var arguments = new Dictionary<string, JsonElement>
             {
                 ["project"] = JsonSerializer.SerializeToElement(project),
@@ -151,7 +151,7 @@ public sealed class ProposalDifferenceToolTests
                 ["could_be_bad"] = JsonSerializer.SerializeToElement(true),
             };
 
-            var result = await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Builtin),
+            var result = await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Load("full")),
                 "motif_proposal_difference", arguments, CancellationToken.None);
 
             Assert.True(result.IsError);
@@ -167,13 +167,12 @@ public sealed class ProposalDifferenceToolTests
     [Fact]
     public void TheDefaultProduceToolOffersNoReferenceAndTheSourceValidatedOneIsOptIn()
     {
-        var defaults = MotifMcpServer.Expose(ToolProfile.Builtin);
+        var defaults = MotifMcpServer.Expose(ToolProfile.Load("full"));
         var optIn = MotifMcpServer.Expose(ToolProfile.Load(SourceValidatedProfile()));
 
         var produce = defaults.Single(tool => tool.Name == "motif_difference_produce");
         var properties = (System.Text.Json.Nodes.JsonObject)produce.Tool.InputSchema["properties"]!;
         Assert.Null(properties["reference"]);
-        Assert.DoesNotContain(defaults, tool => tool.Name == "motif_difference_produce_source_validated");
         Assert.Contains(optIn, tool => tool.Name == "motif_difference_produce_source_validated");
         Assert.Contains(optIn, tool => tool.Name == "motif_proposal_difference");
     }

@@ -437,7 +437,7 @@ public static class CliVerbCatalog
                 "[--collect <name>[,<name>...]] [--time-limit-ms <ms>] [--parser-work-limit <work|unbounded>] [--max-seconds <seconds>] [--summary [--offset <n>] [--limit <n>]] [--no-background] [--json]",
                 "The default per-word limit is 20,000,000 parser work.",
                 "--collect names the collectors for this run and wins over the project's .motif.toml collect, which wins over the built-in default; ParseTime is always collected.",
-                "Reaching the parser work limit is a stop at the work limit, the same on every computer. --time-limit-ms is only a safety net, in milliseconds on this computer; --max-seconds is the whole run's time budget.",
+                "Reaching the parser work limit is a stop at the work limit, the same on every computer. --time-limit-ms is the per-word limit (per-word-limit-ms in .motif.toml, perWordLimitMs in stored selections), only a safety net, in milliseconds on this computer; --max-seconds is the whole run's time budget.",
             }),
 
         new CliVerbDescriptor(
@@ -613,13 +613,6 @@ public static class CliVerbCatalog
                 "PanGloss recorded and the Proposal operations that overlap the earlier form (not a cause), or that nothing was recorded.",
             }),
         new CliVerbDescriptor(
-            "Trace", "generate", "generate",
-            new[]
-            {
-                "generate <root> --project <fwdata> --trace [--at <baseline|proposal-id>] [--json]",
-                "The forms PanGloss generates from one root alone, with the rules that made each; the same as forms explain <root>.",
-            }),
-        new CliVerbDescriptor(
             "Trace", "forms", "forms explain",
             new[]
             {
@@ -677,9 +670,6 @@ public static class CliVerbCatalog
             "Corpus", "show-corpus", "show-corpus",
             new[] { "show-corpus --project <fwdata> <corpusId> [--json]" }),
 
-        new CliVerbDescriptor(
-            "Jobs", "baseline-refresh", "baseline-refresh",
-            new[] { "baseline-refresh --project <fwdata>" }),
         new CliVerbDescriptor(
             "Jobs", "jobs", "jobs wait", new[] { "jobs wait <jobId> --project <fwdata> [--wait-terminal] [--wait-timeout-ms <ms>] [--json]" }),
         new CliVerbDescriptor(

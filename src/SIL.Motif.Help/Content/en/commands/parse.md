@@ -25,4 +25,3 @@ A request Motif cannot trace, a capture PanGloss refuses, a capture larger than 
 
 - [Trace a word](cmd:trace) returns the full diagnostic tree for one word.
 - [Why a word lost a Reading](cmd:proposal%20why-lost) compares this trace at the Baseline and on a Proposal's Trial copy.
-- [Explain a generation](cmd:generate) names what generation tracing still needs.

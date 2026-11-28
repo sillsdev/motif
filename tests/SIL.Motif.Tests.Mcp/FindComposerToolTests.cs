@@ -12,11 +12,11 @@ public sealed class FindComposerToolTests
     private static AgentTool Tool => AgentTools.All.Single(tool => tool.Name == "motif_find_composer");
 
     [Fact]
-    public void TheToolReadsOnlyNeedsNoProjectAndIsOffUnlessAProfileSelectsIt()
+    public void TheToolReadsOnlyNeedsNoProjectAndIsInTheDefaultProfile()
     {
         Assert.True(Tool.ReadOnly);
         Assert.False(Tool.NeedsProject);
-        Assert.DoesNotContain(MotifMcpServer.Expose(ToolProfile.Builtin), exposed => exposed.Name == Tool.Name);
+        Assert.Contains(MotifMcpServer.Expose(ToolProfile.Builtin), exposed => exposed.Name == Tool.Name);
         var selected = new ToolProfile("find", null, null, "concise", [new ToolSelection(Tool.Name, null, null, null)]);
         Assert.Contains(MotifMcpServer.Expose(selected), exposed => exposed.Name == Tool.Name);
     }

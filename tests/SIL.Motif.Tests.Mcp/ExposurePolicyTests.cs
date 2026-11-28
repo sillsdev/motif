@@ -23,7 +23,7 @@ public sealed class ExposurePolicyTests
         }
         var routes = AgentTools.All.SelectMany(tool => tool.Routes).Where(route => route.Command.StartsWith("guide ", StringComparison.Ordinal));
         Assert.Equal(agentTools.Order(StringComparer.Ordinal), routes.Select(route => route.Command).Order(StringComparer.Ordinal));
-        foreach (var profile in new[] { ToolProfile.Builtin, ToolProfile.Load("phonology") })
+        foreach (var profile in new[] { ToolProfile.Load("full"), ToolProfile.Load("phonology") })
         {
             Assert.True(PolicyFor(profile).Exposes("guide show"));
             Assert.False(PolicyFor(profile, advancedAi: false).Exposes("guide show"));
@@ -71,6 +71,7 @@ public sealed class ExposurePolicyTests
     // The expectation is frozen: the tool-list golden where one exists, otherwise the profile's own explicit list.
     private static List<(string Name, string? Description)> FrozenExpectation(string name, ToolProfile profile)
     {
+        if (profile.AllTools) return [.. AgentTools.All.Select(tool => (tool.Name, (string?)null))];
         var path = GoldenPath(name);
         if (File.Exists(path))
             return [.. System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(path))!.AsArray()
@@ -183,7 +184,7 @@ public sealed class ExposurePolicyTests
     [Fact]
     public void ADedicatedToolBeatsASelectorRouteForTheSameVerb()
     {
-        var policy = PolicyFor(ToolProfile.Builtin);
+        var policy = PolicyFor(ToolProfile.Load("full"));
 
         var phoneme = Assert.IsType<CommandExposure.Tool>(policy.Resolve("compose-author-phoneme"));
         Assert.Equal("motif_add_phoneme", phoneme.ToolName);
@@ -235,7 +236,7 @@ public sealed class ExposurePolicyTests
     [Fact]
     public void ACommandNoToolReachesIsAStepForThePerson()
     {
-        var policy = PolicyFor(ToolProfile.Builtin);
+        var policy = PolicyFor(ToolProfile.Load("full"));
 
         Assert.False(policy.Exposes("apply"));
         Assert.Equal(new CommandExposure.PersonStep("apply"), policy.Resolve("apply"));
@@ -246,7 +247,7 @@ public sealed class ExposurePolicyTests
     {
         var refusal = new Refusal("test.next", FailureReason.Refused, "Not yet.");
         var step = new NextStep("compose-author-feature-value", new Dictionary<string, NextArg>());
-        var policy = PolicyFor(ToolProfile.Builtin);
+        var policy = PolicyFor(ToolProfile.Load("full"));
 
         var text = RefusalMapper.RenderStep(step, refusal, policy, null);
 

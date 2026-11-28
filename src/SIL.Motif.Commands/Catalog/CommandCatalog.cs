@@ -336,7 +336,6 @@ public static class CommandCatalog
         new CommandDescriptor("trace", typeof(WordTraceRequest), typeof(WordTraceResponse), CommandSurface.Released, AgentClass.Evaluate),
         new CommandDescriptor("trace --load", typeof(WordTraceLoadRequest), typeof(WordTraceResponse), CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("parse", typeof(ParseTraceRequest), typeof(RejectionTraceResponse), CommandSurface.Released, AgentClass.Evaluate),
-        new CommandDescriptor("generate", typeof(GenerateTraceRequest), typeof(FormsExplainResponse), CommandSurface.Released, AgentClass.Evaluate) { ExposeAsAgentTool = false },
         new CommandDescriptor("forms explain", typeof(FormsExplainRequest), typeof(FormsExplainResponse), CommandSurface.Released, AgentClass.Evaluate),
         new CommandDescriptor("why-not", typeof(WhyNotRequest), typeof(WhyNotResponse), CommandSurface.Released, AgentClass.Evaluate),
         new CommandDescriptor("proposal why-lost", typeof(WhyLostRequest), typeof(WhyLostResponse), CommandSurface.Released, AgentClass.Evaluate),
@@ -345,8 +344,6 @@ public static class CommandCatalog
         new CommandDescriptor("handoff", typeof(HandoffRequest), typeof(HandoffCommandResponse), CommandSurface.Released, AgentClass.HumanOnly),
 
         // JobCommands
-        new CommandDescriptor(
-            "baseline-refresh", typeof(EnqueueBaselineRefreshRequest), typeof(JobEnqueuedResponse), CommandSurface.Released, AgentClass.Evaluate),
         new CommandDescriptor("dry-run", typeof(EnqueueDryRunRequest), typeof(JobEnqueuedResponse), CommandSurface.AdvancedAi, AgentClass.Evaluate),
         new CommandDescriptor("dry-run --wait", typeof(WaitForDryRunRequest), typeof(DryRunProjection), CommandSurface.AdvancedAi, AgentClass.Evaluate),
         new CommandDescriptor("trial", typeof(EnqueueTrialRequest), typeof(JobEnqueuedResponse), CommandSurface.AdvancedAi, AgentClass.Evaluate),

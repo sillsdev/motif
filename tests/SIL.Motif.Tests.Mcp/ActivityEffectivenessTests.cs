@@ -25,7 +25,7 @@ public sealed class ActivityEffectivenessTests
         var log = new ActivityLog();
         var context = Context(log);
 
-        await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Builtin), "motif_add_phoneme",
+        await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Load("full")), "motif_add_phoneme",
             Args(("project", context.ProjectPath)), CancellationToken.None);
 
         var composers = Assert.Single(log.Entries).Composers;

@@ -196,7 +196,6 @@ public sealed class ToolSurfaceTests
             "compose-retire-boundary-marker",
             "compose-set-stem-part-of-speech",
             "compose-tag-stems-by-query",
-            "generate",
             "hand-analysis check",
             "hypothesis neighbours",
             "hypothesis report",
@@ -250,7 +249,7 @@ public sealed class ToolSurfaceTests
         Assert.All(CommandCatalog.All.Except(numeralEditors).Where(command =>
             command.Name != "activity" && command.Name != "hand-analysis check" && command.Name != "query pairs" && command.Name != "query corpus forms" && command.Name != "query values" &&
             command.Name is not ("store backup" or "store restore") &&
-            command.Name != "project tag" && command.Name != "proposal trial" && command.Name != "generate" &&
+            command.Name != "project tag" && command.Name != "proposal trial" &&
             command.Name != "store artifacts" && command.Name != "store prune" && command.Name != "store relocate" && command.Name != "store upgrade" &&
             command.Name is not ("wordform dispose" or "wordform dispose --from-file" or "wordform undispose" or "worker stop") &&
             command.Name is not ("hypothesis neighbours" or "hypothesis report" or "lexicon find" or "list hypotheses")), command =>
@@ -294,6 +293,7 @@ public sealed class ToolSurfaceTests
 
     [Theory]
     [InlineData("default")]
+    [InlineData("full")]
     [InlineData("phonology")]
     [InlineData("parsimony")]
     [InlineData("parsimony-experimental")]
@@ -305,7 +305,7 @@ public sealed class ToolSurfaceTests
             tool.Name != "motif_edit_lexical_note");
         Assert.DoesNotContain(tools, tool => tool.Tool.Requests.Contains(typeof(SIL.Motif.Commands.Requests.EditCommentRequest)));
         Assert.DoesNotContain(tools, tool => tool.Tool.Requests.Contains(typeof(SIL.Motif.Commands.Requests.DeleteCommentRequest)));
-        if (profile == "default")
+        if (profile == "full")
         {
             Assert.Contains(tools, tool => tool.Name == "motif_set_rationale");
             Assert.Contains(tools, tool => tool.Name == "motif_add_comment");
@@ -320,7 +320,6 @@ public sealed class ToolSurfaceTests
         var tools = MotifMcpServer.Expose(ToolProfile.Builtin);
         Assert.Contains(tools, tool => tool.Name == "motif_finalize_proposal");
         Assert.Contains(tools, tool => tool.Name == "motif_remove_operations");
-        Assert.Contains(tools, tool => tool.Name == "motif_assess");
         Assert.Contains(tools, tool => tool.Name == "motif_list_projects");
         Assert.DoesNotContain(tools, tool => tool.Name.Contains("finish", StringComparison.Ordinal));
     }
@@ -335,9 +334,9 @@ public sealed class ToolSurfaceTests
     }
 
     [Fact]
-    public void DefaultProfileOffersTypedToolsForBuildingALanguageGrammar()
+    public void FullProfileOffersTypedToolsForBuildingALanguageGrammar()
     {
-        var tools = MotifMcpServer.Expose(ToolProfile.Builtin);
+        var tools = MotifMcpServer.Expose(ToolProfile.Load("full"));
         var names = tools.Select(tool => tool.Name).ToHashSet(StringComparer.Ordinal);
 
         Assert.All(new[]
@@ -588,6 +587,7 @@ public sealed class ToolSurfaceTests
 
     [Theory]
     [InlineData("default")]
+    [InlineData("full")]
     [InlineData("lean")]
     [InlineData("phonology")]
     [InlineData("parsimony")]
@@ -612,6 +612,18 @@ public sealed class ToolSurfaceTests
         var result = await tool.Run(context, new ToolArgs(arguments, tool.ArgumentNames), CancellationToken.None);
 
         Assert.Equal("stats.format-conflict", result.Refusal?.Code);
+    }
+
+    [Fact]
+    public void DefaultIsACoreSubsetAndDefaultWithFullCoversEveryRegisteredTool()
+    {
+        var registered = AgentTools.All.Select(tool => tool.Name).ToHashSet(StringComparer.Ordinal);
+        var defaultNames = MotifMcpServer.Expose(ToolProfile.Load("default")).Select(tool => tool.Name).ToHashSet(StringComparer.Ordinal);
+        var fullNames = MotifMcpServer.Expose(ToolProfile.Load("full")).Select(tool => tool.Name).ToHashSet(StringComparer.Ordinal);
+        Assert.InRange(defaultNames.Count, 15, 30);
+        Assert.True(defaultNames.IsSubsetOf(registered));
+        Assert.True(registered.IsSubsetOf(defaultNames.Union(fullNames)));
+        Assert.Contains("motif_find_composer", defaultNames);
     }
 
     [Fact]
@@ -726,6 +738,7 @@ public sealed class DetailedNaturalClassMemberToolTests(PristineProjectFixture p
             new NoRunnerLauncher(new JobRunnerLaunchOptions(managedRoot, null)), new ActivityLog(),
             defaultProfile, TextWriter.Null, advancedAiModeEnabled: true);
         var grammarTools = MotifMcpServer.Expose(defaultProfile);
+        var fullTools = MotifMcpServer.Expose(ToolProfile.Load("full"));
         var grammar = await MotifMcpServer.CallAsync(context, grammarTools, "motif_grammar",
             Arguments(("project", project.FwDataPath), ("kind", "natural_classes"), ("detail", "detailed")), CancellationToken.None);
 
@@ -798,7 +811,7 @@ public sealed class DetailedNaturalClassMemberToolTests(PristineProjectFixture p
                 ("rationale", "Check explicit sound references.")), CancellationToken.None);
         Assert.False(start.IsError ?? false, start.StructuredContent?.GetRawText());
         async Task<ModelContextProtocol.Protocol.CallToolResult> AddEnvironment(string reference, string name) =>
-            await MotifMcpServer.CallAsync(context, grammarTools, "motif_add_environment",
+            await MotifMcpServer.CallAsync(context, fullTools, "motif_add_environment",
                 Arguments(("project", project.FwDataPath), ("draft", "named-references"), ("name", name),
                     ("left", new[] { new { naturalClass = reference } }), ("right", Array.Empty<object>())), CancellationToken.None);
         var missingClass = await AddEnvironment("absent", "missing class");
@@ -814,7 +827,7 @@ public sealed class DetailedNaturalClassMemberToolTests(PristineProjectFixture p
         Assert.False((await AddEnvironment("N", "named class")).IsError ?? false);
         Assert.False((await AddEnvironment(CanonicalId.FromGuid(naturalClassGuid).Value, "identified class")).IsError ?? false);
 
-        var replacement = await MotifMcpServer.CallAsync(context, grammarTools, "motif_add_natural_class",
+        var replacement = await MotifMcpServer.CallAsync(context, fullTools, "motif_add_natural_class",
             Arguments(("project", project.FwDataPath), ("draft", "named-references"), ("name", "replacement nasals"),
                 ("abbreviation", "RN"), ("members", new[] { memberId })), CancellationToken.None);
         Assert.False(replacement.IsError ?? false, replacement.StructuredContent?.GetRawText());

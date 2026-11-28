@@ -25,7 +25,7 @@ public sealed class FailureContractTests : IDisposable
     [Fact]
     public void AJsonFailureIsOneEnvelopeOnStderrAndNothingOnStdout()
     {
-        var result = Run("baseline-refresh --project \"" + Path.Combine(_root, "absent.fwdata") + "\" --json");
+        var result = Run("baseline capture --project \"" + Path.Combine(_root, "absent.fwdata") + "\" --json");
 
         Assert.Equal(string.Empty, result.Output);
         var envelope = ProjectionJson.Deserialize<FailureEnvelope>(result.Error);
@@ -37,7 +37,7 @@ public sealed class FailureContractTests : IDisposable
     [Fact]
     public void TheHumanRenderingIsUnchangedWithoutJson()
     {
-        var result = Run("baseline-refresh --project \"" + Path.Combine(_root, "absent.fwdata") + "\"");
+        var result = Run("baseline capture --project \"" + Path.Combine(_root, "absent.fwdata") + "\"");
 
         Assert.StartsWith("error: ", result.Error, StringComparison.Ordinal);
         Assert.DoesNotContain("{", result.Error, StringComparison.Ordinal);
@@ -46,12 +46,12 @@ public sealed class FailureContractTests : IDisposable
     [Fact]
     public void AMalformedInvocationIsCodeOneWhetherOrNotJsonWasAsked()
     {
-        var text = Run("baseline-refresh");
-        var json = Run("baseline-refresh --json");
+        var text = Run("baseline capture");
+        var json = Run("baseline capture --json");
 
         Assert.Equal(1, text.ExitCode);
         Assert.Equal(1, json.ExitCode);
-        Assert.Contains("Usage: motif baseline-refresh", text.Error, StringComparison.Ordinal);
+        Assert.Contains("Usage: motif baseline capture", text.Error, StringComparison.Ordinal);
         Assert.Equal(FailureReason.InvalidArgument, Envelope(json.Error).Reason);
     }
 
