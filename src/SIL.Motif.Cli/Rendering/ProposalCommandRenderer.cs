@@ -243,6 +243,18 @@ public static class ProposalCommandRenderer
             foreach (var item in others)
                 sb.AppendLine($"  {item.Kind}: {item.Name} ({item.Id})");
         }
+        if (r.NewlyMetRules is { Count: > 0 } newlyMet)
+        {
+            sb.AppendLine("Rules the merged phoneme newly meets (the source phoneme never met them):");
+            foreach (var rule in newlyMet)
+                sb.AppendLine($"  {rule.RuleName} ({rule.RuleId}): {string.Join("; ", rule.Where)}");
+        }
+        if (r.UncheckedRules is { Count: > 0 } unchecked_)
+        {
+            sb.AppendLine("Rules not checked (feature-based classes; see #649):");
+            foreach (var rule in unchecked_)
+                sb.AppendLine($"  {rule.RuleName} ({rule.RuleId}): {rule.Reason}");
+        }
         sb.AppendLine($"Draft now has {r.OperationCount} operation(s).");
         return sb.ToString();
     }

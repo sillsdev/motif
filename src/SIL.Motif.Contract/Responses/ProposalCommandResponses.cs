@@ -26,7 +26,31 @@ public sealed record DeleteLexemeFormAddedResponse(
     string DraftName, string OperationId, string Target, int OperationCount);
 
 /// <summary>One existing grammar object affected by a composed slot change.</summary>
-public sealed record ComposedRelatedObject(string Kind, string Id, string Name);
+/// <param name="Kind">What sort of object it is.</param>
+/// <param name="Id">Its canonical identity.</param>
+/// <param name="Name">Its display name and what the change does to it.</param>
+/// <param name="Where">Where in the object the change reaches; null unless the object is a newly met rule.</param>
+public sealed record ComposedRelatedObject(string Kind, string Id, string Name,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    IReadOnlyList<string>? Where = null);
+
+/// <summary>
+/// A phonological rule that a merged phoneme meets after the merge and its source phoneme never met, found by
+/// comparing the rule's input and environment classes; the caller judges whether the rule should fire on it.
+/// </summary>
+/// <param name="RuleId">The rule's canonical identity.</param>
+/// <param name="RuleName">The rule's name.</param>
+/// <param name="Where">Each place the target now matches, such as the input or an environment, and what matches there.</param>
+public sealed record NewlyMetRule(string RuleId, string RuleName, IReadOnlyList<string> Where);
+
+/// <summary>
+/// A phonological rule that a merge could not be checked against, because its input or an environment uses a
+/// feature-based natural class or a feature-structure context (follow-up #649).
+/// </summary>
+/// <param name="RuleId">The rule's canonical identity.</param>
+/// <param name="RuleName">The rule's name.</param>
+/// <param name="Reason">Why the rule was not checked.</param>
+public sealed record UncheckedRule(string RuleId, string RuleName, string Reason);
 
 /// <summary>One language-project object a composer actually creates.</summary>
 /// <param name="Id">The object's canonical identity, taken from its creating operation.</param>
@@ -44,6 +68,14 @@ public sealed record ComposedOperationsResponse(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     string? Outcome = null)
 {
+    /// <summary>Rules the merged phoneme newly meets; null when the composer reports none.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<NewlyMetRule>? NewlyMetRules { get; init; }
+
+    /// <summary>Rules that use feature-based classes and so were not checked; null when there are none.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<UncheckedRule>? UncheckedRules { get; init; }
+
     /// <summary>The canonical identities of objects the returned operations create.</summary>
     public IReadOnlyList<CreatedObject> CreatedObjects { get; init; } = [];
 }
@@ -54,6 +86,14 @@ public sealed record ComposedIntentResult(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     IReadOnlyList<ComposedRelatedObject>? RelatedObjects = null)
 {
+    /// <summary>Rules the merged phoneme newly meets; null when the intent reports none.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<NewlyMetRule>? NewlyMetRules { get; init; }
+
+    /// <summary>Rules that use feature-based classes and so were not checked; null when there are none.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<UncheckedRule>? UncheckedRules { get; init; }
+
     /// <summary>The canonical identities this batch intent's operations create.</summary>
     public IReadOnlyList<CreatedObject> CreatedObjects { get; init; } = [];
 
@@ -132,6 +172,8 @@ public sealed record ComposedBatchResponse(
                 OperationTotal = cut ? intent.Operations.Count : null,
                 CreatedObjects = cut ? intent.CreatedObjects.Take(operations.Length).ToArray() : intent.CreatedObjects,
                 RelatedObjects = cut ? null : intent.RelatedObjects,
+                NewlyMetRules = cut ? null : intent.NewlyMetRules,
+                UncheckedRules = cut ? null : intent.UncheckedRules,
             });
         }
         return this with

@@ -169,6 +169,8 @@ public static partial class ProposalCommands
             result.ComposerName, result.Operations, result.RelatedObjects)
         {
             CreatedObjects = result.CreatedObjects,
+            NewlyMetRules = result.NewlyMetRules,
+            UncheckedRules = result.UncheckedRules,
         }).ToArray(),
         results.Length == 0 ? 0 : results[^1].OperationCount)
     {

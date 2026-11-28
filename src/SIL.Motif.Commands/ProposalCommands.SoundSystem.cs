@@ -767,9 +767,17 @@ public static partial class ProposalCommands
             {
                 var operations = result.Added.Select(operation => new OperationSummary(
                     operation.OperationId.Value, operation.Kind, operation.EntityId?.Value)).ToArray();
+                var related = result.Related?.Where(item => item.Kind is not (MergePhonemeComposer.NewlyMetRuleKind or MergePhonemeComposer.UncheckedRuleKind))
+                    .ToArray();
+                var newlyMet = result.Related?.Where(item => item.Kind == MergePhonemeComposer.NewlyMetRuleKind)
+                    .Select(item => new NewlyMetRule(item.Id, item.Name, item.Where ?? [])).ToArray();
+                var unchecked_ = result.Related?.Where(item => item.Kind == MergePhonemeComposer.UncheckedRuleKind)
+                    .Select(item => new UncheckedRule(item.Id, item.Name, item.Where?.FirstOrDefault() ?? "")).ToArray();
                 return new ComposedOperationsResponse(draftName, step.Composer, operations,
-                    draft.Operations.Count, result.Related)
+                    draft.Operations.Count, related)
                 {
+                    NewlyMetRules = newlyMet is { Length: > 0 } ? newlyMet : null,
+                    UncheckedRules = unchecked_ is { Length: > 0 } ? unchecked_ : null,
                     CreatedObjects = CreatedObjectsForOperations(operations),
                 };
             }).ToArray());
