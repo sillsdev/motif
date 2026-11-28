@@ -173,6 +173,14 @@ string? namedProject = null;
 try
 {
     var (flags, parsedPositionals, forwardedArguments) = ParseArgs(rest, verb == "query");
+    // A count outside a block's expect fails the exit code; other findings stay advisory.
+    var guideCountMismatch = false;
+    CommandResult GuideCheckResult(CommandOutcome<GdrCheckResponse> outcome)
+    {
+        guideCountMismatch = outcome.Value is { } report && report.Findings.Any(f => f.Code == GdrSyncCodes.QueryCountMismatch);
+        return RenderCommand(outcome);
+    }
+
     // Pinned by `ASuccessfulJsonVerbPrintsExactlyOneDocumentAndPickKeepsTheNamedFields`.
     var pickSpec = flags.Remove("pick", out var pickValue) ? pickValue : null;
     var positionals = CliCommandNames.NormalizeQueryWords(verb, flags, parsedPositionals);
@@ -2326,7 +2334,7 @@ try
             result = positionals[0] switch
             {
                 "list" => RenderCommand(GdrQuery.List(new GdrListRequest(gdrProject))),
-                "check" => RenderCommand(GdrQuery.Check(new GdrCheckRequest(gdrProject, RunBlocks: !flags.ContainsKey("no-run"),
+                "check" => GuideCheckResult(GdrQuery.Check(new GdrCheckRequest(gdrProject, RunBlocks: !flags.ContainsKey("no-run"),
                     BlockTimeoutSeconds: flags.TryGetValue("timeout", out var gdrBlockTimeout) ? int.Parse(gdrBlockTimeout, CultureInfo.InvariantCulture) : 60,
                     BuildIndex: flags.ContainsKey("build")),
                     JobRunnerLaunchOptions.ResolveParserPath())),
@@ -3711,7 +3719,7 @@ try
     if (result.ExitCode == 0)
     {
         output.Write(result.Output);
-        return result.ExitCode;
+        return guideCountMismatch ? FailureEnvelope.GuideCountMismatchExitCode : result.ExitCode;
     }
     if (pickRefused) return result.ExitCode;
     // A caller that asked for JSON gets JSON when it goes wrong too; a Proposal verb already did this itself.

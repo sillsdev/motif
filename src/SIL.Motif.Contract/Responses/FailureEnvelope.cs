@@ -81,6 +81,9 @@ public sealed record FailureEnvelope
     /// <summary>The exit code of a waited Trial whose gate is <c>loss</c>; distinct from every <see cref="ExitCodeFor"/> value.</summary>
     public const int TrialLossExitCode = 6;
 
+    /// <summary>The exit code of <c>guide check</c> when a <c>motif-query</c> block's count is outside its <c>expect</c>; distinct from every <see cref="ExitCodeFor"/> value and from <see cref="TrialLossExitCode"/>.</summary>
+    public const int GuideCountMismatchExitCode = 7;
+
     /// <summary>The process exit code this reason maps to.</summary>
     /// <remarks>
     /// Kept beside the reason so the two cannot drift. The split that earns its keep is

@@ -51,8 +51,12 @@ public static class GdrQueryBlockCheck
                 findings.Add(new GdrSyncFinding(GdrSyncCodes.QueryNotNormalized,
                     $"{Place(source.Gdr, source.Section)}, query {query.Id}: the run line is not in NFC, the form Query matches in. Query composes the pattern and each corpus form to NFC before matching, so the count is the same, but a pattern that is decomposed (such as a Tamil two-part vowel sign as two code points) can be refused when it cannot be composed safely. Save the line composed (NFC).",
                     source.Gdr, source.Section, null, 1, [query.Id]));
-            var result = Describe(source, query, run, timeout, parserPath, projectPath, seams, abandoned, evidence, buildIndex);
+            var result = Describe(source, query, run, timeout, parserPath, projectPath, seams, abandoned, evidence, buildIndex) with { Expected = query.Expect?.Text };
             runs.Add(result);
+            if (result.Status == GdrQueryBlockStatus.Ok && query.Expect is { } expect && result.Rows is { } rows && CountMismatch(expect, rows, result.Complete != false))
+                findings.Add(new GdrSyncFinding(GdrSyncCodes.QueryCountMismatch,
+                    $"{Place(source.Gdr, source.Section)}, query {query.Id}: expected {expect}, found {(result.Complete == false ? "at least " : "")}{rows}. Check the pattern, the corpus and the parse; then fix the block's expect if the new count is right.",
+                    source.Gdr, source.Section, null, 1, [query.Id]));
             if (result.Status is GdrQueryBlockStatus.Ok or GdrQueryBlockStatus.Skipped) continue;
             var code = result.Status switch
             {
@@ -68,6 +72,10 @@ public static class GdrQueryBlockCheck
         if (abandoned.Count > 0) Task.WaitAll([.. abandoned.Select(task => task.ContinueWith(_ => { }, TaskScheduler.Default))], AbandonedGrace);
         return (runs, findings);
     }
+
+    // An incomplete parse is a lower bound, so it contradicts expect only when it already passes the maximum.
+    private static bool CountMismatch(GuideExpectedCount expect, long rows, bool complete) =>
+        complete ? !expect.Contains(rows) : expect.Max is { } max && rows > max;
 
     private static readonly TimeSpan AbandonedGrace = TimeSpan.FromSeconds(5);
 
