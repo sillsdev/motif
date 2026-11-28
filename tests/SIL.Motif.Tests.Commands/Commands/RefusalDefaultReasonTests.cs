@@ -135,6 +135,8 @@ public sealed class RefusalDefaultReasonTests
         ["custom-field.wrong-list"] = "reason not determinable statically: ReferenceFieldRefusal carries Refused for each code",
         ["custom-field.wrong-type"] = "reason not determinable statically: CustomFieldRefusal carries Refused for each code",
         ["guide.record-moved"] = "reason not determinable statically: GdrMarkdownRefusal carries Refused for each code",
+        ["guide.move-cycle"] = "reason not determinable statically: GdrSectionRefusal defaults to InvalidArgument for each code",
+        ["guide.move-position"] = "reason not determinable statically: GdrSectionRefusal defaults to InvalidArgument for each code",
         ["command.advanced-ai-mode-required"] = "reason not determinable statically: chosen by the caller of the availability facts, not where the code is spelled",
         ["command.autonomous-required"] = "reason not determinable statically: chosen by the caller of the availability facts, not where the code is spelled",
         ["command.developer-commands-required"] = "reason not determinable statically: chosen by the caller of the availability facts, not where the code is spelled",

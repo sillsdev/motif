@@ -32,6 +32,16 @@ public sealed record GdrEditRequest(string ProjectPath, string Id, string Markdo
 public sealed record GdrAddRequest(string ProjectPath, string Title, string? Parent = null, string? After = null,
     string? Markdown = null, string? WritingSystem = null, string? Draft = null);
 
+/// <summary>Moves a Grammar Guide section, with its subtree, under another parent or to another place among its siblings.</summary>
+/// <param name="ProjectPath">The recorded project path.</param>
+/// <param name="Id">The section's <c>GDR-n</c> abbreviation or its canonical id; its number and id do not change.</param>
+/// <param name="Parent">The <c>GDR-n</c> number or canonical id of the new parent; null puts the section at the top of the list.</param>
+/// <param name="After">The <c>GDR-n</c> number or canonical id of the new sibling it follows; null puts it last (or first with <paramref name="Before"/>).</param>
+/// <param name="Before">The <c>GDR-n</c> number or canonical id of the new sibling it precedes; not given together with <paramref name="After"/>.</param>
+/// <param name="Draft">The name of an existing Draft to stage into; null stages into the pending changes.</param>
+public sealed record GdrMoveRequest(string ProjectPath, string Id, string? Parent = null, string? After = null,
+    string? Before = null, string? Draft = null);
+
 /// <summary>Stages one judgement call, "A or B, I am choosing A, because ...", under a section's Decisions heading.</summary>
 /// <param name="ProjectPath">The recorded project path.</param>
 /// <param name="Id">The record's <c>GDR-n</c> abbreviation or its canonical id.</param>

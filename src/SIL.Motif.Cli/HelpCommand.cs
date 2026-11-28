@@ -363,6 +363,7 @@ public static class HelpCommand
         output.WriteLine("stages it (add --draft <name> to ship it with a rule's Draft; check it with 'guide show <GDR-n> --as-of <name>').");
         output.WriteLine("Record a judgement call, \"A or B, I am choosing A, because ...\", with 'guide decide <GDR-n> --choosing A --over B --because <reason>';");
         output.WriteLine("each part is one line of inline Markdown, so a form is written [form]{.v} (escape a literal [ * _ ` < or \\ as \\[ \\* \\_ \\` \\< \\\\), and a heading, list or fence is refused.");
+        output.WriteLine("'guide move <GDR-n> [--parent <GDR-n>] [--after <GDR-n> | --before <GDR-n>]' moves a section with its subtree and keeps its number and id.");
         output.WriteLine("Only existing sections can be edited; 'guide add --title <text> [--parent <GDR-n>] [--after <GDR-n>] [--from-file <body.md>]' stages a new one.");
         output.WriteLine("'guide edit' and 'guide add' need Advanced AI mode ('motif settings advanced-ai on'); 'guide show' is a read and needs none; 'guide decide' needs --autonomous.");
         output.WriteLine("First time on a project: 'guide add --title <text>' (creates the list), apply the pending changes, 'baseline capture --project <fwdata>',");

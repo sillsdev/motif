@@ -2262,6 +2262,20 @@ try
                     flags.GetValueOrDefault("after"), gdrAddBody, flags.GetValueOrDefault("ws"), flags.GetValueOrDefault("draft"))));
                 break;
             }
+            if (flags.TryGetValue("project", out var gdrMoveProject) && positionals is ["move", var gdrMoveId])
+            {
+                bool GdrMoveMissingValue(string name)
+                {
+                    var at = Array.IndexOf(args, "--" + name);
+                    return at >= 0 && (at + 1 >= args.Length || args[at + 1].StartsWith("--", StringComparison.Ordinal));
+                }
+                if (flags.Keys.Any(key => key is not ("project" or "parent" or "after" or "before" or "draft" or "json" or "autonomous")) ||
+                    new[] { "parent", "after", "before", "draft" }.Any(name => flags.ContainsKey(name) && GdrMoveMissingValue(name)))
+                    return Usage(UsageLineFor("guide move"), asJson);
+                result = RenderCommand(GdrMoveCommands.Move(new GdrMoveRequest(gdrMoveProject, gdrMoveId, flags.GetValueOrDefault("parent"),
+                    flags.GetValueOrDefault("after"), flags.GetValueOrDefault("before"), flags.GetValueOrDefault("draft"))));
+                break;
+            }
             if (flags.TryGetValue("project", out var gdrRefreshProject) && positionals is ["refresh-tables"] or ["refresh-tables", _])
             {
                 if (flags.Keys.Any(key => key is not ("project" or "draft" or "query" or "json" or "autonomous")) ||
@@ -2342,7 +2356,7 @@ try
                 (positionals[0] is "list" or "check" ? positionals.Count != 1 : positionals[0] != "show" || positionals.Count != 2) ||
                 flags.ContainsKey("as-of") && positionals[0] != "show")
                 return Usage(UsageLineFor("guide list") + " OR " + UsageLineFor("guide show") + " OR " + UsageLineFor("guide check") +
-                    " OR " + UsageLineFor("guide edit") + " OR " + UsageLineFor("guide add") + " OR " + UsageLineFor("guide decide") + " OR " + UsageLineFor("guide refresh-tables"), asJson);
+                    " OR " + UsageLineFor("guide edit") + " OR " + UsageLineFor("guide add") + " OR " + UsageLineFor("guide move") + " OR " + UsageLineFor("guide decide") + " OR " + UsageLineFor("guide refresh-tables"), asJson);
             if (positionals[0] == "check" && (flags.Keys.Any(key => key is not ("project" or "json" or "autonomous" or "no-run" or "timeout" or "format" or "build")) ||
                     flags.GetValueOrDefault("no-run", "true") != "true" || flags.ContainsKey("no-run") && flags.ContainsKey("build") || flags.TryGetValue("timeout", out var gdrTimeoutText) &&
                     (!int.TryParse(gdrTimeoutText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var gdrTimeout) || gdrTimeout < 1)))

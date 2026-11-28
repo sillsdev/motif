@@ -122,6 +122,7 @@ public static partial class ProposalCommands
             all.LastOrDefault()?.DraftName ?? namedDraft ?? PendingChanges.DraftName, warnings, stylesCreated.ToArray()));
     }
 
-    private sealed class GdrSectionRefusal(string code, string message)
-        : ProposalRefusalException(code, FailureReason.InvalidArgument, message, new Dictionary<string, string>());
+    private sealed class GdrSectionRefusal(string code, string message, FailureReason reason = FailureReason.InvalidArgument,
+        IReadOnlyDictionary<string, string>? facts = null)
+        : ProposalRefusalException(code, reason, message, facts ?? new Dictionary<string, string>());
 }

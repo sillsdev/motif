@@ -31,6 +31,12 @@ public static partial class RefusalCodes
     public const string GdrListNotWritable = "guide.list-not-writable";
     /// <summary>The Markdown given for a Grammar Guide section cannot be read.</summary>
     public const string GdrMarkdownInvalid = "guide.markdown-invalid";
+    /// <summary>The new parent of a moved section is the section itself or one of its descendants.</summary>
+    public const string GdrMoveCycle = "guide.move-cycle";
+    /// <summary>The Draft already holds a move of the section, or the section is no longer where the move found it.</summary>
+    public const string GdrMoveStale = "guide.move-stale";
+    /// <summary>A moved section names both a sibling to follow and a sibling to precede, or a sibling outside the new parent.</summary>
+    public const string GdrMovePosition = "guide.move-position";
     /// <summary>A Grammar Guide judgement call is missing its option or its reason.</summary>
     public const string GdrDecisionInvalid = "guide.decision-invalid";
     /// <summary>A row of a batch of judgement calls cannot be read or staged, so the whole batch was refused and nothing was staged.</summary>

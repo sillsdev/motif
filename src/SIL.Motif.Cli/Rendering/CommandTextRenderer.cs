@@ -176,6 +176,7 @@ public static class CommandTextRenderer
             GdrEditResponse r => RenderGdrEdit(r),
             GdrDecideBatchResponse r => RenderGdrDecideBatch(r),
             GdrAddResponse r => RenderGdrAdd(r),
+            GdrMoveResponse r => RenderGdrMove(r),
             GdrRefreshTablesResponse r => RenderGdrRefresh(r),
             SourcePassageResponse r => SourceTextRenderer.RenderPassage(r),
             SourceListResponse r => SourceTextRenderer.RenderList(r),
@@ -1796,6 +1797,11 @@ public static class CommandTextRenderer
         text.AppendLine($"Apply {response.DraftName}, then run 'baseline capture --project <fwdata>'; 'guide show {response.Abbreviation}' and 'guide check' read the Baseline.");
         return text.ToString();
     }
+
+    private static string RenderGdrMove(GdrMoveResponse response) =>
+        $"{response.Abbreviation}: staged a move with its subtree {(response.ParentId is null ? "to the top of the list" : "under " + response.ParentId)} " +
+        $"in {response.DraftName} ({response.OperationCount} operation(s)); its number and id do not change." + Environment.NewLine +
+        $"Preview it with 'guide show {response.Abbreviation} --as-of {response.DraftName}'; Apply it with the rest of {response.DraftName}, then run 'baseline capture --project <fwdata>'." + Environment.NewLine;
 
     private static string RenderGdrCheck(GdrCheckResponse response)
     {
