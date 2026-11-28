@@ -44,7 +44,9 @@ A section or Proposal may hold many queries, and one query may be shown several 
 A query is a fenced block tagged `motif-query`. Each line is `key: value`; the keys are `id` (unique in the section,
 lowercase letters, digits and hyphens), `title` (one plain-language line saying what the query groups), `run`
 (exactly one read-only `motif` command, without `--project`, which the renderer supplies), `columns` (optional,
-comma-separated result columns to show) and `sort` (optional, a column, then `asc` or `desc`).
+comma-separated result columns to show), `sort` (optional, a column, then `asc` or `desc`) and `expect` (optional, the
+count the query should answer with: `127`, a range `100..150` or a bound `>=1`; `guide check` reports a count outside it as
+`guide.query-count-mismatch`).
 
 ````text
 ```motif-query
