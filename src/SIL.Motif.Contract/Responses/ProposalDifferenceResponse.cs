@@ -241,10 +241,10 @@ public sealed record ProposalDifferenceOccurrencePlace(
 /// <param name="Word">The word whose places are listed.</param>
 /// <param name="Places">The requested page, in Text order (line, then position in the line).</param>
 /// <param name="Total">How many places the word has in the Text, whether or not they are all listed.</param>
-/// <param name="NextOffset">The offset of the next page, or null at the end of the places that are stored.</param>
+/// <param name="NextCursor">The cursor of the next page of places, or null at the end of the places that are stored.</param>
 /// <param name="Listed">How many of the places are stored and can be paged; null means all of them, as before the bound.</param>
 public sealed record ProposalDifferenceOccurrencePage(
-    string Word, IReadOnlyList<ProposalDifferenceOccurrencePlace> Places, int Total, int? NextOffset,
+    string Word, IReadOnlyList<ProposalDifferenceOccurrencePlace> Places, int Total, string? NextCursor,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? Listed = null)
 {
     /// <summary>How many places can be paged; the rest of <see cref="Total"/> are counted but not listed.</summary>

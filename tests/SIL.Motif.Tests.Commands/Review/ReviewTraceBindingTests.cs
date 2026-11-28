@@ -52,7 +52,7 @@ public sealed class ReviewTraceBindingTests : IDisposable
         Assert.Equal("1", Assert.Single(child.Value!.Nodes).Id);
         Assert.NotNull(child.Value.NextCursor);
         var wrongParent = command.Read("project", new ReviewReportId(Id), TraceId, child.Value.NextCursor, 1);
-        Assert.Equal("review.cursor-invalid", wrongParent.Refusal!.Code);
+        Assert.Equal("paging.invalid", wrongParent.Refusal!.Code);
         var next = command.Read("project", new ReviewReportId(Id), TraceId, first.Value.NextCursor, 1);
         Assert.True(next.Succeeded);
         Assert.Equal("1", Assert.Single(next.Value!.Nodes).Id);

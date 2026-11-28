@@ -58,7 +58,8 @@ public sealed class CatalogExecutionTests
         Assert.Equal(["suffix", "prefix"], properties["kind"]!["enum"]!.AsArray().Select(item => item!.GetValue<string>()).ToArray());
         Assert.Equal((1, 200, 50), (properties["limit"]!["minimum"]!.GetValue<int>(), properties["limit"]!["maximum"]!.GetValue<int>(),
             properties["limit"]!["default"]!.GetValue<int>()));
-        Assert.Equal(1, properties["page"]!["minimum"]!.GetValue<int>());
+        Assert.Null(properties["page"]);
+        Assert.Equal("string", properties["cursor"]!["type"]!.GetValue<string>());
         Assert.Equal(["project", "kind"], actual.InputSchema["required"]!.AsArray().Select(item => item!.GetValue<string>()).Order().Reverse().ToArray());
         Assert.NotNull(properties["as_of"]);
         Assert.Null(properties["at"]);

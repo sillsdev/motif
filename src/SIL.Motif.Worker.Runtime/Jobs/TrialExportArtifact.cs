@@ -22,10 +22,11 @@ public static class TrialExportArtifact
 
     private static readonly JsonSerializerOptions Json = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
-    /// <summary>Reads the receipt and, when requested, a numbered page from the same immutable evidence file.</summary>
-    public static TrialExportReceipt? Read(MotifDatabase database, string jobId, string? at = null, int? page = null)
+    /// <summary>Reads the receipt and, when <paramref name="offset"/> is given, the <paramref name="limit"/> words from that offset of the same immutable evidence file.</summary>
+    public static TrialExportReceipt? Read(MotifDatabase database, string jobId, string? at = null, int? offset = null,
+        int limit = TrialExportPage.Size)
     {
-        if (string.IsNullOrWhiteSpace(jobId) || JsonEncodedText.Encode(jobId).EncodedUtf8Bytes.Length > 256 || page is < 1)
+        if (string.IsNullOrWhiteSpace(jobId) || JsonEncodedText.Encode(jobId).EncodedUtf8Bytes.Length > 256 || offset is < 0 || limit < 1)
             return null;
         var key = JobKey(jobId);
         if (LoadBinding(database, jobId) is not { } binding) return null;
@@ -43,10 +44,10 @@ public static class TrialExportArtifact
         if (!binding.Matches(at) && at != reportDigest) return null;
         var receipt = new TrialExportReceipt(Version, jobId, path, binding.Bytes, binding.Sha256, reportId, reportDigest,
             binding.Denominators, binding.ProposalRevision, binding.BaselineBundle, binding.PublishMilliseconds,
-            binding.PageOffsets.Length, binding.ComparisonComplete, PathIsStoreSuffix: false);
+            binding.ComparisonComplete, PathIsStoreSuffix: false);
         receipt = WithinBound(receipt, suffix);
 
-        return page is { } number ? receipt with { Page = ReadPage(stream, binding, number) } : receipt;
+        return offset is { } start ? receipt with { Page = ReadPage(stream, binding, start, limit) } : receipt;
     }
 
     /// <summary>
@@ -147,12 +148,18 @@ public static class TrialExportArtifact
     private static bool ReadProperty(ref Utf8JsonReader reader, string name) =>
         reader.Read() && reader.TokenType == JsonTokenType.PropertyName && reader.ValueTextEquals(name) && reader.Read();
 
-    private static TrialExportPage ReadPage(Stream stream, ArtifactBinding binding, int number)
+    // Words are one per line: start at the block holding the first word, skip to it, read on.
+    private static TrialExportPage ReadPage(Stream stream, ArtifactBinding binding, int offset, int limit)
     {
-        if (number > binding.PageOffsets.Length) return new(number, null, []);
-        stream.Position = binding.PageOffsets[number - 1];
+        var total = binding.Denominators.Submitted;
+        if (offset >= total || binding.PageOffsets.Length == 0) return new(null, []);
+        var block = offset / TrialExportPage.Size;
+        if (block >= binding.PageOffsets.Length) return new(null, []);
+        stream.Position = binding.PageOffsets[block];
         using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, leaveOpen: true);
-        var count = Math.Min(TrialExportPage.Size, binding.Denominators.Submitted - (number - 1) * TrialExportPage.Size);
+        for (var skipped = block * TrialExportPage.Size; skipped < offset; skipped++)
+            _ = reader.ReadLine() ?? throw new InvalidDataException("A retained Trial export page ended early.");
+        var count = Math.Min(limit, total - offset);
         var words = new JsonElement[count];
         for (var index = 0; index < count; index++)
         {
@@ -160,7 +167,7 @@ public static class TrialExportArtifact
             var start = line.StartsWith(',') ? 1 : 0;
             words[index] = JsonSerializer.Deserialize<JsonElement>(line.AsSpan(start), Json);
         }
-        return new(number, number < binding.PageOffsets.Length ? number + 1 : null, words);
+        return new(ResultPaging.NextCursor(offset, count, total), words);
     }
 
     internal static void Publish(MotifDatabase database, string jobId, TrialExportDenominators denominators,

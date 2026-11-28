@@ -18,16 +18,28 @@ internal readonly record struct PagingWindow(int Offset, int Limit)
 /// <summary>Reads the paging flags every capped read shares, with the one range <see cref="ResultPaging"/> accepts.</summary>
 internal static class PagingFlags
 {
+    internal const string CursorMessage = "--cursor must be the nextCursor a previous page returned.";
+
+    internal static string LimitMessage => $"--limit must be a whole number from 1 to {ResultPaging.MaxLimit}.";
+
+    /// <summary>Reads <c>--limit</c> as a whole number, or the default when it is absent; false when it is not a number.</summary>
+    internal static bool TryLimit(IReadOnlyDictionary<string, string> flags, int defaultLimit, out int limit)
+    {
+        limit = defaultLimit;
+        return !flags.TryGetValue("limit", out var text) ||
+            int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out limit);
+    }
+
     /// <summary>The window the flags name, or the refusal explaining why they do not name one.</summary>
     internal static (PagingWindow Window, Refusal? Refusal) Read(IReadOnlyDictionary<string, string> flags, int defaultLimit)
     {
         var limit = defaultLimit;
         if (flags.TryGetValue("limit", out var limitText) &&
             !int.TryParse(limitText, NumberStyles.None, CultureInfo.InvariantCulture, out limit))
-            return Fail($"--limit must be a whole number from 1 to {ResultPaging.MaxLimit}.");
+            return Fail(LimitMessage);
         var offset = 0;
         if (flags.TryGetValue("cursor", out var cursor) && (cursor == "true" || !ResultPaging.TryOffset(cursor, out offset)))
-            return Fail("--cursor must be the nextCursor a previous page returned.");
+            return Fail(CursorMessage);
         if (!ResultPaging.IsValid(offset, limit))
             return Fail($"Use a limit from 1 to {ResultPaging.MaxLimit}.");
         return (new PagingWindow(offset, limit), null);

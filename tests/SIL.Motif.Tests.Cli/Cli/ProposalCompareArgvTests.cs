@@ -78,21 +78,21 @@ public sealed class ProposalCompareArgvTests
         Assert.Equal(0, json.RootElement.GetProperty("columns")[0].GetProperty("approvedKept").GetInt32());
         Assert.Equal(0, json.RootElement.GetProperty("columns")[0].GetProperty("approvedLost").GetInt32());
 
-        var rows = await Run("--json", "--page", "1", "--snapshot", json.RootElement.GetProperty("snapshot").GetString()!, "--at", ProposalCompareExports.BaselineDigest('a'));
+        var rows = await Run("--json", "--limit", "100", "--snapshot", json.RootElement.GetProperty("snapshot").GetString()!, "--at", ProposalCompareExports.BaselineDigest('a'));
         Assert.True(rows.ExitCode == 0, rows.Error);
         using var page = JsonDocument.Parse(rows.Output);
         Assert.Equal(2, page.RootElement.GetProperty("page").GetProperty("rows").GetArrayLength());
 
-        var stale = await Run("--json", "--page", "1", "--snapshot", "000000000000");
+        var stale = await Run("--json", "--limit", "100", "--snapshot", "000000000000");
         Assert.Equal("proposal.compare-snapshot-changed", CodeOf(stale));
-        var past = await Run("--json", "--page", "9");
-        Assert.Equal("evidence.invalid-page", CodeOf(past));
+        var past = await Run("--json", "--cursor", "9");
+        Assert.Equal("paging.invalid", CodeOf(past));
         var snapshotAlone = await Run("--json", "--snapshot", json.RootElement.GetProperty("snapshot").GetString()!);
         Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument), snapshotAlone.ExitCode);
         Assert.Contains("--snapshot", snapshotAlone.Error, StringComparison.Ordinal);
         var badAt = await Run("--json", "--at", ProposalCompareExports.BaselineDigest('c'));
         Assert.Equal("proposal.compare-at-mismatch", CodeOf(badAt));
-        var noPage = await Run("--json", "--page", "0");
+        var noPage = await Run("--json", "--page", "1");
         Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument), noPage.ExitCode);
 
         var text = await Run();

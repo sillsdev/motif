@@ -20,25 +20,25 @@ public sealed record SavePhonologyExamplesRequest(
 
 /// <summary>Lists phonology Example Set headers in a project.</summary>
 /// <param name="ProjectPath">The path to the project containing the sets.</param>
-/// <param name="PageSize">The maximum number of set headers to return, from 1 through 100.</param>
-/// <param name="Continuation">The project-bound cursor from the preceding page, or null for the first page.</param>
+/// <param name="Limit">The maximum number of set headers to return, from 1 through 100.</param>
+/// <param name="Cursor">The previous page's nextCursor, or null for the first page.</param>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record ListPhonologyExamplesRequest(
     [property: JsonPropertyName("projectPath")] string ProjectPath,
-    [property: JsonPropertyName("pageSize")] int PageSize = 20,
-    [property: JsonPropertyName("continuation")] PhonologySetListCursor? Continuation = null);
+    [property: JsonPropertyName("limit")] int Limit = 20,
+    [property: JsonPropertyName("cursor")] string? Cursor = null);
 
 /// <summary>Reads one phonology Example Set revision and a page of its examples.</summary>
 /// <param name="ProjectPath">The path to the project containing the revision.</param>
 /// <param name="RevisionId">The canonical id of the immutable revision to read.</param>
-/// <param name="PageSize">The maximum number of examples to return, from 1 through 100.</param>
-/// <param name="Continuation">The cursor for this exact revision from the preceding page, or null for the first page.</param>
+/// <param name="Limit">The maximum number of examples to return, from 1 through 100.</param>
+/// <param name="Cursor">The previous page's nextCursor for this exact revision, or null for the first page.</param>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record ShowPhonologyExamplesRequest(
     [property: JsonPropertyName("projectPath")] string ProjectPath,
     [property: JsonPropertyName("revisionId")] string RevisionId,
-    [property: JsonPropertyName("pageSize")] int PageSize = 20,
-    [property: JsonPropertyName("continuation")] PhonologyPageCursor? Continuation = null);
+    [property: JsonPropertyName("limit")] int Limit = 20,
+    [property: JsonPropertyName("cursor")] string? Cursor = null);
 
 /// <summary>Queues a check of a stored phonology Example Set revision against a captured Baseline.</summary>
 /// <param name="ProjectPath">The path to the project that owns the revision.</param>
@@ -72,12 +72,12 @@ public abstract record PhonologyResultsRead
     private PhonologyResultsRead() { }
 
     /// <summary>Returns a bounded page of example summaries in authored order.</summary>
-    /// <param name="PageSize">The maximum number of summaries to return, from 1 through 100.</param>
-    /// <param name="Continuation">The cursor for this exact assessment from the preceding page, or null for the first page.</param>
+    /// <param name="Limit">The maximum number of summaries to return, from 1 through 100.</param>
+    /// <param name="Cursor">The previous page's nextCursor for this exact assessment, or null for the first page.</param>
     [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
     public sealed record Page(
-        [property: JsonPropertyName("pageSize")] int PageSize = 20,
-        [property: JsonPropertyName("continuation")] PhonologyPageCursor? Continuation = null) : PhonologyResultsRead;
+        [property: JsonPropertyName("limit")] int Limit = 20,
+        [property: JsonPropertyName("cursor")] string? Cursor = null) : PhonologyResultsRead;
 
     /// <summary>Returns the complete retained detail of one example.</summary>
     /// <param name="ExampleId">The id of the example within the checked revision.</param>

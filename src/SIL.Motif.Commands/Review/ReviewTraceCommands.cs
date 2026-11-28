@@ -197,12 +197,12 @@ public sealed class ReviewTraceCommands(MotifDatabase database)
     }
 
     private static CommandOutcome<TracePage> InvalidCursor() => CommandOutcome<TracePage>.Refused(
-        new Refusal(RefusalCodes.ReviewCursorInvalid, FailureReason.InvalidArgument, "The continuation does not match this trace."));
+        new Refusal(RefusalCodes.PagingInvalid, FailureReason.InvalidArgument, "The continuation does not match this trace."));
 
     private static CommandOutcome<TracePage> Refuse(string message, FailureReason reason = FailureReason.Refused)
     {
         if (reason == FailureReason.InvalidArgument)
-            return CommandOutcome<TracePage>.Refused(new Refusal(RefusalCodes.DifferenceInvalidPage,
+            return CommandOutcome<TracePage>.Refused(new Refusal(RefusalCodes.PagingInvalid,
                 FailureReason.InvalidArgument, message));
         return CommandOutcome<TracePage>.Refused(new Refusal(RefusalCodes.TrialTraceUnavailable,
             FailureReason.Refused, message + " Run a new Trial to capture the needed inputs."));

@@ -289,7 +289,8 @@ public static class HypothesisCommands
         if (request.HypothesisId is null && status is not null && !HypothesisStatuses.All.Contains(status))
             return Invalid<HypothesisListResponse>("The status must be proposed, passed, failed or superseded; leave it out for all.");
         if (request.HypothesisId is null && (request.CursorOffset() < 0 || request.Limit is < 1 or > 200))
-            return Invalid<HypothesisListResponse>("The cursor must be the nextCursor a previous page returned and the limit from 1 to 200.");
+            return Refused<HypothesisListResponse>(RefusalCodes.PagingInvalid, FailureReason.InvalidArgument,
+                "The cursor must be the nextCursor a previous page returned and the limit from 1 to 200.");
         return ProjectStoreCommand.ReadExisting(request.FwDataPath,
             request.HypothesisId is not null ? NotFound<HypothesisListResponse>(request.HypothesisId) : CommandOutcome<HypothesisListResponse>.Success(new([], 0)),
             (database, _) =>

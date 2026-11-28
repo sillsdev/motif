@@ -89,7 +89,7 @@ public static class RequestCommands
             return Refused<RequestListResponse>(RefusalCodes.RequestInvalid, FailureReason.InvalidArgument,
                 "The status must be 'open' or 'answered'; leave it out for both.");
         if (request.CursorOffset() < 0 || request.Limit is < 1 or > 200)
-            return Refused<RequestListResponse>(RefusalCodes.RequestInvalid, FailureReason.InvalidArgument,
+            return Refused<RequestListResponse>(RefusalCodes.PagingInvalid, FailureReason.InvalidArgument,
                 "The cursor must be the nextCursor a previous page returned and the limit from 1 to 200.");
         return ProjectStoreCommand.ReadExisting(request.FwDataPath,
             CommandOutcome<RequestListResponse>.Success(new([], 0, 0, NoteNotice)),

@@ -23,7 +23,6 @@ public sealed record ProposalComparison(
     [property: JsonRequired] int FormsCompared,
     [property: JsonRequired] int FormsDiverging,
     [property: JsonRequired] int RowsTotal,
-    [property: JsonRequired] int Pages,
     [property: JsonRequired] bool Complete,
     [property: JsonRequired] IReadOnlyList<CompareLimitation> Limitations,
     [property: JsonRequired] int ApprovedSkippedOtherAgents,
@@ -39,7 +38,7 @@ public sealed record ProposalComparison(
     /// <summary>The most bytes the serialized summary may take. The budget began at 2000 for eight columns of counts and four limitations; the approved total, the uncounted figure and three more limitations measure 2111 bytes in the worst case, so 2200 keeps the summary small while leaving headroom.</summary>
     public const int SummaryByteLimit = 2200;
 
-    /// <summary>The requested form rows, present only when the caller selects a page.</summary>
+    /// <summary>The requested form rows, present only when the caller gives a cursor or a limit.</summary>
     public CompareRowPage? Page { get; init; }
 }
 
@@ -185,11 +184,10 @@ public sealed record CompareLimitation([property: JsonRequired] string Code, [pr
 /// <summary>A page of form rows in the frozen order: diverging first, then writing system and form key.</summary>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record CompareRowPage(
-    [property: JsonRequired] int Number,
-    [property: JsonRequired, JsonIgnore(Condition = JsonIgnoreCondition.Never)] int? NextPage,
+    [property: JsonRequired, JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? NextCursor,
     [property: JsonRequired] IReadOnlyList<CompareRow> Rows)
 {
-    /// <summary>The most rows in one page.</summary>
+    /// <summary>The rows in one page when the caller gives no limit.</summary>
     public const int Size = 100;
 }
 

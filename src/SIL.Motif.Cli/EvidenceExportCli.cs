@@ -21,10 +21,10 @@ internal static class EvidenceExportCli
         string? outPath, TextWriter standardOutput, bool asJson, Func<string, Stream>? createTemporary = null)
     {
         var readingPage = false;
-        CommandOutcome<DecisionEvidenceExportResponse> ReadPage(string? after)
+        CommandOutcome<DecisionEvidenceExportResponse> ReadPage(string? cursor)
         {
             readingPage = true;
-            var page = ProposalCommands.EvidenceExport(new EvidenceExportRequest(project, productVersion, tier, after, pageSize));
+            var page = ProposalCommands.EvidenceExport(new EvidenceExportRequest(project, productVersion, tier, cursor, pageSize));
             readingPage = false;
             return page;
         }
@@ -81,10 +81,10 @@ internal static class EvidenceExportCli
         json.WriteStartObject();
         json.WriteString("format", DecisionEvidenceExport.Format);
         json.WriteStartArray("rows");
-        string? after = null;
+        string? cursor = null;
         do
         {
-            var page = after is null ? firstPage : readPage(after);
+            var page = cursor is null ? firstPage : readPage(cursor);
             if (!page.Succeeded)
                 return CommandOutcome<DecisionEvidenceExportSummary>.Refused(page.Refusal!);
             foreach (var row in page.Value!.Rows)
@@ -94,8 +94,8 @@ internal static class EvidenceExportCli
                 total++;
             }
             json.Flush();
-            after = page.Value.Next;
-        } while (after is not null);
+            cursor = page.Value.NextCursor;
+        } while (cursor is not null);
         json.WriteEndArray();
         json.WriteNumber("total", total);
         json.WriteStartObject("tierCounts");

@@ -63,8 +63,8 @@ public sealed record DecisionEvidenceListResponse(
 /// <summary>One page of the <c>evidence export</c> read: rows in a fixed order, and where the next page starts.</summary>
 /// <param name="Format">Always <see cref="DecisionEvidenceExport.Format"/>, so a saved file names its own layout.</param>
 /// <param name="Rows">At most the requested number of rows, in Proposal id order.</param>
-/// <param name="Next">The cursor to pass as <c>after</c> for the following page; <c>null</c> when this page ends the export.</param>
-public sealed record DecisionEvidenceExportResponse(string Format, IReadOnlyList<DecisionEvidenceRow> Rows, string? Next);
+/// <param name="NextCursor">The cursor to pass as <c>cursor</c> for the following page; <c>null</c> when this page ends the export.</param>
+public sealed record DecisionEvidenceExportResponse(string Format, IReadOnlyList<DecisionEvidenceRow> Rows, string? NextCursor);
 
 /// <summary>What <c>evidence export --out</c> reports after writing the file.</summary>
 /// <param name="Path">The file written.</param>

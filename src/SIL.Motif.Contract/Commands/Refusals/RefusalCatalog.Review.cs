@@ -9,7 +9,6 @@ public static partial class RefusalCatalog
         Spec(RefusalCodes.ReviewAssessmentNotFound, FailureReason.NotFound),
         Spec(RefusalCodes.ReviewNumbersUnavailable, FailureReason.Refused),
         Spec(RefusalCodes.ReviewWrongAssessmentKind, FailureReason.InvalidArgument),
-        Spec(RefusalCodes.ReviewCursorInvalid, FailureReason.InvalidArgument),
         Spec(RefusalCodes.ReviewDetailUnavailable, FailureReason.Refused),
         Spec(RefusalCodes.ReviewInvalidMark, FailureReason.InvalidArgument),
         Spec(RefusalCodes.ReviewUnreadable, FailureReason.StoreInconsistent),

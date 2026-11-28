@@ -13,6 +13,9 @@ Answer each item in the PR description.
    with prefixes. `detail` is concise by default or detailed. A response above about 4000 tokens
    pages rather than inlining
    ([ADR 0009](../../../../docs/adr/0009-assistants-reach-motif-through-one-agent-api.md) D9).
+   A paged read takes exactly `cursor` and `limit` and returns a string `nextCursor` (absent on the
+   last page); never a page number, `offset`, `after` cursor or `continuation`. A bad cursor or limit
+   refuses with `paging.invalid`. `ArgumentConventionTests` enforces the argument names.
 4. **Failure contract.** Every refusal uses a code from the closed registry, names the missing
    precondition and the call that satisfies it in the caller's rendering, and puts `next` on both
    the CLI and MCP. A read that cannot look refuses with why; it never returns zeros or an empty

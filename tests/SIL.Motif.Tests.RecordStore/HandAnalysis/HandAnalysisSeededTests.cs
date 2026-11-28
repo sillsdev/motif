@@ -96,9 +96,9 @@ public sealed class HandAnalysisSeededTests : IDisposable
         var next = await first.References(query, new(1, page.Rows.NextCursor));
         Assert.False(next.Rows.Complete);
         Assert.NotEqual(Assert.Single(page.Rows.Items), Assert.Single(next.Rows.Items));
-        Assert.Equal(RefusalCodes.HandAnalysisInvalidCursor, (await other.ReferencesAsync(query, new(1, page.Rows.NextCursor))).Refusal?.Code);
+        Assert.Equal(RefusalCodes.PagingInvalid, (await other.ReferencesAsync(query, new(1, page.Rows.NextCursor))).Refusal?.Code);
         var wrongKind = new ReferenceQuery.DeleteClosure(new(DeletionKind.Sense, seed.Project.FirstEntryId));
-        Assert.Equal(RefusalCodes.HandAnalysisInvalidCursor, (await first.ReferencesAsync(wrongKind, new(1, page.Rows.NextCursor))).Refusal?.Code);
+        Assert.Equal(RefusalCodes.PagingInvalid, (await first.ReferencesAsync(wrongKind, new(1, page.Rows.NextCursor))).Refusal?.Code);
         Assert.Equal(RefusalCodes.HandAnalysisTypeMismatch, (await first.ReferencesAsync(wrongKind, new())).Refusal?.Code);
         Assert.Equal(page.Counts, next.Counts);
         Assert.Null(page.Counts.PlanToken);
@@ -611,10 +611,10 @@ public sealed class HandAnalysisSeededTests : IDisposable
             var whole = await pin.Words(alternatives, new(3), default);
             Assert.Equal(whole.Items.AsEnumerable(), first.Items.Concat(rest.Items));
             Assert.Equal(whole.Items.AsEnumerable(), await Pages.All(p => pin.Words(alternatives, p, default), 1));
-            Assert.Equal(RefusalCodes.HandAnalysisInvalidCursor, (await pin.WordsAsync(
+            Assert.Equal(RefusalCodes.PagingInvalid, (await pin.WordsAsync(
                 new WordQuery.Alternatives(key, WordOrder.DefaultRank), new(1, first.NextCursor), default)).Refusal?.Code);
             await using var other = await host.PinAsync(new ExternalBasis("different"), null);
-            Assert.Equal(RefusalCodes.HandAnalysisInvalidCursor,
+            Assert.Equal(RefusalCodes.PagingInvalid,
                 (await other.WordsAsync(alternatives, new(1, first.NextCursor))).Refusal?.Code);
             await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
                 await pin.WordsAsync(alternatives, new(), new CancellationToken(canceled: true)));

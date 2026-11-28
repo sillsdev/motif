@@ -14,7 +14,7 @@ motif phonology-examples list --project "C:\FieldWorks\Projects\Koro\Koro.fwdata
 
 ## What it prints
 
-Each item gives the set name, current revision id, and example count. A response with a continuation cursor has another page; pass that cursor as JSON with `--continuation`.
+Each item gives the set name, current revision id, and example count. A response with a `nextCursor` has another page; pass it back with `--cursor`, and `--limit <n>` sets the page size, from 1 to 100.
 
 ## Related commands
 

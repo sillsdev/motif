@@ -24,7 +24,7 @@ public static class SourcePassageQuery
             SourceProviders.FieldWorksTexts.TryPassageId(request.Ref, out passage);
         if (!named) return InvalidRef();
         if (request.Limit is < 1 or > 200)
-            return Refused(RefusalCodes.SourcePassageLimitInvalid, FailureReason.InvalidArgument, "Choose a limit from 1 to 200.");
+            return Refused(RefusalCodes.PagingInvalid, FailureReason.InvalidArgument, "Choose a limit from 1 to 200.");
         var source = request.Source.Trim().ToUpperInvariant();
         Cursor? cursor = null;
         if (request.Cursor is not null && (!TryCursor(request.Cursor, out cursor) ||
@@ -106,7 +106,7 @@ public static class SourcePassageQuery
         FailureReason.Refused, "The Source index is stale or pending; a running worker rebuilds it in the background. Capture the saved project to queue a refresh now.");
     private static CommandOutcome<SourcePassageResponse> StaleDeferred() => Refused(RefusalCodes.SourceIndexStale,
         FailureReason.Refused, "The Source index was left pending by a foreground-only command and no worker will rebuild it. Capture the saved project without --no-background to queue a refresh now.");
-    private static CommandOutcome<SourcePassageResponse> InvalidCursor() => Refused(RefusalCodes.SourcePassageCursorInvalid,
+    private static CommandOutcome<SourcePassageResponse> InvalidCursor() => Refused(RefusalCodes.PagingInvalid,
         FailureReason.InvalidArgument, "The cursor is invalid or belongs to another project, Source or Passage.");
     private static CommandOutcome<SourcePassageResponse> Refused(string code, FailureReason reason, string message) =>
         CommandOutcome<SourcePassageResponse>.Refused(new Refusal(code, reason, message));

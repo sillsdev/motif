@@ -14,14 +14,14 @@ public sealed class ProposalComparisonContractTests
     {
         var all = Enumerable.Range(0, columns).Select(index => new CompareColumn(CanonicalId.Mint("proposal/").Value,
             99999, 99999, 99999, 99999, 99999, 99999, 99999)).ToArray();
-        var summary = new ProposalComparison(1, ProposalComparison.TrialBeforeAfter, "0123456789ab", all, 99999, 99999, 99999, 1000, false,
+        var summary = new ProposalComparison(1, ProposalComparison.TrialBeforeAfter, "0123456789ab", all, 99999, 99999, 99999, false,
             [new(CompareLimitation.NotMeasured, 99999), new(CompareLimitation.IncompleteTrial, 8),
                 new(CompareLimitation.ApprovedOtherAgents, 8), new(CompareLimitation.ApprovedUncounted, 8),
                 new(CompareLimitation.TrialStale, 8), new(CompareLimitation.TrialSuperseded, 8),
                 new(CompareLimitation.ParserVersionDiffers, 8) { Detail = new string('v', 80) }], 99999, 99999, 99999);
         if (!withPage) return summary;
         var cells = all.Select((_, index) => new CompareCell(true, true, [Digest('1')], index == 0 ? [Digest('2')] : [], [Digest('3')], index == 0 ? [Digest('4')] : [])).ToArray();
-        return summary with { Page = new CompareRowPage(1, null, [new CompareRow(null, "form", "key", true, cells)]) };
+        return summary with { Page = new CompareRowPage(null, [new CompareRow(null, "form", "key", true, cells)]) };
     }
 
     [Fact]

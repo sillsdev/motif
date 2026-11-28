@@ -275,7 +275,8 @@ public sealed class PhonologyAssessmentRepositoryTests : IDisposable
             var page = results.ReadPage("large", 100, cursor);
             Assert.NotEmpty(page.Items);
             Assert.True(JsonSerializer.SerializeToUtf8Bytes(page, JsonOptions).Length <= 4 * 1024 * 1024);
-            Assert.True(page.Continuation is null || page.Continuation.AfterOrdinal > (cursor?.AfterOrdinal ?? -1));
+            PhonologyCursorCodec.TryDecode<PhonologyPageCursor>(page.NextCursor, out var nextCursor);
+            Assert.True(nextCursor is null || nextCursor.AfterOrdinal > (cursor?.AfterOrdinal ?? -1));
             foreach (var summary in page.Items)
             {
                 var evidence = Assert.IsType<PhonologyRowSummary.Produced>(summary.Evidence);
@@ -289,7 +290,7 @@ public sealed class PhonologyAssessmentRepositoryTests : IDisposable
                 }
                 collected.Add(summary.Example.Id);
             }
-            cursor = page.Continuation;
+            cursor = nextCursor;
             pages++;
         } while (cursor is not null);
         Assert.Equal(examples.Select(example => example.Id), collected);

@@ -115,7 +115,7 @@ public sealed class RecordImportContractTests
         Assert.Equal(2048, RecordImportPaging.SummaryBytes);
         var response = ReadGolden("dry-run");
         var rows = response["refusals"]!.AsArray();
-        for (var index = 0; index < RecordImportPaging.PageSize + 1; index++)
+        for (var index = 0; index < 201; index++)
             rows.Add(rows[0]!.DeepClone());
         Assert.False(Schema.Evaluate(JsonSerializer.SerializeToElement(response)).IsValid);
     }

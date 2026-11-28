@@ -19,7 +19,9 @@ public static class TrialReviewReads
         ArgumentNullException.ThrowIfNull(request);
         return ProjectStoreCommand.ReadExisting(projectPath, Absent(request), (database, project) =>
             TrialRetirementPaging.Apply(
-                new TrialReviewCommands(database, parserPath).Read(request with { ProjectKey = ProjectWorkspaceKey.Compute(project) }), request.Page));
+                new TrialReviewCommands(database, parserPath).Read(request with { ProjectKey = ProjectWorkspaceKey.Compute(project) }),
+                request.EffectiveDetail == DetailLevel.Full ? null : request.Cursor,
+                request.EffectiveDetail == DetailLevel.Full ? null : request.Limit));
     }
 
     /// <summary>The outcome of a read when the project has no Motif store yet.</summary>
@@ -28,7 +30,7 @@ public static class TrialReviewReads
         ArgumentNullException.ThrowIfNull(request);
         if (request.Validate() is { } invalid)
             return CommandOutcome<TrialReviewResult>.Refused(new Refusal(
-                RefusalCodes.DifferenceInvalidPage, FailureReason.InvalidArgument, invalid));
+                RefusalCodes.PagingInvalid, FailureReason.InvalidArgument, invalid));
         if (request.ReportId is not null)
             return CommandOutcome<TrialReviewResult>.Refused(new Refusal(
                 RefusalCodes.DifferenceNoTrial, FailureReason.NotFound,
@@ -61,7 +63,7 @@ public static class TrialReviewReads
             return TrialRetirementPaging.Apply(CommandOutcome<TrialReviewResult>.Success(available with
             {
                 Gate = available.Report.Gate ?? GateOf(available, [], ReadGateWords(commands, key, proposal, available)),
-            }), null);
+            }));
         });
 
     /// <summary>The words a report's rows name, when the report can list them.</summary>

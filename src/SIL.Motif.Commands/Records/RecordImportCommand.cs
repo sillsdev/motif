@@ -38,9 +38,7 @@ public static partial class RecordImportCommand
         if ((request.FilePath is null) == (request.DirPath is null))
             return Refused(RefusalCodes.RecordImportFileOrDir, FailureReason.InvalidArgument, "Give --file or --dir, not both.");
         if (request.DirPath is not null) return RunDir(request);
-        if (request.Page < 1)
-            return Refused(RefusalCodes.RecordImportInvalidPage, FailureReason.InvalidArgument,
-                "The page must be a whole number from 1.", ("page", request.Page.ToString()));
+        if (PagingRefusal(request, RecordImportPaging.PageSize) is { } paging) return CommandOutcome<RecordImportResponse>.Refused(paging);
         if (request.Strict && request.DraftName is null)
             return Refused(RefusalCodes.RecordImportStrictNeedsDraft, FailureReason.InvalidArgument,
                 "Strict applies to staging, so it needs a Draft name.");
@@ -86,15 +84,8 @@ public static partial class RecordImportCommand
         if (found.Lowering.WholeFile is { } shape)
             return CommandOutcome<RecordImportResponse>.Refused(WholeCreateRefusal(found, shape));
 
-        var pages = PageCount(found.Lowering.Operations.Count, Refusals(found, found.Lowering).Count,
-            found.Plan.ChangeSet.Changes.Count);
-        if (request.Page > pages)
-            return Refused(RefusalCodes.RecordImportInvalidPage, FailureReason.InvalidArgument,
-                $"The file has {pages} page(s); page {request.Page} does not exist.",
-                ("page", request.Page.ToString()), ("pageCount", pages.ToString()));
-
         if (request.DraftName is null)
-            return CommandOutcome<RecordImportResponse>.Success(Summarize(found, found.Lowering, DryRun, request.Page, null, null));
+            return CommandOutcome<RecordImportResponse>.Success(Summarize(found, found.Lowering, DryRun, request, null, null));
 
         if (found.Plan.BaseVerdict == ProjectRecordBaseVerdict.New)
         {
@@ -139,7 +130,7 @@ public static partial class RecordImportCommand
                 staged.Refusal.Message + " The empty Draft '" + request.DraftName + "' could not be discarded; discard it with discard-draft.",
                 facts));
         }
-        return CommandOutcome<RecordImportResponse>.Success(Summarize(found, staged.Value!.Lowering, DraftMode, request.Page,
+        return CommandOutcome<RecordImportResponse>.Success(Summarize(found, staged.Value!.Lowering, DraftMode, request,
             created.Value!.DraftName, created.Value.ProposalId));
     }
 
@@ -289,37 +280,50 @@ public static partial class RecordImportCommand
         return rows;
     }
 
-    private static RecordImportResponse Summarize(Planned found, RecordLowering lowering, string mode, int page,
+    /// <summary>The refusal for a bad cursor or limit, or null.</summary>
+    private static Refusal? PagingRefusal(RecordImportRequest request, int defaultLimit)
+    {
+        var limit = request.Limit ?? defaultLimit;
+        if (request.DirPath is not null && request.Limit is not null && request.Rows != true && request.Cursor is null)
+            return new Refusal(RefusalCodes.PagingInvalid, FailureReason.InvalidArgument, "A folder import lists file rows only with rows, so give rows with limit.");
+        if (request.CursorOffset() < 0)
+            return new Refusal(RefusalCodes.PagingInvalid, FailureReason.InvalidArgument, "The cursor must be the nextCursor a previous page returned.");
+        if (!ResultPaging.IsValid(0, limit))
+            return new Refusal(RefusalCodes.PagingInvalid, FailureReason.InvalidArgument, $"Use a limit from 1 to {ResultPaging.MaxLimit}.");
+        return null;
+    }
+
+    private static RecordImportResponse Summarize(Planned found, RecordLowering lowering, string mode, RecordImportRequest request,
         string? draftName, string? proposalId)
     {
         var refusals = Refusals(found, lowering);
         var operations = lowering.Operations;
-        var size = RecordImportPaging.PageSize;
+        var size = request.Limit ?? RecordImportPaging.PageSize;
+        var start = request.CursorOffset();
         var changes = found.Plan.ChangeSet.Changes;
-        var pageCount = PageCount(operations.Count, refusals.Count, changes.Count);
-        var pageOperations = operations.Skip((page - 1) * size).Take(size).ToList();
-        var pageRefusals = refusals.Skip((page - 1) * size).Take(size).ToList();
-        var pageChanges = changes.Skip((page - 1) * size).Take(size).ToList();
+        var longest = Math.Max(Math.Max(operations.Count, refusals.Count), changes.Count);
+        var nextCursor = ResultPaging.NextCursor(start, Math.Min(size, Math.Max(0, longest - start)), longest);
+        var pageOperations = operations.Skip(start).Take(size).ToList();
+        var pageRefusals = refusals.Skip(start).Take(size).ToList();
+        var pageChanges = changes.Skip(start).Take(size).ToList();
         // Text is shortened until the response fits, so long or non-ASCII names stay within 2 KB.
         for (var length = RecordImportPaging.TextLength; ; length /= 2)
         {
             var response = new RecordImportResponse(mode, found.Plan.Kind,
                 found.Plan.RecordGuid is { } record ? CanonicalId.FromGuid(record).Value : null,
                 found.Plan.BaseVerdict.ToString().ToLowerInvariant(), found.Plan.ChangeSet.Changes.Count, operations.Count,
-                refusals.Count, page, pageCount,
+                refusals.Count,
                 pageOperations.Select(operation => new RecordImportOperation(operation.OperationId.Value,
                     Clip(operation.Kind, length)!, operation.Target?.Value)).ToList(),
                 pageRefusals.Select(row => row with { Class = Clip(row.Class, length), Field = Clip(row.Field, length)!,
                     Reason = Clip(row.Reason, length)! }).ToList(), draftName, proposalId,
                 pageChanges.Select((change, offset) => ChangeRow(change, length,
-                    lowering.RefusedChanges?.GetValueOrDefault((page - 1) * size + offset))).ToList());
+                    lowering.RefusedChanges?.GetValueOrDefault(start + offset))).ToList(),
+                null, null, null, nextCursor);
             if (length <= 1 || ProjectionJson.ToUtf8Bytes(response).Length <= RecordImportPaging.SummaryBytes)
                 return response;
         }
     }
-
-    private static int PageCount(int operations, int refusals, int changes) =>
-        Math.Max(1, (Math.Max(Math.Max(operations, refusals), changes) + RecordImportPaging.PageSize - 1) / RecordImportPaging.PageSize);
 
     private static RecordImportChange ChangeRow(RecordChange change, int length, string? refusalCode) =>
         new(change.Kind.ToString(), Clip(change.ObjectType, length), Clip(change.Field, length)!,

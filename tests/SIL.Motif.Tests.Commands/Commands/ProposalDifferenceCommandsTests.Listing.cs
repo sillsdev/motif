@@ -167,7 +167,7 @@ public sealed partial class ProposalDifferenceCommandsTests
         Assert.Equal(ProposalDifferenceListing.MostPlacesPerWord, fixture.CountWord(id, "w00000", "ProposalDifferenceOccurrences"));
         var first = ProposalDifferenceCommands.Show(fixture.ShowRequest() with
         {
-            Word = "w00000", OccurrenceLimit = 4,
+            Word = "w00000", Limit = 4,
         }).Value!;
         var word = Assert.Single(first.Words);
         Assert.Equal(25, word.Occurrences);
@@ -175,20 +175,20 @@ public sealed partial class ProposalDifferenceCommandsTests
         Assert.Equal(10, first.Occurrences.Listed);
         Assert.Equal(10, first.Occurrences.PlacesListed);
         Assert.Equal(4, first.Occurrences.Places.Count);
-        Assert.Equal(4, first.Occurrences.NextOffset);
+        Assert.Equal(SIL.Motif.Contract.Responses.ResultPaging.Cursor(4), first.Occurrences.NextCursor);
 
         var all = new List<ProposalDifferenceOccurrencePlace>(first.Occurrences.Places);
-        int? next = first.Occurrences.NextOffset;
+        string? next = first.Occurrences.NextCursor;
         var pages = 1;
-        while (next is { } offset)
+        while (next is { } cursor)
         {
             var page = ProposalDifferenceCommands.Show(fixture.ShowRequest() with
             {
-                Word = "w00000", OccurrenceLimit = 4, OccurrenceOffset = offset,
+                Word = "w00000", Limit = 4, Cursor = cursor,
             }).Value!.Occurrences!;
             Assert.NotEmpty(page.Places);
             all.AddRange(page.Places);
-            next = page.NextOffset;
+            next = page.NextCursor;
             pages++;
         }
         Assert.Equal(3, pages);
@@ -201,10 +201,10 @@ public sealed partial class ProposalDifferenceCommandsTests
 
         var beyond = ProposalDifferenceCommands.Show(fixture.ShowRequest() with
         {
-            Word = "w00000", OccurrenceOffset = 10,
+            Word = "w00000", Cursor = SIL.Motif.Contract.Responses.ResultPaging.Cursor(10),
         }).Value!.Occurrences!;
         Assert.Empty(beyond.Places);
-        Assert.Null(beyond.NextOffset);
+        Assert.Null(beyond.NextCursor);
         Assert.Equal(25, beyond.Total);
 
         var whole = ProposalDifferenceCommands.Show(fixture.ShowRequest() with { Word = "w00001" }).Value!.Occurrences!;
@@ -225,7 +225,7 @@ public sealed partial class ProposalDifferenceCommandsTests
         Assert.Equal(7, fixture.CountWord(id, "w00000", "ProposalDifferenceOccurrences"));
         Assert.Null(page.Listed);
         Assert.Equal(7, page.PlacesListed);
-        Assert.Null(page.NextOffset);
+        Assert.Null(page.NextCursor);
         Assert.DoesNotContain("Listed", System.Text.Json.JsonSerializer.Serialize(page));
     }
 

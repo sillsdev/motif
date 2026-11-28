@@ -77,9 +77,10 @@ public sealed class GroupArgvTests(PristineProjectFixture pristine) : IDisposabl
         var before = File.ReadAllBytes(project);
         Assert.NotEqual(0, (await Run(project, "--format", "yaml")).ExitCode);
         Assert.NotEqual(0, (await Run(project, "--limit", "0")).ExitCode);
-        var refused = await Run(project, "--page", "9", "--json");
+        Assert.NotEqual(0, (await Run(project, "--page", "9", "--json")).ExitCode);
+        var refused = await Run(project, "--cursor", "9", "--json");
         Assert.NotEqual(0, refused.ExitCode);
-        Assert.Contains("group.request-invalid", refused.Output + refused.Error, StringComparison.Ordinal);
+        Assert.Contains("--cursor", refused.Output + refused.Error, StringComparison.Ordinal);
         Assert.Equal(before, File.ReadAllBytes(project));
     }
 }

@@ -35,7 +35,7 @@ public sealed class GrammarCoverageReadDriver(ProjectLocator project)
                 GrammarCoverageReadFailure.Unavailable => (FailureReason.NotFound, "corpus.index-unavailable"),
                 GrammarCoverageReadFailure.ExpiredPin => (FailureReason.NotFound, "corpus.revision-unavailable"),
                 GrammarCoverageReadFailure.Busy => (FailureReason.Busy, "project.busy"),
-                GrammarCoverageReadFailure.InvalidCursor => (FailureReason.InvalidArgument, "corpus.invalid-cursor"),
+                GrammarCoverageReadFailure.InvalidCursor => (FailureReason.InvalidArgument, "paging.invalid"),
                 _ => (FailureReason.InvalidArgument, "corpus.invalid-request"),
             };
             return JsonSerializer.SerializeToElement(new FailureEnvelope(reason, exception.Message, code: code), Wire);

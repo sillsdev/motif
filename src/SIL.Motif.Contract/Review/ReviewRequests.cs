@@ -27,14 +27,13 @@ public readonly record struct ReviewReportId
 /// <param name="Case">Select one reported case.</param>
 /// <param name="Trace">Read a trace for the selected word or case.</param>
 /// <param name="Side">Select the before or after readings.</param>
-/// <param name="Cursor">Continuation from the same report and filters.</param>
+/// <param name="Cursor">Continuation from the same report and filters. On a summary read it continues the retirement signature rows.</param>
 /// <param name="Limit">Maximum page items. Default 50.</param>
-/// <param name="Page">Page of the retirement signature rows of a saved report. Default 1.</param>
 public sealed record ReviewReadRequest(
     string ProjectKey, string ProposalId, string? JobId = null, string? ReportId = null,
     DetailLevel? Detail = null, string? Section = null, string? Set = null, string? Outcome = null,
     ReviewFlagId? Flag = null, string? Filter = null, string? Word = null, string? Case = null,
-    bool Trace = false, Side? Side = null, string? Cursor = null, int? Limit = null, int? Page = null, bool Latest = false)
+    bool Trace = false, Side? Side = null, string? Cursor = null, int? Limit = null, bool Latest = false)
 {
     /// <summary>Maximum UTF-8 bytes for the compact live identity response, including its success envelope.</summary>
     public const int LatestMaximumUtf8Bytes = 2048;
@@ -62,13 +61,10 @@ public sealed record ReviewReadRequest(
             if (Word is null && Case is null) return "child section requires a word or case";
             if (Trace) return "child section cannot select a trace";
         }
-        if (Page is < 1) return "page must be a positive integer";
-        if (Page is not null && (Section is not null || Trace || Cursor is not null || Word is not null || Case is not null))
-            return "page reads the retirement rows of the report summary only";
         if (JobId is not null && ReportId is not null) return "job and report are exclusive";
         if (Latest && (JobId is not null || ReportId is not null || Detail is not null || Section is not null ||
             Set is not null || Outcome is not null || Flag is not null || Filter is not null || Word is not null ||
-            Case is not null || Trace || Side is not null || Cursor is not null || Limit is not null || Page is not null))
+            Case is not null || Trace || Side is not null || Cursor is not null || Limit is not null))
             return "latest selects only the newest Trial job and cannot use report selectors";
         if (Word is not null && Case is not null) return "word and case are exclusive";
         if (Trace && Word is null && Case is null) return "trace requires a word or case";
@@ -79,8 +75,10 @@ public sealed record ReviewReadRequest(
         if (!Trace && Side is not null && Section is not null and not "readings") return "side only filters readings";
         if ((Word is not null || Case is not null || Trace) && Detail is not null and not DetailLevel.Full)
             return "word, case and trace require full detail";
-        if ((Cursor is not null || Limit is not null || Filter is not null || Outcome is not null || Flag is not null) &&
-            EffectiveDetail != DetailLevel.Full) return "cursor and list filters require full detail";
+        if ((Filter is not null || Outcome is not null || Flag is not null) &&
+            EffectiveDetail != DetailLevel.Full) return "list filters require full detail";
+        if (Cursor is not null && EffectiveDetail != DetailLevel.Full && !SIL.Motif.Contract.Responses.ResultPaging.TryOffset(Cursor, out _))
+            return "cursor must be the nextCursor a previous page returned";
         if (Limit is < MinimumPageSize or > MaximumPageSize) return "limit must be between 1 and 200";
         if (Filter is not null and not ("all" or "changed" or "unchanged" or "review" or "incomplete"))
             return "unknown filter";

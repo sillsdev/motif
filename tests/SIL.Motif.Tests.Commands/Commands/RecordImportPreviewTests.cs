@@ -229,10 +229,11 @@ public sealed class RecordImportPreviewTests(PristineProjectFixture pristine) : 
         var (project, file, _) = Fixture(senses: 8, editEvery: true);
 
         var first = RecordImportCommand.Run(new(project, file)).Value!;
-        var second = RecordImportCommand.Run(new(project, file, null, 2)).Value!;
+        var second = RecordImportCommand.Run(new(project, file, null, first.NextCursor)).Value!;
 
         Assert.Equal(8, first.ChangeCount);
-        Assert.Equal(2, first.PageCount);
+        Assert.NotNull(first.NextCursor);
+        Assert.Null(second.NextCursor);
         Assert.Equal(4, first.Changes!.Count);
         Assert.Equal(4, second.Changes!.Count);
         var shown = first.Changes.Concat(second.Changes).ToList();
@@ -349,12 +350,17 @@ public sealed class RecordImportPreviewTests(PristineProjectFixture pristine) : 
         File.WriteAllText(file, text.Replace("zzedited", new string('\u00e9', 400), StringComparison.Ordinal)
             .Replace("zzgloss", new string('\u4e2d', 400), StringComparison.Ordinal));
 
-        for (var page = 1; page <= 3; page++)
+        string? cursor = null;
+        var pages = 0;
+        do
         {
-            var response = RecordImportCommand.Run(new(project, file, null, page)).Value!;
-            Assert.Equal(3, response.PageCount);
-            Assert.True(Encoding.UTF8.GetByteCount(ProjectionJson.Serialize(response)) <= RecordImportPaging.SummaryBytes, "page " + page);
+            var response = RecordImportCommand.Run(new(project, file, null, cursor)).Value!;
+            Assert.True(Encoding.UTF8.GetByteCount(ProjectionJson.Serialize(response)) <= RecordImportPaging.SummaryBytes, "page " + pages);
+            cursor = response.NextCursor;
+            pages++;
         }
+        while (cursor is not null);
+        Assert.Equal(3, pages);
     }
 
     [Fact]

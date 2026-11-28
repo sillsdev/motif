@@ -155,11 +155,8 @@ internal static class CatalogTools
             limit["maximum"] = page.Maximum;
             limit["default"] = page.Default;
         }
-        if (command.RequestType == typeof(ReadTrialExportRequest))
-            schema["properties"]!["page"]!["minimum"] = 1;
         if (command.RequestType == typeof(CompareProposalsRequest))
         {
-            schema["properties"]!["page"]!["minimum"] = 1;
             schema["properties"]!["proposal_ids"]!["minItems"] = 2;
             schema["properties"]!["proposal_ids"]!["maxItems"] = ProposalComparison.MaxProposals;
         }
@@ -173,7 +170,6 @@ internal static class CatalogTools
             properties["limit"]!["minimum"] = 1;
             properties["limit"]!["maximum"] = WordGrouping.MaxLimit;
             properties["limit"]!["default"] = WordGrouping.DefaultLimit;
-            properties["page"]!["minimum"] = 1;
             properties["min_stem"]!["minimum"] = 1;
             properties["min_stem"]!["default"] = WordGrouping.DefaultMinStem;
             properties["pattern"]!["maxLength"] = WordGrouping.MaxPatternLength;
@@ -185,7 +181,6 @@ internal static class CatalogTools
             properties["limit"]!["minimum"] = 1;
             properties["limit"]!["maximum"] = WordTypeDispositionCommands.MaxLimit;
             properties["limit"]!["default"] = WordTypeDispositionCommands.DefaultLimit;
-            properties["page"]!["minimum"] = 1;
         }
         if (command.RequestType == typeof(CoverageRequest))
         {

@@ -28,9 +28,11 @@ public static class GroupQueryCommand
         if (asOf is not null && asOf != "baseline" && !CanonicalId.TryParse(asOf, out _))
             return Refuse(RefusalCodes.GroupAsOfUnavailable, FailureReason.Refused,
                 $"'{asOf}' is neither 'baseline' nor a Proposal id. Revision digests cannot be resolved yet.");
+        if (request.CursorOffset() < 0)
+            return Refuse(RefusalCodes.PagingInvalid, FailureReason.InvalidArgument, "The cursor must be the nextCursor a previous page returned.");
         var spec = new GroupSpec(request.Kind, request.Kind == WordGrouping.Suffix ? request.Ending
             : request.Kind == WordGrouping.Prefix ? request.Start : null, request.Pattern, request.ParseState,
-            request.Limit, request.Page, request.MinStem);
+            request.Limit, request.Cursor, request.MinStem);
         if (request.Kind == WordGrouping.Suffix && request.Start is not null ||
             request.Kind == WordGrouping.Prefix && request.Ending is not null)
             return Refuse(RefusalCodes.GroupRequestInvalid, FailureReason.InvalidArgument,

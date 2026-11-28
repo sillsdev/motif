@@ -30,7 +30,7 @@ public sealed class RefusalCodeRegistryTests
 
     // Dotted literals that are not refusal codes: finding and advisory codes, cgroups, SQL tables, trace spans.
     private static readonly Regex NotRefusalCodes = new(
-        "^(?:change\\.(?:abstract|at|dropped|gained|left|right)$|letters\\.(?:dropped|gained)$|assess\\.unavailable$|review\\.(?:cursor-invalid|detail-unavailable)$|motif\\.(?:review-word-set|proposal-review-report)$|motif\\.(?:list|block)\\.|proposal\\.(?:rationale|read)$|delta\\.|cgroup\\.|cpu\\.|memory\\.|facts\\.|sil\\.lcmodel$|parse\\.(?:allomorph\\.|state$)|base\\.(?:parse\\.state|readings)$|" +
+        "^(?:change\\.(?:abstract|at|dropped|gained|left|right)$|letters\\.(?:dropped|gained)$|assess\\.unavailable$|review\\.detail-unavailable$|motif\\.(?:review-word-set|proposal-review-report)$|motif\\.(?:list|block)\\.|proposal\\.(?:rationale|read)$|delta\\.|cgroup\\.|cpu\\.|memory\\.|facts\\.|sil\\.lcmodel$|parse\\.(?:allomorph\\.|state$)|base\\.(?:parse\\.state|readings)$|" +
         "lexicon\\.(?:stem-typed-as-content-word|duplicate-entry|affix-hyphen-on-wrong-side)$|" +
         "job\\.claim-lost$|grammar\\.(?:allomorph\\.shadowed$|compile\\.failed$|empty-lexicon|orphan-environment|required-slot-empty|negated-feature-value|derived-stem-keeps-from-class|template-has-no-slots|phoneme-spelling-ambiguous|phoneme-case-alias-missing|phoneme-never-used$|allomorph-environment-ignored-by-parser|allomorph-repeats-environment-material|restricted-solid-blocks-hyphen|stored-analysis\\.)|" +
         "compose\\.(?:repeated-condition|whole-word-environment|one-stem-inflection-class|shadowed-alternate)$|" +
@@ -80,6 +80,18 @@ public sealed class RefusalCodeRegistryTests
         Assert.Empty(registered.Where(code => !RefusalCatalog.Specs.ContainsKey(code)).Order(StringComparer.Ordinal));
         Assert.Empty(RefusalCatalog.Specs.Keys.Where(code => !registered.Contains(code)).Order(StringComparer.Ordinal));
         Assert.All(RefusalCatalog.Specs, pair => Assert.Equal(pair.Key, pair.Value.Code));
+    }
+
+    [Fact]
+    public void ABadCursorOrLimitRefusesWithPagingInvalidAndNoOtherCodeNamesACursorOrAPage()
+    {
+        var offenders = RefusalCatalog.Specs.Keys
+            .Where(code => code != RefusalCodes.PagingInvalid &&
+                Regex.IsMatch(code, "cursor|page|continuation|offset", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+            .Order(StringComparer.Ordinal).ToArray();
+
+        Assert.Equal("paging.invalid", RefusalCodes.PagingInvalid);
+        Assert.Empty(offenders);
     }
 
     [Fact]

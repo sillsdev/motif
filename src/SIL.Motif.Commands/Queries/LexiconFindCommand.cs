@@ -63,9 +63,9 @@ public static class LexiconFindCommand
     public static Refusal? Validate(LexiconFindRequest request)
     {
         if (request.CursorOffset() is < 0 or > MaximumOffset)
-            return InvalidRefusal("The cursor must be the nextCursor a previous page returned.");
+            return PagingRefusal("The cursor must be the nextCursor a previous page returned.");
         if (request.Limit is < 1 or > MaximumPageSize)
-            return InvalidRefusal($"The limit must be between 1 and {MaximumPageSize}.");
+            return PagingRefusal($"The limit must be between 1 and {MaximumPageSize}.");
         if (request.FormRegex is { } composable)
         {
             try { _ = PatternNormalization.Pattern(composable); }
@@ -157,6 +157,9 @@ public static class LexiconFindCommand
                 break;
         }
     }
+
+    private static Refusal PagingRefusal(string message) =>
+        new(RefusalCodes.PagingInvalid, FailureReason.InvalidArgument, message);
 
     private static Refusal InvalidRefusal(string message) =>
         new(RefusalCodes.LexiconFindInvalidRequest, FailureReason.InvalidArgument, message);

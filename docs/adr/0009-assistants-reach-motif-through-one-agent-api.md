@@ -140,7 +140,9 @@ not weeks, without weakening those requirements. Test inputs follow
 
 Tools use `motif_<verb>` or `motif_<verb>_<noun>` and snake_case arguments; `proposal` and `project` mean the
 same thing everywhere. Return IDs exactly with prefixes; `detail` is concise by default or detailed.
-Responses above about 4000 tokens page instead of inlining. Proposal label, Rationale, Comments and
+Responses above about 4000 tokens page instead of inlining. Every paged read takes the same pair, an opaque `cursor` and a `limit`, and returns a string
+`nextCursor` that is absent on the last page; there are no page numbers, offsets, `after` cursors or
+per-tool continuation fields. A malformed cursor or an out-of-range limit refuses with `paging.invalid`, the one code every paged read uses for either; no per-command cursor or page code exists. The largest limit is 200, except phonology examples, whose largest limit is 100 because of the serialized page-size cap. Proposal label, Rationale, Comments and
 operation citations follow [ADR 0007](0007-a-proposal-has-one-lifecycle-a-conversation-citations-and-one-apply-path.md).
 Every Proposal response says whether a person commented since Rationale was set and tells the agent to
 read it when needed; no server-initiated turn is assumed.

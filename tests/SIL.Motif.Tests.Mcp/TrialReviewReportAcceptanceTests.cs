@@ -55,12 +55,12 @@ public sealed class TrialReviewReportAcceptanceTests
         Assert.InRange(System.Text.Encoding.UTF8.GetByteCount(brief.Output), 1, 2000);
 
         args["at"] = cliReceipt.GetProperty("reportDigest").Clone();
-        args["page"] = JsonSerializer.SerializeToElement(1);
+        args["limit"] = JsonSerializer.SerializeToElement(100);
         var mcpPage = await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Load("full")),
             "motif_proposal_trial_export", args, CancellationToken.None);
         Assert.NotEqual(true, mcpPage.IsError);
         var cliPage = await CliProcess.RunAsync(managedRoot, null, false, "proposal", "trial", "export",
-            receipt.JobId, "--project", fixture.Project, "--at", args["at"].GetString()!, "--page", "1", "--json");
+            receipt.JobId, "--project", fixture.Project, "--at", args["at"].GetString()!, "--limit", "100", "--json");
         Assert.True(cliPage.ExitCode == 0, cliPage.Error);
         using var pageJson = JsonDocument.Parse(cliPage.Output);
         Assert.True(JsonElement.DeepEquals(pageJson.RootElement, mcpPage.StructuredContent!.Value.GetProperty("result")));
@@ -171,7 +171,7 @@ public sealed class TrialReviewReportAcceptanceTests
             args["side"] = JsonSerializer.SerializeToElement("after");
             var invalid = await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Load("full")), "motif_difference", args, CancellationToken.None);
             Assert.True(invalid.IsError);
-            Assert.Equal("review.cursor-invalid", invalid.StructuredContent!.Value.GetProperty("code").GetString());
+            Assert.Equal("paging.invalid", invalid.StructuredContent!.Value.GetProperty("code").GetString());
         }
         finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
     }

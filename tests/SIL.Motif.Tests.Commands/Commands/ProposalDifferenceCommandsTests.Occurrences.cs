@@ -17,18 +17,18 @@ public sealed partial class ProposalDifferenceCommandsTests
         var id = ProposalDifferenceCommands.Produce(fixture.ProduceRequest()).Value!.Summary.DifferenceId;
 
         var first = ProposalDifferenceCommands.Show(new ProposalDifferenceShowRequest(fixture.ProjectPath,
-            DifferenceId: id, Word: "sita", OccurrenceLimit: 1)).Value!;
+            DifferenceId: id, Word: "sita", Limit: 1)).Value!;
         var second = ProposalDifferenceCommands.Show(new ProposalDifferenceShowRequest(fixture.ProjectPath,
-            DifferenceId: id, Word: "sita", OccurrenceOffset: 1, OccurrenceLimit: 1)).Value!;
+            DifferenceId: id, Word: "sita", Cursor: SIL.Motif.Contract.Responses.ResultPaging.Cursor(1), Limit: 1)).Value!;
 
         Assert.Equal(["sita"], first.Words.Select(word => word.Word));
         Assert.Equal("sita", first.Occurrences!.Word);
         Assert.Equal(2, first.Occurrences.Total);
         var one = Assert.Single(first.Occurrences.Places);
         Assert.Equal(fixture.TextId.ToString("D"), one.TextId);
-        Assert.Equal(1, first.Occurrences.NextOffset);
+        Assert.Equal(SIL.Motif.Contract.Responses.ResultPaging.Cursor(1), first.Occurrences.NextCursor);
         var two = Assert.Single(second.Occurrences!.Places);
-        Assert.Null(second.Occurrences.NextOffset);
+        Assert.Null(second.Occurrences.NextCursor);
         Assert.True((one.LineNumber, one.OccurrenceIndex) != (two.LineNumber, two.OccurrenceIndex));
         Assert.True((one.LineNumber, one.OccurrenceIndex).CompareTo((two.LineNumber, two.OccurrenceIndex)) < 0);
     }
@@ -73,11 +73,11 @@ public sealed partial class ProposalDifferenceCommandsTests
 
         foreach (var request in new[]
         {
-            new ProposalDifferenceShowRequest(fixture.ProjectPath, ProposalId: fixture.ProposalId, Word: "sita", OccurrenceLimit: 0),
-            new ProposalDifferenceShowRequest(fixture.ProjectPath, ProposalId: fixture.ProposalId, Word: "sita", OccurrenceLimit: 201),
-            new ProposalDifferenceShowRequest(fixture.ProjectPath, ProposalId: fixture.ProposalId, Word: "sita", OccurrenceOffset: -1),
+            new ProposalDifferenceShowRequest(fixture.ProjectPath, ProposalId: fixture.ProposalId, Word: "sita", Limit: 0),
+            new ProposalDifferenceShowRequest(fixture.ProjectPath, ProposalId: fixture.ProposalId, Word: "sita", Limit: 201),
+            new ProposalDifferenceShowRequest(fixture.ProjectPath, ProposalId: fixture.ProposalId, Word: "sita", Cursor: "not-a-cursor"),
         })
-            Assert.Equal(RefusalCodes.DifferenceInvalidPage, ProposalDifferenceCommands.Show(request).Refusal!.Code);
+            Assert.Equal(RefusalCodes.PagingInvalid, ProposalDifferenceCommands.Show(request).Refusal!.Code);
     }
 
     [Fact]
@@ -133,20 +133,6 @@ public sealed partial class ProposalDifferenceCommandsTests
             ProposalId: fixture.ProposalId, Word: word)).Refusal!;
 
         Assert.Equal(RefusalCodes.DifferenceInvalidWord, refusal.Code);
-        Assert.Equal(FailureReason.InvalidArgument, refusal.Reason);
-    }
-
-    [Theory]
-    [InlineData(1, null)]
-    [InlineData(null, 10)]
-    public void PlaceOffsetOrLimitWithoutAWordIsRefusedInsteadOfIgnored(int? offset, int? limit)
-    {
-        using var fixture = new Fixture(_root);
-
-        var refusal = ProposalDifferenceCommands.Show(new ProposalDifferenceShowRequest(fixture.ProjectPath,
-            ProposalId: fixture.ProposalId, OccurrenceOffset: offset, OccurrenceLimit: limit)).Refusal!;
-
-        Assert.Equal(RefusalCodes.DifferenceOccurrenceNeedsWord, refusal.Code);
         Assert.Equal(FailureReason.InvalidArgument, refusal.Reason);
     }
 

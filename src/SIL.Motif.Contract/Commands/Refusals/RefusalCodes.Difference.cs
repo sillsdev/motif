@@ -16,10 +16,6 @@ public static partial class RefusalCodes
     public const string DifferenceInvalidBucket = "difference.invalid-bucket";
     /// <summary>A Difference limitation code is not one the product defines.</summary>
     public const string DifferenceInvalidLimitation = "difference.invalid-limitation";
-    /// <summary>A Difference place offset or limit was given without the word whose places they page.</summary>
-    public const string DifferenceOccurrenceNeedsWord = "difference.occurrence-needs-word";
-    /// <summary>A Difference page offset or limit is out of range.</summary>
-    public const string DifferenceInvalidPage = "difference.invalid-page";
     /// <summary>The Proposal id for a Difference is not a Motif id.</summary>
     public const string DifferenceInvalidProposal = "difference.invalid-proposal";
     /// <summary>A Difference decision state is not one the product defines.</summary>

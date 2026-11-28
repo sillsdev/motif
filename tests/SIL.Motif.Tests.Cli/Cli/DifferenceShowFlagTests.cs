@@ -13,8 +13,8 @@ public sealed class DifferenceShowFlagTests
 {
     [Theory]
     [InlineData("--limitation", "nonsense", "difference.invalid-limitation")]
-    [InlineData("--occurrence-limit", "0", "difference.invalid-page")]
-    [InlineData("--occurrence-limit", "201", "difference.invalid-page")]
+    [InlineData("--limit", "0", "paging.invalid")]
+    [InlineData("--limit", "201", "paging.invalid")]
     public void TheNewFlagsReachTheSharedCommandAndAreCheckedThereLikeTheMcpArguments(string flag, string value, string code)
     {
         var (exitCode, text) = RunShow("--word", "sita", flag, value);
@@ -32,17 +32,6 @@ public sealed class DifferenceShowFlagTests
 
         Assert.NotEqual(0, exitCode);
         Assert.Contains(code, text, StringComparison.Ordinal);
-    }
-
-    [Theory]
-    [InlineData("--occurrence-offset", "1")]
-    [InlineData("--occurrence-limit", "10")]
-    public void PlaceFlagsWithoutAWordAreRefusedInsteadOfIgnored(string flag, string value)
-    {
-        var (exitCode, text) = RunShow(flag, value);
-
-        Assert.NotEqual(0, exitCode);
-        Assert.Contains("difference.occurrence-needs-word", text, StringComparison.Ordinal);
     }
 
     private static (int ExitCode, string Text) RunShow(params string[] flagsAndValues)
@@ -80,8 +69,7 @@ public sealed class DifferenceShowFlagTests
 
         Assert.Contains("--limitation <code>", usage);
         Assert.Contains("--word <word>", usage);
-        Assert.Contains("--occurrence-offset <n>", usage);
-        Assert.Contains("--occurrence-limit <n>", usage);
+        Assert.DoesNotContain("--occurrence", usage);
     }
 
     [Fact]
@@ -92,7 +80,7 @@ public sealed class DifferenceShowFlagTests
             "baseline/1", new ProposalDifferencePolicy(), 1, 3, 0, 1, 0, 0, [], [], "pangloss", null, pin, pin, [], 0, [],
             "2026-10-31T00:00:00Z");
         var places = new ProposalDifferenceOccurrencePage("sita",
-            [new("text/1", "seg/1", 0, 4), new("text/1", "seg/2", 2, 9)], 3, 2);
+            [new("text/1", "seg/1", 0, 4), new("text/1", "seg/2", 2, 9)], 3, SIL.Motif.Contract.Responses.ResultPaging.Cursor(2));
 
         var rendered = CommandTextRenderer.Render(CommandOutcome<ProposalDifferenceResponse>.Success(
             new ProposalDifferenceResponse(summary, [], 0, null, true, places)), asJson: false);
@@ -100,7 +88,7 @@ public sealed class DifferenceShowFlagTests
         Assert.Contains("Places of sita: showing 2 of 3", rendered.Output);
         Assert.Contains("line 4, word 1", rendered.Output);
         Assert.Contains("line 9, word 3", rendered.Output);
-        Assert.Contains("--occurrence-offset 2", rendered.Output);
+        Assert.Contains("--cursor " + SIL.Motif.Contract.Responses.ResultPaging.Cursor(2), rendered.Output);
     }
 
     private static ProposalDifferenceSummary SummaryOf(string id, string reference, string title)

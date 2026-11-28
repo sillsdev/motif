@@ -80,7 +80,7 @@ public sealed class EvidenceExportTests : IDisposable
             var page = Page(tier, after, limit);
             Assert.True(page.Rows.Count <= limit);
             rows.AddRange(page.Rows);
-            after = page.Next;
+            after = page.NextCursor;
             pages++;
         } while (after is not null);
         return rows;
@@ -96,7 +96,7 @@ public sealed class EvidenceExportTests : IDisposable
 
         Assert.Equal("motif-decision-evidence/1", page.Format);
         Assert.Equal(3, page.Rows.Count);
-        Assert.Null(page.Next);
+        Assert.Null(page.NextCursor);
         Assert.All(page.Rows, row => Assert.False(row.Human));
         Assert.Equal(page.Rows.Select(row => row.ProposalId).OrderBy(id => id, StringComparer.Ordinal),
             page.Rows.Select(row => row.ProposalId));
@@ -107,7 +107,7 @@ public sealed class EvidenceExportTests : IDisposable
     {
         var page = Page();
         Assert.Empty(page.Rows);
-        Assert.Null(page.Next);
+        Assert.Null(page.NextCursor);
     }
 
     [Theory]
@@ -137,7 +137,7 @@ public sealed class EvidenceExportTests : IDisposable
         var page = Page(limit: 2);
 
         Assert.Equal(2, page.Rows.Count);
-        Assert.Null(page.Next);
+        Assert.Null(page.NextCursor);
     }
 
     [Fact]
@@ -162,8 +162,8 @@ public sealed class EvidenceExportTests : IDisposable
 
     [Theory]
     [InlineData("gold", null, 10, "evidence.unknown-tier")]
-    [InlineData(null, null, 0, "evidence.invalid-page")]
-    [InlineData(null, null, 501, "evidence.invalid-page")]
+    [InlineData(null, null, 0, "paging.invalid")]
+    [InlineData(null, null, 501, "paging.invalid")]
     public void ExportRefusesABadTierOrLimitWithItsCode(string? tier, string? after, int limit, string code) =>
         Assert.Equal(code, ProposalCommands.EvidenceExport(
             new EvidenceExportRequest(_fwDataPath, Version, tier, after, limit)).Refusal?.Code);
@@ -185,8 +185,8 @@ public sealed class EvidenceExportTests : IDisposable
 
         var refused = ProposalCommands.EvidenceExport(new EvidenceExportRequest(_fwDataPath, Version, null, after, 10));
 
-        Assert.Equal("evidence.invalid-cursor", refused.Refusal?.Code);
-        Assert.Contains("'after' must be the 'next' value", refused.Refusal!.Message);
+        Assert.Equal("paging.invalid", refused.Refusal?.Code);
+        Assert.Contains("The cursor must be the nextCursor", refused.Refusal!.Message);
     }
 
     [Fact]
@@ -202,7 +202,7 @@ public sealed class EvidenceExportTests : IDisposable
         {
             var page = Page(after: after, limit: 1);
             rows.AddRange(page.Rows);
-            after = page.Next;
+            after = page.NextCursor;
             if (after is not null) cursors.Add(after);
         } while (after is not null);
 
@@ -245,8 +245,8 @@ public sealed class EvidenceExportTests : IDisposable
         var first = Page(limit: 1);
 
         Assert.Single(first.Rows);
-        Assert.NotNull(first.Next);
-        var reachesIt = ProposalCommands.EvidenceExport(new EvidenceExportRequest(_fwDataPath, Version, null, first.Next, 1));
+        Assert.NotNull(first.NextCursor);
+        var reachesIt = ProposalCommands.EvidenceExport(new EvidenceExportRequest(_fwDataPath, Version, null, first.NextCursor, 1));
         Assert.False(reachesIt.Succeeded);
     }
 
@@ -282,9 +282,9 @@ public sealed class EvidenceExportTests : IDisposable
         var first = Page(limit: 1);
         Stage("misspelled-typo");
 
-        var refused = ProposalCommands.EvidenceExport(new EvidenceExportRequest(_fwDataPath, Version, null, first.Next, 1));
+        var refused = ProposalCommands.EvidenceExport(new EvidenceExportRequest(_fwDataPath, Version, null, first.NextCursor, 1));
 
-        Assert.Equal("evidence.invalid-cursor", refused.Refusal?.Code);
+        Assert.Equal("paging.invalid", refused.Refusal?.Code);
         Assert.Contains("Start the export again", refused.Refusal!.Message);
     }
 
@@ -295,12 +295,12 @@ public sealed class EvidenceExportTests : IDisposable
         var unfiltered = Page(limit: 1);
         var filtered = Page("ill-formed", limit: 1);
 
-        Assert.Equal("evidence.invalid-cursor", ProposalCommands.EvidenceExport(
-            new EvidenceExportRequest(_fwDataPath, Version, "ill-formed", unfiltered.Next, 1)).Refusal?.Code);
-        Assert.Equal("evidence.invalid-cursor", ProposalCommands.EvidenceExport(
-            new EvidenceExportRequest(_fwDataPath, Version, null, filtered.Next, 1)).Refusal?.Code);
-        Assert.Equal("evidence.invalid-cursor", ProposalCommands.EvidenceExport(
-            new EvidenceExportRequest(_fwDataPath, Version, "undecided", filtered.Next, 1)).Refusal?.Code);
+        Assert.Equal("paging.invalid", ProposalCommands.EvidenceExport(
+            new EvidenceExportRequest(_fwDataPath, Version, "ill-formed", unfiltered.NextCursor, 1)).Refusal?.Code);
+        Assert.Equal("paging.invalid", ProposalCommands.EvidenceExport(
+            new EvidenceExportRequest(_fwDataPath, Version, null, filtered.NextCursor, 1)).Refusal?.Code);
+        Assert.Equal("paging.invalid", ProposalCommands.EvidenceExport(
+            new EvidenceExportRequest(_fwDataPath, Version, "undecided", filtered.NextCursor, 1)).Refusal?.Code);
     }
 
     [Fact]
@@ -414,7 +414,7 @@ public sealed class EvidenceExportTests : IDisposable
         Stage("misspelled-typo");
         var path = Path.Combine(OutDirectory, "evidence.json");
 
-        var result = Cli("evidence", "export", "--out", path, "--page-size", "2", "--json");
+        var result = Cli("evidence", "export", "--out", path, "--limit", "2", "--json");
 
         Assert.True(result.ExitCode == 0, result.Error + result.Output);
         using var document = JsonDocument.Parse(File.ReadAllText(path));
@@ -454,7 +454,7 @@ public sealed class EvidenceExportTests : IDisposable
         Stage("ill-formed", "undecided", "ill-formed");
 
         var whole = Cli("evidence", "export");
-        var paged = Cli("evidence", "export", "--page-size", "1");
+        var paged = Cli("evidence", "export", "--limit", "1");
 
         Assert.Equal(0, whole.ExitCode);
         using var document = JsonDocument.Parse(whole.Output);
@@ -511,7 +511,7 @@ public sealed class EvidenceExportTests : IDisposable
     {
         var path = Path.Combine(OutDirectory, "evidence.json");
 
-        var result = Cli("evidence", "export", "--out", path, "--page-size", size);
+        var result = Cli("evidence", "export", "--out", path, "--limit", size);
 
         Assert.NotEqual(0, result.ExitCode);
         Assert.False(File.Exists(path));

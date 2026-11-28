@@ -15,7 +15,7 @@ motif phonology-examples results --project "C:\FieldWorks\Projects\Koro\Koro.fwd
 
 ## What it prints
 
-A page lists each example with its disposition, completion, observed form and how many rules applied, in authored order. A response with a continuation cursor has another page; pass that cursor as JSON with `--continuation`. A summary lists at most 32 applied rule ids and says how many it left out. `--example <id>` prints the complete retained example with every ordered, visited and applied rule, and `--out <path.json>` also writes that JSON to a file. `--example` cannot be combined with `--page-size` or `--continuation`.
+A page lists each example with its disposition, completion, observed form and how many rules applied, in authored order. A response with a `nextCursor` has another page; pass it back with `--cursor`, and `--limit <n>` sets the page size, from 1 to 100. A summary lists at most 32 applied rule ids and says how many it left out. `--example <id>` prints the complete retained example with every ordered, visited and applied rule, and `--out <path.json>` also writes that JSON to a file. `--example` cannot be combined with `--limit` or `--cursor`.
 
 ## Related commands
 

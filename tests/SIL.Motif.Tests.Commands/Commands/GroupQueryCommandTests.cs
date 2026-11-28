@@ -90,8 +90,8 @@ public sealed class GroupQueryCommandTests(PristineProjectFixture pristine)
         Assert.Equal(RefusalCodes.GroupRequestInvalid, both.Refusal!.Code);
         var none = GroupQueryCommand.Run(new GroupRequest(project, "suffix"));
         Assert.Equal(RefusalCodes.GroupRequestInvalid, none.Refusal!.Code);
-        var page = GroupQueryCommand.Run(new GroupRequest(project, "suffix", Ending: "an", Page: 9));
-        Assert.Equal(RefusalCodes.GroupRequestInvalid, page.Refusal!.Code);
+        var page = GroupQueryCommand.Run(new GroupRequest(project, "suffix", Ending: "an", Cursor: "9"));
+        Assert.Equal(RefusalCodes.PagingInvalid, page.Refusal!.Code);
     }
 
     [Fact]

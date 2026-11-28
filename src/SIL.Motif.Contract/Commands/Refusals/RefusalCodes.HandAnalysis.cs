@@ -13,8 +13,6 @@ public static partial class RefusalCodes
     public const string HandAnalysisOutcomeUnknown = "hand-analysis.outcome-unknown";
     public const string HandAnalysisSnapshotExpired = "hand-analysis.snapshot-expired";
     public const string HandAnalysisIndexUnavailable = "hand-analysis.index-unavailable";
-    public const string HandAnalysisInvalidCursor = "hand-analysis.invalid-cursor";
-    public const string HandAnalysisInvalidPageLimit = "hand-analysis.invalid-page-limit";
     public const string HandAnalysisSourceUnavailable = "hand-analysis.source-unavailable";
     public const string HandAnalysisInvalidBuffer = "hand-analysis.invalid-buffer";
     public const string HandAnalysisIncompleteReferences = "hand-analysis.incomplete-references";

@@ -980,6 +980,24 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         Assert.True(result.GetProperty("operationCount").GetInt32() > 0);
     }
 
+    [Theory]
+    [InlineData("motif_group", "page", 1)]
+    [InlineData("motif_disposition_list", "offset", 0)]
+    [InlineData("motif_import_record", "page", 1)]
+    [InlineData("motif_proposal_trial_export", "page_size", 10)]
+    public async Task TheOldPagingArgumentsAreRefusedAsUnknown(string tool, string argument, int value)
+    {
+        using var project = new WalkthroughProject(pristine);
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions(Profile: "full"));
+        var refused = await session.Client.CallToolAsync(tool, new Dictionary<string, object?>
+        {
+            ["project"] = project.FwDataPath,
+            [argument] = value,
+        });
+        Assert.True(refused.IsError);
+        Assert.Equal("tool.unknown-argument", refused.StructuredContent!.Value.GetProperty("code").GetString());
+    }
+
     [Fact]
     public async Task AddFeatureValueToolComposesItsOperationsIntoTheDraftAndRefusesUnknownArguments()
     {

@@ -142,7 +142,7 @@ public sealed class RecordBatchImportTests(PristineProjectFixture pristine) : ID
     }
 
     private RecordImportRequest Dry(Seed seed, string? draft = null) =>
-        new(seed.Project, null, draft, 1, false, Folder, true, null, null);
+        new(seed.Project, null, draft, null, false, Folder, true, null, null);
 
     private Dictionary<string, RecordImportFileRow> Rows(Seed seed)
     {

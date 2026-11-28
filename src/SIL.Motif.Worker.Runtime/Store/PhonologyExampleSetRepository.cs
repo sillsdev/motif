@@ -125,7 +125,7 @@ public sealed class PhonologyExampleSetRepository
             var cursor = hasMore && items.Count > 0
                 ? new PhonologySetListCursor(projectIdentity, items[^1].Revision.SetId)
                 : null;
-            var response = new PhonologyExamplesListResponse(items.AsReadOnly(), cursor);
+            var response = new PhonologyExamplesListResponse(items.AsReadOnly(), PhonologyCursorCodec.Encode(cursor));
             if (SerializedSize(response) <= PhonologyExampleValidation.MaxSerializedPageUtf8Bytes)
                 return response;
             if (items.Count == 0)
@@ -177,7 +177,7 @@ public sealed class PhonologyExampleSetRepository
                 ? new PhonologyPageCursor(revisionId, page[^1].Ordinal)
                 : null;
             var response = new PhonologyExamplesPageResponse(header,
-                page.Select(row => row.Example).ToArray(), cursor);
+                page.Select(row => row.Example).ToArray(), PhonologyCursorCodec.Encode(cursor));
             if (SerializedSize(response) <= PhonologyExampleValidation.MaxSerializedPageUtf8Bytes)
                 return response;
             if (page.Count == 0)

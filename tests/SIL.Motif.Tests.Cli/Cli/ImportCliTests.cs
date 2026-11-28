@@ -124,7 +124,7 @@ public sealed class ImportCliTests : IDisposable
         Assert.Contains("record-import.plan-refused", summary.Output, StringComparison.Ordinal);
         Assert.Equal(2, File.ReadAllLines(report).Length);
 
-        var page = Run("import", "--project", _project, "--dir", folder, "--page", "1", "--refused-only");
+        var page = Run("import", "--project", _project, "--dir", folder, "--rows", "--refused-only");
         Assert.True(page.ExitCode == 0, page.Error + page.Output);
         Assert.Contains("\"path\":\"bad.fw.md\"", page.Output, StringComparison.Ordinal);
         Assert.DoesNotContain("\"path\":\"entry.fw.md\"", page.Output, StringComparison.Ordinal);
@@ -146,6 +146,7 @@ public sealed class ImportCliTests : IDisposable
         Assert.NotEqual(0, Run("import", "--project", _project, "--file", _file, "--dir", _root).ExitCode);
         Assert.NotEqual(0, Run("import", "--project", _project, "--file", _file, "--report", "x.jsonl").ExitCode);
         Assert.NotEqual(0, Run("import", "--project", _project, "--dir", _root, "--refused-only").ExitCode);
+        Assert.NotEqual(0, Run("import", "--project", _project, "--dir", _root, "--limit", "5").ExitCode);
     }
 
     [Fact]
@@ -243,8 +244,8 @@ public sealed class ImportCliTests : IDisposable
     [InlineData("import --project {p}")]
     [InlineData("import --file {f}")]
     [InlineData("import --project {p} --file {f} --draft")]
-    [InlineData("import --project {p} --file {f} --page 0")]
-    [InlineData("import --project {p} --file {f} --page two")]
+    [InlineData("import --project {p} --file {f} --page 1")]
+    [InlineData("import --project {p} --file {f} --rows")]
     [InlineData("import --project {p} --file {f} --apply")]
     [InlineData("import --project {p} --file {f} extra")]
     public void UnknownOrBadArgumentsAreAUsageError(string template)
@@ -266,27 +267,26 @@ public sealed class ImportCliTests : IDisposable
     }
 
     [Fact]
-    public void PageTwoListsTheRestAndAPastTheEndPageIsRefusedWithItsCode()
+    public void TheNextCursorListsTheRestAndAMalformedCursorIsRefusedWithItsCode()
     {
         var (project, file) = SevenEdits(_pristine, Path.Combine(_root, "seven"));
 
         var one = Run("import", "--project", project, "--file", file, "--json");
-        var two = Run("import", "--project", project, "--file", file, "--page", "2", "--json");
+        var first = JsonNode.Parse(one.Output)!;
+        var two = Run("import", "--project", project, "--file", file, "--cursor", first["nextCursor"]!.GetValue<string>(), "--json");
 
         Assert.True(one.ExitCode == 0 && two.ExitCode == 0, one.Error + two.Error);
-        var first = JsonNode.Parse(one.Output)!;
         var second = JsonNode.Parse(two.Output)!;
-        Assert.Equal(2, second["pageCount"]!.GetValue<int>());
-        Assert.Equal(2, second["page"]!.GetValue<int>());
+        Assert.Null(second["nextCursor"]);
         Assert.Equal(4, first["operations"]!.AsArray().Count);
         Assert.Equal(3, second["operations"]!.AsArray().Count);
         Assert.Equal(4, first["changes"]!.AsArray().Count);
         Assert.Equal(3, second["changes"]!.AsArray().Count);
         var ids = first["operations"]!.AsArray().Concat(second["operations"]!.AsArray()).Select(item => item!["operationId"]!.GetValue<string>());
         Assert.Equal(7, ids.Distinct().Count());
-        var past = Run("import", "--project", project, "--file", file, "--page", "3", "--json");
-        Assert.NotEqual(0, past.ExitCode);
-        Assert.Equal(RefusalCodes.RecordImportInvalidPage, ProjectionJson.Deserialize<FailureEnvelope>(past.Error)!.Code);
+        var bad = Run("import", "--project", project, "--file", file, "--cursor", "4", "--json");
+        Assert.NotEqual(0, bad.ExitCode);
+        Assert.Equal(RefusalCodes.PagingInvalid, ProjectionJson.Deserialize<FailureEnvelope>(bad.Error)!.Code);
     }
 
     [Fact]

@@ -225,7 +225,7 @@ public sealed class FwHandAnalysisIndexTests : IDisposable, IHandAnalysisProject
         Assert.Null(second.NextCursor);
         Assert.All(first.Items.Concat(second.Items), item =>
             Assert.NotNull(Assert.IsType<WordFact.Reading>(item).Signature));
-        Assert.Equal(RefusalCodes.HandAnalysisInvalidCursor,
+        Assert.Equal(RefusalCodes.PagingInvalid,
             (await pin.WordsAsync(new WordQuery.Alternatives(new WordIdentity.Native(Guid.NewGuid()), WordOrder.Encounter),
                 new PageRequest(1, first.NextCursor), CancellationToken.None)).Refusal?.Code);
         Assert.Equal(RefusalCodes.HandAnalysisUnsupportedOperation,

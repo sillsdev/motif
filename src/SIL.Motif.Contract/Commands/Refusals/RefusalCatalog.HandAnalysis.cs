@@ -17,8 +17,6 @@ public static partial class RefusalCatalog
         Spec(RefusalCodes.HandAnalysisOutcomeUnknown, FailureReason.StoreInconsistent),
         Spec(RefusalCodes.HandAnalysisSnapshotExpired, FailureReason.Refused),
         Spec(RefusalCodes.HandAnalysisIndexUnavailable, FailureReason.Refused),
-        Spec(RefusalCodes.HandAnalysisInvalidCursor, FailureReason.InvalidArgument),
-        Spec(RefusalCodes.HandAnalysisInvalidPageLimit, FailureReason.InvalidArgument),
         Spec(RefusalCodes.HandAnalysisSourceUnavailable, FailureReason.Refused),
         Spec(RefusalCodes.HandAnalysisInvalidBuffer, FailureReason.InvalidArgument),
         Spec(RefusalCodes.HandAnalysisIncompleteReferences, FailureReason.Refused),

@@ -37,8 +37,9 @@ public sealed class ProposalCompareReadTests(Xunit.Abstractions.ITestOutputHelpe
 
     private static SIL.Motif.Contract.Commands.CommandOutcome<ProposalComparison> Compare(ProjectLocator project,
         string[] ids, string? at = null, int? page = null, string? snapshot = null,
-        ProposalCompareReads.ApprovedLoader? approved = null, string[]? jobs = null) =>
-        ProposalCompareReads.Read(new(project.FullFwDataPath, ids, at, page, snapshot, jobs), approved ?? Approvals([]));
+        ProposalCompareReads.ApprovedLoader? approved = null, string[]? jobs = null, string? cursor = null) =>
+        ProposalCompareReads.Read(new(project.FullFwDataPath, ids,
+            at, cursor ?? (page is { } number ? ResultPaging.Cursor((number - 1) * CompareRowPage.Size) : null), snapshot, jobs), approved ?? Approvals([]));
 
     private static ProposalCompareReads.ApprovedLoader Approvals(ApprovedAnalysisFact[] facts, string stamp = "stamp-1",
         int skipped = 0) => (_, _, _) => CommandOutcome<ProposalCompareReads.ApprovedBasis>.Success(new(stamp, ApprovedReadingSet.From(facts, skipped)));
@@ -95,7 +96,7 @@ public sealed class ProposalCompareReadTests(Xunit.Abstractions.ITestOutputHelpe
             Assert.Equal([3, 0, 2, 1, 0], Counts(summary.Columns[1]));
             Assert.False(summary.Complete);
             Assert.Contains(summary.Limitations, item => item.Code == "not-measured" && item.Count == 2);
-            Assert.Equal(1, summary.Pages);
+            Assert.Null(summary.Page);
         });
     }
 
@@ -216,7 +217,7 @@ public sealed class ProposalCompareReadTests(Xunit.Abstractions.ITestOutputHelpe
             Assert.Equal("proposal.compare-proposals-invalid", Compare(project, [ids[0]]).Refusal?.Code);
             Assert.Equal("proposal.compare-proposals-invalid", Compare(project, [ids[0], ids[0]]).Refusal?.Code);
             Assert.Equal("proposal.compare-proposals-invalid", Compare(project, [ids[0], "nonsense"]).Refusal?.Code);
-            Assert.Equal("evidence.invalid-page", Compare(project, ids[..2], page: 0).Refusal?.Code);
+            Assert.Equal("paging.invalid", Compare(project, ids[..2], cursor: "0").Refusal?.Code);
         });
     }
 
@@ -230,15 +231,16 @@ public sealed class ProposalCompareReadTests(Xunit.Abstractions.ITestOutputHelpe
             var b = AddTrial(database, project, forms.Select(form => form with { After = [1] }));
             var first = Compare(project, [a, b], page: 1).Value!;
             var third = Compare(project, [a, b], page: 3).Value!;
-            var beyond = Compare(project, [a, b], page: 4);
-            Assert.Equal("evidence.invalid-page", beyond.Refusal?.Code);
+            var beyond = Compare(project, [a, b], page: 4).Value!;
+            Assert.Empty(beyond.Page!.Rows);
+            Assert.Null(beyond.Page.NextCursor);
 
             Assert.Equal(250, first.RowsTotal);
-            Assert.Equal(3, first.Pages);
             Assert.Equal(100, first.Page!.Rows.Count);
-            Assert.Equal(2, first.Page.NextPage);
+            Assert.Equal(ResultPaging.Cursor(100), first.Page.NextCursor);
             Assert.Equal(50, third.Page!.Rows.Count);
-            Assert.Null(third.Page.NextPage);
+            Assert.Null(third.Page.NextCursor);
+            Assert.Empty(Compare(project, [a, b], cursor: ResultPaging.Cursor(300)).Value!.Page!.Rows);
             Assert.Equal(forms.Select(form => "key/" + form.Form).Order(StringComparer.Ordinal),
                 Enumerable.Range(1, 3).SelectMany(page => Compare(project, [a, b], page: page).Value!.Page!.Rows)
                     .Select(row => row.FormKey));
@@ -687,12 +689,12 @@ public sealed class ProposalCompareReadTests(Xunit.Abstractions.ITestOutputHelpe
             Assert.Equal(1, ProposalCompareReads.JoinsComputedFor(database.FullPath));
 
             timer.Restart();
-            for (var page = 1; page <= first.Pages; page++)
+            for (var page = 1; page <= 5; page++)
                 Assert.True(Compare(project, [a, b], page: page, snapshot: first.Snapshot).Succeeded);
             var pagesMs = timer.ElapsedMilliseconds;
 
             Assert.Equal(1, ProposalCompareReads.JoinsComputedFor(database.FullPath));
-            output.WriteLine($"forms={forms.Count} columns=2 pages={first.Pages} coldSummaryMs={coldMs} warmPagesMs={pagesMs} joins=1");
+            output.WriteLine($"forms={forms.Count} columns=2 pages=5 coldSummaryMs={coldMs} warmPagesMs={pagesMs} joins=1");
         });
     }
 }

@@ -94,8 +94,6 @@ public sealed record RecordImportDirSummary(int Files, int Created, int Updated,
 /// <param name="ChangeCount">The changes the file makes.</param>
 /// <param name="OperationCount">The operations those changes lowered to.</param>
 /// <param name="RefusalCount">The changes the import declines: the importer's, the lowering's, and those a scratch copy of the project refused when the operations were tried on it. A staged Draft holds none of them.</param>
-/// <param name="Page">The page listed, from 1.</param>
-/// <param name="PageCount">How many pages the longest of the three lists has.</param>
 /// <param name="Operations">This page of the operations, in the order to apply them.</param>
 /// <param name="Refusals">This page of the refusals.</param>
 /// <param name="DraftName">The Draft the operations were staged in; null for a dry run.</param>
@@ -104,6 +102,7 @@ public sealed record RecordImportDirSummary(int Files, int Created, int Updated,
 /// <param name="Dir">For a folder import, the counts and the first refused files; the fields above then hold totals and <c>baseVerdict</c> is <c>not-checked</c>.</param>
 /// <param name="Files">For a folder import asked for by page, that page of file rows.</param>
 /// <param name="ReportRows">For a folder import given a report path, every file row, for the host to write to that file; never serialized.</param>
+/// <param name="NextCursor">The cursor for the next page of the longest list (or of the file rows), or null at the end.</param>
 public sealed record RecordImportResponse(
     string Mode,
     string? RecordKind,
@@ -112,8 +111,6 @@ public sealed record RecordImportResponse(
     int ChangeCount,
     int OperationCount,
     int RefusalCount,
-    int Page,
-    int PageCount,
     IReadOnlyList<RecordImportOperation> Operations,
     IReadOnlyList<RecordImportRefusal> Refusals,
     string? DraftName = null,
@@ -121,4 +118,5 @@ public sealed record RecordImportResponse(
     IReadOnlyList<RecordImportChange>? Changes = null,
     RecordImportDirSummary? Dir = null,
     IReadOnlyList<RecordImportFileRow>? Files = null,
-    [property: System.Text.Json.Serialization.JsonIgnore] IReadOnlyList<RecordImportFileRow>? ReportRows = null);
+    [property: System.Text.Json.Serialization.JsonIgnore] IReadOnlyList<RecordImportFileRow>? ReportRows = null,
+    string? NextCursor = null);

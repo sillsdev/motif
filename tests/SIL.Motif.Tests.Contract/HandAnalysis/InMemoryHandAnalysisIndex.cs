@@ -114,7 +114,7 @@ internal sealed class InMemoryHandAnalysisIndex : IHandAnalysisIndex
             (T Row, string Key)[] ordered, CancellationToken ct, Page<T>? evidence = null)
         {
             if (page.Limit is < 1 or > PageRequest.MaxLimit)
-                return Refuse<Page<T>>(RefusalCodes.HandAnalysisInvalidPageLimit);
+                return Refuse<Page<T>>(RefusalCodes.PagingInvalid);
 
             var queryKey = JsonSerializer.Serialize(query);
             var start = 0;
@@ -122,10 +122,10 @@ internal sealed class InMemoryHandAnalysisIndex : IHandAnalysisIndex
             {
                 if (!index.cursors.TryGetValue(cursor, out var binding) ||
                     binding.SnapshotId != Stamp.SnapshotId || binding.QueryKey != queryKey)
-                    return Refuse<Page<T>>(RefusalCodes.HandAnalysisInvalidCursor);
+                    return Refuse<Page<T>>(RefusalCodes.PagingInvalid);
                 start = Array.FindIndex(ordered, row => row.Key == binding.LastOrderKey) + 1;
                 if (start == 0)
-                    return Refuse<Page<T>>(RefusalCodes.HandAnalysisInvalidCursor);
+                    return Refuse<Page<T>>(RefusalCodes.PagingInvalid);
             }
 
             var items = ordered.Skip(start).Take(page.Limit).Select(row => row.Row).ToImmutableArray();

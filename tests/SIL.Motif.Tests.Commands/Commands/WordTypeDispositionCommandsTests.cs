@@ -265,10 +265,12 @@ public sealed class WordTypeDispositionCommandsTests : IDisposable
         Recorded("misspelling", "typo", intended: "Aa", forms: ["Aaa"]);
 
         var first = WordTypeDispositionCommands.List(new ListDispositionsRequest(_project, "1.0", Limit: 3)).Value!;
-        Assert.Equal((6, 2, 1, 3), (first.Total, first.Pages, first.Page, first.Items.Count));
+        Assert.Equal((6, 3), (first.Total, first.Items.Count));
+        Assert.NotNull(first.NextCursor);
         Assert.Equal(["1", "2", "Aa"], first.Items.Select(i => i.Form));
-        var second = WordTypeDispositionCommands.List(new ListDispositionsRequest(_project, "1.0", Limit: 3, Page: 2)).Value!;
+        var second = WordTypeDispositionCommands.List(new ListDispositionsRequest(_project, "1.0", Limit: 3, Cursor: first.NextCursor)).Value!;
         Assert.Equal(["Aaa", "Bb", "Cc"], second.Items.Select(i => i.Form));
+        Assert.Null(second.NextCursor);
 
         var names = WordTypeDispositionCommands.List(new ListDispositionsRequest(_project, "1.0", "name")).Value!;
         Assert.Equal((3, "name"), (names.Total, names.Category));
@@ -278,15 +280,22 @@ public sealed class WordTypeDispositionCommandsTests : IDisposable
     }
 
     [Theory]
-    [InlineData("person", 50, 1)]
-    [InlineData(null, 0, 1)]
-    [InlineData(null, 201, 1)]
-    [InlineData(null, 50, 0)]
-    public void AnInvalidListRequestIsRefused(string? category, int limit, int page)
+    [InlineData("person", 50)]
+    [InlineData(null, 0)]
+    [InlineData(null, 201)]
+    public void AnInvalidListRequestIsRefused(string? category, int limit)
     {
-        var refused = WordTypeDispositionCommands.List(new ListDispositionsRequest(_project, "1.0", category, limit, page));
+        var refused = WordTypeDispositionCommands.List(new ListDispositionsRequest(_project, "1.0", category, limit));
 
         Assert.Equal(RefusalCodes.DispositionInvalid, refused.Refusal!.Code);
+    }
+
+    [Fact]
+    public void ACursorThisApiDidNotIssueIsRefusedAsPagingInvalid()
+    {
+        var refused = WordTypeDispositionCommands.List(new ListDispositionsRequest(_project, "1.0", Cursor: "0"));
+
+        Assert.Equal(RefusalCodes.PagingInvalid, refused.Refusal!.Code);
     }
 
     [Fact]
@@ -296,7 +305,8 @@ public sealed class WordTypeDispositionCommandsTests : IDisposable
         var listed = WordTypeDispositionCommands.List(new ListDispositionsRequest(_project, "1.0")).Value!;
 
         Assert.Null(shown.Current);
-        Assert.Equal((0, 1), (listed.Total, listed.Pages));
+        Assert.Equal(0, listed.Total);
+        Assert.Null(listed.NextCursor);
         Assert.Empty(Directory.GetFiles(_root, "*.db"));
     }
 

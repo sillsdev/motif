@@ -47,7 +47,7 @@ public static partial class ProposalCommands
                 $"'{request.Tier}' is not a tier. Use one of: {string.Join(", ", DecisionEvidence.Tiers)}."));
         if (request.CursorOffset() < 0 || request.Limit < 1 || request.Limit > 500)
             return CommandOutcome<DecisionEvidenceListResponse>.Refused(new Refusal(
-                "evidence.invalid-page", FailureReason.InvalidArgument,
+                RefusalCodes.PagingInvalid, FailureReason.InvalidArgument,
                 "The cursor must be the nextCursor a previous page returned and the limit between 1 and 500."));
         return ProjectStoreCommand.ReadExisting(request.FwDataPath,
             CommandOutcome<DecisionEvidenceListResponse>.Success(new(0, 0, new Dictionary<string, int>(), request.Limit, [])),
@@ -73,7 +73,7 @@ public static partial class ProposalCommands
 
     /// <summary>
     /// Reads one bounded page of every decision evidence record, in Proposal id order, so a caller can
-    /// stream a whole export without holding it; pass each page's <c>Next</c> as the following request's <c>After</c>.
+    /// stream a whole export without holding it; pass each page's <c>NextCursor</c> as the following request's <c>Cursor</c>.
     /// A page loads only the Proposals it reads rows from, pinned by `APageLoadsOnlyTheProposalsItReadsRowsFrom`,
     /// and refuses a cursor the store or filter has outgrown, pinned by `ACursorRefusesWhenAProposalWasAppliedAfterItWasIssued`.
     /// </summary>
@@ -85,21 +85,21 @@ public static partial class ProposalCommands
                 $"'{request.Tier}' is not a tier. Use one of: {string.Join(", ", DecisionEvidence.Tiers)}."));
         if (request.Limit < 1 || request.Limit > 500)
             return CommandOutcome<DecisionEvidenceExportResponse>.Refused(new Refusal(
-                RefusalCodes.EvidenceInvalidPage, FailureReason.InvalidArgument,
+                RefusalCodes.PagingInvalid, FailureReason.InvalidArgument,
                 "The limit must be between 1 and 500."));
         ExportCursor? cursor = null;
-        if (request.After is not null && !ExportCursor.TryParse(request.After, out cursor))
+        if (request.Cursor is not null && !ExportCursor.TryParse(request.Cursor, out cursor))
             return CommandOutcome<DecisionEvidenceExportResponse>.Refused(new Refusal(
-                RefusalCodes.EvidenceInvalidCursor, FailureReason.InvalidArgument,
-                "'after' must be the 'next' value an earlier page of this export returned."));
+                RefusalCodes.PagingInvalid, FailureReason.InvalidArgument,
+                "The cursor must be the nextCursor an earlier page of this export returned."));
         if (cursor is not null && cursor.Tier != request.Tier)
             return CommandOutcome<DecisionEvidenceExportResponse>.Refused(new Refusal(
-                RefusalCodes.EvidenceInvalidCursor, FailureReason.InvalidArgument,
-                "'after' came from an export with a different tier filter. Start the export again with the same tier."));
+                RefusalCodes.PagingInvalid, FailureReason.InvalidArgument,
+                "The cursor came from an export with a different tier filter. Start the export again with the same tier."));
         return ProjectStoreCommand.ReadExisting(request.FwDataPath,
             cursor is not null && cursor.Applied != 0
                 ? CommandOutcome<DecisionEvidenceExportResponse>.Refused(new Refusal(
-                    RefusalCodes.EvidenceInvalidCursor, FailureReason.InvalidArgument,
+                    RefusalCodes.PagingInvalid, FailureReason.InvalidArgument,
                     "Applied Proposals changed since this export began, so its later pages could miss records. " +
                     "Start the export again."))
                 : CommandOutcome<DecisionEvidenceExportResponse>.Success(new(DecisionEvidenceExport.Format, [], null)),
@@ -112,7 +112,7 @@ public static partial class ProposalCommands
                 var applied = AppliedListings(repository);
                 if (cursor is not null && cursor.Applied != applied.Length)
                     return CommandOutcome<DecisionEvidenceExportResponse>.Refused(new Refusal(
-                        RefusalCodes.EvidenceInvalidCursor, FailureReason.InvalidArgument,
+                        RefusalCodes.PagingInvalid, FailureReason.InvalidArgument,
                         "Applied Proposals changed since this export began, so its later pages could miss records. " +
                         "Start the export again."));
                 var rows = new List<DecisionEvidenceRow>();

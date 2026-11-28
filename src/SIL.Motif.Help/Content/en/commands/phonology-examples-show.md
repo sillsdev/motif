@@ -14,7 +14,7 @@ motif phonology-examples show --project "C:\FieldWorks\Projects\Koro\Koro.fwdata
 
 ## What it prints
 
-Each example includes its underlying form, expected forms, generation context, and optional citation. A continuation cursor marks another page; pass that cursor as JSON with `--continuation`.
+Each example includes its underlying form, expected forms, generation context, and optional citation. A `nextCursor` marks another page; pass it back with `--cursor`, and `--limit <n>` sets the page size, from 1 to 100.
 
 ## Related commands
 

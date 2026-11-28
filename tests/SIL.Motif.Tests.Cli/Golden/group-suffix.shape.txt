@@ -11,8 +11,6 @@
 /known Number
 /fitting Number
 /notFitting Number
-/page Number
-/pages Number
 /limit Number
 /capped False
 /notes array
@@ -28,3 +26,4 @@
 /rows[]/wordsTotal Number
 /rows[]/siblings array
 /rows[]/siblingsTotal Number
+/nextCursor Null

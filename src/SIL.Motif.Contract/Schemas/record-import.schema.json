@@ -30,9 +30,14 @@
           "type": "string",
           "minLength": 1
         },
-        "page": {
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "limit": {
           "type": "integer",
-          "minimum": 1
+          "minimum": 1,
+          "maximum": 200
         },
         "strict": {
           "type": "boolean"
@@ -213,8 +218,6 @@
         "changeCount",
         "operationCount",
         "refusalCount",
-        "page",
-        "pageCount",
         "operations",
         "refusals"
       ],
@@ -251,24 +254,20 @@
           "type": "integer",
           "minimum": 0
         },
-        "page": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "pageCount": {
-          "type": "integer",
-          "minimum": 1
+        "nextCursor": {
+          "type": "string",
+          "minLength": 1
         },
         "operations": {
           "type": "array",
-          "maxItems": 4,
+          "maxItems": 200,
           "items": {
             "$ref": "#/$defs/Operation"
           }
         },
         "refusals": {
           "type": "array",
-          "maxItems": 4,
+          "maxItems": 200,
           "items": {
             "$ref": "#/$defs/Refusal"
           }
@@ -281,7 +280,7 @@
         },
         "changes": {
           "type": "array",
-          "maxItems": 4,
+          "maxItems": 200,
           "items": {
             "$ref": "#/$defs/Change"
           }

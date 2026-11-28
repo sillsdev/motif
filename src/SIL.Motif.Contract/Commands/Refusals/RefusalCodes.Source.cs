@@ -40,10 +40,6 @@ public static partial class RefusalCodes
     public const string SourceIndexMissing = "source.index-missing";
     /// <summary>The Source index is stale or has a refresh pending.</summary>
     public const string SourceIndexStale = "source.index-stale";
-    /// <summary>The requested page size is outside the bounded read contract.</summary>
-    public const string SourcePassageLimitInvalid = "source.passage-limit-invalid";
-    /// <summary>The cursor is malformed or belongs to another Source or Passage.</summary>
-    public const string SourcePassageCursorInvalid = "source.passage-cursor-invalid";
     /// <summary>The indexed generation changed since the continuation was issued.</summary>
     public const string SourceGenerationChanged = "source.generation-changed";
 }

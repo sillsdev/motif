@@ -67,7 +67,8 @@ public static class TrialReadingDelta
         if (classes.Any(name => !ReadingDeltaClasses.All.Contains(name)))
             return Invalid("A class is one of " + string.Join(", ", ReadingDeltaClasses.All) + ".");
         if (request.CursorOffset() < 0 || request.Limit is < 1 or > ResultPaging.MaxLimit)
-            return Invalid($"Use an offset of zero or more and a limit from 1 to {ResultPaging.MaxLimit}.");
+            return CommandOutcome<ReadingDelta>.Refused(new Refusal(RefusalCodes.PagingInvalid, FailureReason.InvalidArgument,
+                $"The cursor must be the nextCursor a previous page returned and the limit from 1 to {ResultPaging.MaxLimit}."));
         if (request.ProposalId is not null && !CanonicalId.TryParse(request.ProposalId, out _))
             return Invalid("Name the Proposal by its Proposal ID.");
 
@@ -105,9 +106,9 @@ public static class TrialReadingDelta
         var inputs = new List<ReadingDeltaInput>();
         var unmeasured = new HashSet<string>(StringComparer.Ordinal);
         var limitations = new SortedSet<string>(StringComparer.Ordinal);
-        for (var number = 1; number <= receipt.Pages; number++)
+        for (var offset = 0; offset < receipt.Denominators.Submitted; offset += TrialExportPage.Size)
         {
-            var words = TrialExportArtifact.Read(database, receipt.JobId, page: number)?.Page?.Words
+            var words = TrialExportArtifact.Read(database, receipt.JobId, offset: offset)?.Page?.Words
                 ?? throw new InvalidDataException("A retained Trial export page is missing.");
             foreach (var word in words) Collect(word, inputs, unmeasured, limitations);
         }

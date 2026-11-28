@@ -231,13 +231,13 @@ public sealed class GrammarReadArgvTests(PristineProjectFixture pristine) : IDis
         var invalidKind = GrammarReadQuery.Query(new GrammarReadRequest(project.FwDataPath, (GrammarReadKind)999));
         Assert.False(invalidKind.Succeeded);
         Assert.Equal("grammar-read.invalid-request", invalidKind.Refusal!.Code);
-        AssertInvalidRequest(new GrammarReadRequest(project.FwDataPath, GrammarReadKind.phoneme, Limit: 0));
-        AssertInvalidRequest(new GrammarReadRequest(project.FwDataPath, GrammarReadKind.phoneme, Limit: 101));
-        AssertInvalidRequest(new GrammarReadRequest(project.FwDataPath, GrammarReadKind.phoneme, Cursor: SIL.Motif.Contract.Responses.ResultPaging.Cursor(-1)));
-        AssertInvalidRequest(new GrammarReadRequest(project.FwDataPath, GrammarReadKind.phoneme, Cursor: SIL.Motif.Contract.Responses.ResultPaging.Cursor(100_001)));
-        AssertInvalidRequest(new GrammarReadRequest(project.FwDataPath, GrammarReadKind.phoneme,
+        AssertInvalidRequest("paging.invalid", new GrammarReadRequest(project.FwDataPath, GrammarReadKind.phoneme, Limit: 0));
+        AssertInvalidRequest("paging.invalid", new GrammarReadRequest(project.FwDataPath, GrammarReadKind.phoneme, Limit: 101));
+        AssertInvalidRequest("paging.invalid", new GrammarReadRequest(project.FwDataPath, GrammarReadKind.phoneme, Cursor: SIL.Motif.Contract.Responses.ResultPaging.Cursor(-1)));
+        AssertInvalidRequest("paging.invalid", new GrammarReadRequest(project.FwDataPath, GrammarReadKind.phoneme, Cursor: SIL.Motif.Contract.Responses.ResultPaging.Cursor(100_001)));
+        AssertInvalidRequest("grammar-read.invalid-request", new GrammarReadRequest(project.FwDataPath, GrammarReadKind.phoneme,
             Id: CanonicalId.FromGuid(phonemeId).Value, Query: "q"));
-        AssertInvalidRequest(new GrammarReadRequest(project.FwDataPath, GrammarReadKind.phoneme,
+        AssertInvalidRequest("grammar-read.invalid-request", new GrammarReadRequest(project.FwDataPath, GrammarReadKind.phoneme,
             Id: "not-canonical"));
 
         var unknownCliKind = CliInProcess.Run(_root, null, developerCommands: true,
@@ -348,11 +348,11 @@ public sealed class GrammarReadArgvTests(PristineProjectFixture pristine) : IDis
         return item;
     }
 
-    private static void AssertInvalidRequest(GrammarReadRequest request)
+    private static void AssertInvalidRequest(string code, GrammarReadRequest request)
     {
         var outcome = GrammarReadQuery.Query(request);
         Assert.False(outcome.Succeeded);
-        Assert.Equal("grammar-read.invalid-request", outcome.Refusal!.Code);
+        Assert.Equal(code, outcome.Refusal!.Code);
     }
 
     private static string Hash(string path) => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path)));

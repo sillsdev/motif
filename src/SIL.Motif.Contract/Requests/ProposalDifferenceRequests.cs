@@ -31,18 +31,16 @@ public sealed record ProposalDifferenceProduceRequest(string ProjectPath, string
 /// <param name="Bucket">The stable category code that listed words must belong to.</param>
 /// <param name="BeforeState">The approval state a listed word had before the Proposal.</param>
 /// <param name="AfterState">The approval state a listed word has after the Proposal.</param>
-/// <param name="Cursor">Opaque cursor from a previous response's nextCursor; omit for the first page.</param>
-/// <param name="Limit">How many matching words to return.</param>
+/// <param name="Cursor">Opaque cursor from a previous response's nextCursor; omit for the first page. With a word it pages that word's Text occurrences.</param>
+/// <param name="Limit">How many matching words to return, or with a word how many of its Text occurrences.</param>
 /// <param name="Limitation">The limitation code that either side of a listed word must carry, such as <c>capped</c>.</param>
 /// <param name="Word">One exact word to list, whose Text occurrences are then returned a page at a time.</param>
-/// <param name="OccurrenceOffset">How many of that word's Text occurrences to skip (default 0); only with a word.</param>
-/// <param name="OccurrenceLimit">How many of that word's Text occurrences to return (default 25); only with a word.</param>
 /// <param name="TextId">Read the Proposal's Difference for this Text GUID; only with a Proposal.</param>
 /// <param name="Reference">Read the Proposal's Difference against <c>human</c> or <c>source-validated</c> decisions; only with a Proposal.</param>
 public sealed record ProposalDifferenceShowRequest(string ProjectPath, string? ProposalId = null,
     string? DifferenceId = null, bool CouldBeBad = false, string? Bucket = null, string? BeforeState = null,
     string? AfterState = null, string? Cursor = null, int Limit = 25, string? Limitation = null, string? Word = null,
-    int? OccurrenceOffset = null, int? OccurrenceLimit = null, string? TextId = null, string? Reference = null)
+    string? TextId = null, string? Reference = null)
 {
     /// <summary>The rows to skip that <see cref="Cursor"/> names, or -1 when it is not a cursor this API issued. A method, so it is not a schema property.</summary>
     public int CursorOffset() => SIL.Motif.Contract.Responses.ResultPaging.OffsetOrInvalid(Cursor);

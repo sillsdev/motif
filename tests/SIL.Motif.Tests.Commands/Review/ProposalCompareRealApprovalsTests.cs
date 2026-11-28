@@ -65,7 +65,7 @@ public sealed class ProposalCompareRealApprovalsTests
         var loadsBefore = ProposalCompareReads.BaselineLoads;
         var summary = ProposalCompareReads.Read(new(fixture.Project, ids)).Value!;
         var loadsAfterSummary = ProposalCompareReads.BaselineLoads;
-        var page = ProposalCompareReads.Read(new(fixture.Project, ids, Page: 1, Snapshot: summary.Snapshot)).Value!;
+        var page = ProposalCompareReads.Read(new(fixture.Project, ids, Cursor: SIL.Motif.Contract.Responses.ResultPaging.Cursor(0), Snapshot: summary.Snapshot)).Value!;
 
         Assert.Equal([2, 1], [summary.ApprovedTotal, summary.ApprovedUncounted]);
         Assert.Equal([0, 1], [summary.Columns[0].ApprovedKept, summary.Columns[0].ApprovedLost]);

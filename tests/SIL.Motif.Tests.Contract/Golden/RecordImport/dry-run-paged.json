@@ -6,8 +6,7 @@
   "changeCount": 8,
   "operationCount": 8,
   "refusalCount": 0,
-  "page": 1,
-  "pageCount": 2,
+  "nextCursor": "cDQ",
   "operations": [
     {
       "operationId": "-BBBBBBBBBBBBBBBBBBBBB1",

@@ -45,8 +45,8 @@ public sealed class ProposalDifferenceToolTests
         Assert.Equal(["capped", "timed-out", "projection-unavailable", "parser-refused", "invalid-shape",
             "malformed-evidence", "invalid-expected-morphology"], choices);
         Assert.NotNull(properties["word"]);
-        Assert.NotNull(properties["occurrence_offset"]);
-        Assert.NotNull(properties["occurrence_limit"]);
+        Assert.NotNull(properties["cursor"]);
+        Assert.NotNull(properties["limit"]);
     }
 
     [Fact]
@@ -96,7 +96,7 @@ public sealed class ProposalDifferenceToolTests
     [Theory]
     [InlineData("occurrence_offset")]
     [InlineData("occurrence_limit")]
-    public async Task PlaceArgumentsWithoutAWordAreRefusedInsteadOfIgnored(string argument)
+    public async Task TheOldPlacePagingArgumentsAreRefusedAsUnknown(string argument)
     {
         var directory = Path.Combine(Path.GetTempPath(), "motif-proposal-difference-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
@@ -122,7 +122,7 @@ public sealed class ProposalDifferenceToolTests
                 "motif_proposal_difference", arguments, CancellationToken.None);
 
             Assert.True(result.IsError);
-            Assert.Equal("difference.occurrence-needs-word",
+            Assert.Equal("tool.unknown-argument",
                 result.StructuredContent!.Value.GetProperty("code").GetString());
         }
         finally { Directory.Delete(directory, true); }
