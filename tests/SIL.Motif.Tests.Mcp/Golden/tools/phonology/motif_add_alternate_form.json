@@ -1,0 +1,73 @@
+{
+  "name": "motif_add_alternate_form",
+  "description": "Author an alternate form. Research first: motif_guide topic conditioned-allomorphs; check best practice. Use only if one morpheme has a listed form that no regular sound pattern predicts; otherwise use a phonological rule when the project parses with HermitCrab. Forms that share one natural-class environment are already the intended model (guide conditioned-allomorphs). Stages one more stem or affix form on an existing or earlier-staged entry, with its own environments and, when the entry has inflectional grammatical info, inflection classes. Use compose-edit-derivational-affix-restriction for a derivational analysis. It adds no entry, sense or grammatical info and copies no condition from the lexeme form.\nCommand: compose-author-alternate-form. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "draft": {
+        "type": "string",
+        "description": "The draft name from motif_start_proposal."
+      },
+      "entry": {
+        "type": "string",
+        "description": "Canonical id of an existing entry, or one added earlier in this Draft."
+      },
+      "form": {
+        "type": "string",
+        "description": "The alternate form, without affix hyphens."
+      },
+      "form_ws": {
+        "type": "string",
+        "description": "Vernacular writing system tag of the form."
+      },
+      "morph_type": {
+        "type": "string",
+        "description": "Canonical id of the morph type; stem-like for a stem entry, affix-like for an affix entry."
+      },
+      "environments": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Canonical ids of the phonological environments this form occurs in; omit for any."
+      },
+      "inflection_classes": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Affix entries only: canonical ids of the inflection classes of the stems this form attaches to; omit for no restriction."
+      },
+      "placement": {
+        "type": "object",
+        "properties": {
+          "after": {
+            "type": "string",
+            "description": "Existing alternate form before the insertion gap."
+          },
+          "before": {
+            "type": "string",
+            "description": "Existing alternate form after the insertion gap."
+          }
+        },
+        "additionalProperties": false
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "draft",
+      "entry",
+      "form",
+      "form_ws",
+      "morph_type",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

@@ -1,0 +1,34 @@
+{
+  "name": "motif_overview",
+  "description": "Read the project Overview. Displays the latest saved counts, Text Coverage, manual-analysis agreement, timing, and warnings. It reads stored evidence and does not start a new run.\nCommand: overview. Agent class: Read.\nProposalId: The Proposal whose latest Trial supplies the evidence, or null for the project.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "detail": {
+        "type": "string",
+        "description": "\u0027concise\u0027 (default) drops empty fields and long lists; \u0027detailed\u0027 returns everything.",
+        "enum": [
+          "concise",
+          "detailed"
+        ]
+      },
+      "limit": {
+        "type": "integer",
+        "description": "Page size for paged reads (findings, operations: default 10; proposals list: default 25), and the most list items in concise mode elsewhere (default 25).",
+        "minimum": 1,
+        "maximum": 200
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "additionalProperties": false,
+    "required": [
+      "project"
+    ]
+  },
+  "readOnlyHint": true,
+  "destructiveHint": false,
+  "idempotentHint": true
+}

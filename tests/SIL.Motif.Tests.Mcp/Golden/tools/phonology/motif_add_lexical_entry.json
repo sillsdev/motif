@@ -1,0 +1,115 @@
+{
+  "name": "motif_add_lexical_entry",
+  "description": "Author a lexical entry. Research first: motif_guide topic suffix-prefix-slots or feature-conditioned-slots; check best practice. Use only if the morpheme is new to the lexicon; otherwise add a form, sense or analysis to its entry. Classify an affix as inflectional or derivational. If you see whole words for a regular derivation, author the affix (guide suffix-prefix-slots). Stages one new dictionary entry with its lexeme form, one sense with gloss and optional definition, and grammatical info: a stem, or an inflectional, derivational or unclassified affix. An inflectional affix can name the inflection classes its form attaches to; use compose-edit-derivational-affix-restriction for a derivational affix. Inspect its Dry Run and try words with it before a person Applies the Proposal.\nCommand: compose-author-lexical-entry. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "draft": {
+        "type": "string",
+        "description": "The draft name from motif_start_proposal."
+      },
+      "form": {
+        "type": "string",
+        "description": "The lexeme form, without affix hyphens."
+      },
+      "form_ws": {
+        "type": "string",
+        "description": "Vernacular writing system tag of the form."
+      },
+      "morph_type": {
+        "type": "string",
+        "description": "Canonical id of the morph type, such as stem, root, prefix or suffix."
+      },
+      "gloss": {
+        "type": "string",
+        "description": "The sense\u0027s gloss."
+      },
+      "analysis_ws": {
+        "type": "string",
+        "description": "Analysis writing system tag of the gloss and definition."
+      },
+      "definition": {
+        "type": "string",
+        "description": "Optional definition of the sense."
+      },
+      "inflection_classes": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Affix only: canonical ids of the inflection classes of the stems this form attaches to; omit for no restriction."
+      },
+      "environments": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Canonical ids of the phonological environments this form occurs in; omit for any."
+      },
+      "msa": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "description": "Grammatical info (MSA) kind; must match the morph type.",
+            "enum": [
+              "stem",
+              "inflectional",
+              "derivational",
+              "unclassified"
+            ]
+          },
+          "category": {
+            "type": "string",
+            "description": "Canonical id of the part of speech; for a derivational affix, the one it attaches to."
+          },
+          "toCategory": {
+            "type": "string",
+            "description": "Derivational only: canonical id of the part of speech it makes."
+          },
+          "slots": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Inflectional only: canonical ids of existing slots the affix fills."
+          },
+          "inflectionClass": {
+            "type": "string",
+            "description": "Stem only: canonical id of its inflection class, such as a noun class."
+          },
+          "exceptionFeatures": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Stem only: canonical ids of existing exception features the analysis carries."
+          }
+        },
+        "required": [
+          "kind",
+          "category"
+        ],
+        "additionalProperties": false
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "draft",
+      "form",
+      "form_ws",
+      "morph_type",
+      "gloss",
+      "analysis_ws",
+      "msa",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

@@ -1,0 +1,52 @@
+{
+  "name": "motif_add_affix_slot",
+  "description": "Author an affix slot. Research first: motif_guide topic suffix-prefix-slots or feature-conditioned-slots; check best practice. Use only if the category has a new position for affixes in speakers\u0027 order; otherwise reuse a slot with compose-edit-inflectional-affix. Put it on the highest category that shares it; never one slot per stem or class (guide suffix-prefix-slots). Stages a named inflectional affix slot owned by an existing category and can assign existing inflectional affixes to it in the same Draft. Inspect its Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-author-affix-slot. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "draft": {
+        "type": "string",
+        "description": "The draft name from motif_start_proposal."
+      },
+      "category": {
+        "type": "string",
+        "description": "Canonical id of the existing category that owns the new slot."
+      },
+      "name": {
+        "type": "string",
+        "description": "Slot name in the project\u0027s writing system."
+      },
+      "ws": {
+        "type": "string",
+        "description": "Writing system tag for the slot name."
+      },
+      "optional": {
+        "type": "boolean",
+        "description": "Whether forms may omit this slot."
+      },
+      "assignments": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Optional canonical ids of existing inflectional affix MSAs to assign."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "draft",
+      "category",
+      "name",
+      "ws",
+      "optional",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

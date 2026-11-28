@@ -1,0 +1,40 @@
+{
+  "name": "motif_set_gloss",
+  "description": "Set a sense gloss. Stages the explicitly authored gloss of one sense in one writing system in a Draft. Dry Run and Trial the Draft before Finalize; only a person can Apply.\nCommand: add-set-gloss. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nTarget: The exact canonical identity of the existing object.\nWs: The project writing system tag for this value.\nText: The authored Unicode text.\nDependsOn: Explicit operation dependencies; array position implies no dependency.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "draft": {
+        "type": "string",
+        "description": "The draft name from motif_start_proposal."
+      },
+      "sense": {
+        "type": "string",
+        "description": "Id of the sense."
+      },
+      "ws": {
+        "type": "string",
+        "description": "Writing system tag of the gloss."
+      },
+      "text": {
+        "type": "string",
+        "description": "The new gloss."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "draft",
+      "sense",
+      "ws",
+      "text",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": true
+}

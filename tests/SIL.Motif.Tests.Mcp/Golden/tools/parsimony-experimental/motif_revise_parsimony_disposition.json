@@ -1,0 +1,76 @@
+{
+  "name": "motif_revise_parsimony_disposition",
+  "description": "Revise a ruling. Stages a revision to a saved Parsimony ruling using its exact current Notebook heads and digests. The revision keeps the same finding subject and evidence, and only a person can Apply it.\nCommand: parsimony revise. Agent class: Draft.\nDraftName: The mutable Draft receiving the semantic intent.\nIntentJson: The closed semantic intent consumed by the typed composer.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "draft": {
+        "type": "string",
+        "description": "Draft name from motif_start_proposal."
+      },
+      "record_id": {
+        "type": "string",
+        "description": "Notebook record id of a current ruling head."
+      },
+      "expected_heads": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "revisionId": {
+              "type": "string",
+              "description": "Portable id of the current revision."
+            },
+            "contentDigest": {
+              "type": "string",
+              "description": "Canonical sha256 digest read with the revision."
+            }
+          },
+          "required": [
+            "revisionId",
+            "contentDigest"
+          ],
+          "additionalProperties": false
+        },
+        "description": "Every current head with its exact content digest."
+      },
+      "disposition": {
+        "type": "string",
+        "description": "The revised choice.",
+        "enum": [
+          "fix",
+          "keep",
+          "ask",
+          "defer"
+        ]
+      },
+      "reason": {
+        "type": "string",
+        "description": "Replacement reason; omit to preserve the current reason."
+      },
+      "clear_reason": {
+        "type": "boolean",
+        "description": "Clear the current optional reason."
+      },
+      "question": {
+        "type": "string",
+        "description": "Required when disposition is ask."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "draft",
+      "record_id",
+      "expected_heads",
+      "disposition",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

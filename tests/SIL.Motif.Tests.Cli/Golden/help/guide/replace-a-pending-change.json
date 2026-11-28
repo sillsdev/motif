@@ -4,6 +4,5 @@
   "slug": "replace-a-pending-change",
   "title": "Replace a Pending Change",
   "description": "Return to the word in Texts. Press Ctrl\u002BZ (\u2318\u002BZ on macOS) to take back the last staged choice, or stage the new choice for the same place. There is no on-screen Undo button, and Ctrl\u002BZ takes back only the most recent staging action. Read the word\u0027s current context before making another choice. Undo affects staging only and does not reverse an applied Proposal.",
-  "helpPage": "# Replace a Pending Change\n\nReturn to the word in **Texts**. Press Ctrl\u002BZ (\u2318\u002BZ on macOS) to take back the last staged choice, or stage the new choice for the same place. There is no on-screen Undo button, and Ctrl\u002BZ takes back only the most recent staging action. Read the word\u0027s current context before making another choice. **Undo** affects staging only and does not reverse an applied Proposal.\n\nAfter replacing a staged change, measure the exact new content again before applying. Earlier evidence does not establish readiness for the replacement. Read [Pending Changes](guide:pending-changes) and [Apply to FieldWorks](guide:apply-to-fieldworks).\n",
   "url": "https://motif-docs.pages.dev/guide/replace-a-pending-change/"
 }

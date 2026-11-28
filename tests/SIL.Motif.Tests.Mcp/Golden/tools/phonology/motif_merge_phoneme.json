@@ -1,0 +1,35 @@
+{
+  "name": "motif_merge_phoneme",
+  "description": "Merge a phoneme into another. Research first: motif_guide topic nasal-assimilation or conditioned-allomorphs; check best practice. Use only if the language has no contrast between the two phonemes; otherwise keep both, since the contrast cannot be recovered from the words afterwards (guides nasal-assimilation, conditioned-allomorphs). Stages a merge of one phoneme into another: each spelling of the first becomes another way to write the second, and the first phoneme is removed from the inventory and from its natural classes. It refuses a spelling another phoneme has, a natural class the first phoneme alone fills, and a rule or environment that uses the first phoneme. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-merge-phoneme. Agent class: Draft.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "draft": {
+        "type": "string",
+        "description": "Draft name."
+      },
+      "source": {
+        "type": "string",
+        "description": "Id of the phoneme to merge away."
+      },
+      "target": {
+        "type": "string",
+        "description": "Id of the phoneme that keeps its identity and gains the spellings."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "draft",
+      "source",
+      "target",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

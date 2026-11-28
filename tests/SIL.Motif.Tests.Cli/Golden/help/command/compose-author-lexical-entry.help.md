@@ -1,0 +1,26 @@
+# Author a dictionary entry
+
+Use this command to add a stem or an affix the project does not have yet. One call stages a complete entry: its lexeme form, one sense with a gloss and an optional definition, and the grammatical info the parser needs to use it.
+
+```sh
+motif compose-author-lexical-entry --project language.fwdata --draft new-words \
+  --intent '{"form":"kitabu","formWs":"sw","morphType":"<stem-morph-type-id>","gloss":"book","analysisWs":"en","definition":"a bound set of written pages","msa":{"kind":"stem","category":"<noun-id>","inflectionClass":"<class-7-8-id>"}}'
+```
+
+`form` is the lexeme form in the vernacular writing system `formWs`, without the hyphens FieldWorks shows on affixes. `morphType` is the id of an existing morph type such as stem, root, prefix or suffix. `gloss` and the optional `definition` are in the analysis writing system `analysisWs`.
+
+`msa` is the grammatical info (in FieldWorks, the morphosyntactic analysis). Its `kind` must suit the morph type: `stem` for a stem or root, and `inflectional`, `derivational` or `unclassified` for an affix. `category` is the part of speech; a derivational affix also needs `toCategory`, the part of speech of the word it makes. An inflectional affix can name existing `slots` of its category or a category above it, and a stem can name an `inflectionClass`, such as a noun class, and `exceptionFeatures`, a list of existing exception features the analysis carries (the same rules as in `compose-add-morphosyntax-analysis`; a repeated id or an id that is not one of the project's exception features is refused, and only a stem takes them).
+
+An inflectional affix can also be restricted. `inflectionClasses` lists existing inflection classes of the affix's category or a category above it, and its form then attaches only to stems of those classes; leave it out for no restriction. A derivational affix uses `compose-edit-derivational-affix-restriction` to set its From Inflection Class and From Exception Features on the grammatical info; inflection classes on its form do not restrict its derivational analysis. `environments` lists existing phonological environments the form occurs in, for a stem or an affix. Empty lists, repeated ids and a stem's `inflectionClass` on an affix are refused.
+
+Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to record the source on every operation this command produces.
+
+Every id can belong to something an earlier command added to the same Draft, such as a new part of speech. The command returns the new entry's operations and created entity ids for later calls. Dry Run and Trial the Draft on affected words, revise it, then Finalize it for a person to review and Apply.
+
+A derivational affix's composed summary lists a `Derivation: From -> To` line naming both categories, so a swapped pair shows at once, and its Dry Run warns when the project has no stem, subcategory stem or derivation that makes the From category, or when nothing takes the To category (or a subcategory) as input, which usually means the categories are the wrong way round.
+
+## When not to use this
+
+- For an affix, choose an inflectional or derivational MSA, not unclassified, which attaches without restriction; only an inflectional one fills an inflectional slot.
+- Do not create an entry per stem that takes the same affix; one affix entry serves them all.
+- For another form of an existing entry, use `compose-author-alternate-form`.

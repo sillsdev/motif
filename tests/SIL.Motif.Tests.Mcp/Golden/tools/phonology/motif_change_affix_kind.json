@@ -1,0 +1,51 @@
+{
+  "name": "motif_change_affix_kind",
+  "description": "Change an affix\u2019s kind. Research first: motif_guide topic suffix-prefix-slots; check best practice. Use only if the evidence, such as paradigms or a category change, now decides inflectional or derivational; otherwise keep the kind. Unclassified is a stopgap that lets the parser find wrong parses (guide suffix-prefix-slots). Stages a change of one affix between inflectional, derivational and unclassified in place, keeping its category and the senses that use it. What the new kind cannot hold, such as a template slot or a To category, is reported as a warning, not refused. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-change-affix-kind. Agent class: Draft.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "draft": {
+        "type": "string",
+        "description": "Draft name."
+      },
+      "msa": {
+        "type": "string",
+        "description": "Id of the affix\u2019s current grammatical info."
+      },
+      "kind": {
+        "type": "string",
+        "enum": [
+          "inflectional",
+          "derivational",
+          "unclassified"
+        ],
+        "description": "New kind: inflectional, derivational or unclassified."
+      },
+      "to_category": {
+        "type": "string",
+        "description": "For derivational only: id of the category of the word it makes; the attaching category when absent."
+      },
+      "slots": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "For inflectional only: ids of the existing slots it fills."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "draft",
+      "msa",
+      "kind",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

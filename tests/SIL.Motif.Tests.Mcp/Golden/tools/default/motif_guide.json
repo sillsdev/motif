@@ -1,0 +1,31 @@
+{
+  "name": "motif_guide",
+  "description": "Read encoding guidance. Reads an encoding guide or the draft, Dry Run, Trial, revise and Finalize workflow.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "topic": {
+        "type": "string",
+        "description": "The guide topic to read.",
+        "enum": [
+          "suffix-prefix-slots",
+          "conditioned-allomorphs",
+          "feature-conditioned-slots",
+          "nasal-assimilation",
+          "archiphonemes",
+          "no-inflection",
+          "workflow",
+          "ask-the-linguist",
+          "parsimony-references"
+        ]
+      }
+    },
+    "required": [
+      "topic"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": true,
+  "destructiveHint": false,
+  "idempotentHint": true
+}

@@ -1,0 +1,78 @@
+{
+  "name": "motif_run_parsimony_measure",
+  "description": "Review grammar parsimony. Runs a registered Parsimony measure, every measure with --measure all, or a whole group with --group grammar|text|all, over the current Baseline, or compares a completed Proposal Dry Run against that Baseline. Candidate evidence uses a private copy and stores before and after Reports. Use parsimony measures to list checks and their evidence needs.\nCommand: parsimony. Agent class: Evaluate.\nMeasureId: The registered Parsimony measure to run.\nEvidenceScope: The declared source of word evidence for the measure.\nAssessmentIds: The exact retained Assessments supplying evidence, when supplied.\nWait for a Parsimony Report. Queues the requested Parsimony measure and waits for its stored Report. It does not capture a Baseline or require an Assessment.\nCommand: parsimony --wait. Agent class: Evaluate.\nJobId: The queued job whose result to read.\nTimeout: The maximum wait for this call; the job continues after the wait ends.\nRun every Parsimony measure. Runs every Parsimony measure this build supports in one job over one verified evidence bundle, then waits and returns one stored Report per measure. It does not capture a Baseline or require an Assessment.\nCommand: parsimony --measure all --wait. Agent class: Evaluate.\nJobId: The queued job whose Reports to read.\nTimeout: The maximum wait for this call; the job continues after the wait ends.\nRun a Parsimony group. Runs the Grammar group, the Text group or both over the current Baseline, then waits and returns one stored Report per measure. It captures a Baseline when none is current, and the Text group reads the saved Parsimony Selection.\nCommand: parsimony --group. Agent class: Evaluate.\nGroup: The group wire name: grammar, text or all.\nMeasureId: One measure of that group, or null for the whole group.\nAssessmentIds: The exact retained Assessments supplying evidence, when supplied.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "measure_id": {
+        "type": "string",
+        "description": "Exact registered measure id, or \u0027all\u0027 to run every supported measure in one job and read one Report per measure. A Grammar-group measure, or \u0027all\u0027, captures a Baseline first when none is current.",
+        "enum": [
+          "B-adhoc-is-slot-order",
+          "B-affix-null-vs-optional",
+          "B-affix-unslotted",
+          "P-adhoc-duplicate",
+          "P-allo-alternation-family",
+          "P-allo-duplicate-form",
+          "P-allo-repeated-form",
+          "P-entry-duplicate",
+          "P-env-duplicate",
+          "P-env-literal-host",
+          "P-feature-few-carriers",
+          "P-gloss-echoes-form",
+          "P-lexeme-near-duplicate",
+          "P-msa-no-category",
+          "P-statement-unused",
+          "P-tag-polarity-majority",
+          "P-variant-same-shape",
+          "R-allo-unconditioned",
+          "R-env-broad",
+          "R-nc-excess",
+          "R-slot-blocking",
+          "R-tmpl-precedence",
+          "R-word-disapproved-produced",
+          "R-word-negative-accepted",
+          "all"
+        ]
+      },
+      "group": {
+        "type": "string",
+        "description": "Run a whole group, or the one measure_id inside it: the Grammar group reads the grammar alone and captures a Baseline when none is current; the Text group reads the saved Parsimony Selection; \u0027all\u0027 runs both, and the Text group only when a Parsimony Selection is saved. With a group, evidence_scope is not used.",
+        "enum": [
+          "grammar",
+          "text",
+          "all"
+        ]
+      },
+      "evidence_scope": {
+        "type": "string",
+        "description": "Which approved-word evidence to use.",
+        "enum": [
+          "default-selection",
+          "project-approved"
+        ]
+      },
+      "job": {
+        "type": "string",
+        "description": "Job id from a previous running result; omit to start a new measure."
+      },
+      "wait_seconds": {
+        "type": "integer",
+        "description": "How long to wait for a result. Default 40.",
+        "minimum": 1,
+        "maximum": 300
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "additionalProperties": false,
+    "required": [
+      "project"
+    ]
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

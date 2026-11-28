@@ -1,0 +1,54 @@
+{
+  "name": "motif_add_phonological_feature",
+  "description": "Author a phonological feature. Research first: motif_guide topic nasal-assimilation or archiphonemes; check best practice. Use only if rules or natural classes need a phonological feature of sounds; otherwise use compose-author-inflection-feature for grammar, or compose-author-exception-feature for a stem list (guide archiphonemes). Stages a closed phonological feature and its values in the project\u0027s phonological feature system, such as place with labial, coronal and velar. Phonemes carry the values and a natural class can be defined by them. Defining the first feature of a featureless project changes how rewrite rules that name segment classes are read, so Trial the rules after it. Only a person can Apply.\nCommand: compose-author-phonological-feature. Agent class: Draft.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "draft": {
+        "type": "string",
+        "description": "Draft name."
+      },
+      "name": {
+        "type": "string",
+        "description": "Feature name."
+      },
+      "abbreviation": {
+        "type": "string",
+        "description": "Optional feature abbreviation, unique among phonological features."
+      },
+      "values": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "abbreviation": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "additionalProperties": false
+        },
+        "description": "Nonempty list of values, each an object with a name and an optional abbreviation; select one later in a batch with @label:values:NAME."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "draft",
+      "name",
+      "values",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

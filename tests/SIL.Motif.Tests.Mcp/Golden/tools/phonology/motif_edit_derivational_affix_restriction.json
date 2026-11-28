@@ -1,0 +1,87 @@
+{
+  "name": "motif_edit_derivational_affix_restriction",
+  "description": "Restrict a derivational affix. Research first: motif_guide topic suffix-prefix-slots; check best practice. Use only if a derivational affix takes or gives one inflection class or exception-feature set; otherwise use compose-edit-affix-inflection-classes for an inflectional form. One analysis on a parent class covers its subclasses (guide suffix-prefix-slots). Sets, replaces or explicitly clears the From Inflection Class and the To Inflection Class, and can set the exact From Exception Features and To Exception Features on an existing affix entry\u0027s derivational grammatical info; alsoMsas applies the same change to many affixes. Omitted fields stay unchanged. Motif stages a Draft for a person to review and Apply.\nCommand: compose-edit-derivational-affix-restriction. Agent class: Draft.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "draft": {
+        "type": "string",
+        "description": "Draft name."
+      },
+      "msa": {
+        "type": "string",
+        "description": "Id of the derivational grammatical info of an existing affix entry."
+      },
+      "from_inflection_class": {
+        "type": "string",
+        "description": "Optional id of an inflection class owned by the From category or an ancestor; omission leaves the current link unchanged."
+      },
+      "clear_from_inflection_class": {
+        "type": "boolean",
+        "const": true,
+        "description": "Set true to remove the current From Inflection Class; do not combine with from_inflection_class."
+      },
+      "from_exception_features": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Optional exact set of valid From Exception Features; an empty list removes them all, and omission leaves the current set unchanged."
+      },
+      "to_inflection_class": {
+        "type": "string",
+        "description": "Optional id of an inflection class owned by the To category or an ancestor; derived stems get this class. Omission leaves the current link unchanged."
+      },
+      "clear_to_inflection_class": {
+        "type": "boolean",
+        "const": true,
+        "description": "Set true to remove the current To Inflection Class; do not combine with to_inflection_class."
+      },
+      "to_exception_features": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Optional exact set of To Exception Features, which the derived stem receives; an empty list removes them all, and omission leaves the current set unchanged."
+      },
+      "also_msas": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Optional ids of further derivational grammatical info that receive the identical change, so one intent edits many affixes."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "draft",
+      "msa",
+      "project"
+    ],
+    "additionalProperties": false,
+    "allOf": [
+      {
+        "not": {
+          "required": [
+            "from_inflection_class",
+            "clear_from_inflection_class"
+          ]
+        }
+      },
+      {
+        "not": {
+          "required": [
+            "to_inflection_class",
+            "clear_to_inflection_class"
+          ]
+        }
+      }
+    ]
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

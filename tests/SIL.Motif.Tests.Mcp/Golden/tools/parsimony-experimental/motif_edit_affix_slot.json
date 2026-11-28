@@ -1,0 +1,50 @@
+{
+  "name": "motif_edit_affix_slot",
+  "description": "Edit an affix slot. Research first: motif_guide topic suffix-prefix-slots or feature-conditioned-slots; check best practice. Use only if a slot is renamed or becomes optional or obligatory; otherwise move affixes with compose-edit-inflectional-affix. A slot is obligatory unless marked optional (guide suffix-prefix-slots). Changes whether an existing inflectional affix slot is optional, renames it, or both. The response lists every affix and template using the shared slot; Motif stages a Draft and never Applies it automatically. Only a person can Apply.\nCommand: compose-edit-affix-slot. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "draft": {
+        "type": "string",
+        "description": "The draft name from motif_start_proposal."
+      },
+      "target": {
+        "type": "string",
+        "description": "Canonical id of the existing affix slot."
+      },
+      "expected_optional": {
+        "type": "boolean",
+        "description": "The optionality the project must currently have. Give with optional."
+      },
+      "optional": {
+        "type": "boolean",
+        "description": "The requested optionality. Give with expected_optional."
+      },
+      "writing_system": {
+        "type": "string",
+        "description": "Writing system of the slot name. Give with expected_name and name to rename."
+      },
+      "expected_name": {
+        "type": "string",
+        "description": "The slot name the project must currently have."
+      },
+      "name": {
+        "type": "string",
+        "description": "The requested slot name."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "draft",
+      "target",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

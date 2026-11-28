@@ -65,17 +65,13 @@ public sealed class ExposurePolicyTests
 
     private static ToolProfile Profile(string name) => name == "builtin" ? ToolProfile.Builtin : ToolProfile.Load(name);
 
-    private static string GoldenPath(string profile, [System.Runtime.CompilerServices.CallerFilePath] string source = "") =>
-        Path.Combine(Path.GetDirectoryName(source)!, "Golden", "tools-list." + (profile == "builtin" ? "default" : profile) + ".json");
-
     // The expectation is frozen: the tool-list golden where one exists, otherwise the profile's own explicit list.
     private static List<(string Name, string? Description)> FrozenExpectation(string name, ToolProfile profile)
     {
         if (profile.AllTools) return [.. AgentTools.All.Select(tool => (tool.Name, (string?)null))];
-        var path = GoldenPath(name);
-        if (File.Exists(path))
-            return [.. System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(path))!.AsArray()
-                .Select(node => (node!["name"]!.GetValue<string>(), (string?)node["description"]!.GetValue<string>()))];
+        if (ToolsListGolden.Exists(name))
+            return [.. ToolsListGolden.Read(name)
+                .Select(node => (node["name"]!.GetValue<string>(), (string?)node["description"]!.GetValue<string>()))];
         return [.. profile.Tools.Select(selection => (selection.As ?? selection.Tool, selection.Description))];
     }
 

@@ -4,7 +4,6 @@
   "slug": "report-list-kinds",
   "title": "List report kinds",
   "description": "Lists the report kinds accepted by report --kind. Run it first when you need to choose a report for stored evidence.",
-  "helpPage": "# List report kinds\n\n\u0060report --list-kinds\u0060 prints the stable kind codes accepted by \u0060report --kind\u0060.\n\nThe list includes \u0060parsimony\u0060, but \u0060report\u0060 reads one stored Assessment. Supplying that Assessment to \u0060report --kind parsimony\u0060 is refused because the Parsimony producer needs a frozen Baseline evidence bundle, not an Assessment input. Use [\u0060parsimony --wait\u0060](cmd:parsimony%20--wait) to create that Report, then [\u0060parsimony show\u0060](cmd:parsimony%20show) to read it.\n\n## When to use it\n\nRun this when writing a script or choosing a Report and you need to know which kinds Motif supports. The returned codes are machine-readable identifiers; they are not display labels.\n\n## Example\n\n\u0060\u0060\u0060powershell\nmotif report --list-kinds\n\u0060\u0060\u0060\n\n## What it prints\n\nThe command lists available Report kinds. Add \u0060--json\u0060 for a structured list that an AI agent or script can select from without parsing terminal text.\n\n## Related commands\n\n- [Read an Assessment report](cmd:report) runs one of the listed kinds.\n- [Inspect parse timing](cmd:timing) reads recorded timing evidence directly.\n",
   "usage": [
     "Usage: motif report --list-kinds [--json]"
   ],

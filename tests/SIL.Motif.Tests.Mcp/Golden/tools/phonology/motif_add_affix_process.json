@@ -1,0 +1,139 @@
+{
+  "name": "motif_add_affix_process",
+  "description": "Author an affix process. Research first: motif_guide topic workflow or conditioned-allomorphs; check best practice. Use only if the affix infixes, reduplicates or rewrites the stem; otherwise author a plain affix with compose-author-lexical-entry. Regular assimilation at a boundary is a phonological rule (guide nasal-assimilation). Stages a new affix entry whose ordered input pattern matches phonemes, a natural class or the remaining stem, and whose output copies named parts, inserts phonemes, inserts a segment of a natural class, or copies a part with the features of a feature class laid over it: an infix, a partial or full reduplication, or a substitution that deletes matched input by omitting it from the output (Cebuano paN- before p/b gives m). It refuses an output that copies nothing or drops the remaining stem. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-author-affix-process. Agent class: Draft.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "draft": {
+        "type": "string",
+        "description": "Draft name."
+      },
+      "morph_type": {
+        "type": "string",
+        "description": "Id of an affix morph type such as prefix, suffix or infix."
+      },
+      "gloss": {
+        "type": "string",
+        "description": "The sense\u0027s gloss."
+      },
+      "analysis_ws": {
+        "type": "string",
+        "description": "Analysis writing system tag for the gloss and definition."
+      },
+      "definition": {
+        "type": "string",
+        "description": "Optional definition of the sense."
+      },
+      "form": {
+        "type": "string",
+        "description": "Optional headword shown for the entry, in the vernacular writing system form_ws, without the hyphens FieldWorks shows on affixes (for example in for the infix -in-). Give it with form_ws."
+      },
+      "form_ws": {
+        "type": "string",
+        "description": "Vernacular writing system tag for form."
+      },
+      "msa": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "inflectional",
+              "derivational",
+              "unclassified"
+            ]
+          },
+          "category": {
+            "type": "string"
+          },
+          "toCategory": {
+            "type": "string"
+          },
+          "slots": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "kind",
+          "category"
+        ],
+        "additionalProperties": false,
+        "description": "Affix grammatical info: kind inflectional, derivational or unclassified, its category, and for derivational toCategory, for inflectional slots."
+      },
+      "input": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "phoneme": {
+              "type": "string"
+            },
+            "naturalClass": {
+              "type": "string"
+            },
+            "remaining": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "additionalProperties": false
+        },
+        "description": "Ordered pattern parts, each with a name and one of phoneme, naturalClass or remaining true; the remaining-stem part is last."
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "copy": {
+              "type": "string"
+            },
+            "insert": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "insertClass": {
+              "type": "string"
+            },
+            "modify": {
+              "type": "string"
+            },
+            "features": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "description": "Ordered realization, each item exactly one of: copy of a named input part; insert of phoneme ids; insertClass, the id of a natural class one of whose segments is inserted (a class of several segments leaves the choice of member to the parser); modify, the name of an input part (a phoneme, a natural class or the remaining stem), with features, the id of a feature natural class laid over the copied part. An input part left out of the output is deleted."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "draft",
+      "morph_type",
+      "gloss",
+      "analysis_ws",
+      "msa",
+      "input",
+      "output",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

@@ -1,0 +1,61 @@
+{
+  "name": "motif_add_affix_template",
+  "description": "Author an affix template. Research first: motif_guide topic suffix-prefix-slots or feature-conditioned-slots; check best practice. Use only if the category needs another slot order; otherwise change the template with compose-edit-affix-template. A template on a parent category also serves its subcategories, so never one per stem or class (guide suffix-prefix-slots). Stages an active alternative template on an existing category, using ordered prefix and suffix slots that belong to the category or an ancestor. It preserves existing template order and records whether a word can end after this template. Only a person can Apply.\nCommand: compose-author-affix-template. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "draft": {
+        "type": "string",
+        "description": "The draft name from motif_start_proposal."
+      },
+      "category": {
+        "type": "string",
+        "description": "Canonical id of the existing category that owns the template."
+      },
+      "name": {
+        "type": "string",
+        "description": "Template name in the project\u0027s writing system."
+      },
+      "ws": {
+        "type": "string",
+        "description": "Writing system tag for the template name."
+      },
+      "prefix_slots": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Ordered canonical ids of prefix slots."
+      },
+      "suffix_slots": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Ordered canonical ids of suffix slots."
+      },
+      "final": {
+        "type": "boolean",
+        "description": "Whether a word can end after this template; true for a word-final template, false only when a derivation continues from it."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "draft",
+      "category",
+      "name",
+      "ws",
+      "prefix_slots",
+      "suffix_slots",
+      "final",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

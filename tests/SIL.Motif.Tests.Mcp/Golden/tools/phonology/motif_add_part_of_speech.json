@@ -1,0 +1,43 @@
+{
+  "name": "motif_add_part_of_speech",
+  "description": "Author a part of speech. Research first: motif_guide topic suffix-prefix-slots or feature-conditioned-slots; check best practice. Use only if stems need their own category for slots, templates or classes; otherwise use an existing category, or a subcategory under it, which inherits its templates and slots (guide suffix-prefix-slots). Stages a new part of speech, at the top of the category list or under an existing category, with its name and optional abbreviation. Later composer calls in the same Draft can use it as the category of entries, slots and affixes.\nCommand: compose-author-part-of-speech. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "draft": {
+        "type": "string",
+        "description": "The draft name from motif_start_proposal."
+      },
+      "name": {
+        "type": "string",
+        "description": "Category name, such as noun; unique among the project\u0027s categories."
+      },
+      "ws": {
+        "type": "string",
+        "description": "Writing system tag for the name and abbreviation."
+      },
+      "abbreviation": {
+        "type": "string",
+        "description": "Optional short label, such as n."
+      },
+      "parent": {
+        "type": "string",
+        "description": "Optional canonical id of an existing category to place this one under."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "draft",
+      "name",
+      "ws",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

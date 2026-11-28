@@ -1,0 +1,20 @@
+{
+  "name": "motif_parsimony_record_types",
+  "description": "List Notebook record types. Lists the saved Notebook record types with their portable IDs and readable names. Use the ID when you stage a Parsimony ruling.\nCommand: parsimony record-types. Agent class: Read.\n",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "additionalProperties": false,
+    "required": [
+      "project"
+    ]
+  },
+  "readOnlyHint": true,
+  "destructiveHint": false,
+  "idempotentHint": true
+}

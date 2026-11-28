@@ -1,0 +1,33 @@
+{
+  "name": "motif_remove_operations",
+  "description": "Remove Draft operations. Removes explicit operations from a Draft while respecting declared dependencies. Revise and measure the content again before Finalize. Only a person can Apply.\nCommand: remove-operations. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nOperationIds: The exact operation identities to remove from the Draft.\nForce: Whether to override the requested command constraint.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "draft": {
+        "type": "string",
+        "description": "The draft name."
+      },
+      "operation_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Operation ids to remove."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "draft",
+      "operation_ids",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": true
+}

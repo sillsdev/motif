@@ -1,0 +1,48 @@
+{
+  "name": "motif_add_inflection_class",
+  "description": "Author inflection class. Research first: motif_guide topic feature-conditioned-slots; check best practice. Use only if a group of stems takes different affix forms with the same meaning, not set by sound or agreement; otherwise use an inflection feature or environment. Define it at the highest category; one stem is not a class (guide feature-conditioned-slots). Adds an inflection class or subclass, such as a noun class, to a Draft. Its owner is explicit and the category\u0027s default is unchanged; use the created id when authoring a stem.\nCommand: compose-author-inflection-class. Agent class: Draft.\nDraftName: The Draft to append the authored operations to.\nIntentJson: The closed inflection class input, resolved against the prepared Draft.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "draft": {
+        "type": "string",
+        "description": "The Draft name from motif_start_proposal."
+      },
+      "category": {
+        "type": "string",
+        "description": "Canonical id of the category owning this class tree."
+      },
+      "name": {
+        "type": "string",
+        "description": "Inflection class name, such as a noun class."
+      },
+      "ws": {
+        "type": "string",
+        "description": "Writing system tag for the name and abbreviation."
+      },
+      "abbreviation": {
+        "type": "string",
+        "description": "Optional short class label."
+      },
+      "parent": {
+        "type": "string",
+        "description": "Optional existing parent class in the declared category."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "draft",
+      "category",
+      "name",
+      "ws",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

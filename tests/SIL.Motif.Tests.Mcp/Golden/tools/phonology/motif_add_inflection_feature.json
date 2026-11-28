@@ -1,0 +1,61 @@
+{
+  "name": "motif_add_inflection_feature",
+  "description": "Author inflection feature. Research first: motif_guide topic feature-conditioned-slots; check best practice. Use only if the contrast has meaning or takes part in agreement, such as gender, number or tense; otherwise use an inflection class for arbitrary declension or conjugation groups (guide feature-conditioned-slots). Adds a closed morphosyntactic feature and its named values to a Draft. Use the created ids in feature-structure and stem-name authoring, then Dry Run and Trial the Draft before Finalize.\nCommand: compose-author-inflection-feature. Agent class: Draft.\nDraftName: The Draft to append the authored operations to.\nIntentJson: The closed inflection feature input, resolved against the prepared Draft.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "draft": {
+        "type": "string",
+        "description": "The Draft name from motif_start_proposal."
+      },
+      "name": {
+        "type": "string",
+        "description": "Name of the closed morphosyntactic feature."
+      },
+      "ws": {
+        "type": "string",
+        "description": "Writing system tag for the feature and value names."
+      },
+      "abbreviation": {
+        "type": "string",
+        "description": "Optional short feature label."
+      },
+      "values": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Value name; distinct within this feature."
+            },
+            "abbreviation": {
+              "type": "string",
+              "description": "Optional short value label."
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "additionalProperties": false
+        },
+        "description": "Nonempty named choices for this feature."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "draft",
+      "name",
+      "ws",
+      "values",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

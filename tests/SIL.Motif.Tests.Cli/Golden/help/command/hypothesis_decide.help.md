@@ -1,0 +1,15 @@
+# Decide a hypothesis
+
+`hypothesis decide` marks a hypothesis passed, failed or superseded with its decision. A pass needs a PASS test, a Guide link and no passed neighbour with another mechanism.
+
+## Example
+
+```text
+motif hypothesis decide H-12 --project <fwdata> --status passed --decision "Rule stands as the default; 3 stems tagged."
+```
+
+`--status` is `passed`, `failed` or `superseded`, and `--decision` is required. A pass needs the latest test to be PASS and a Guide link or a stated reason for none (see [link](cmd:hypothesis%20link)). If another hypothesis already passed on the same shape with a different mechanism, the pass is refused unless `--supersedes` names it; the shape is compared whole, a blank part matching only a blank one. A hypothesis cannot supersede itself. A decided hypothesis changes only by being superseded.
+
+## Related commands
+
+- [Check a change's neighbours](cmd:hypothesis%20neighbours) is the check that runs before any new object.

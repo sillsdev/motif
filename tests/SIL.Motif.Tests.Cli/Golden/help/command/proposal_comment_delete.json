@@ -4,7 +4,6 @@
   "slug": "proposal-comment-delete",
   "title": "Delete a Proposal Comment",
   "description": "Deletes a Comment from an open Proposal. Only a person deletes a Comment.",
-  "helpPage": "# Delete a Comment on a Proposal\n\nDeletes a Comment from an open Proposal. Only a person deletes a Comment; an assistant cannot.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif proposal comment delete \u003CproposalId\u003E \u003CcommentId\u003E --project \u003Cfwdata\u003E\n\u0060\u0060\u0060\n\nGive the full Proposal id and the Comment number that \u0060show\u0060 lists. A deleted Comment is gone. Comments cannot change once the Proposal is applied, declined, withdrawn or superseded.\n",
   "usage": [
     "Usage: motif proposal comment delete \u003CproposalId\u003E \u003CcommentId\u003E --project \u003Cfwdata\u003E [--json]"
   ],

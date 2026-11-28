@@ -1,0 +1,46 @@
+{
+  "name": "motif_edit_natural_class",
+  "description": "Edit a natural class. Research first: motif_guide topic nasal-assimilation or conditioned-allomorphs; check best practice. Use only if the class lacks a sound its pattern needs or has one it must not; otherwise author a separate class. Every listed user changes with it (guide nasal-assimilation). Adds or removes phonemes from one existing segment natural class after checking its exact current members. The response lists rules, environments and insertions that still use the class. Only a person can Apply.\nCommand: compose-edit-natural-class. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "draft": {
+        "type": "string",
+        "description": "Draft name from motif_start_proposal."
+      },
+      "target": {
+        "type": "string",
+        "description": "Canonical id, exact natural class name or abbreviation; names use NFD and ordinal case-insensitive equality, without trimming."
+      },
+      "expected_members": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Exact current phoneme ids in the class; copy all members[].id from a detailed motif_grammar natural_classes listing."
+      },
+      "members": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Requested distinct phoneme ids; the class must remain nonempty."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "draft",
+      "target",
+      "expected_members",
+      "members",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

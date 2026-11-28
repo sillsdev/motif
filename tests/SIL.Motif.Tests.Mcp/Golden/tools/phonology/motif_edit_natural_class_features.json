@@ -1,0 +1,57 @@
+{
+  "name": "motif_edit_natural_class_features",
+  "description": "Edit a natural class\u0027s features. Research first: motif_guide topic nasal-assimilation; check best practice. Use only if a class defined by features picks the wrong sounds; otherwise use compose-edit-natural-class for a class defined by segments. Every rule and environment using it changes too (guide nasal-assimilation). Stages a change to the feature values that define a feature-based natural class: set a constraint (a feature the class already constrains takes the new value in place) and clear constraints. The class must keep at least one constraint, and a segment class is refused. The response lists the environments, rules and insertions that use the class. Only a person can Apply.\nCommand: compose-edit-natural-class-features. Agent class: Draft.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "draft": {
+        "type": "string",
+        "description": "Draft name."
+      },
+      "target": {
+        "type": "string",
+        "description": "Id of the existing feature-based natural class."
+      },
+      "set": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "feature": {
+              "type": "string"
+            },
+            "value": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "feature",
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        "description": "Feature and value pairs to set, each an object with feature and value ids."
+      },
+      "clear": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Ids of features whose constraint is removed."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "draft",
+      "target",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

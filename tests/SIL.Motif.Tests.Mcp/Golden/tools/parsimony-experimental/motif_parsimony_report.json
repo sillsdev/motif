@@ -1,0 +1,25 @@
+{
+  "name": "motif_parsimony_report",
+  "description": "Read a Parsimony Report. Reads a stored Parsimony Report by id. It uses the saved Report and does not run PanGloss.\nCommand: parsimony show. Agent class: Read.\nReportId: The exact stored Parsimony report identity.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "report_id": {
+        "type": "string",
+        "description": "Stored Parsimony Report id."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "report_id",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": true,
+  "destructiveHint": false,
+  "idempotentHint": true
+}

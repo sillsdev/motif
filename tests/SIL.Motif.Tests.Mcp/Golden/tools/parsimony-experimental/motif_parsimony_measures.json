@@ -1,0 +1,20 @@
+{
+  "name": "motif_parsimony_measures",
+  "description": "List Parsimony measures. Lists registered grammar checks, their axes, evidence tiers, citations, and fixed views. It reads the catalog without invoking PanGloss.\nCommand: parsimony measures. Agent class: Read.\n",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "additionalProperties": false,
+    "required": [
+      "project"
+    ]
+  },
+  "readOnlyHint": true,
+  "destructiveHint": false,
+  "idempotentHint": true
+}

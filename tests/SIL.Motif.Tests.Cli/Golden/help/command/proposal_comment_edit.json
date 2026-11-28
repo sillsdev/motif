@@ -4,7 +4,6 @@
   "slug": "proposal-comment-edit",
   "title": "Edit a Proposal Comment",
   "description": "Replaces the text of a Comment on an open Proposal. Only a person edits a Comment; it then shows that it was edited, and when.",
-  "helpPage": "# Edit a Comment on a Proposal\n\nReplaces the text of a Comment on an open Proposal. Only a person edits a Comment; an assistant cannot.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif proposal comment edit \u003CproposalId\u003E \u003CcommentId\u003E --project \u003Cfwdata\u003E --text \u0022Keep the second gloss, drop the third\u0022\nmotif proposal comment edit \u003CproposalId\u003E \u003CcommentId\u003E --project \u003Cfwdata\u003E --file comment.md\n\u0060\u0060\u0060\n\nGive the full Proposal id and the Comment number that \u0060show\u0060 lists. The Comment then shows that it was edited, and when; the earlier text is not kept. A Comment cannot be empty: [delete it](cmd:proposal%20comment%20delete) instead. Comments cannot change once the Proposal is applied, declined, withdrawn or superseded.\n",
   "usage": [
     "Usage: motif proposal comment edit \u003CproposalId\u003E \u003CcommentId\u003E --project \u003Cfwdata\u003E (--text \u003Cmarkdown\u003E | --file \u003Cpath\u003E) [--json]"
   ],

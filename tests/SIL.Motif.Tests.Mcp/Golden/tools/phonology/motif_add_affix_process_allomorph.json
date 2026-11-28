@@ -1,0 +1,105 @@
+{
+  "name": "motif_add_affix_process_allomorph",
+  "description": "Add an affix process allomorph. Research first: motif_guide topic conditioned-allomorphs or workflow; check best practice. Use only if one morpheme has another pattern-based form; otherwise use compose-author-alternate-form for a plain form, or a new entry for a new morpheme. If the forms follow sound, look for a phonological rule (guide conditioned-allomorphs). Stages one more pattern-based form, an affix process with its own input pattern and output, on an existing affix entry whose forms may be plain allomorphs or processes. The lexeme form\u0027s morph type is copied and the form applies to all of the entry\u0027s grammatical info. It refuses a stem, a repeated pattern and a missing placement.\nCommand: compose-author-affix-process-allomorph. Agent class: Draft.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "draft": {
+        "type": "string",
+        "description": "Draft name."
+      },
+      "entry": {
+        "type": "string",
+        "description": "Id of the existing affix entry that gains the process."
+      },
+      "input": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "phoneme": {
+              "type": "string"
+            },
+            "naturalClass": {
+              "type": "string"
+            },
+            "remaining": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "additionalProperties": false
+        },
+        "description": "Ordered pattern parts, each with a name and one of phoneme, naturalClass or remaining true; the remaining-stem part is last."
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "copy": {
+              "type": "string"
+            },
+            "insert": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "insertClass": {
+              "type": "string"
+            },
+            "modify": {
+              "type": "string"
+            },
+            "features": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "description": "Ordered realization, each item exactly one of: copy of a named input part; insert of phoneme ids; insertClass, the id of a natural class one of whose segments is inserted (a class of several segments leaves the choice of member to the parser); modify, the name of an input part (a phoneme, a natural class or the remaining stem), with features, the id of a feature natural class laid over the copied part. An input part left out of the output is deleted."
+      },
+      "inflection_classes": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Optional ids of inflection classes of the stems this form attaches to. Inflectional affixes only; a derivational affix is refused (use compose-edit-derivational-affix-restriction)."
+      },
+      "placement": {
+        "type": "object",
+        "properties": {
+          "after": {
+            "type": "string"
+          },
+          "before": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "description": "The neighbouring alternate form ids, after, before or both; required when the entry already has alternate forms."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "draft",
+      "entry",
+      "input",
+      "output",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

@@ -1,0 +1,68 @@
+{
+  "name": "motif_add_lexeme_form",
+  "description": "Author a lexeme form. Research first: motif_guide topic conditioned-allomorphs; check best practice. Use only if an entry needs its main form written; otherwise add a form with compose-author-alternate-form. Keep one entry per morpheme, and leave a regular sound change to a phonological rule (guide conditioned-allomorphs). Stages a lexeme form with explicitly authored spelling, writing system and morph type in a Draft. Dry Run and Trial the Draft before Finalize; only a person can Apply.\nCommand: compose-author-lexeme-form. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "draft": {
+        "type": "string",
+        "description": "The draft name from motif_start_proposal."
+      },
+      "entry": {
+        "type": "string",
+        "description": "Id of the existing entry."
+      },
+      "morph_type": {
+        "type": "string",
+        "description": "Id of the morph type of the new form."
+      },
+      "ws": {
+        "type": "string",
+        "description": "Writing system tag the form is written in."
+      },
+      "text": {
+        "type": "string",
+        "description": "The form\u0027s written text."
+      },
+      "environments": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Optional environment ids restricting the new form."
+      },
+      "is_abstract": {
+        "type": "boolean",
+        "description": "True for a root-and-pattern form with no fixed segments."
+      },
+      "sense": {
+        "type": "string",
+        "description": "Id of an existing sense of the entry to gloss. Needs gloss_ws and gloss_text."
+      },
+      "gloss_ws": {
+        "type": "string",
+        "description": "Writing system tag of the gloss."
+      },
+      "gloss_text": {
+        "type": "string",
+        "description": "The gloss text."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "draft",
+      "entry",
+      "morph_type",
+      "ws",
+      "text",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

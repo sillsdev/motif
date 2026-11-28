@@ -4,7 +4,6 @@
   "slug": "hypothesis-neighbours",
   "title": "Check a change\u0027s neighbours",
   "description": "Asks the ledger whether a hypothesis already exists for a change, environment, host class and slot, and whether a passed rule stands or a rule attempt failed. Run it before authoring any object.",
-  "helpPage": "# Check a change\u0027s neighbours\n\n\u0060hypothesis neighbours\u0060 asks the ledger whether a hypothesis already exists for a change, environment, host class and slot, and whether a passed rule stands or a rule attempt failed. Run it before authoring any object.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif hypothesis neighbours --project \u003Cfwdata\u003E --change d\u003Er --environment \u0022_ an\u0022\n\u0060\u0060\u0060\n\n\u0060--change\u0060 is required. The environment, host class and slot narrow the match; leave one out to match any. \u0060hasPassed\u0060 means a passed rule stands, so widen or merge it. \u0060hasFailedAttempt\u0060 means a rule attempt is on record as failed, which permits a list for that shape.\n\n## Related commands\n\n- [State a hypothesis](cmd:hypothesis%20add) records a new one.\n",
   "usage": [
     "Usage: motif hypothesis neighbours --project \u003Cfwdata\u003E --change \u003Cx\u003E:\u003Cy\u003E [--environment \u003Ctext\u003E] [--host-class \u003Ctext\u003E] [--slot \u003Ctext\u003E] [--json]"
   ],

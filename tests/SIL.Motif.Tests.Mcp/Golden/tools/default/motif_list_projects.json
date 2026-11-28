@@ -1,0 +1,12 @@
+{
+  "name": "motif_list_projects",
+  "description": "List Known projects. Lists the Known projects a person has added to this installation. Select one by name or its recorded path for project tools.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  },
+  "readOnlyHint": true,
+  "destructiveHint": false,
+  "idempotentHint": true
+}

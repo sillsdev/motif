@@ -4,7 +4,6 @@
   "slug": "request-ask-again",
   "title": "Ask again after a decline",
   "description": "Makes a new open Request from the Request a declined Proposal answered, with the same target and note, so an assistant can try again.",
-  "helpPage": "# Ask again after a decline\n\n\u0060request ask-again\u0060 makes a new open Request from the Request a declined Proposal answered, with the same target and note, so an assistant can try again.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif request ask-again \u003CproposalId\u003E --project \u003Cfwdata\u003E\n\u0060\u0060\u0060\n\nGive the full id of a declined Proposal that answered a Request. Asking twice returns the new Request while it is still open.\n\n## Related commands\n\n- [List the open Requests](cmd:list%20requests) shows the new one.\n",
   "usage": [
     "Usage: motif request ask-again \u003CproposalId\u003E --project \u003Cfwdata\u003E [--json]"
   ],

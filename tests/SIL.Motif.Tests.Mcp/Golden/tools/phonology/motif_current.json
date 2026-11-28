@@ -1,0 +1,24 @@
+{
+  "name": "motif_current",
+  "description": "Read the Current chapters. Reads the Current chapter of each Source from this machine\u0027s local file. An empty answer is normal.\nCommand: current get. Agent class: Read.\nsource: One Source id; null reads every Source that has a Current chapter.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "source": {
+        "type": "string",
+        "description": "One Source id. Omit for the Current chapter of every Source."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "additionalProperties": false,
+    "required": [
+      "project"
+    ]
+  },
+  "readOnlyHint": true,
+  "destructiveHint": false,
+  "idempotentHint": true
+}

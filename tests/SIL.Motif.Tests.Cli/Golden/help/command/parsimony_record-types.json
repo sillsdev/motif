@@ -4,7 +4,6 @@
   "slug": "parsimony-record-types",
   "title": "List Notebook record types",
   "description": "Lists the saved Notebook record types with their portable IDs and readable names. Use the ID when you stage a Parsimony ruling.",
-  "helpPage": "# List Notebook record types\n\n\u0060\u0060\u0060sh\nmotif parsimony record-types --project language.fwdata [--json]\n\u0060\u0060\u0060\n\nLists the saved record types in the project\u0027s Notebook with each type\u0027s portable ID and readable name. Choose a type by its ID; Motif never picks one by English name.\n",
   "usage": [
     "Usage: motif parsimony record-types --project \u003Cfwdata\u003E [--json]"
   ],

@@ -1,0 +1,59 @@
+{
+  "name": "motif_assess",
+  "description": "Measure a Selection. Runs PanGloss over chosen Texts or word forms and stores the resulting Assessments. After FieldWorks saves project changes, capture a new Baseline before measuring them. A word whose lowercase form differs and is not listed is also parsed as an extra row marked lowercaseOf, so the result reports inputWords and lowercaseWords separately.\nCommand: assess. Agent class: Evaluate.\nno_background: True runs any Baseline recapture this needs in the foreground only: no Source index or Parsimony job is queued and no runner is woken, so nothing commits after the command returns.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "words": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Words to assess; omit for the Default Selection."
+      },
+      "words_file": {
+        "type": "string",
+        "description": "Path to a UTF-8 file with one word per line, or word, a tab, then a count, instead of words; counts are used only when the file is saved with the Selection."
+      },
+      "assessment": {
+        "type": "string",
+        "description": "A stored Assessment id from an earlier result: page its words instead of measuring again."
+      },
+      "offset": {
+        "type": "integer",
+        "description": "Words to skip when paging. Default 0.",
+        "minimum": 0,
+        "maximum": 10000000
+      },
+      "no_background": {
+        "type": "boolean",
+        "description": "True runs any Baseline recapture in the foreground only: no Source index or Parsimony job is queued and no runner is woken, so nothing commits after the tool returns."
+      },
+      "detail": {
+        "type": "string",
+        "description": "\u0027concise\u0027 (default) drops empty fields and long lists; \u0027detailed\u0027 returns everything.",
+        "enum": [
+          "concise",
+          "detailed"
+        ]
+      },
+      "limit": {
+        "type": "integer",
+        "description": "Page size for paged reads (findings, operations: default 10; proposals list: default 25), and the most list items in concise mode elsewhere (default 25).",
+        "minimum": 1,
+        "maximum": 200
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "additionalProperties": false,
+    "required": [
+      "project"
+    ]
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

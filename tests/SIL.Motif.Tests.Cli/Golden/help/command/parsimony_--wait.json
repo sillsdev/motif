@@ -4,7 +4,6 @@
   "slug": "parsimony-wait",
   "title": "Wait for a Parsimony Report",
   "description": "Queues the requested Parsimony measure and waits for its stored Report. It does not capture a Baseline or require an Assessment.",
-  "helpPage": "# Wait for a Parsimony Report\n\n\u0060parsimony --wait\u0060 queues the requested measure over the current Baseline and waits for its stored Report.\n\n## Example\n\n\u0060\u0060\u0060powershell\nmotif parsimony --project \u0022C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\u0022 --measure P-statement-unused --wait --json\n\u0060\u0060\u0060\n\nCapture a Baseline first. PanGloss imports that Baseline to create grammar facts; showing the completed Report later does not run PanGloss.\n\nUse \u0060--wait-timeout-ms\u0060 to set the wait bound. Omit \u0060--wait\u0060 to receive the queued job id.\n\n## Related commands\n\n- [Review grammar parsimony](cmd:parsimony) queues the same review without waiting.\n- [Read a Parsimony Report](cmd:parsimony%20show) opens a stored result.\n- [List Parsimony measures](cmd:parsimony%20measures) shows registered checks and views.\n",
   "usage": [
     "Usage: motif parsimony --project \u003Cfwdata\u003E [--measure \u003Cmeasure-id\u003E] --wait [--evidence-scope default-selection|project-approved] [--assessment \u003CParseTime-id\u003E ...] [--wait-timeout-ms \u003Cms\u003E] [--json]"
   ],

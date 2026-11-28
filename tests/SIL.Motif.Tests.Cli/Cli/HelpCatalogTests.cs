@@ -590,4 +590,15 @@ public sealed class HelpCatalogTests
             previous = current;
         }
     }
+
+    [Fact]
+    public void CommandsJsonKeepsItsEntriesSortedByOrdinalCommandName()
+    {
+        var repositoryRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", ".."));
+        var path = Path.Combine(repositoryRoot, "src", "SIL.Motif.Help", "Content", "en", "commands.json");
+        using var document = System.Text.Json.JsonDocument.Parse(File.ReadAllText(path));
+        var names = document.RootElement.EnumerateObject().Select(property => property.Name).ToList();
+
+        Assert.Equal(names.Order(StringComparer.Ordinal), names);
+    }
 }

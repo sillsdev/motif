@@ -1,0 +1,92 @@
+{
+  "name": "motif_add_environment",
+  "description": "Author an environment. Research first: motif_guide topic conditioned-allomorphs or nasal-assimilation; check best practice. Use only if a form\u0027s occurrence depends on neighbouring sounds; otherwise use a stem name, inflection class or required features. Name natural classes, not sound lists; an environment that spells one whole word is a stem list (guide conditioned-allomorphs). Stages an environment with explicitly declared left and right contexts in a Draft. Contexts use project phonemes, natural classes or boundaries. Only a person can Apply.\nCommand: compose-author-environment. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "draft": {
+        "type": "string",
+        "description": "Draft name."
+      },
+      "name": {
+        "type": "string",
+        "description": "Environment name."
+      },
+      "left": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "phoneme": {
+              "type": "string",
+              "description": "Phoneme id in the first phoneme set."
+            },
+            "naturalClass": {
+              "type": "string",
+              "description": "Natural class id, exact name or abbreviation; names must resolve uniquely using NFD and ordinal case-insensitive equality, without trimming. The class must have a unique abbreviation."
+            },
+            "boundary": {
+              "type": "string",
+              "description": "Word edge or declared morpheme boundary.",
+              "enum": [
+                "word",
+                "morpheme"
+              ]
+            },
+            "boundaryMarker": {
+              "type": "string",
+              "description": "Stored boundary-marker id. Rule contexts preserve its literal identity, even when its code is #."
+            }
+          },
+          "additionalProperties": false
+        },
+        "description": "Context items in linguistic order, from the outer left to outer right. Each names exactly one reference."
+      },
+      "right": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "phoneme": {
+              "type": "string",
+              "description": "Phoneme id in the first phoneme set."
+            },
+            "naturalClass": {
+              "type": "string",
+              "description": "Natural class id, exact name or abbreviation; names must resolve uniquely using NFD and ordinal case-insensitive equality, without trimming. The class must have a unique abbreviation."
+            },
+            "boundary": {
+              "type": "string",
+              "description": "Word edge or declared morpheme boundary.",
+              "enum": [
+                "word",
+                "morpheme"
+              ]
+            },
+            "boundaryMarker": {
+              "type": "string",
+              "description": "Stored boundary-marker id. Rule contexts preserve its literal identity, even when its code is #."
+            }
+          },
+          "additionalProperties": false
+        },
+        "description": "Context items in linguistic order, from the outer left to outer right. Each names exactly one reference."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "draft",
+      "name",
+      "left",
+      "right",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

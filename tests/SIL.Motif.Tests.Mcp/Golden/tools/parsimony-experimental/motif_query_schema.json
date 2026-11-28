@@ -1,0 +1,27 @@
+{
+  "name": "motif_query_schema",
+  "description": "Returns the JSON Schema of a motif.query.v2 document: every op, source and column with its type, the phon and env pattern syntax, and the reserved kinds. With values=classes it instead lists the natural-class and feature names of the project\u0027s Baseline, for writing phon and env patterns.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "values": {
+        "type": "string",
+        "description": "Set to classes to list the project\u0027s natural-class and feature names instead of the schema.",
+        "enum": [
+          "classes"
+        ]
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "additionalProperties": false,
+    "required": [
+      "project"
+    ]
+  },
+  "readOnlyHint": true,
+  "destructiveHint": false,
+  "idempotentHint": true
+}

@@ -1,0 +1,34 @@
+{
+  "name": "motif_set_rationale",
+  "description": "Write a Proposal\u0027s Rationale. Writes or replaces what a Proposal changes and why, in Markdown. The Rationale stays outside the Proposal\u0027s content, so rewriting it never changes what the Proposal does, and it can be rewritten until the Proposal is applied or closed.\nCommand: proposal rationale. Agent class: Draft.\nProposalId: The full id of the Proposal, Draft or finalized, whose Rationale is written.\nText: The Rationale in Markdown: what the Proposal changes and why.\nAuthorLabel: What an agent calls itself, kept as typed with the revision; null when a person writes.\nPersonName: The person the revision is by or for; null when unknown.\nExpectedRationale: The Rationale the writer\u0027s edit began from; when given, the write is refused if the stored one is no longer it.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "proposal": {
+        "type": "string",
+        "description": "The full Proposal id, as motif_start_proposal or motif_proposals returned it."
+      },
+      "rationale": {
+        "type": "string",
+        "description": "What this Proposal changes and why, in FieldWorks Markdown. Write a word or morpheme of the language as [form]{.v}, or [form]{ws=code} for another writing system, so it links to its writing system; backticks are plain text. Replaces the earlier text and returns its findings; a Draft with findings cannot be finalized, and a Ready Proposal refuses them and keeps its last clean Rationale."
+      },
+      "author": {
+        "type": "string",
+        "description": "What you call yourself, such as \u0027Claude (Opus 5.5)\u0027. Shown beside the text as a label only."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "proposal",
+      "rationale",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

@@ -1,0 +1,42 @@
+{
+  "name": "motif_entry",
+  "description": "Read a lexical entry. Reads an entry from the current Baseline by entry id or sense id: the headword and every sense with its glosses. A Proposal change names a sense by id; this says which entry and sense that is, with no Trial.\nCommand: lexical-entry. Agent class: Read.\nIds: Portable ids of entries or senses; a sense id reads the entry that owns it. At most 100.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Ids of lexical entries or senses, such as a change\u0027s target. A sense id reads its entry."
+      },
+      "detail": {
+        "type": "string",
+        "description": "\u0027concise\u0027 (default) drops empty fields and long lists; \u0027detailed\u0027 returns everything.",
+        "enum": [
+          "concise",
+          "detailed"
+        ]
+      },
+      "limit": {
+        "type": "integer",
+        "description": "Page size for paged reads (findings, operations: default 10; proposals list: default 25), and the most list items in concise mode elsewhere (default 25).",
+        "minimum": 1,
+        "maximum": 200
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "ids",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": true,
+  "destructiveHint": false,
+  "idempotentHint": true
+}

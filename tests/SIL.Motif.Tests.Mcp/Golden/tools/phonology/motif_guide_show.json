@@ -1,0 +1,89 @@
+{
+  "name": "motif_guide_show",
+  "description": "Read a Grammar Guide section. Reads one Grammar Guide section from the current Baseline. Use format fw-md for the whole record as FieldWorks Markdown, or json for its rich text runs. asOf names a Draft or Proposal whose edits of the section are shown as if applied.\nCommand: guide show. Agent class: Read.\nId: The record\u0027s GDR-n abbreviation or its canonical id.\nExpectedBaseline: The required Baseline identity; null accepts the current Baseline.\nAsOf: A Draft name or Proposal id whose edits of this section are shown as if applied; null shows the Baseline.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "Value for the request field."
+      },
+      "expected_baseline": {
+        "type": "object",
+        "properties": {
+          "projectIdentity": {
+            "type": "string",
+            "description": "Value for the request field."
+          },
+          "semanticSnapshotDigest": {
+            "type": "string",
+            "description": "Value for the request field."
+          },
+          "projectionVersion": {
+            "type": "string",
+            "description": "Value for the request field."
+          },
+          "capturedUtc": {
+            "type": "string",
+            "description": "Value for the request field."
+          },
+          "bundleDigest": {
+            "type": "string",
+            "description": "Value for the request field."
+          },
+          "capturedHostSessionId": {
+            "type": "string",
+            "description": "Value for the request field."
+          },
+          "capturedEditGeneration": {
+            "type": "integer"
+          },
+          "semanticIdentity": {
+            "type": "object",
+            "properties": {
+              "projectIdentity": {
+                "type": "string",
+                "description": "Value for the request field."
+              },
+              "semanticSnapshotDigest": {
+                "type": "string",
+                "description": "Value for the request field."
+              },
+              "projectionVersion": {
+                "type": "string",
+                "description": "Value for the request field."
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      "as_of": {
+        "type": "string",
+        "description": "Value for the request field."
+      },
+      "format": {
+        "type": "string",
+        "description": "json returns rich text runs; fw-md returns the whole record as FieldWorks Markdown.",
+        "enum": [
+          "json",
+          "fw-md"
+        ],
+        "default": "json"
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "id",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": true,
+  "destructiveHint": false,
+  "idempotentHint": true
+}

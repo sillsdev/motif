@@ -4,7 +4,6 @@
   "slug": "source-list",
   "title": "List Sources",
   "description": "Lists the Sources the project\u0027s Motif Sources list holds, with their Context and any reason one cannot be used. Removed Sources are hidden unless asked for.",
-  "helpPage": "# List Sources\n\n\u0060source list\u0060 reads the project\u0027s \u0022Motif Sources\u0022 list from the current Baseline and prints one row per Source: its id, name, status, Context, and the reason when the item cannot be used. A bad item never hides the others.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif source list --project Koro.fwdata --json\n\u0060\u0060\u0060\n\nRemoved Sources are hidden; \u0060--all\u0060 shows them. The list does not open the live FieldWorks project, so \u0060isStale\u0060 says whether FieldWorks has saved since the Baseline. A project with no such list has no Sources. Two lists with the same name are refused as ambiguous.\n\n## Related commands\n\n- [Show one Source](cmd:source%20show) reads a Source\u0027s Context ranges and folder.\n- [Place a chapter](cmd:source%20where) says where a chapter sits.\n",
   "usage": [
     "Usage: motif source list --project \u003Cfwdata\u003E [--all] [--json]"
   ],

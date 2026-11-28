@@ -1,0 +1,30 @@
+{
+  "name": "motif_retire_allomorph",
+  "description": "Retire or merge forms. Research first: motif_guide topic no-inflection; check best practice. Retires listed forms and moves their references. Retire only a redundant form, and check every affected approved word in a Trial (guide no-inflection). Stages one connected Proposal to retire ordinary prefix or suffix alternates after their references move, or a duplicate stem alternate that nothing refers to; the sound-rule form also stages its natural class and rule. Dry Run shows bundle Morph and copied Form text changes, other references, and deletion together. Missing destinations are refused with counts for distinct unresolved Approved analyses, ad hoc rules, and other references; only a person can Apply.\nCommand: retire-allomorph. Agent class: Draft.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "draft": {
+        "type": "string",
+        "description": "Draft name from motif_start_proposal."
+      },
+      "intent_json": {
+        "type": "string",
+        "description": "Closed motif-retire-allomorph/v1 JSON with exact source, destination and reference identities."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "draft",
+      "intent_json",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

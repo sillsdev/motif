@@ -1,0 +1,46 @@
+{
+  "name": "motif_order_allomorphs",
+  "description": "Order alternate forms. Research first: motif_guide topic conditioned-allomorphs; check best practice. Keep variants of one morpheme under one entry with narrow conditions. Not for a regular sound change across forms: use a phonological rule (guide nasal-assimilation). Changes the order of existing alternate forms within one entry after checking their current order. The lexeme form cannot be moved, and Motif stages the moves in a Draft for human review. Only a person can Apply.\nCommand: order-allomorphs. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "draft": {
+        "type": "string",
+        "description": "The draft name from motif_start_proposal."
+      },
+      "target": {
+        "type": "string",
+        "description": "Canonical id of the owning lexical entry."
+      },
+      "expected_alternates": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Current alternate-form ids in project order."
+      },
+      "alternates": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Requested order of those same alternate forms."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "draft",
+      "target",
+      "expected_alternates",
+      "alternates",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

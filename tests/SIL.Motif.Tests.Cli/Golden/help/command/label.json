@@ -4,7 +4,6 @@
   "slug": "label",
   "title": "Label a Draft",
   "description": "Sets or replaces the short label that identifies a Draft in lists and review. The label does not change its operations, and only a person can Apply the Proposal.",
-  "helpPage": "# Label a Draft\n\nSets or replaces the short label that identifies a Draft in lists and review. A label does not change the Draft\u0027s operations.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif label --project \u003Cfwdata\u003E --draft \u003Cname\u003E \u0022Add the plural form\u0022\n\u0060\u0060\u0060\n\nUse the label to recognize a Draft while reviewing it. It is separate from the Rationale written by [\u0060proposal rationale\u0060](cmd:proposal%20rationale). Only a person can Apply the resulting Proposal.\n",
   "usage": [
     "Usage: motif label --project \u003Cfwdata\u003E --draft \u003Cname\u003E \u003Ctext\u003E [--json]"
   ],
