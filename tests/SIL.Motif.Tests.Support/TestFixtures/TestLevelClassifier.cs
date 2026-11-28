@@ -63,10 +63,11 @@ internal static class TestLevelClassifier
             .Any(attribute => attribute.GetConstructorArguments().FirstOrDefault() as string == "MotifTestLevel"))
             throw new InvalidOperationException($"{className} must declare MotifTestLevel on the class, not a method.");
         var parserMethods = methods.Count(method =>
-            method.GetCustomAttributes(typeof(RealParserFactAttribute).AssemblyQualifiedName!).Any());
+            method.GetCustomAttributes(typeof(RealParserFactAttribute).AssemblyQualifiedName!).Any() ||
+            method.GetCustomAttributes(typeof(RealParserTheoryAttribute).AssemblyQualifiedName!).Any());
         if (parserMethods > 0 && parserMethods < methods.Length &&
             !IsWalkthroughOrSmoke(className) && !declarations.Contains("System"))
-            throw new InvalidOperationException($"{className} mixes RealParserFact with deterministic tests; split the class.");
+            throw new InvalidOperationException($"{className} mixes RealParserFact or RealParserTheory with deterministic tests; split the class.");
         var level = ResolveLevel(className, defaultLevel, declarations, parserMethods > 0);
         return selectedLevels is null || selectedLevels.Contains(level);
     }

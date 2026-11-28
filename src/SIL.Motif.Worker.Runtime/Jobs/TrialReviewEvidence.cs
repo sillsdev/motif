@@ -45,6 +45,8 @@ public sealed record TrialReviewLedger(string JobId, ReviewInputReference Inputs
     public IReadOnlyList<GrammarWarning>? AfterWarnings { get; init; }
     /// <summary>The saved candidate file's exact bytes used for diagnostic trace binding.</summary>
     public string? CandidateFileDigest { get; init; }
+    /// <summary>PanGloss's shadowed-alternates report for the candidate grammar, null when the check did not run.</summary>
+    public SIL.Motif.Contract.Responses.ShadowedAlternatesReport? ShadowedAlternates { get; init; }
     /// <summary>The advisory Guide check of the post-Proposal scratch project, null when it could not run.</summary>
     public SIL.Motif.Contract.Responses.GdrCheckResponse? GdrSync { get; init; }
 }

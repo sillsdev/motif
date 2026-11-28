@@ -15,7 +15,8 @@ namespace SIL.Motif.Commands.Review;
 
 internal static class TrialJobPins
 {
-    internal static ReportPins? ReadPins(JobRecord job, TrialJobInput input, AssessmentRepository assessments)
+    internal static ReportPins? ReadPins(JobRecord job, TrialJobInput input, AssessmentRepository assessments,
+        Func<string, AssessmentRecord>? readBefore = null)
     {
         if (job.Status != JobStatus.Completed || job.ResultJson is null) return null;
         using var result = JsonDocument.Parse(job.ResultJson);
@@ -30,7 +31,7 @@ internal static class TrialJobPins
             ? ids.EnumerateArray().Select(id => id.GetString()!).Distinct(StringComparer.Ordinal).ToArray() : [];
         CheckpointPin[] checkpoints =
         [
-            TrialReviewPublisher.Checkpoint(assessments, Side.Before, before, input),
+            TrialReviewPublisher.Checkpoint(assessments, Side.Before, before, input, read: readBefore),
             TrialReviewPublisher.Checkpoint(assessments, Side.After, after, input),
         ];
         return new ReportPins(job.ProjectKey, proposal.ProposalId.Value, null, IntentDigest.Compute(proposal),

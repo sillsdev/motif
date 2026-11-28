@@ -219,6 +219,11 @@ jobs:
         shell: pwsh
         run: |
           Import-Module ./tools/PanGlossRelease.psm1
+          # PanGloss publishes no build for some RIDs (macOS); PanGloss tests skip there.
+          if (-not (Test-PanGlossPinnedForRuntime -RepositoryRoot (Get-Location).Path -RuntimeIdentifier $env:ICU_RID)) {
+            Write-Host "No PanGloss pin for $env:ICU_RID; staging skipped."
+            return
+          }
           $artifact = Get-PinnedPanGlossArtifact -RepositoryRoot (Get-Location).Path `
             -CacheDirectory (Join-Path $env:RUNNER_TEMP "motif-pangloss/$env:ICU_RID")
           "MOTIF_PANGLOSS_EXE=$($artifact.Path)" >> $env:GITHUB_ENV

@@ -26,7 +26,7 @@ internal static class TrialGrammarCheck
         var outcome = await invoker.RunAsync(
             new PanGlossRequest.GrammarHealth(grammarPath, projectName, storedAnalyses)
             {
-                OnAdmissionWait = onAdmissionWait, SnapshotPath = snapshotPath,
+                Shadowed = true, OnAdmissionWait = onAdmissionWait, SnapshotPath = snapshotPath,
             }, label, cancellationToken)
             .ConfigureAwait(false);
         // A cancelled run is thrown as a cancellation, so the caller can tell its own cancel from a stage limit.
@@ -46,6 +46,6 @@ internal static class TrialGrammarCheck
                 }
                 : new InvalidOperationException(outcome.Message)),
         };
-        return GrammarHealthReportReader.ReadResponse(output);
+        return GrammarHealthReportReader.ReadResponse(output, shadowedRequested: true);
     }
 }

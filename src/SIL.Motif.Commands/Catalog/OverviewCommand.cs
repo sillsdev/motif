@@ -43,13 +43,17 @@ public static class OverviewCommand
 
     /// <summary>Reads an Overview from the named Baseline, Assessment and measurements.</summary>
     public static CommandOutcome<OverviewResponse> Overview(MotifDatabase database, ProjectLocator project,
-        EvidenceSet set)
+        EvidenceSet set) => Overview(database, project, set, readCurrent: null);
+
+    /// <summary>Reads an Overview, taking today's evidence from <paramref name="readCurrent"/> so a caller that reads many can read it once.</summary>
+    internal static CommandOutcome<OverviewResponse> Overview(MotifDatabase database, ProjectLocator project,
+        EvidenceSet set, Func<CommandOutcome<CurrentEvidenceSnapshot>>? readCurrent,
+        Func<string, AssessmentRecord>? readShared = null)
     {
         ArgumentNullException.ThrowIfNull(database);
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(set);
-        var current = CurrentEvidenceQuery.ReadCurrentEvidence(database, project,
-            includeResolvedReadings: false, includeWordContext: false);
+        var current = readCurrent?.Invoke() ?? ReadCurrentForOverview(database, project);
         if (!current.Succeeded)
             return CommandOutcome<OverviewResponse>.Refused(current.Refusal!);
         var evidence = current.Value!;
@@ -92,7 +96,7 @@ public static class OverviewCommand
                 Set = set,
             };
         }
-        return BuildOverview(database, project, evidence);
+        return BuildOverview(database, project, evidence, readShared);
 
         static AssessmentRecord? TryRead(AssessmentRepository repository, string id)
         {
@@ -101,17 +105,22 @@ public static class OverviewCommand
         }
     }
 
-    internal static CommandOutcome<OverviewResponse> OverviewCurrent(MotifDatabase database, ProjectLocator project)
-    {
-        var current = CurrentEvidenceQuery.ReadCurrentEvidence(database, project,
+    internal static CommandOutcome<CurrentEvidenceSnapshot> ReadCurrentForOverview(MotifDatabase database,
+        ProjectLocator project) => CurrentEvidenceQuery.ReadCurrentEvidence(database, project,
             includeResolvedReadings: false, includeWordContext: false);
+
+    internal static CommandOutcome<OverviewResponse> OverviewCurrent(MotifDatabase database, ProjectLocator project,
+        Func<CommandOutcome<CurrentEvidenceSnapshot>>? readCurrent = null,
+        Func<string, AssessmentRecord>? readShared = null)
+    {
+        var current = readCurrent?.Invoke() ?? ReadCurrentForOverview(database, project);
         return current.Succeeded
-            ? BuildOverview(database, project, current.Value!)
+            ? BuildOverview(database, project, current.Value!, readShared)
             : CommandOutcome<OverviewResponse>.Refused(current.Refusal!);
     }
 
     private static CommandOutcome<OverviewResponse> BuildOverview(MotifDatabase database, ProjectLocator project,
-        CurrentEvidenceSnapshot evidence)
+        CurrentEvidenceSnapshot evidence, Func<string, AssessmentRecord>? readShared = null)
     {
             var summary = evidence.ProjectSummary;
             var selection = evidence.Selection;
@@ -130,7 +139,7 @@ public static class OverviewCommand
                 CostComparison = assessment is null
                     ? TimingCostComparison.Unavailable("No paired Assessment was selected.")
                     : TimingCostComparisonQuery.Read(database, evidence.Set?.Origin.JobId, assessment,
-                        assessedWords.Select(word => word.Word).ToArray(), evidence.EvidenceSet?.Components.Count != 1, "kind"),
+                        assessedWords.Select(word => word.Word).ToArray(), evidence.EvidenceSet?.Components.Count != 1, "kind", readShared),
             };
             if (!evidence.TimingDetail.IsComplete)
             {

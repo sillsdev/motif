@@ -83,7 +83,7 @@ public static class GrammarCheckQuery
                 (defaultChecks ?? FileDefaultProposalChecksStore.ForInstallation()).StoredAnalyses;
             var outcome = invoker.RunAsync(
                     new PanGlossRequest.GrammarHealth(baseline.FwDataPath, project.FieldWorksProjectIdentity,
-                        storedAnalyses),
+                        storedAnalyses) { Shadowed = true },
                     "grammar-check:" + workspaceKey,
                     cancellationToken)
                 .GetAwaiter().GetResult();
@@ -116,10 +116,12 @@ public static class GrammarCheckQuery
             GrammarWarning[] findings;
             GrammarWarningSummary[] summary;
             string locale;
+            ShadowedAlternatesReport? shadowed;
             try
             {
-                var parsed = GrammarHealthReportReader.ReadResponse(output);
+                var parsed = GrammarHealthReportReader.ReadResponse(output, shadowedRequested: true);
                 findings = parsed.Findings.ToArray();
+                shadowed = parsed.ShadowedAlternates;
                 summary = parsed.Summary.ToArray();
                 locale = parsed.Locale!;
             }
@@ -157,6 +159,7 @@ public static class GrammarCheckQuery
                 {
                     Summary = summary,
                     Locale = locale,
+                    ShadowedAlternates = shadowed,
                     CheckedLexemeCount = inventory.LexemeCount,
                     CheckedRuleCount = inventory.RuleCount,
                     Advisories = EmptyLexiconAdvisory(inventory),

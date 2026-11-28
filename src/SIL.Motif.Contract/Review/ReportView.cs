@@ -500,6 +500,13 @@ public sealed record ReviewSummary(
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public RuleAttemptSummary? RuleAttempts { get; init; }
 
+    /// <summary>
+    /// PanGloss's shadowed alternates in the post-Proposal grammar, definite and maybe; absent when the grammar check did not
+    /// run, and carrying a limitation when the installed PanGloss cannot report them. Advisory.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public SIL.Motif.Contract.Responses.ShadowedAlternatesReport? ShadowedAlternates { get; init; }
+
     /// <summary>The advisory Guide check of the post-Proposal project (ADR 0005); absent when it could not run.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public SIL.Motif.Contract.Responses.GdrCheckResponse? GdrSync { get; init; }

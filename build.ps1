@@ -226,10 +226,16 @@ $parserTarget = Join-Path $repoRoot "bin/$Configuration/$(if ($IsWindows) { 'pan
 $pinnedParser = $null
 try {
     Import-Module (Join-Path $repoRoot 'tools/PanGlossRelease.psm1') -Force
+    $parserRuntime = Get-CurrentPanGlossRuntimeIdentifier
+    if (-not (Test-PanGlossPinnedForRuntime -RepositoryRoot $repoRoot -RuntimeIdentifier $parserRuntime)) {
+        Write-Host "No PanGloss pin for $parserRuntime; staging skipped. Set MOTIF_PANGLOSS_EXE to use a local PanGloss." -ForegroundColor Yellow
+    }
+    else {
     $pinnedParser = Get-PinnedPanGlossArtifact -RepositoryRoot $repoRoot
     Copy-Item -LiteralPath $pinnedParser.Path -Destination $parserTarget -Force
     if (-not $IsWindows) { & chmod +x $parserTarget }
     Write-Host "PanGloss $($pinnedParser.Version) at $parserTarget"
+    }
 }
 catch {
     Write-Host "PanGloss was not staged beside the product: $($_.Exception.Message)" -ForegroundColor Yellow

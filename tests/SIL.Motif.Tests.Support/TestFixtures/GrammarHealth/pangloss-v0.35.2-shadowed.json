@@ -1,0 +1,325 @@
+{
+ "diagnostics": [
+  {
+   "blocks_fst": false,
+   "code": "grammar.allomorph.shadowed",
+   "description": "Alternate \"ba\" (eA_ba) can never be selected: the earlier alternate eA_bal covers it (unconstrained_earlier). Removable FieldWorks allomorph GUIDs: eA_ba.",
+   "explanation": "No word can select this allomorph: an earlier alternate of the same entry or aff",
+   "fieldworks_places": [
+    {
+     "field": "Allomorphs",
+     "tool": "lexiconEdit"
+    }
+   ],
+   "fst_reason": null,
+   "group_name": "Alternate is shadowed",
+   "guidance": "In Lexicon > Lexicon Edit, open the named entry. Remove the allomorph (or, for a",
+   "help_body": null,
+   "help_path": "docs/diagnostics/grammar.allomorph.shadowed.md",
+   "level": "warning",
+   "origin": "check",
+   "scope": "object",
+   "subjects": [
+    {
+     "field": null,
+     "fieldworks": {
+      "guid": null,
+      "reason": "guid_not_recorded",
+      "status": "unavailable"
+     },
+     "guid": null,
+     "internal_id": "lex_entry#0:eA",
+     "kind": "LexEntry",
+     "source_class": null,
+     "status": "object",
+     "subtitle": "eA",
+     "title": "bal"
+    }
+   ],
+   "title": "Alternate is shadowed"
+  },
+  {
+   "blocks_fst": false,
+   "code": "grammar.allomorph.shadowed",
+   "description": "Alternate \"\" (liw) can never be selected: the earlier alternate w covers it (conditions_cover). Removable FieldWorks allomorph GUIDs: liw.",
+   "explanation": "No word can select this allomorph: an earlier alternate of the same entry or aff",
+   "fieldworks_places": [
+    {
+     "field": "Allomorphs",
+     "tool": "lexiconEdit"
+    }
+   ],
+   "fst_reason": null,
+   "group_name": "Alternate is shadowed",
+   "guidance": "In Lexicon > Lexicon Edit, open the named entry. Remove the allomorph (or, for a",
+   "help_body": null,
+   "help_path": "docs/diagnostics/grammar.allomorph.shadowed.md",
+   "level": "warning",
+   "origin": "check",
+   "scope": "object",
+   "subjects": [
+    {
+     "field": null,
+     "fieldworks": {
+      "guid": null,
+      "reason": "guid_not_recorded",
+      "status": "unavailable"
+     },
+     "guid": null,
+     "internal_id": "morph_rule#0:PASS",
+     "kind": "MoInflAffMsa",
+     "source_class": null,
+     "status": "object",
+     "subtitle": null,
+     "title": "PASS"
+    }
+   ],
+   "title": "Alternate is shadowed"
+  }
+ ],
+ "fieldworks_project": {
+  "name": null,
+  "source": null
+ },
+ "fst_check_error": null,
+ "fst_checked": false,
+ "locale": "en",
+ "schema_version": 5,
+ "shadowed_alternates": {
+  "alternates": [
+   {
+    "allomorphId": 3,
+    "blockers": [],
+    "entryGuid": null,
+    "entryId": "eA",
+    "environments": [],
+    "form": "bal",
+    "index": 0,
+    "kind": "entry",
+    "morphemeId": "eA",
+    "msaGuid": null,
+    "reasons": [],
+    "removableGuids": [],
+    "ruleName": null,
+    "siblings": [],
+    "sourceAllomorphGuids": [
+     "eA_bal"
+    ],
+    "verdict": "selectable",
+    "xmlKey": "eA_bal"
+   },
+   {
+    "allomorphId": 4,
+    "blockers": [
+     {
+      "allomorphId": 3,
+      "index": 0,
+      "xmlKey": "eA_bal"
+     }
+    ],
+    "entryGuid": null,
+    "entryId": "eA",
+    "environments": [
+     null
+    ],
+    "form": "ba",
+    "index": 1,
+    "kind": "entry",
+    "morphemeId": "eA",
+    "msaGuid": null,
+    "reasons": [
+     "unconstrained_earlier"
+    ],
+    "removableGuids": [
+     "eA_ba"
+    ],
+    "ruleName": null,
+    "siblings": [],
+    "sourceAllomorphGuids": [
+     "eA_ba"
+    ],
+    "verdict": "shadowed",
+    "xmlKey": "eA_ba"
+   },
+   {
+    "allomorphId": 0,
+    "blockers": [],
+    "entryGuid": null,
+    "entryId": null,
+    "environments": [],
+    "form": null,
+    "index": 0,
+    "kind": "rule",
+    "morphemeId": "PASS",
+    "msaGuid": null,
+    "reasons": [],
+    "removableGuids": [],
+    "ruleName": "PASS",
+    "siblings": [],
+    "sourceAllomorphGuids": [
+     "w"
+    ],
+    "verdict": "selectable",
+    "xmlKey": "w"
+   },
+   {
+    "allomorphId": 1,
+    "blockers": [
+     {
+      "allomorphId": 0,
+      "index": 0,
+      "xmlKey": "w"
+     }
+    ],
+    "entryGuid": null,
+    "entryId": null,
+    "environments": [],
+    "form": null,
+    "index": 1,
+    "kind": "rule",
+    "morphemeId": "PASS",
+    "msaGuid": null,
+    "reasons": [
+     "conditions_cover"
+    ],
+    "removableGuids": [
+     "liw"
+    ],
+    "ruleName": "PASS",
+    "siblings": [],
+    "sourceAllomorphGuids": [
+     "liw"
+    ],
+    "verdict": "shadowed",
+    "xmlKey": "liw"
+   }
+  ],
+  "complete": true,
+  "counts": {
+   "maybe_shadowed": 0,
+   "selectable": 2,
+   "shadowed": 2
+  },
+  "deadContinuations": [
+   {
+    "acceptingRules": 0,
+    "affixRules": 2,
+    "allomorphId": 3,
+    "blockedBy": [
+     {
+      "allomorphs": 3,
+      "kind": "required_mpr",
+      "names": [
+       "VC-B"
+      ],
+      "rules": 2
+     }
+    ],
+    "continuation": "maybe",
+    "entryGuid": null,
+    "entryId": "eA",
+    "environments": [],
+    "features": [
+     "VC-A"
+    ],
+    "form": "bal",
+    "index": 0,
+    "morphemeId": "eA",
+    "msaGuid": null,
+    "neighbourRejections": [],
+    "reasons": [
+     "may_stand_bare"
+    ],
+    "removableGuids": [],
+    "siblings": [],
+    "sourceAllomorphGuids": [
+     "eA_bal"
+    ],
+    "viaConverter": false,
+    "xmlKey": "eA_bal"
+   },
+   {
+    "acceptingRules": 0,
+    "affixRules": 2,
+    "allomorphId": 4,
+    "blockedBy": [
+     {
+      "allomorphs": 3,
+      "kind": "required_mpr",
+      "names": [
+       "VC-B"
+      ],
+      "rules": 2
+     }
+    ],
+    "continuation": "proven",
+    "entryGuid": null,
+    "entryId": "eA",
+    "environments": [
+     null
+    ],
+    "features": [
+     "VC-A"
+    ],
+    "form": "ba",
+    "index": 1,
+    "morphemeId": "eA",
+    "msaGuid": null,
+    "neighbourRejections": [],
+    "reasons": [
+     "environment_needs_neighbour"
+    ],
+    "removableGuids": [
+     "eA_ba"
+    ],
+    "siblings": [],
+    "sourceAllomorphGuids": [
+     "eA_ba"
+    ],
+    "viaConverter": false,
+    "xmlKey": "eA_ba"
+   },
+   {
+    "acceptingRules": 2,
+    "affixRules": 2,
+    "allomorphId": 5,
+    "blockedBy": [],
+    "continuation": "live",
+    "entryGuid": null,
+    "entryId": "eB",
+    "environments": [],
+    "features": [
+     "VC-B"
+    ],
+    "form": "tal",
+    "index": 0,
+    "morphemeId": "eB",
+    "msaGuid": null,
+    "neighbourRejections": [],
+    "reasons": [],
+    "removableGuids": [],
+    "siblings": [],
+    "sourceAllomorphGuids": [
+     "eB_tal"
+    ],
+    "viaConverter": false,
+    "xmlKey": "eB_tal"
+   }
+  ],
+  "deadCounts": {
+   "live": 1,
+   "maybe": 1,
+   "proven": 1
+  }
+ },
+ "summary": [
+  {
+   "blocks_fst": false,
+   "code": "grammar.allomorph.shadowed",
+   "count": 2,
+   "fst_reason": null,
+   "group_name": "Alternate is shadowed",
+   "level": "warning"
+  }
+ ]
+}

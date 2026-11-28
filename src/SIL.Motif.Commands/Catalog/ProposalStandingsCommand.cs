@@ -59,10 +59,15 @@ public static class ProposalStandingsCommand
         ArgumentNullException.ThrowIfNull(project);
         OperationRegistryBootstrap.Initialize();
         var repository = new ProposalRepository(database);
-        var latestTrials = Trials.LatestForAll(database, project, parserPath);
+        var shared = new SharedAssessmentReads(database);
+        var listed = repository.List(new ProposalListFilter(IncludeArchived: true)).Where(IsListed).ToArray();
+        // A set-aside Proposal nobody asked to see is on no card and in no overlap: skip its Trial.
+        var needTrial = listed.Where(record => IsShown(record, includeSetAside, status) || !IsSetAside(record))
+            .Select(record => record.ProposalId.Value).ToHashSet(StringComparer.Ordinal);
+        var latestTrials = Trials.LatestForAll(database, project, parserPath, needTrial.Contains, shared);
         var candidates = new List<Candidate>();
         var unreadable = new List<UnreadableProposal>();
-        foreach (var record in repository.List(new ProposalListFilter(IncludeArchived: true)).Where(IsListed))
+        foreach (var record in listed)
         {
             try
             {
@@ -75,8 +80,11 @@ public static class ProposalStandingsCommand
             }
         }
         // Today's Overview reads the Baseline, so a project with no Trial must not pay for it on every open.
+        var currentEvidence = new Lazy<CommandOutcome<CurrentEvidenceSnapshot>>(() =>
+            OverviewCommand.ReadCurrentForOverview(database, project));
+        Func<CommandOutcome<CurrentEvidenceSnapshot>> readCurrent = () => currentEvidence.Value;
         var today = new Lazy<OverviewResponse?>(() =>
-            OverviewCommand.OverviewCurrent(database, project) is { Succeeded: true } read ? read.Value : null);
+            OverviewCommand.OverviewCurrent(database, project, readCurrent, shared.Get) is { Succeeded: true } read ? read.Value : null);
         var beforeCorrectness = new Lazy<AssessmentRecord?>(() => TodayCorrectness(database, project));
 
         var changedWords = candidates.ToDictionary(candidate => candidate.Record.ProposalId.Value,
@@ -102,7 +110,7 @@ public static class ProposalStandingsCommand
                 ChangeKinds(candidate.Proposal), candidate.Standing,
                 candidate.Trial is null
                     ? null
-                    : Summarize(database, project, candidate, today.Value, beforeCorrectness.Value),
+                    : Summarize(database, project, candidate, today.Value, beforeCorrectness.Value, readCurrent, shared.Get),
                 alsoChangedBy)
                 {
                     IsDraft = candidate.Record.DraftName is not null,
@@ -124,6 +132,15 @@ public static class ProposalStandingsCommand
             cards.OrderBy(card => card.Group).ThenBy(card => card.Label, StringComparer.CurrentCultureIgnoreCase)
                 .ToArray(), setAside) { Unreadable = unreadable });
     }
+
+    /// <summary>Whether the Proposal's group is set aside, which its record alone decides.</summary>
+    private static bool IsSetAside(ProposalRecord record) => record.DraftName is null &&
+        record.Status is not (ManifestStatus.Proposed or ManifestStatus.Deferred);
+
+    private static bool IsShown(ProposalRecord record, bool includeSetAside, string? status) =>
+        status is null ? includeSetAside || !IsSetAside(record)
+            : status == "draft" ? record.DraftName is not null
+            : record.DraftName is null && record.Status == status;
 
     private static bool HasStatus(Candidate candidate, string status) => status == "draft"
         ? candidate.Record.DraftName is not null
@@ -225,14 +242,15 @@ public static class ProposalStandingsCommand
     }
 
     private static TrialSummary Summarize(MotifDatabase database, ProjectLocator project, Candidate candidate,
-        OverviewResponse? today, AssessmentRecord? beforeCorrectness)
+        OverviewResponse? today, AssessmentRecord? beforeCorrectness,
+        Func<CommandOutcome<CurrentEvidenceSnapshot>> readCurrent, Func<string, AssessmentRecord> readShared)
     {
         var trial = candidate.Trial!;
         OverviewResponse? after = null;
         if (trial.HasComparableNumbers && !TrialSampleKind.IsWorkingSet(trial.Sample))
         {
             var set = EvidenceSets.ForTrial(database, project, trial);
-            var read = set.Succeeded ? OverviewCommand.Overview(database, project, set.Value!) : null;
+            var read = set.Succeeded ? OverviewCommand.Overview(database, project, set.Value!, readCurrent, readShared) : null;
             after = read is { Succeeded: true } ? read.Value : null;
         }
         var comparable = after is not null;

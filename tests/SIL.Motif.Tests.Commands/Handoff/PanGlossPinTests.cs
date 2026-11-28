@@ -26,13 +26,11 @@ public sealed class PanGlossPinTests
         {
             ["win-x64"] = "pangloss-win-x64.exe",
             ["linux-x64"] = "pangloss-linux-x64",
-            ["osx-arm64"] = "pangloss-osx-arm64",
-            ["osx-x64"] = "pangloss-osx-x64",
         };
 
         Assert.Matches(@"^\d+\.\d+\.\d+$", pin.Version);
         Assert.Equal($"v{pin.Version}", pin.Tag);
-        Assert.Equal(new[] { "linux-x64", "osx-arm64", "osx-x64", "win-x64" },
+        Assert.Equal(new[] { "linux-x64", "win-x64" },
             pin.Assets.Keys.OrderBy(rid => rid, StringComparer.Ordinal));
         foreach (var (rid, fileName) in expectedAssets)
         {

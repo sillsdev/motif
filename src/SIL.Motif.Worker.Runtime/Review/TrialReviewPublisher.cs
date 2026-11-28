@@ -103,7 +103,7 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
             Digest(inputs.Sets), Digest(inputs.Cases.Select(item => item.Assertions)), new WarningCheckPins(null, null),
             parsimony?.Pins ?? [], inputs.EvidenceManifestDigest, Algorithm);
         var summary = BuildSummary(facts, inputs, ledger, overlappingLosses.Count, negativeSets.Order(StringComparer.Ordinal).ToArray(), hasWarnings)
-            with { Gains = BuildGains(facts, inputs, proposal.Operations), RuleAttempts = BuildRuleAttempts(inputs, proposal.Operations, new HypothesisRuleAttemptLedger(new HypothesisRepository(_database))), GdrSync = ledger.GdrSync };
+            with { Gains = BuildGains(facts, inputs, proposal.Operations), RuleAttempts = BuildRuleAttempts(inputs, proposal.Operations, new HypothesisRuleAttemptLedger(new HypothesisRepository(_database))), GdrSync = ledger.GdrSync, ShadowedAlternates = ledger.ShadowedAlternates };
         summary = summary with { SectionCounts = summary.SectionCounts.Select(section => section.Section == "parser-work"
             ? new SectionCount("parser-work", wordWorkRows is null ? null : work!.RequiredCases.Count + (ruleWorkRows?.Count ?? 0), "rows",
                 wordWorkRows is null ? null : work!.RequiredCases.Count + (ruleWorkRows?.Count ?? 0)) : section).ToArray() };
@@ -236,12 +236,12 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
     }
 
     internal static CheckpointPin Checkpoint(AssessmentRepository repository, Side side, IReadOnlyList<string> ids,
-        TrialJobInput input, string? scopeDigest = null)
+        TrialJobInput input, string? scopeDigest = null, Func<string, AssessmentRecord>? read = null)
     {
         var records = new List<AssessmentRecord>();
         foreach (var id in ids)
         {
-            try { records.Add(repository.Get(id)); }
+            try { records.Add(read is null ? repository.Get(id) : read(id)); }
             catch (KeyNotFoundException) { }
         }
         string? Common(IEnumerable<string?> values)

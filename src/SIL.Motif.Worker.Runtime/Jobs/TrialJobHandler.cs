@@ -347,7 +347,8 @@ internal sealed class TrialJobHandler
         }
         public void SetWarnings(GrammarCheckResponse before, GrammarCheckResponse after)
         {
-            Ledger = Ledger with { BeforeWarnings = before.Findings.ToArray(), AfterWarnings = after.Findings.ToArray() };
+            Ledger = Ledger with { BeforeWarnings = before.Findings.ToArray(), AfterWarnings = after.Findings.ToArray(),
+                ShadowedAlternates = after.ShadowedAlternates };
             Save();
         }
         public void SetGdrSync(GdrCheckResponse? check)

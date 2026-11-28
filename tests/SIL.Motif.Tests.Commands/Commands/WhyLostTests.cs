@@ -194,6 +194,15 @@ public sealed class WhyLostTests
     }
 
     [Fact]
+    public void ARejectionTraceSentenceExistsForAnUncoverableRequiredSlot()
+    {
+        var sentence = RejectionTraceSentences.For("required_slot_uncoverable", rejection: true);
+
+        Assert.Equal("This template can't produce this word: its required slot holds no rule for any of the word's affixes.",
+            sentence);
+    }
+
+    [Fact]
     public void TheRealDescribeListsTheBlockedStopAndAnOlderOneDoesNot()
     {
         var current = PanGlossSurface.ReadDescription(Fixture("describe-0.32.0.json"), out _)!;

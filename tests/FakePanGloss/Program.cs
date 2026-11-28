@@ -87,7 +87,7 @@ internal static class Program
         new("grammar-health", ["grammar", "out.json?"],
             [new("--fw-project", true), new("--stored-analyses", true), new("--fst", false),
                 new("--snapshot-out", true), new("--facts-out", true), new("--facts-context", true),
-                new("--facts-light", false)], RunGrammarHealth),
+                new("--facts-light", false), new("--shadowed", false)], RunGrammarHealth),
     ];
 
     private static int Main(string[] args)
@@ -968,6 +968,11 @@ internal static class Program
                 },
             },
         });
+        // Like PanGloss, a run that asked for --shadowed carries the section; this one finds nothing shadowed.
+        if (behaviour.GrammarHealthReportJson is null && args.Contains("--shadowed"))
+            json = json[..^1] + ",\"shadowed_alternates\":{\"alternates\":[],\"complete\":true," +
+                "\"counts\":{\"maybe_shadowed\":0,\"selectable\":0,\"shadowed\":0},\"deadContinuations\":[]," +
+                "\"deadCounts\":{\"live\":0,\"maybe\":0,\"proven\":0}}}";
         if (outPath is not null) File.WriteAllText(outPath, json);
         else Console.Out.Write(json);
         Console.Error.WriteLine("grammar-health complete: 2 warning(s), 1 info");
