@@ -39,7 +39,7 @@ public static class GrammarReadProjectionBuilder
         ArgumentNullException.ThrowIfNull(cache);
         ArgumentNullException.ThrowIfNull(request);
 
-        var filtered = Objects(cache, request.Kind)
+        var filtered = Objects(cache, request.Kind, withMsas: request.Id is not null)
             .Where(item => Matches(item, request.Query))
             .Where(item => MatchesExact(item, request.Exact))
             .Where(item => MatchesMorphType(item, request.MorphType))
@@ -49,7 +49,8 @@ public static class GrammarReadProjectionBuilder
             ? filtered.OrderBy(item => ((GrammarPhonologicalRuleRead)item).Position)
             : filtered.OrderBy(SortKey, StringComparer.OrdinalIgnoreCase).ThenBy(item => item.Id, StringComparer.Ordinal);
         var matches = ordered.ToArray();
-        var items = matches.Skip(request.Offset).Take(request.Limit).ToArray();
+        var items = matches.Skip(request.Offset).Take(request.Limit)
+            .Select(item => item is GrammarAffixTemplateRead template ? FillTemplate(cache, template) : item).ToArray();
         return new GrammarReadResponse(request.Kind, matches.Length, request.Offset, request.Limit, items)
         {
             ExactNote = string.IsNullOrWhiteSpace(request.MorphType) ? ExactNote(request.Exact, matches) : null,
@@ -91,7 +92,7 @@ public static class GrammarReadProjectionBuilder
             .ToArray();
     }
 
-    private static IEnumerable<GrammarReadItem> Objects(LcmCache cache, GrammarReadKind kind) => kind switch
+    private static IEnumerable<GrammarReadItem> Objects(LcmCache cache, GrammarReadKind kind, bool withMsas) => kind switch
     {
         GrammarReadKind.phoneme => cache.LangProject.PhonologicalDataOA.PhonemeSetsOS
             .SelectMany(set => set.PhonemesOC).Select(phoneme => ReadPhoneme(cache, phoneme)),
@@ -104,9 +105,10 @@ public static class GrammarReadProjectionBuilder
         GrammarReadKind.inflection_feature => cache.LangProject.MsFeatureSystemOA.FeaturesOC
             .Select(feature => ReadFeature(cache, feature)),
         GrammarReadKind.lexical_entry => cache.ServiceLocator.GetInstance<ILexEntryRepository>().AllInstances()
-            .Select(entry => ReadEntry(cache, entry)),
+            .Select(entry => ReadEntry(cache, entry, withMsas)),
         GrammarReadKind.phonological_rule => cache.LangProject.PhonologicalDataOA.PhonRulesOS
             .Select((rule, index) => ReadRule(cache, rule, index + 1)),
+        GrammarReadKind.affix_template => ReadTemplates(cache),
         _ => [],
     };
 
@@ -153,7 +155,7 @@ public static class GrammarReadProjectionBuilder
             ? closed.ValuesOC.Select(value => Named(cache, value)).ToArray()
             : []);
 
-    private static GrammarLexicalEntryRead ReadEntry(LcmCache cache, ILexEntry entry)
+    private static GrammarLexicalEntryRead ReadEntry(LcmCache cache, ILexEntry entry, bool withMsas)
     {
         var lexeme = entry.LexemeFormOA is { } form ? ReadForm(cache, form) : null;
         return new GrammarLexicalEntryRead(Id(entry), entry.HeadWord?.Text,
@@ -161,7 +163,60 @@ public static class GrammarReadProjectionBuilder
             entry.LexemeFormOA?.MorphTypeRA is { } morphType ? Id(morphType) : null,
             lexeme,
             entry.AllSenses.Select(sense => ReadSense(cache, sense)).ToArray(),
-            entry.AlternateFormsOS.Select(alternate => ReadForm(cache, alternate)).ToArray());
+            entry.AlternateFormsOS.Select(alternate => ReadForm(cache, alternate)).ToArray())
+        {
+            Msas = withMsas ? entry.MorphoSyntaxAnalysesOC.Select(msa => ReadMsa(cache, msa)).ToArray() : null,
+        };
+    }
+
+    // Templates are listed without affixes; only the page that is returned has its slots filled.
+    private static IEnumerable<GrammarAffixTemplateRead> ReadTemplates(LcmCache cache) =>
+        Categories(cache.LangProject.PartsOfSpeechOA.PossibilitiesOS).SelectMany(category =>
+            category.AffixTemplatesOS.Select(template => new GrammarAffixTemplateRead(Id(template),
+                Text(cache, template.Name), Named(cache, category), template.Final,
+                template.PrefixSlotsRS.Select(slot => ReadSlot(cache, slot, withAffixes: false)).ToArray(),
+                template.SuffixSlotsRS.Select(slot => ReadSlot(cache, slot, withAffixes: false)).ToArray())));
+
+    private static GrammarAffixTemplateRead FillTemplate(LcmCache cache, GrammarAffixTemplateRead shell)
+    {
+        var template = (IMoInflAffixTemplate)cache.ServiceLocator.ObjectRepository.GetObject(CanonicalId.Parse(shell.Id).ToGuid());
+        return shell with
+        {
+            PrefixSlots = template.PrefixSlotsRS.Select(slot => ReadSlot(cache, slot, withAffixes: true)).ToArray(),
+            SuffixSlots = template.SuffixSlotsRS.Select(slot => ReadSlot(cache, slot, withAffixes: true)).ToArray(),
+        };
+    }
+
+    // The analyses that name the slot come from its referrers, so no lexicon scan is needed.
+    private static GrammarAffixSlotRead ReadSlot(LcmCache cache, IMoInflAffixSlot slot, bool withAffixes) =>
+        new(Id(slot), Text(cache, slot.Name), slot.Optional, !withAffixes ? [] :
+            slot.ReferringObjects.OfType<IMoInflAffMsa>().Where(msa => msa.Owner is ILexEntry)
+                .Select(msa => (Entry: (ILexEntry)msa.Owner, Msa: msa))
+                .OrderBy(row => row.Entry.HeadWord?.Text, StringComparer.Ordinal).ThenBy(row => Id(row.Msa), StringComparer.Ordinal)
+                .Select(row => new GrammarSlotAffixRead(Id(row.Entry), row.Entry.HeadWord?.Text,
+                    Text(cache, row.Entry.LexemeFormOA?.MorphTypeRA?.Name), Id(row.Msa),
+                    row.Msa.PartOfSpeechRA is { } pos ? Named(cache, pos) : null)).ToArray());
+
+    private static GrammarGrammaticalInfoRead ReadMsa(LcmCache cache, IMoMorphSynAnalysis msa)
+    {
+        var (partOfSpeech, resultPartOfSpeech) = msa switch
+        {
+            IMoStemMsa stem => (stem.PartOfSpeechRA, (IPartOfSpeech?)null),
+            IMoInflAffMsa inflectional => (inflectional.PartOfSpeechRA, (IPartOfSpeech?)null),
+            IMoDerivAffMsa derivational => (derivational.FromPartOfSpeechRA, derivational.ToPartOfSpeechRA),
+            IMoDerivStepMsa step => (step.PartOfSpeechRA, (IPartOfSpeech?)null),
+            IMoUnclassifiedAffixMsa unclassified => (unclassified.PartOfSpeechRA, (IPartOfSpeech?)null),
+            _ => ((IPartOfSpeech?)null, (IPartOfSpeech?)null),
+        };
+        return new GrammarGrammaticalInfoRead(Id(msa), msa.ClassName,
+            partOfSpeech is null ? null : Named(cache, partOfSpeech),
+            resultPartOfSpeech is null ? null : Named(cache, resultPartOfSpeech))
+        {
+            InflectionClass = msa is IMoStemMsa { InflectionClassRA: { } inflectionClass }
+                ? new GrammarNamedObjectRead(Id(inflectionClass), Text(cache, inflectionClass.Name)) : null,
+            Slots = msa is IMoInflAffMsa { SlotsRC.Count: > 0 } inflAff
+                ? inflAff.SlotsRC.Select(slot => new GrammarNamedObjectRead(Id(slot), Text(cache, slot.Name))).ToArray() : null,
+        };
     }
 
     private static GrammarFormRead ReadForm(LcmCache cache, IMoForm form)
@@ -183,19 +238,7 @@ public static class GrammarReadProjectionBuilder
     {
         var gloss = WritingSystemTextReader.BestAnalysis(cache, sense.Gloss);
         var definition = WritingSystemTextReader.BestAnalysis(cache, sense.Definition);
-        var msa = sense.MorphoSyntaxAnalysisRA;
-        var (partOfSpeech, resultPartOfSpeech) = msa switch
-        {
-            IMoStemMsa stem => (stem.PartOfSpeechRA, (IPartOfSpeech?)null),
-            IMoInflAffMsa inflectional => (inflectional.PartOfSpeechRA, (IPartOfSpeech?)null),
-            IMoDerivAffMsa derivational => (derivational.FromPartOfSpeechRA, derivational.ToPartOfSpeechRA),
-            IMoDerivStepMsa step => (step.PartOfSpeechRA, (IPartOfSpeech?)null),
-            IMoUnclassifiedAffixMsa unclassified => (unclassified.PartOfSpeechRA, (IPartOfSpeech?)null),
-            _ => ((IPartOfSpeech?)null, (IPartOfSpeech?)null),
-        };
-        var grammaticalInfo = msa is null ? null : new GrammarGrammaticalInfoRead(
-            Id(msa), msa.ClassName, partOfSpeech is null ? null : Named(cache, partOfSpeech),
-            resultPartOfSpeech is null ? null : Named(cache, resultPartOfSpeech));
+        var grammaticalInfo = sense.MorphoSyntaxAnalysisRA is { } msa ? ReadMsa(cache, msa) : null;
         return new GrammarSenseRead(Id(sense), EmptyToNull(gloss.Text), gloss.WritingSystem,
             EmptyToNull(definition.Text), definition.WritingSystem, grammaticalInfo);
     }
@@ -246,6 +289,7 @@ public static class GrammarReadProjectionBuilder
         GrammarInflectionFeatureRead feature => [feature.Name, feature.Abbreviation,
             .. feature.Values.Select(value => value.Name)],
         GrammarPhonologicalRuleRead rule => [rule.Name],
+        GrammarAffixTemplateRead template => [template.Name],
         GrammarLexicalEntryRead entry => [entry.Headword, entry.MorphType,
             .. entry.Senses.Select(sense => sense.Gloss),
             .. Forms(entry).Select(form => form.Form)],
@@ -261,6 +305,7 @@ public static class GrammarReadProjectionBuilder
         GrammarInflectionFeatureRead feature => feature.Name ?? feature.Abbreviation ?? string.Empty,
         GrammarLexicalEntryRead entry => entry.Headword ?? string.Empty,
         GrammarPhonologicalRuleRead rule => rule.Name ?? string.Empty,
+        GrammarAffixTemplateRead template => template.Name ?? string.Empty,
         _ => string.Empty,
     };
 

@@ -75,6 +75,12 @@ internal static class GrammarReadTextRenderer
                     ? "  Intent: not expressible by the edit verbs"
                     : "  Intent: use --json for the whole intent an edit guard copies");
                 break;
+            case GrammarAffixTemplateRead template:
+                text.AppendLine($"{Display(template.Name)}  {template.Id}  {(template.Final ? "final" : "not final")}" +
+                    (template.PartOfSpeech is { } owner ? $"  {Display(owner.Name)}" : string.Empty));
+                RenderSlots(text, "Prefix slot", template.PrefixSlots);
+                RenderSlots(text, "Suffix slot", template.SuffixSlots);
+                break;
             case GrammarLexicalEntryRead entry:
                 text.AppendLine($"{Display(entry.Headword)}  {entry.Id}");
                 if (entry.LexemeForm is { } lexeme) RenderForm(text, "Lexeme form", lexeme);
@@ -93,9 +99,28 @@ internal static class GrammarReadTextRenderer
                     }
                 }
                 AppendOverflow(text, entry.Senses.Count);
+                foreach (var msa in (entry.Msas ?? []).Take(TextListLimit))
+                {
+                    text.AppendLine($"  Analysis: {msa.Kind}  {msa.Id}" +
+                        (msa.PartOfSpeech is { } pos ? $"  {Display(pos.Name)}" : string.Empty) +
+                        (msa.InflectionClass is { } cls ? $"  class {Display(cls.Name)}" : string.Empty) +
+                        (msa.Slots is { Count: > 0 } ? "  slots " + string.Join(", ", msa.Slots.Select(slot => Display(slot.Name))) : string.Empty));
+                }
+                AppendOverflow(text, entry.Msas?.Count ?? 0);
                 foreach (var form in entry.AlternateForms.Take(TextListLimit)) RenderForm(text, "Alternate form", form);
                 AppendOverflow(text, entry.AlternateForms.Count);
                 break;
+        }
+    }
+
+    private static void RenderSlots(StringBuilder text, string label, System.Collections.Generic.IReadOnlyList<GrammarAffixSlotRead> slots)
+    {
+        foreach (var slot in slots)
+        {
+            text.AppendLine($"  {label}: {Display(slot.Name)}  {slot.Id}  {(slot.Optional ? "optional" : "required")}");
+            foreach (var affix in slot.Affixes.Take(TextListLimit))
+                text.AppendLine($"    Affix: {Display(affix.Headword)}  {affix.EntryId}  msa {affix.MsaId}");
+            AppendOverflow(text, slot.Affixes.Count);
         }
     }
 

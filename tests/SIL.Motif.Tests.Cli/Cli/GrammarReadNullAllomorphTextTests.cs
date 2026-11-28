@@ -24,3 +24,21 @@ public sealed class GrammarReadNullAllomorphTextTests
     public void AStemFormOfTheSameTextIsShownPlainly() =>
         Assert.DoesNotContain("null allomorph", Render("∅", "MoStemAllomorph"), StringComparison.Ordinal);
 }
+
+public sealed class GrammarReadAffixTemplateTextTests
+{
+    [Fact]
+    public void ATemplateRendersItsSlotsInOrderWithTheirAffixes()
+    {
+        var affix = new GrammarSlotAffixRead("entry/one", "ni-", "prefix", "msa/one", null);
+        var template = new GrammarAffixTemplateRead("tpl/one", "VerbFinite", null, true,
+            [new GrammarAffixSlotRead("slot/one", "Subject", false, [affix])],
+            [new GrammarAffixSlotRead("slot/two", "Tense", true, [])]);
+
+        var text = GrammarReadTextRenderer.Render(new GrammarReadResponse(GrammarReadKind.affix_template, 1, 0, 10, [template]));
+
+        Assert.Contains("VerbFinite  tpl/one  final", text, StringComparison.Ordinal);
+        Assert.True(text.IndexOf("Prefix slot: Subject", StringComparison.Ordinal) < text.IndexOf("Suffix slot: Tense", StringComparison.Ordinal));
+        Assert.Contains("Affix: ni-  entry/one  msa msa/one", text, StringComparison.Ordinal);
+    }
+}
