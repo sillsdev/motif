@@ -68,4 +68,6 @@ public static partial class RefusalCodes
     public const string QueryPhonPatternRefused = "query.phon-pattern-refused";
     /// <summary>The resident PanGloss failed, timed out or sent a reply Motif cannot read while matching a <c>phon</c> or <c>env</c> pattern.</summary>
     public const string QueryPhonFailed = "query.phon-failed";
+    /// <summary>An <c>--approved</c> file cannot be read, or one of its lines is not a word with approved readings; the refusal names the line.</summary>
+    public const string QueryApprovedInvalid = "query.approved-invalid";
 }
