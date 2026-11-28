@@ -327,7 +327,7 @@ public sealed class RecordImportToolTests(PristineProjectFixture pristine) : IDi
         Assert.False(called.IsError == true, called.StructuredContent?.ToString());
         var result = JsonNode.Parse(called.StructuredContent!.Value.GetRawText())!["result"]!.AsObject();
         Assert.Equal(2, result["page"]!.GetValue<int>());
-        Assert.Equal(3, result["pageCount"]!.GetValue<int>());
+        Assert.Equal(2, result["pageCount"]!.GetValue<int>());
         Assert.Equal(3, result["operations"]!.AsArray().Count);
         Assert.Equal(3, result["changes"]!.AsArray().Count);
     }

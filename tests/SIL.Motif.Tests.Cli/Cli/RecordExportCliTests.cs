@@ -72,6 +72,32 @@ public sealed class RecordExportCliTests : IDisposable
     }
 
     [Fact]
+    public void ExportEditImportAsADryRunThroughTheCliPlansTheEditAndWritesNothing()
+    {
+        var before = SHA256.HashData(File.ReadAllBytes(_project));
+        var file = Path.Combine(_root, "edited.md");
+        var exported = Run("record", "export", "--project", _project, "--out", file, "--record", _entry.ToString("D"), "--json");
+        Assert.True(exported.ExitCode == 0, exported.Error + exported.Output);
+        var text = File.ReadAllText(file);
+        Assert.Contains("zzgloss0", text, StringComparison.Ordinal);
+        File.WriteAllText(file, text.Replace("zzgloss0", "zzedited", StringComparison.Ordinal));
+
+        var imported = Run("import", "--project", _project, "--file", file, "--json");
+
+        Assert.True(imported.ExitCode == 0, imported.Error + imported.Output);
+        var plan = JsonNode.Parse(imported.Output)!;
+        Assert.Equal("dryRun", plan["mode"]!.GetValue<string>());
+        Assert.Equal(1, plan["changeCount"]!.GetValue<int>());
+        Assert.Equal(1, plan["operationCount"]!.GetValue<int>());
+        Assert.Equal(0, plan["refusalCount"]!.GetValue<int>());
+        var change = Assert.Single(plan["changes"]!.AsArray())!;
+        Assert.Equal("gloss", change["field"]!.GetValue<string>());
+        Assert.Equal("zzgloss0", change["old"]!.GetValue<string>());
+        Assert.Equal("zzedited", change["new"]!.GetValue<string>());
+        Assert.Equal(before, SHA256.HashData(File.ReadAllBytes(_project)));
+    }
+
+    [Fact]
     public void ExportThenImportThroughTheCliPlansNoChangeAndLeavesTheProjectAlone()
     {
         var before = SHA256.HashData(File.ReadAllBytes(_project));
