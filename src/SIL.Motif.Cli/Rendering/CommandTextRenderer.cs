@@ -174,6 +174,7 @@ public static class CommandTextRenderer
             GdrShowResponse r => RenderGdrShow(r),
             GdrCheckResponse r => RenderGdrCheck(r),
             GdrEditResponse r => RenderGdrEdit(r),
+            GdrDecideBatchResponse r => RenderGdrDecideBatch(r),
             GdrAddResponse r => RenderGdrAdd(r),
             GdrRefreshTablesResponse r => RenderGdrRefresh(r),
             SourcePassageResponse r => SourceTextRenderer.RenderPassage(r),
@@ -1736,6 +1737,19 @@ public static class CommandTextRenderer
         if (response.Records.Count == 0) return "This project has no Grammar Guide." + Environment.NewLine;
         var text = new StringBuilder();
         foreach (var record in response.Records) text.AppendLine($"{record.Abbreviation}  {record.Title}");
+        return text.ToString();
+    }
+
+    private static string RenderGdrDecideBatch(GdrDecideBatchResponse response)
+    {
+        var text = new StringBuilder();
+        text.AppendLine(response.Staged
+            ? $"Staged {response.Rows.Count} decision(s) in {response.DraftName} ({response.OperationCount} operation(s))."
+            : $"Dry run: {response.Rows.Count} decision(s) read cleanly and nothing was staged.");
+        foreach (var row in response.Rows) text.AppendLine($"line {row.Row} {row.Abbreviation}: {row.Entry}");
+        if (response.StylesCreated.Count > 0)
+            text.AppendLine($"Also creates the FieldWorks standard style(s) the project lacks: {string.Join(", ", response.StylesCreated)}.");
+        if (response.Staged) text.AppendLine($"Apply it with the rest of {response.DraftName}.");
         return text.ToString();
     }
 

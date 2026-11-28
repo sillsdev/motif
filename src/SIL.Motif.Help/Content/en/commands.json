@@ -54,7 +54,7 @@
   },
   "guide decide": {
     "title": "Record a judgement call in a Grammar Guide section",
-    "description": "Appends one judgement call, written A or B, I am choosing A, because the reason, under the section's Decisions heading, and stages it in a Draft. The verb records the call a person or the grammar lead made; it does not make it.",
+    "description": "Appends one judgement call, or a whole JSONL batch with --from, written A or B, I am choosing A, because the reason, under the section's Decisions heading, and stages it in a Draft. The verb records the call a person or the grammar lead made; it does not make it.",
     "source": "Hand-written from the Grammar Guide template (ADR 0005 decision 2)."
   },
   "progress": {

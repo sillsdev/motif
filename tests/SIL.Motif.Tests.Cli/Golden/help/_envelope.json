@@ -137,7 +137,7 @@
         },
         {
           "name": "guide decide",
-          "summary": "Appends one judgement call, written A or B, I am choosing A, because the reason, under the sectio...",
+          "summary": "Appends one judgement call, or a whole JSONL batch with --from, written A or B, I am choosing A,...",
           "gate": "Autonomous",
           "helpTopic": "motif help guide decide"
         },

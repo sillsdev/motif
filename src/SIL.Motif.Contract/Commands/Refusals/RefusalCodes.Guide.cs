@@ -33,4 +33,6 @@ public static partial class RefusalCodes
     public const string GdrMarkdownInvalid = "guide.markdown-invalid";
     /// <summary>A Grammar Guide judgement call is missing its option or its reason.</summary>
     public const string GdrDecisionInvalid = "guide.decision-invalid";
+    /// <summary>A row of a batch of judgement calls cannot be read or staged, so the whole batch was refused and nothing was staged.</summary>
+    public const string GdrDecisionsInvalid = "guide.decisions-invalid";
 }

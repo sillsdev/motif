@@ -35,13 +35,27 @@ public static partial class ProposalCommands
     /// </summary>
     public static CommandOutcome<ComposedOperationsResponse[]> StageGdrMarkdown(string projectPath, GdrMarkdownEdits edits,
         string? namedDraft = null, List<string>? stylesCreated = null) =>
+        StageGdrMarkdownBatch(projectPath, [edits], namedDraft, stylesCreated);
+
+    /// <summary>
+    /// Stages the edits of several records in one Draft save: when any step fails, none of them is staged.
+    /// </summary>
+    public static CommandOutcome<ComposedOperationsResponse[]> StageGdrMarkdownBatch(string projectPath, IReadOnlyList<GdrMarkdownEdits> editList,
+        string? namedDraft = null, List<string>? stylesCreated = null) =>
         ProjectStoreCommand.Run(projectPath, MotifProductVersion.CurrentText, (database, project) =>
         {
             var draftName = namedDraft ?? PendingChanges.DraftName;
             try
             {
-                var target = CanonicalId.Parse(edits.Target);
                 var steps = new List<ComposeStep>();
+                steps.Add(EnsureStandardStylesStep(_ => (
+                    editList.SelectMany(edits => edits.Paragraphs?.Changed.Select(change => change.Style) ?? []),
+                    editList.SelectMany(edits => edits.RichStrings.SelectMany(payload => payload.Runs)
+                        .Concat(edits.Paragraphs?.Changed.SelectMany(change => change.Runs) ?? []))
+                        .Select(run => run.CharacterStyle)), stylesCreated ??= []));
+                foreach (var edits in editList)
+                {
+                var target = CanonicalId.Parse(edits.Target);
                 if (edits.Identity is { } identity)
                     steps.Add(new ComposeStep(null, "Check record", (cache, _) =>
                     {
@@ -52,10 +66,6 @@ public static partial class ProposalCommands
                                 "The record ID, parent or list position changed. Reload the Markdown.");
                         return (JsonSerializer.SerializeToElement(new { }), Array.Empty<OperationEnvelope>());
                     }));
-                steps.Add(EnsureStandardStylesStep(_ => (
-                    (edits.Paragraphs?.Changed.Select(change => change.Style) ?? []),
-                    edits.RichStrings.SelectMany(payload => payload.Runs).Concat(edits.Paragraphs?.Changed.SelectMany(change => change.Runs) ?? [])
-                        .Select(run => run.CharacterStyle)), stylesCreated ??= []));
                 foreach (var payload in edits.RichStrings)
                 {
                     var intent = new SetTextRichStringIntent(target, payload);
@@ -101,7 +111,8 @@ public static partial class ProposalCommands
                         ReplacePrevious: (_, operation) => IsFieldEdit(operation, target, paragraphs.Field),
                         Authored: authored, Independent: true));
                 }
-                if (edits.RichStrings.Count == 0 && edits.Paragraphs is null)
+                }
+                if (editList.All(edits => edits.RichStrings.Count == 0 && edits.Paragraphs is null))
                     return CommandOutcome<ComposedOperationsResponse[]>.Success([]);
                 // The empty step makes the batch validate its last operation against the scratch project.
                 steps.Add(new ComposeStep(null, "Validate", (_, _) =>
