@@ -13,7 +13,6 @@ public sealed class StoreUpgradeFixtureTests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-upgrade-fixture", Guid.NewGuid().ToString("N"));
     private string Source => Path.Combine(_root, "real", "project.motif.db");
-    private string DryCopy => Path.Combine(_root, "dry", "project.motif.db");
     private ProjectLocator Project => new(Path.Combine(_root, "project.fwdata"), "fixture-project");
 
     // Columns the upgrade rewrites or stamps; every other authored column is carried byte for byte.
@@ -53,27 +52,17 @@ public sealed class StoreUpgradeFixtureTests : IDisposable
 
     [Theory]
     [MemberData(nameof(Schemas))]
-    public void AnOldStoreUpgradesThroughTheRealOpenAndTheDryRunPredictedIt(int schema)
+    public void AnOldStoreUpgradesThroughTheRealOpen(int schema)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(Source)!);
-        Directory.CreateDirectory(Path.GetDirectoryName(DryCopy)!);
         Create(Source, Project, schema);
-        File.Copy(Source, DryCopy);
-        // The dry run takes a read lease on the store's lock file, which an old store made by hand may not have yet.
-        File.WriteAllBytes(DryCopy + ".use.lock", []);
-        var original = File.ReadAllBytes(Source);
-
-        var dry = MotifDatabase.DryRunUpgrade(DryCopy, Project, new Version(1, 0))!;
-        Assert.Equal(original, File.ReadAllBytes(DryCopy));
 
         using (MotifDatabase.OpenOwned(Source, Project, MotifSchema.CurrentSchema, new Version(1, 0))) { }
         SqliteConnection.ClearAllPools();
         var real = JsonSerializer.Deserialize<MotifStoreUpgrade.Report>(File.ReadAllText(Source + ".upgrade.json"))!;
 
-        // The dry run predicts the real result.
         Assert.Equal(schema, real.SourceSchema);
         Assert.Equal(MotifSchema.CurrentSchema, real.TargetSchema);
-        Assert.Equal(Predictable(real), Predictable(dry));
         Assert.Equal(StoreUpgradeSteps.PlanFor(schema).Crossed.Select(step => $"{step.To}: {step.Summary}"), real.Steps);
 
         // The backup exists, verifies and opens.
@@ -170,17 +159,6 @@ public sealed class StoreUpgradeFixtureTests : IDisposable
         }
         Assert.Equal(0, Scalar(upgraded, "SELECT COUNT(*) FROM Proposals WHERE AnchorJson IS NOT NULL;"));
     }
-
-    // Everything a dry run says, apart from the backup it does not take.
-    private static string Predictable(MotifStoreUpgrade.Report report) => JsonSerializer.Serialize(new
-    {
-        report.SourceSchema, report.TargetSchema,
-        Carried = report.Carried.OrderBy(pair => pair.Key, StringComparer.Ordinal).ToArray(),
-        Dropped = report.Dropped.Order(StringComparer.Ordinal).ToArray(),
-        DroppedCounts = report.DroppedCounts!.OrderBy(pair => pair.Key, StringComparer.Ordinal).ToArray(),
-        report.Steps,
-        Unreadable = report.UnreadableRevisions.Select(revision => revision.ProposalId + "/" + revision.IntentDigest).ToArray(),
-    });
 
     private static string[] Columns(SqliteConnection db, string table)
     {

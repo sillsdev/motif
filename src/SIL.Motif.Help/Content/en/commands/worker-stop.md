@@ -4,7 +4,7 @@
 
 ## When to use it
 
-A command that needs the store to itself, such as `store upgrade`, refuses with "The project store is in use" while a runner still has the store open. The refusal names the runner (`holderPid`, `holderBuild`, `holderRoot`) when one is recorded. A queued job that nothing claims for a minute names the job in front of it and the runner's pid for the same reason. Run this command to end that runner. The next command that queues work starts a new one.
+A command that needs the store to itself, such as `store restore`, refuses with "The project store is in use" while a runner still has the store open. The refusal names the runner (`holderPid`, `holderBuild`, `holderRoot`) when one is recorded. A queued job that nothing claims for a minute names the job in front of it and the runner's pid for the same reason. Run this command to end that runner. The next command that queues work starts a new one.
 
 ## Examples
 
@@ -24,4 +24,4 @@ The runner is ended at once. A job it was running stays Running until the next r
 ## Related commands
 
 - [List queued jobs](cmd:jobs%20list) shows the queue a stalled runner is working through.
-- [Upgrade the project store](cmd:store%20upgrade) is the command that most often needs the runner stopped.
+- [Restore a store backup](cmd:store%20restore) is a command that needs the runner stopped.

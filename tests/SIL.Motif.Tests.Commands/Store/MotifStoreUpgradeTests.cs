@@ -128,47 +128,6 @@ public sealed class MotifStoreUpgradeTests : IDisposable
         Assert.Equal([$"{MotifSchema.CurrentSchema}: " + StoreUpgradeSteps.All[^1].Summary], report.Steps);
     }
 
-    [Fact]
-    public void ADryRunReportsTheUpgradeAndChangesNothing()
-    {
-        CreateCurrentSchemaAsOld();
-        using (var old = Connect(Source))
-            Execute(old, "INSERT INTO Proposals (ProposalId, Status) VALUES ('p', 'proposed'); PRAGMA user_version = 55;");
-        SqliteConnection.ClearAllPools();
-        var before = Directory.EnumerateFileSystemEntries(_root).Where(path => !IsReaderArtifact(path)).Select(path => (path, File.Exists(path) ? File.ReadAllBytes(path) : null)).ToArray();
-
-        var report = MotifDatabase.DryRunUpgrade(Source, Project, new Version(1, 0));
-
-        Assert.NotNull(report);
-        Assert.Equal(55, report.SourceSchema);
-        Assert.Equal(MotifSchema.CurrentSchema, report.TargetSchema);
-        Assert.Equal(1, report.Carried["Proposals"]);
-        Assert.Contains(report.Steps!, step => step.StartsWith("56: ", StringComparison.Ordinal));
-        Assert.Null(report.BackupDirectory);
-        var after = Directory.EnumerateFileSystemEntries(_root).Where(path => !IsReaderArtifact(path)).Select(path => (path, File.Exists(path) ? File.ReadAllBytes(path) : null)).ToArray();
-        Assert.Equal(before.Select(entry => entry.path), after.Select(entry => entry.path));
-        for (var i = 0; i < before.Length; i++) Assert.Equal(before[i].Item2, after[i].Item2);
-        Assert.Empty(Directory.EnumerateFileSystemEntries(_root, "*.motif-backups"));
-        Assert.Equal(55L, UserVersion(Source));
-    }
-
-    [Fact]
-    public void ADryRunOfACurrentStoreSaysThereIsNothingToDo()
-    {
-        using (MotifDatabase.OpenOwned(Source, Project, MotifSchema.CurrentSchema, new Version(1, 0))) { }
-        Assert.Null(MotifDatabase.DryRunUpgrade(Source, Project, new Version(1, 0)));
-    }
-
-    [Fact]
-    public void ADryRunOfANewerStoreIsRefusedAsNewer()
-    {
-        CreateCurrentSchemaAsOld();
-        using (var newer = Connect(Source)) Execute(newer, $"PRAGMA user_version = {MotifSchema.CurrentSchema + 1};");
-        SqliteConnection.ClearAllPools();
-        Assert.True(Assert.Throws<MotifStoreVersionException>(() =>
-            MotifDatabase.DryRunUpgrade(Source, Project, new Version(1, 0))).Newer);
-    }
-
     // Any read of a store takes its lease file and may create the empty -wal and -shm beside it.
     private static bool IsReaderArtifact(string path) =>
         path.EndsWith(".lock", StringComparison.Ordinal) || path.EndsWith("-wal", StringComparison.Ordinal) ||
@@ -559,22 +518,6 @@ public sealed class MotifStoreUpgradeTests : IDisposable
         Assert.Equal(0, Count(copy, "ParsimonyBundles"));
         Assert.Equal(0, Count(copy, "ParsimonyFrozenViews"));
         Assert.Equal(0, Count(copy, "Reports"));
-    }
-
-    [Fact]
-    public async Task CliCopiesAnImmutableSourceAndPrintsTheReport()
-    {
-        CreateSchema49();
-        var before = File.ReadAllBytes(Source);
-        var output = Path.Combine(_root, "cli.db");
-        var result = await CliProcess.RunAsync(_root, null, false, "store", "upgrade", "--source", Source,
-            "--out", output, "--json");
-        Assert.True(result.ExitCode == 0, result.Error);
-        var report = JsonSerializer.Deserialize<MotifStoreUpgrade.Report>(result.Output)!;
-        Assert.Equal(1, report.Carried["ProposalRevisions"]);
-        Assert.Contains("Jobs", report.Dropped);
-        Assert.Equal(before, File.ReadAllBytes(Source));
-        Assert.True(File.Exists(output + ".upgrade.json"));
     }
 
     [Fact]

@@ -129,21 +129,6 @@ public sealed class CommandTextRendererReviewFindingsTests
     }
 
     [Fact]
-    public void ProjectStoreUpgradeTextBoundsUnreadableRevisionLists()
-    {
-        var report = new MotifStoreUpgrade.Report(1, 2, null, [], [], Enumerable.Range(0, 12)
-            .Select(index => new MotifStoreUpgrade.UnreadableRevision($"proposal/{index:D2}", "digest", $"error-{index:D2}"))
-            .ToList());
-        var response = new ProjectStoreUpgradeResponse(report);
-
-        var text = CommandTextRenderer.Render(CommandOutcome<ProjectStoreUpgradeResponse>.Success(response), asJson: false).Output;
-
-        Assert.Contains("error-00", text, StringComparison.Ordinal);
-        Assert.Contains("and 2 more; use --json for all", text, StringComparison.Ordinal);
-        Assert.DoesNotContain("error-10", text, StringComparison.Ordinal);
-    }
-
-    [Fact]
     public void WordReadStateTextBoundsReadAndSkippedOccurrences()
     {
         OccurrenceAnchor Anchor(int index) => new(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), index);

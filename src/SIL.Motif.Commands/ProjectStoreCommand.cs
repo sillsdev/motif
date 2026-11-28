@@ -49,46 +49,6 @@ public static class ProjectStoreCommand
         TimeSpan? ownershipPatience = null, TimeProvider? timeProvider = null) where T : class? =>
         RunCore(fwDataPath, productVersion, act, ownershipPatience, timeProvider, retainDatabase: false);
 
-    /// <summary>Says what upgrading the project's store would do, changing nothing.</summary>
-    /// <param name="fwDataPath">The path to the FieldWorks project data file.</param>
-    /// <param name="productVersion">The worker version used for store compatibility checks.</param>
-    /// <returns>
-    /// The report the real upgrade would write, as JSON; or <c>{"upToDate":true}</c> for a current store, or
-    /// <c>{"storeAbsent":true}</c> when the project has none.
-    /// </returns>
-    public static CommandOutcome<string> DryRunUpgrade(string fwDataPath, string productVersion)
-    {
-        var located = LocateProject(fwDataPath);
-        if (!located.Succeeded) return CommandOutcome<string>.Refused(located.Refusal!);
-        var project = located.Value!;
-        var path = ProjectDatabaseCatalog.DatabasePathFor(project);
-        return RunOperation(fwDataPath, () =>
-        {
-            if (!File.Exists(path)) return CommandOutcome<string>.Success("{\"storeAbsent\":true}");
-            try
-            {
-                var report = MotifDatabase.DryRunUpgrade(path, project, ParseVersion(productVersion));
-                return CommandOutcome<string>.Success(report is null ? "{\"upToDate\":true}" :
-                    System.Text.Json.JsonSerializer.Serialize(report, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
-            }
-            catch (MotifStoreVersionException exception)
-            {
-                return CommandOutcome<string>.Refused(new Refusal("store.other-version", FailureReason.Refused,
-                    exception.Message, VersionFacts(exception, fwDataPath)));
-            }
-            catch (MotifStoreLockException exception)
-            {
-                return CommandOutcome<string>.Refused(NamingHolders(
-                    new Refusal("project.busy", FailureReason.Busy, "The project store is in use.",
-                        OperationFacts(fwDataPath, exception)), path));
-            }
-            catch (SqliteException exception)
-            {
-                throw new IOException("The Motif database is unavailable.", exception);
-            }
-        });
-    }
-
     /// <summary>Reads a validated existing project store without creating or upgrading it.</summary>
     /// <typeparam name="T">The successful result type.</typeparam>
     /// <param name="fwDataPath">The path to the FieldWorks project data file.</param>

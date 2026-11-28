@@ -3409,43 +3409,6 @@ try
             break;
 
         case "store":
-            if (positionals.Count == 1 && positionals[0] == "upgrade")
-            {
-                if (flags.TryGetValue("project", out var upgradeDryRunProject) && flags.ContainsKey("dry-run") &&
-                    flags.Keys.All(key => key is "project" or "dry-run" or "json"))
-                {
-                    var upgradeDryRun = ProjectStoreCommand.DryRunUpgrade(upgradeDryRunProject, CliProductVersion());
-                    if (!upgradeDryRun.Succeeded)
-                    {
-                        result = RenderCommand(upgradeDryRun);
-                        break;
-                    }
-                    output.WriteLine(upgradeDryRun.Value);
-                    return 0;
-                }
-                if (flags.TryGetValue("source", out var upgradeSource) && flags.TryGetValue("out", out var upgradeOutput) &&
-                    !flags.ContainsKey("project") && flags.Keys.All(key => key is "source" or "out" or "json"))
-                {
-                    var upgradeReport = ProjectStoreUpgrade.Copy(upgradeSource, upgradeOutput);
-                    output.WriteLine(JsonSerializer.Serialize(upgradeReport, new JsonSerializerOptions { WriteIndented = true }));
-                    return 0;
-                }
-                if (flags.TryGetValue("project", out var upgradeProject) &&
-                    flags.Keys.All(key => key is "project" or "json"))
-                {
-                    var upgradeOutcome = ProjectStoreCommand.Run(upgradeProject, CliProductVersion(), (database, _) =>
-                        CommandOutcome<string>.Success(File.Exists(database.FullPath + ".upgrade.json")
-                            ? File.ReadAllText(database.FullPath + ".upgrade.json") : "{}"));
-                    if (!upgradeOutcome.Succeeded)
-                    {
-                        result = RenderCommand(upgradeOutcome);
-                        break;
-                    }
-                    output.WriteLine(upgradeOutcome.Value);
-                    return 0;
-                }
-                return Usage(UsageLineFor("store upgrade"), asJson);
-            }
             if (positionals is ["backup"])
             {
                 if (!flags.TryGetValue("project", out var backupProject) ||

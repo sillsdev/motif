@@ -161,7 +161,6 @@ public static class CommandTextRenderer
             ProjectStoreResetResponse r => r.Deleted
                 ? $"Deleted the Motif store at {r.StorePath}.{Environment.NewLine}"
                 : $"No Motif store was deleted at {r.StorePath}.{Environment.NewLine}",
-            ProjectStoreUpgradeResponse r => RenderProjectStoreUpgrade(r),
             ProposalDeletedResponse r => RenderProposalDeleted(r),
             ProposalReviewResponse r => RenderProposalReview(r),
             ReviewMarkResponse r => $"Proposal {r.ProposalId}: entry {r.EntryKey} is " +
@@ -530,22 +529,6 @@ public static class CommandTextRenderer
             text.AppendLine("  " + JsonSerializer.Serialize(row, row.GetType()));
         AppendTextListOverflow(text, response.Rows.Count, TextListLimit);
         if (response.NextCursor is not null) text.AppendLine("Next cursor: " + response.NextCursor);
-        return text.ToString();
-    }
-
-    private static string RenderProjectStoreUpgrade(ProjectStoreUpgradeResponse response)
-    {
-        var report = response.Report;
-        var text = new StringBuilder();
-        text.AppendLine($"Upgraded Motif store from schema {report.SourceSchema} to {report.TargetSchema}.");
-        if (report.BackupPath is not null) text.AppendLine("Backup: " + report.BackupPath);
-        foreach (var (table, count) in report.Carried.OrderBy(pair => pair.Key, StringComparer.Ordinal))
-            text.AppendLine($"  Kept {table}: {count:N0} row(s).");
-        if (report.Dropped.Count > 0)
-            text.AppendLine("Discarded computed tables: " + string.Join(", ", report.Dropped));
-        foreach (var revision in report.UnreadableRevisions.Take(TextListLimit))
-            text.AppendLine($"Unreadable revision in Proposal {revision.ProposalId}: {revision.Error}");
-        AppendTextListOverflow(text, report.UnreadableRevisions.Count, TextListLimit);
         return text.ToString();
     }
 
