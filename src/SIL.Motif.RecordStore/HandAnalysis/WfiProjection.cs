@@ -247,9 +247,9 @@ internal sealed class WfiProjection
 
     internal static int Int(GenericRecord record, int field) => record.Values[Key(field)].GetInt32();
 
-    /// <summary>Native member order: the captured vector when present, else the stored list.</summary>
+    /// <summary>Native member order: the captured vector while no list operation has committed on the field, else the stored list.</summary>
     internal static IEnumerable<Guid> Members(GenericRecord record, int field) =>
-        record.Provenance!.Vectors.TryGetValue(field, out var native) ? native
+        record.ImportVector(field) is { } native ? native
             : record.Values.TryGetValue(Key(field), out var v) ? v.EnumerateArray().Select(x => x.GetGuid()) : [];
 
     internal static ImmutableDictionary<string, string> Texts(JsonElement multi) =>

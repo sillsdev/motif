@@ -233,7 +233,7 @@ public sealed class LcmGraphReader
             case CellarPropertyType.ReferenceCollection:
             case CellarPropertyType.OwningSequence:
             case CellarPropertyType.ReferenceSequence:
-                var links = provenance[hvo].Vectors.GetValueOrDefault(field, ImmutableArray<Guid>.Empty);
+                var links = data.VecProp(hvo, field).Select(target => objects[target].Guid).ToImmutableArray();
                 return type is 25 or 26 ? links.Sort() : links;
             default: throw new NotSupportedException($"Unsupported field type {type} for {value.Guid}/{field}.");
         }

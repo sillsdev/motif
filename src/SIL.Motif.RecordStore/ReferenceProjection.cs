@@ -79,9 +79,7 @@ internal sealed record ReferenceProjection(NativeReference[] Edges, ReferenceRec
             else
             {
                 var items = value.EnumerateArray().Select(v => v.GetGuid()).ToArray();
-                // The import vector is stale once a list operation has committed on this field.
-                var authored = source.Lists.TryGetValue(id, out var history) && history.Ops.Count > 0;
-                if (!authored && source.Provenance?.Vectors.TryGetValue(id, out var native) == true)
+                if (source.ImportVector(id) is { } native)
                 {
                     var matches = type is 27 or 28
                         ? items.AsSpan().SequenceEqual(native.AsSpan())
