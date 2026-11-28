@@ -45,7 +45,7 @@ public static class GdrEditCommands
         if (!shown.Succeeded) return CommandOutcome<GdrEditResponse>.Refused(WithAddSectionHint(shown.Refusal!));
         if (BlockPart(request, shown.Value!, Path.GetFileNameWithoutExtension(request.ProjectPath)) is { } block)
             return CommandOutcome<GdrEditResponse>.Refused(new Refusal(RefusalCodes.GdrDecisionInvalid, FailureReason.InvalidArgument,
-                block + " Escape a literal [ * _ ` < or \\ as \\[ \\* \\_ \\` \\< or \\\\ ."));
+                block.Message + EscapeHint + " Nothing was staged.", block.Facts()));
         var named = string.IsNullOrWhiteSpace(request.Draft) ? null : request.Draft.Trim();
         var current = GdrQuery.Show(new GdrShowRequest(request.ProjectPath, request.Id, AsOf: named ?? PendingChanges.DraftName));
         if (!current.Succeeded && (named is not null || current.Refusal!.Code != "draft.not-found"))
@@ -145,8 +145,7 @@ public static class GdrEditCommands
             }
             var (baseline, _, added) = sections[id];
             if (BlockPart(one, baseline, project) is { } block)
-                return CommandOutcome<GdrDecideBatchResponse>.Refused(RowRefusal(row.Row,
-                    $"Line {row.Row}: {block} Escape a literal @ [ * _ ` < or \\ as \\@ \\[ \\* \\_ \\` \\< or \\\\ ."));
+                return CommandOutcome<GdrDecideBatchResponse>.Refused(RowRefusal(row.Row, $"Line {row.Row}: {block.Message}{EscapeHint}", block.Facts()));
             added.Add((row.Row, entry));
             decided.Add(new GdrDecidedRow(row.Row, baseline.Record.Abbreviation, entry));
         }
@@ -182,8 +181,11 @@ public static class GdrEditCommands
             result.Value!.LastOrDefault()?.DraftName ?? draftName, true, decided, result.Value!.Sum(item => item.Operations.Count), created.Distinct().ToArray()));
     }
 
-    private static Refusal RowRefusal(int row, string message) => new(RefusalCodes.GdrDecisionsInvalid, FailureReason.InvalidArgument,
-        message + " Nothing was staged.", new Dictionary<string, string> { ["row"] = row.ToString(System.Globalization.CultureInfo.InvariantCulture) });
+    private static Refusal RowRefusal(int row, string message, IReadOnlyDictionary<string, string>? located = null) => new(RefusalCodes.GdrDecisionsInvalid, FailureReason.InvalidArgument,
+        message + " Nothing was staged.", new Dictionary<string, string>(located ?? new Dictionary<string, string>())
+        {
+            ["row"] = row.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        });
 
     private static Refusal WithRow(Refusal refusal, int row) => new(refusal.Code, refusal.Reason,
         $"Line {row}: {refusal.Message} Nothing was staged.",
@@ -240,19 +242,70 @@ public static class GdrEditCommands
         return MarkdownConverter.AreEquivalent(expected, joined);
     }
 
-    /// <summary>Why the first part is not inline Markdown (it would be a block), else null.</summary>
-    private static string? BlockPart(GdrDecideRequest request, GdrShowResponse shown, string projectName)
+    /// <summary>The first problem with a part as the import reads it, else null.</summary>
+    private static DecisionProblem? BlockPart(GdrDecideRequest request, GdrShowResponse shown, string projectName)
     {
         var form = new FieldWorksMarkdownSourceForm(GdrMarkdownOptions.For(shown, projectName));
-        foreach (var (name, part) in new[] { ("--choosing", request.Choosing), ("--over", request.Over), ("--because", request.Because) })
+        foreach (var (name, part) in new[] { ("choosing", request.Choosing), ("over", request.Over), ("because", request.Because) })
         {
-            var read = form.Read(part.Trim(), true);
+            var text = part.Trim();
+            var read = form.Read(text, true);
             var error = read.Diagnostics.FirstOrDefault(item => item.Severity == DiagnosticSeverity.Error);
-            if (error is not null) return $"{name} is not inline Markdown: {error.Message}";
-            if (read.Paragraphs.Count != 1) return $"{name} must be inline Markdown with no block (heading, list, quote or fence).";
+            if (error is not null) return Located(name, text, error);
+            if (read.Paragraphs.Count != 1)
+                return new DecisionProblem(name, null, null, $"--{name} must be inline Markdown with no block (heading, list, quote or fence).");
         }
-        return CrossPartPairing(form, request);
+        if (CrossPartPairing(form, request) is { } pairing) return new DecisionProblem(null, null, null, pairing);
+        return InLine(form, request);
     }
+
+    /// <summary>Reads the whole list item and places a refusal in the part it falls in.</summary>
+    private static DecisionProblem? InLine(FieldWorksMarkdownSourceForm form, GdrDecideRequest request)
+    {
+        var (chosen, over, because) = Pieces(request);
+        var entry = $"- {chosen} or {over}, I am choosing {chosen}, because {because}";
+        var error = form.Read(entry, false).Diagnostics.FirstOrDefault(item => item.Severity == DiagnosticSeverity.Error);
+        if (error is null) return null;
+        var at = error.Range.Start.Character;
+        var spans = new[]
+        {
+            ("choosing", 2, chosen), ("over", 2 + chosen.Length + 4, over),
+            ("choosing", 2 + chosen.Length + 4 + over.Length + 16, chosen), ("because", 2 + chosen.Length + 4 + over.Length + 16 + chosen.Length + 10, because),
+        };
+        foreach (var (field, start, part) in spans)
+            if (at >= start && at <= start + part.Length) return Located(field, part, ShiftedBy(error, start));
+        return new DecisionProblem(null, at, null, $"The Decisions line is not readable: {error.Message}");
+    }
+
+    private static LanguageDiagnostic ShiftedBy(LanguageDiagnostic error, int start) => new(
+        new LanguageRange(error.Range.Start.Character - start, error.Range.End.Line == error.Range.Start.Line ? error.Range.End.Character - start : error.Range.Start.Character - start),
+        error.Severity, error.Message, error.Code, error.Source, error.Fix);
+
+    private static DecisionProblem Located(string field, string text, LanguageDiagnostic error)
+    {
+        var start = Math.Clamp(error.Range.Start.Character, 0, text.Length);
+        var end = error.Range.End.Line == error.Range.Start.Line ? Math.Clamp(error.Range.End.Character, start, text.Length) : start;
+        var observed = text[start..end];
+        var fix = error.Fix?.Edits.FirstOrDefault()?.NewText;
+        return new DecisionProblem(field, start, observed,
+            $"--{field} is not inline Markdown: {error.Message} At character {start}: \"{observed}\"" +
+            (fix is null ? "." : $", written {fix} to keep it as text."));
+    }
+
+    /// <summary>A part the Guide cannot stage: its field, offset and text, and why.</summary>
+    private sealed record DecisionProblem(string? Field, int? Offset, string? Text, string Message)
+    {
+        public IReadOnlyDictionary<string, string> Facts()
+        {
+            var facts = new Dictionary<string, string>(StringComparer.Ordinal);
+            if (Field is not null) facts["field"] = Field;
+            if (Offset is { } at) facts["offset"] = at.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            if (Text is not null) facts["text"] = Text;
+            return facts;
+        }
+    }
+
+    private const string EscapeHint = " Escape a literal @ [ * _ ` < or \\ as \\@ \\[ \\* \\_ \\` \\< or \\\\ .";
 
     /// <summary>
     /// The Discussion body with <paramref name="entry"/> last under the Decisions heading, which it adds when absent.

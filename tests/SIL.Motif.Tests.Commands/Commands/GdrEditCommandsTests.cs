@@ -502,6 +502,70 @@ public sealed class GdrEditCommandsTests(PristineProjectFixture pristine)
         Assert.True(decided.Succeeded, decided.Refusal?.Message);
     }
 
+    [Theory]
+    [InlineData("a @ b", "c", "d")]
+    [InlineData("@", "c", "d")]
+    [InlineData("a", "b", "email me @ home")]
+    [InlineData("a", "b", "mail@host or a<b or a <b or <")]
+    [InlineData("a", "b", "trailing @")]
+    [InlineData("<", "<", "<")]
+    public void ABareAtSignOrAngleBracketThatOpensNothingIsLiteralText(string chosen, string over, string because)
+    {
+        var path = ProjectWithGdrs(HeadingStyles);
+
+        var decided = GdrEditCommands.Decide(new GdrDecideRequest(path, "GDR-2", chosen, over, because));
+
+        Assert.True(decided.Succeeded, decided.Refusal?.Message);
+        var text = string.Concat(GdrQuery.Show(new GdrShowRequest(path, "GDR-2", AsOf: decided.Value!.DraftName)).Value!
+            .Discussion.SelectMany(paragraph => paragraph.Runs).Select(run => run.Text));
+        Assert.Contains(chosen + " or " + over + ", I am choosing " + chosen, text, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("see @smith2001", "b", "c", "choosing", 4, "@")]
+    [InlineData("a", "the <NP> node", "c", "over", 4, "<NP>")]
+    [InlineData("a", "b", "x @{cite} y", "because", 2, "@")]
+    public void AnAmbiguousOpenerIsRefusedBeforeStagingNamingTheFieldTheOffsetAndTheEscape(string chosen, string over, string because,
+        string field, int offset, string text)
+    {
+        var path = ProjectWithGdrs(HeadingStyles);
+        var before = Pending(path);
+
+        var refused = GdrEditCommands.Decide(new GdrDecideRequest(path, "GDR-2", chosen, over, because));
+
+        Assert.Equal(RefusalCodes.GdrDecisionInvalid, refused.Refusal!.Code);
+        Assert.Equal(field, refused.Refusal.Facts["field"]);
+        Assert.Equal(offset.ToString(System.Globalization.CultureInfo.InvariantCulture), refused.Refusal.Facts["offset"]);
+        Assert.Equal(text, refused.Refusal.Facts["text"]);
+        Assert.Contains("\\" + text[0], refused.Refusal.Message, StringComparison.Ordinal);
+        Assert.Equal(before, Pending(path));
+    }
+
+    [Theory]
+    [InlineData("see @smith2001", "b", "c", "choosing", 4, "@")]
+    [InlineData("a", "the <NP> node", "c", "over", 4, "<NP>")]
+    public void AnAmbiguousOpenerInALaterBatchRowRefusesTheWholeBatchNamingFieldAndOffset(string chosen, string over, string because,
+        string field, int offset, string text)
+    {
+        var path = ProjectWithGdrs(HeadingStyles);
+        var before = Pending(path);
+        var rows = new[]
+        {
+            new GdrDecisionRow(1, "GDR-2", "a", "b", "fine"),
+            new GdrDecisionRow(2, "GDR-1", "a @ b", "c", "bare at is literal"),
+            new GdrDecisionRow(3, "GDR-1", chosen, over, because),
+        };
+
+        var refused = GdrEditCommands.DecideBatch(new GdrDecideBatchRequest(path, rows));
+
+        Assert.Equal(RefusalCodes.GdrDecisionsInvalid, refused.Refusal!.Code);
+        Assert.Equal("3", refused.Refusal.Facts["row"]);
+        Assert.Equal(field, refused.Refusal.Facts["field"]);
+        Assert.Equal(offset.ToString(System.Globalization.CultureInfo.InvariantCulture), refused.Refusal.Facts["offset"]);
+        Assert.Equal(text, refused.Refusal.Facts["text"]);
+        Assert.Equal(before, Pending(path));
+    }
+
     [Fact]
     public void ALoneMarkerInOnePartMakesNoEmphasisWithAnother()
     {
