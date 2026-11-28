@@ -1,0 +1,39 @@
+{
+  "name": "motif_add_phonological_feature_value",
+  "description": "Add a phonological feature value. Research first: motif_guide topic nasal-assimilation; check best practice. Use only if the feature exists and the language needs one more value of it; otherwise create the feature first with compose-author-phonological-feature (guide nasal-assimilation). Stages one more value for an existing closed phonological feature. The feature must belong to the phonological feature system, and the value name and abbreviation must be new to it. Only a person can Apply.\nCommand: compose-add-phonological-feature-value. Agent class: Draft.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "draft": {
+        "type": "string",
+        "description": "Draft name."
+      },
+      "feature": {
+        "type": "string",
+        "description": "Id of a saved or earlier staged phonological feature, @label in a batch, or lookup:phonological-feature:NAME."
+      },
+      "name": {
+        "type": "string",
+        "description": "Value name."
+      },
+      "abbreviation": {
+        "type": "string",
+        "description": "Optional value abbreviation, unique within the feature."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "draft",
+      "feature",
+      "name",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

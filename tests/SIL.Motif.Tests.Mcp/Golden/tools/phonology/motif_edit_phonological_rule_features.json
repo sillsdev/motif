@@ -1,0 +1,51 @@
+{
+  "name": "motif_edit_phonological_rule_features",
+  "description": "Set rule features. Research first: motif_guide topic suffix-prefix-slots; check best practice. Use only if a rule applies to some stems only, by exception feature, inflection class or category (inputCategories); otherwise narrow its context. Tag stems with compose-tag-stems-by-query (guide suffix-prefix-slots). Sets the exact exception features or inflection classes a phonological rewrite rule requires of a stem, and the ones it excludes, and the categories it is limited to. An empty list clears a set. Motif stages a Draft for a person to review and Apply.\nCommand: compose-edit-phonological-rule-features. Agent class: Draft.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "draft": {
+        "type": "string",
+        "description": "Draft name."
+      },
+      "rule": {
+        "type": "string",
+        "description": "Id of an existing regular rule with one right-hand side; for several, use compose-edit-phonological-rule with rightHandSides."
+      },
+      "required_features": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Exact set of exception feature or inflection class ids a stem must all carry; an empty list clears it."
+      },
+      "excluded_features": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Exact set of ids a stem must carry none of; an empty list clears it."
+      },
+      "input_categories": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Exact set of part-of-speech ids (with their subcategories) the rule is limited to; an empty list admits every category. FieldWorks stores required categories only."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "draft",
+      "rule",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

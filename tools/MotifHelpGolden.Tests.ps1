@@ -11,6 +11,12 @@ function Assert-Equal {
 
 $split = Split-MotifHelpExport '{"locale":"en","entries":[{"kind":"command","code":"a b","x":{"y":1}},{"kind":"command","code":"A"}]}'
 Assert-Equal 3 $split.Count 'The envelope and each entry are separate files.'
+$pagedExport = "{`n  `"entries`": [`n    {`n      `"kind`": `"command`",`n      `"code`": `"p`",`n      `"helpPage`": `"# P\n\nBody`",`n      `"usage`": [`n        `"u`"`n      ]`n    }`n  ]`n}"
+$paged = Split-MotifHelpExport $pagedExport
+Assert-Equal 3 $paged.Count 'An entry with a helpPage also gets a .help.md file.'
+Assert-Equal "# P`n`nBody" $paged['command/p.help.md'] 'The helpPage is written raw.'
+if ($paged['command/p.json'] -like '*helpPage*') { throw 'The JSON golden must not carry helpPage.' }
+Assert-Equal 'True' ([string] ($null -ne ($paged['command/p.json'] | ConvertFrom-Json).usage)) 'The rest of the entry stays valid JSON.'
 Assert-Equal "{`n  `"locale`": `"en`"`n}`n" $split['_envelope.json'] 'The envelope holds every field but entries.'
 Assert-Equal "{`"kind`":`"command`",`"code`":`"a b`",`"x`":{`"y`":1}}`n" $split['command/a_b.json'] 'A space in a code becomes an underscore in the file name.'
 Assert-Equal 'True' ([string] $split.ContainsKey('command/A.json')) 'Codes that differ only in case keep their own entry.'

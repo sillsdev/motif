@@ -1,0 +1,40 @@
+{
+  "name": "motif_edit_adhoc_prohibition",
+  "description": "Edit an ad hoc prohibition. Research first: motif_guide topic ask-the-linguist or suffix-prefix-slots or feature-conditioned-slots; check best practice. Use only if an existing prohibition should be switched off or on; otherwise remove the need with a slot, template, feature or environment (guides suffix-prefix-slots, feature-conditioned-slots). Stages one explicit Disabled value for a flat allomorph or morpheme prohibition in a Draft. The expected value guards against stale evidence; Motif never Applies this change automatically. Only a person can Apply.\nCommand: compose-edit-adhoc-prohibition. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "draft": {
+        "type": "string",
+        "description": "The draft name from motif_start_proposal."
+      },
+      "target": {
+        "type": "string",
+        "description": "Canonical id of one flat allomorph or morpheme prohibition."
+      },
+      "expected_disabled": {
+        "type": "boolean",
+        "description": "The value the target must currently have."
+      },
+      "disabled": {
+        "type": "boolean",
+        "description": "The explicit Disabled value to write."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "draft",
+      "target",
+      "expected_disabled",
+      "disabled",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

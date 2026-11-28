@@ -1,0 +1,30 @@
+{
+  "name": "motif_add_allomorph_required_features",
+  "description": "Add Required Features. Research first: motif_guide topic conditioned-allomorphs; check best practice. Use only if one affix form is chosen by the word\u0027s inflection features, not by sound; otherwise use an environment for sound, or compose-author-feature-structure for the whole affix (guide conditioned-allomorphs). Stages Required Features on an ordinary affix allomorph in a Draft. Populate the returned structure with feature values to select the form by the stem\u0027s grammatical features, including on derivational affixes. Only a person can Apply.\nCommand: compose-author-allomorph-required-features. Agent class: Draft.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "draft": {
+        "type": "string",
+        "description": "Draft name."
+      },
+      "allomorph": {
+        "type": "string",
+        "description": "Ordinary affix allomorph id with no existing Required Features structure. May be earlier-staged."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "draft",
+      "allomorph",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

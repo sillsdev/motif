@@ -549,6 +549,7 @@ public sealed class HelpCommandTests
         Assert.Equal(expected.Keys.Order(StringComparer.Ordinal), actual.Keys.Order(StringComparer.Ordinal));
         Assert.Empty(actual.Where(file => expected[file.Key] != file.Value).Select(file => file.Key).Order(StringComparer.Ordinal));
         var releasedNames = actual.Keys.Where(path => path.StartsWith("command/", StringComparison.Ordinal))
+            .Where(path => path.EndsWith(".json", StringComparison.Ordinal))
             .Select(path => JsonDocument.Parse(actual[path]).RootElement.GetProperty("code").GetString()!)
             .Order(StringComparer.Ordinal);
         Assert.Equal(releasedNames, CommandCatalog.All.Where(command => command.Surface is CommandSurface.Released or CommandSurface.AdvancedAi)
@@ -741,7 +742,7 @@ public sealed class HelpCommandTests
 
     private sealed record CliRun(int ExitCode, string Output, string Error);
 
-    /// <summary>Splits the Help export into the golden folder's files, as tools/MotifHelpGolden.psm1 does.</summary>
+    /// <summary>Splits the Help export into golden files, pages in .help.md, as MotifHelpGolden.psm1 does.</summary>
     private static Dictionary<string, string> SplitHelpExport(string json)
     {
         var files = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -755,7 +756,15 @@ public sealed class HelpCommandTests
                 entry.GetProperty("code").GetString()!.Replace(' ', '_').Replace('/', '~') + ".json";
             Assert.True(files.Keys.All(existing => !string.Equals(existing, path, StringComparison.OrdinalIgnoreCase)),
                 "Two Help entries share the golden file " + path + ", ignoring case.");
-            files[path] = Regex.Replace(entry.GetRawText(), "^    ", "", RegexOptions.Multiline) + "\n";
+            var text = entry.GetRawText();
+            if (entry.TryGetProperty("helpPage", out var page) && page.ValueKind == JsonValueKind.String)
+            {
+                var stripped = Regex.Replace(text, "^      \"helpPage\": .*\r?\n", "", RegexOptions.Multiline);
+                Assert.NotEqual(text.Length, stripped.Length);
+                text = stripped;
+                files[path[..^".json".Length] + ".help.md"] = page.GetString()!.Replace("\r\n", "\n");
+            }
+            files[path] = Regex.Replace(text, "^    ", "", RegexOptions.Multiline) + "\n";
         }
         return files;
     }

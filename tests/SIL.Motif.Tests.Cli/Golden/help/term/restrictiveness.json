@@ -4,6 +4,5 @@
   "slug": "restrictiveness",
   "title": "The narrowest statement that still fits",
   "description": "Restrictiveness favors the narrowest grammar statement that covers known valid forms and excludes explicitly forbidden readings. An unattested form is not a negative without suitable evidence.",
-  "helpPage": "# Restrictiveness\n\nRestrictiveness favors the narrowest grammar statement that still covers known valid forms and excludes readings people have explicitly forbidden. A form missing from the chosen Texts is unobserved; that absence alone does not make it bad.\n",
   "url": "https://motif-docs.pages.dev/reference/terms/restrictiveness/"
 }

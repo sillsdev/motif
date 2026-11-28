@@ -1,0 +1,62 @@
+{
+  "name": "motif_edit_affix_template",
+  "description": "Edit an affix template. Research first: motif_guide topic suffix-prefix-slots or feature-conditioned-slots; check best practice. Use only if the category\u0027s slot order or membership changes; otherwise author another template with compose-author-affix-template for a separate order. Never one template per stem or class (guide suffix-prefix-slots). Adds, removes or reorders the existing prefix or suffix slots of a known affix template. Motif stages a Draft without Applying it automatically. Only a person can Apply.\nCommand: compose-edit-affix-template. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "draft": {
+        "type": "string",
+        "description": "The draft name from motif_start_proposal."
+      },
+      "target": {
+        "type": "string",
+        "description": "Canonical id of the existing affix template."
+      },
+      "expected_prefix_slots": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Current prefix slot ids in project order."
+      },
+      "prefix_slots": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Requested prefix slot ids in explicit order."
+      },
+      "expected_suffix_slots": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Current suffix slot ids in project order."
+      },
+      "suffix_slots": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Requested suffix slot ids in explicit order."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "draft",
+      "target",
+      "expected_prefix_slots",
+      "prefix_slots",
+      "expected_suffix_slots",
+      "suffix_slots",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

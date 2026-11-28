@@ -1,0 +1,40 @@
+{
+  "name": "motif_split_phoneme",
+  "description": "Split a spelling into a phoneme. Research first: motif_guide topic nasal-assimilation or conditioned-allomorphs; check best practice. Use only if a spelling marks a real contrast; otherwise keep it as another spelling of the phoneme. Then add the new phoneme to its natural classes and give it features (guides nasal-assimilation, conditioned-allomorphs). Stages the move of one spelling of a phoneme into a new phoneme of its own, which undoes a merge. The phoneme keeps its other spellings, and the new phoneme starts with no natural class and no features. It refuses a spelling an environment writes. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-split-phoneme. Agent class: Draft.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "draft": {
+        "type": "string",
+        "description": "Draft name."
+      },
+      "source": {
+        "type": "string",
+        "description": "Id of the phoneme that has the spelling now."
+      },
+      "representation": {
+        "type": "string",
+        "description": "The spelling to move out, such as o."
+      },
+      "name": {
+        "type": "string",
+        "description": "Name of the new phoneme."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "draft",
+      "source",
+      "representation",
+      "name",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

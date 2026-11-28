@@ -4,6 +4,5 @@
   "slug": "parsimony-review",
   "title": "Advice about grammar statements",
   "description": "A Parsimony review offers specific grammar recommendations along the parsimony and restrictiveness axes. It records evidence and limitations, and never decides whether to Apply a change.",
-  "helpPage": "# Parsimony review\n\nA Parsimony review gives specific, advisory recommendations about a grammar\u0027s parsimony and restrictiveness. Each finding shows whether it comes from grammar structure, Text evidence, or a parser Assessment, and states what that evidence cannot establish.\n",
   "url": "https://motif-docs.pages.dev/reference/terms/parsimony-review/"
 }

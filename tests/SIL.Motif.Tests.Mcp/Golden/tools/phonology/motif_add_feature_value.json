@@ -1,0 +1,39 @@
+{
+  "name": "motif_add_feature_value",
+  "description": "Author a feature value. Research first: motif_guide topic feature-conditioned-slots; check best practice. Use only if the structure must carry or require this feature value; otherwise use an inflection class for arbitrary stem groups. Restrict by feature value instead of copying affixes or slots per value (guide feature-conditioned-slots). Stages a closed feature specification in an existing or earlier-staged structure, with value omitted when unchosen. Inflectional affix requirements use current morphosyntactic definitions, and any supplied value must belong to the exact feature. Only a person can Apply.\nCommand: compose-author-feature-value. Agent class: Draft.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "draft": {
+        "type": "string",
+        "description": "Draft name."
+      },
+      "feat_struc": {
+        "type": "string",
+        "description": "Feature structure id."
+      },
+      "feature": {
+        "type": "string",
+        "description": "Feature id."
+      },
+      "value": {
+        "type": "string",
+        "description": "Optional symbolic value id."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "draft",
+      "feat_struc",
+      "feature",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

@@ -4,7 +4,6 @@
   "slug": "hypothesis-report",
   "title": "Report from the ledger",
   "description": "Prints the decision record or the speaker-question log, generated from the ledger so nobody writes either by hand.",
-  "helpPage": "# Report from the ledger\n\n\u0060hypothesis report\u0060 prints the decision record or the speaker-question log, generated from the ledger so nobody writes either by hand.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif hypothesis report --project \u003Cfwdata\u003E --kind decisions\n\u0060\u0060\u0060\n\n\u0060--kind decisions\u0060 lists every decided hypothesis with its test, Proposals and Guide section. \u0060--kind questions\u0060 lists the speaker questions with their answers and never shows the predicted answers.\n\n## Related commands\n\n- [Check a change\u0027s neighbours](cmd:hypothesis%20neighbours) is the check that runs before any new object.\n",
   "usage": [
     "Usage: motif hypothesis report --project \u003Cfwdata\u003E --kind decisions|questions [--json]"
   ],

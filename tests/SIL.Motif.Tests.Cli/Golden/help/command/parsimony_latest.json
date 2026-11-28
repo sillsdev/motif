@@ -4,7 +4,6 @@
   "slug": "parsimony-latest",
   "title": "Find the newest Report",
   "description": "Names the newest stored Parsimony Report and the bundle it was measured from. It reads the project\u0027s store only and does not run PanGloss.",
-  "helpPage": "# Find the newest Report\n\n\u0060parsimony latest\u0060 names the newest stored Parsimony Report for a project and the bundle it was measured from. It reads the project\u0027s store only and does not invoke PanGloss.\n\n## Example\n\n\u0060\u0060\u0060powershell\nmotif parsimony latest --project \u0022C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\u0022 --json\n\u0060\u0060\u0060\n\nThe response returns \u0060reportId\u0060 and \u0060bundleId\u0060. Pass the Report id to [Read a Parsimony Report](cmd:parsimony%20show) to read its findings.\n\nWhen the project has no Parsimony Report yet, the command is refused with \u0060parsimony.no-report\u0060. A stored Report that cannot be read is refused with \u0060parsimony.report-damaged\u0060.\n\n## Related commands\n\n- [Review grammar parsimony](cmd:parsimony) creates a Parsimony Report.\n- [Read a Parsimony Report](cmd:parsimony%20show) reads one by id.\n",
   "usage": [
     "Usage: motif parsimony latest --project \u003Cfwdata\u003E [--json]"
   ],

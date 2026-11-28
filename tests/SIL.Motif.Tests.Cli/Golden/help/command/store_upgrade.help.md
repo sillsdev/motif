@@ -1,0 +1,29 @@
+# Upgrade a project store
+
+`store upgrade` carries authored work from an older Motif store into the current format. Motif keeps the old
+store as a versioned backup and discards computed results, which can be recreated. The one computed result it
+keeps is the saved Difference summary of each decided or deferred Proposal, because it cannot be recreated once
+the Proposal is set aside; the word detail under it is discarded. Summaries are kept from schema 56 on; an upgrade from an
+older schema drops them, because they are in a shape this Motif cannot read.
+
+```powershell
+motif store upgrade --project "C:\FieldWorks\Projects\Koro\Koro.fwdata"
+```
+
+Opening a project also upgrades its older store automatically. The upgrade report beside the store lists the
+rows carried, tables discarded, and any Proposal revisions that the current Motif cannot read.
+
+To see what an upgrade would carry and drop, without changing the store, add `--dry-run`. It takes no backup and
+writes nothing beside the store; it prints the report the real upgrade would write, including the declared steps the
+store would cross and the rows of each computed table that would be dropped. A store that is already current says
+`upToDate`.
+
+```powershell
+motif store upgrade --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --dry-run
+```
+
+To inspect an older store without changing it, give an existing source and a new output path:
+
+```powershell
+motif store upgrade --source old.motif.db --out upgraded.motif.db --json
+```

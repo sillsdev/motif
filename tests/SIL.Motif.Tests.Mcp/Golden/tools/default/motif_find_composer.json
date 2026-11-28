@@ -1,0 +1,29 @@
+{
+  "name": "motif_find_composer",
+  "description": "Find a composer. Finds the composing commands that fit a goal in a linguist\u0027s words, or lists every composer that serves a Subject. Each result gives its title, when to use it, its Subjects and its intent schema; detailed adds a worked example and the Subject\u0027s page. Reads only; nothing is staged.\nCommand: find-composer. Agent class: Read.\nGoal: What the linguist wants done, in a few words; exclusive with .\nSubject: A Subject id to list every composer that serves it; exclusive with .\nDetail: Either concise or detailed; detailed adds a worked example and the Subject page.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "goal": {
+        "type": "string",
+        "description": "Value for the request field."
+      },
+      "subject": {
+        "type": "string",
+        "description": "Value for the request field."
+      },
+      "detail": {
+        "type": "string",
+        "description": "concise (default) or detailed, which adds a worked example and the Subject page.",
+        "enum": [
+          "concise",
+          "detailed"
+        ]
+      }
+    },
+    "additionalProperties": false
+  },
+  "readOnlyHint": true,
+  "destructiveHint": false,
+  "idempotentHint": true
+}

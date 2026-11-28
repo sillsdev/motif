@@ -1,0 +1,64 @@
+{
+  "name": "motif_add_natural_class",
+  "description": "Author a natural class. Research first: motif_guide topic nasal-assimilation or conditioned-allomorphs; check best practice. Use only if a rule or environment needs this set of sounds and no class has it yet; otherwise reuse that class. List only the sounds the pattern needs; one class replaces environments that list sounds one by one (guide nasal-assimilation). Stages a named segment natural class with explicitly declared phoneme members in a Draft. Members may name existing phonemes or phonemes created earlier through declared dependencies. Only a person can Apply.\nCommand: compose-author-natural-class. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "draft": {
+        "type": "string",
+        "description": "Draft name."
+      },
+      "name": {
+        "type": "string",
+        "description": "Natural class name."
+      },
+      "abbreviation": {
+        "type": "string",
+        "description": "Unique environment abbreviation, such as V."
+      },
+      "members": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Phoneme ids in the first set."
+      },
+      "features": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "feature": {
+              "type": "string",
+              "description": "Closed feature id in the phonological feature system."
+            },
+            "value": {
+              "type": "string",
+              "description": "Symbolic value belonging to that feature."
+            }
+          },
+          "required": [
+            "feature",
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        "description": "Closed phonological feature/value pairs; copy ids from motif_grammar."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "draft",
+      "name",
+      "abbreviation",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

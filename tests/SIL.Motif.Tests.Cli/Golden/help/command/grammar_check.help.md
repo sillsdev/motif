@@ -1,0 +1,68 @@
+# Check a grammar
+
+`grammar check` runs the grammar checker against the project's current Baseline and stores its findings. If the project has no Baseline, the command refuses the request; run `motif baseline capture --project <fwdata>` and try again.
+
+## When to use it
+
+Use this to collect diagnostics about the grammar, then read them with `warnings`. It is separate from an Assessment, which measures parsing over a Selection.
+
+## Example
+
+```powershell
+motif grammar check --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --json
+```
+
+## How much of the comparison runs
+
+One part of the check re-parses each word to see whether its stored analyses still parse, so it is the part that slows down as a project grows. `--stored-analyses` chooses how much of it runs, for this check only:
+
+- `budget` compares words in order until a fixed amount of work is spent, then reports how many words were left. This is the default.
+- `all` compares every word. A large project can take half a minute or more.
+- `off` skips the comparison; the checks that need no parsing still run.
+
+Without the flag, the check follows the **Compare stored analyses** choice under *Default proposal checks* in Settings. The same choice applies to the grammar check a Trial runs for a Proposal, so a Proposal's check and the project's are comparable only when they used the same choice.
+
+## What it prints
+
+The check also asks PanGloss for its shadowed-alternates report (`grammar-health --shadowed`) and stores it in the response's `shadowedAlternates` field: `alternates` lists each alternate of an entry or affix rule that no word can select because an earlier one is eligible wherever it is, with `tier` `definite` (PanGloss proved it) or `maybe` (it could not decide), `shadowedBy` naming the earlier alternate, `reasons`, and the FieldWorks allomorph guids (`removableGuids` only for a proven row); `deadContinuations` lists alternates that are selected but rejected by every following affix on inflection class, MPR features or stem name. The proven rows are not repeated as `grammar.allomorph.shadowed` findings. A grammar that did not compile has no shadowed report, and `shadowedAlternates` is then absent. [`compose-batch`](cmd:compose-batch) reads this report to advise on edits of a shadowed alternate (`compose.shadowed-alternate`).
+
+The response includes the Baseline's lexical entry and rule counts when that inventory is available. Motif advisories are separate from PanGloss findings, so an empty-lexicon note does not change parser severity or Assessment readiness. Error-level findings appear separately from warnings and information. PanGloss can exit nonzero after writing a report with errors; Motif still reads and stores that report. A nonzero exit without a report is a refusal.
+
+Motif also warns when a required inflectional slot in a template has no affixes. The finding names the template, part of speech and slot, and includes the slot's canonical ID. The slot is marked required, but FieldWorks and PanGloss currently treat an empty required slot as optional. Add affixes to express the intended requirement, or mark the slot optional when empty is allowed.
+
+Motif also warns, with code `grammar.negated-feature-value`, about each stored negated feature value (a feature set to "not" a value). FieldWorks' parser loader throws when it reads one, so FieldWorks cannot parse with the project, while PanGloss parses on and leaves the value out of the stem's features, so what carries it is not held back by it. The finding names the feature, the value and the entry or object that holds it. On a stem or an inflectional affix, [remove the feature value](cmd:compose-remove-feature-value) (it removes a negated one like a closed one), then author a closed value if one is wanted. Motif has no command for a negated value in a phoneme, natural class or part of speech, and whether FieldWorks can clear one was not checked.
+
+Motif also warns, with code `grammar.derived-stem-keeps-from-class`, about each derivational affix that takes a From Inflection Class and names no To Inflection Class: the stems it derives keep the From class, so an inflectional affix that attaches only to other classes finds no stem. The finding names the affix and the class. Set the class the derived stem should take with [Restrict a derivational affix](cmd:compose-edit-derivational-affix-restriction) (`toInflectionClass`), or leave it when the derived stem does keep its class.
+
+Motif also warns, with code `grammar.template-has-no-slots`, about each affix template that has no slot. LibLCM can hold one, so Motif authors it without refusing, but it holds no affix position and adds nothing the parser can use. The finding names the template and its part of speech. Add a slot with [Add an affix slot](cmd:compose-author-affix-slot) and put the template's affixes in it; a slot that may be empty is an optional slot.
+
+Motif also warns, with code `grammar.phoneme-case-alias-missing`, when a featured lowercase phoneme lacks an explicit titlecase or uppercase representation on that same phoneme. It checks the default vernacular writing system's casing, including its case alias, in every phoneme set. The finding names the missing spellings: `c` needs `C`, and `ng` needs both `Ng` and `NG`. Implicit writing-system letters have no phonological features and can unify with unrelated featured sounds. Add the missing spellings with [Edit a phoneme](cmd:compose-edit-phoneme); review an existing capital phoneme's identity and class membership before merging it. Accented sounds remain distinct. This is advice and does not prevent authoring.
+
+Motif also warns, with code `grammar.phoneme-spelling-ambiguous`, about each phoneme whose spelling is the spellings of two or more other phonemes joined, as `ng` beside `n` and `g`. The parser reads letters as the longest spelling at each point and keeps one reading, so `ng` is always the one phoneme and a word where `n` and `g` meet across a morpheme boundary is never read as those two. A digraph whose parts are not phonemes (`sh` with no `s` or `h`) is not flagged. The finding names the phoneme and the spellings it is made of. Write the affected form of the affix or stem as an allomorph spelled with the digraph, or change the orthography to remove the ambiguity (Black, section 6.3.3). Do not remove the phoneme: every rule that uses it would break. Every phoneme set is checked. The spelling may be intended, as `aa` beside `a`, and then nothing needs changing.
+
+Motif also warns, with code `grammar.allomorph-environment-ignored-by-parser`, about each stem or affix form that names an environment the parser cannot read, as one written with a morpheme boundary `+`. The parser drops such an environment, so the form is not restricted by it and may appear anywhere. The check uses the same recognizer as FieldWorks' parser loader over the project's phonemes and natural classes. PanGloss drops the environment too, but its own grammar-health report does not list it. Entries marked do-not-use-for-parsing are skipped. The finding names the form and the environment. Rewrite the environment with phonemes and natural classes only. A restriction that needs a morpheme boundary can be stated as a phonological rule with a boundary context ([Author a phonological rule](cmd:compose-author-phonological-rule)); Motif has not checked that this gives the same readings as the environment, so try it in a Trial.
+
+Motif also warns, with code `grammar.allomorph-repeats-environment-material`, about each stem or affix form that already ends with the literal material to the right of the slot in every environment it names (or starts with the material to its left), as `batan-ung` before the linker `ng`, where the form meant to stop before the linker was `batan-u`. It refuses nothing: an affix such as Tagalog `pang` before `ng` is correct, because the environment restricts the neighbour. Natural classes, boundaries and optional parts are ignored. The finding names the form and the environment.
+
+Motif also reports lexicon hygiene as warnings, with three codes. It only reports; it changes nothing, and it includes entries marked do-not-parse, which FieldWorks still parses. `lexicon.stem-typed-as-content-word` names each stem whose part of speech is a Noun, Verb or Adjective (or a sub-category of one) and whose form is a single letter or whose gloss begins with `=`, `see:`, `see also` or `see under` (a cross-reference stub), begins with `letter`, or names a function word (`marker`, `particle`, `interjection`, `conjunction`, `preposition`, `determiner`, `linker`, `pause word`). Such a stem takes that category's inflection and derivation, so it lets short unrelated readings parse. `lexicon.duplicate-entry` names entries that share a lexeme form, a first gloss, a morph type and a category. `lexicon.affix-hyphen-on-wrong-side` names a prefix, proclitic or prefixing-interfix form written `-i` and a suffix, enclitic or suffixing-interfix form written `i-`; the hyphen belongs on the side that touches the stem. When there are more than 20 findings of one kind, one finding gives the total and a sample of five. To fix the first kind in bulk, put `compose-set-stem-part-of-speech` intents in one [`compose-batch`](cmd:compose-batch) file.
+
+## Advisories over the whole grammar
+
+`grammar check` also sweeps every object of the Baseline for the patterns `compose-batch` advises on, read-only, and lists them under `advisories` with the same codes. Each carries `code`, `message` and `objects` (one `id` and `text` per object it is about). An advisory never changes the findings, the exit code or the Baseline's readiness; read each and either change the model or keep it. The codes are stable:
+
+- `compose.whole-word-environment`: an environment with a word boundary on both sides and only literal sounds between, so it fits one word. `text` is its pattern.
+- `compose.one-stem-inflection-class`: an inflection class that exactly one stem analysis uses, counting its subclasses. `text` is the class name.
+- `grammar.orphan-environment`: an environment that no allomorph references. `text` is its pattern; delete it or give it to the forms it was written for.
+
+## Word types with more than one reading
+
+When the Baseline has an Assessment (`motif assess`), `grammar check` also counts the word types of that Assessment that have more than one reading and returns them under `multiReadingTypes`: `measuredTypes` (the types whose readings were counted), `types` (those with more than one reading) and `groups`. Each group has a `pattern`, a `types` count and up to five alphabetical `examples`, largest group first. A reading's pattern is its morphs joined by `+`: an affix by its gloss (its category when it has no gloss, its form when it has neither) and every stem as `stem`. A word's pattern is its distinct reading patterns joined by ` | `, so `stem+APPL+CAUS | stem+CAUS+APPL` is one cut read in two orders and `stem | stem+CAUS` is a lexical twin beside a derivation. The count is the standing stock, not a change from a baseline, so it shows doubling that was there before your edit; for the change an edit makes use `proposal trial delta`. It is report-only: no cap, and it never changes the findings, the exit code or the Baseline's readiness. Without an Assessment for this Baseline the field is absent; run `motif assess` and check again.
+
+## Related commands
+
+- [Read grammar warnings](cmd:warnings) filters and displays stored findings.
+- [Measure a Selection](cmd:assess) measures parser behavior rather than grammar diagnostics.
+
+## Output size
+
+`grammar check` returns the first 10 findings. The counts and per-code rows always describe every finding; `findingsTotal`, `findingsOffset` and, when more remain, `nextOffset` say which page this is. `--limit <1-200>` sets the page size, `--offset <n>` or `--page <N>` picks the page, and `--all` returns every finding (MCP `all: true`). The findings are stored in full, so [`warnings`](cmd:warnings) pages the same list later without rerunning the check. An offset or limit outside that range is refused with `paging.invalid`.

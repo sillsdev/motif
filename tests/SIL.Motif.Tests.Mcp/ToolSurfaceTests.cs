@@ -273,7 +273,7 @@ public sealed class ToolSurfaceTests
     public void SharedDescriptionsAndSchemasMatchTheProfileSnapshot(string profile)
     {
         var tools = MotifMcpServer.Expose(ToolProfile.Load(profile));
-        var listed = new JsonArray(tools.Select(tool =>
+        var listed = tools.Select(tool =>
         {
             var described = tool.Describe();
             return (JsonNode)new JsonObject
@@ -284,10 +284,11 @@ public sealed class ToolSurfaceTests
                 ["destructiveHint"] = described.Annotations.DestructiveHint,
                 ["idempotentHint"] = described.Annotations.IdempotentHint,
             };
-        }).ToArray()).ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n";
-        var path = GoldenPath(profile);
-        if (Environment.GetEnvironmentVariable("MOTIF_UPDATE_GOLDEN") == "1") File.WriteAllText(path, listed);
-        Assert.Equal(File.ReadAllText(path).ReplaceLineEndings("\n"), listed.ReplaceLineEndings("\n"));
+        }).ToList();
+        var expected = ToolsListGolden.Render(listed);
+        var actual = ToolsListGolden.Sync(profile, expected);
+        Assert.Equal(expected.Keys.Order(StringComparer.Ordinal), actual.Keys.Order(StringComparer.Ordinal));
+        Assert.Empty(expected.Where(file => actual[file.Key] != file.Value.ReplaceLineEndings("\n")).Select(file => file.Key));
     }
 
     [Theory]
@@ -639,9 +640,6 @@ public sealed class ToolSurfaceTests
             [new ToolSelection("motif_overview", "same", null, null), new ToolSelection("motif_word", "same", null, null)]);
         Assert.Throws<ProfileException>(() => MotifMcpServer.Expose(profile));
     }
-
-    private static string GoldenPath(string profile, [CallerFilePath] string source = "") =>
-        Path.Combine(Path.GetDirectoryName(source)!, "Golden", "tools-list." + profile + ".json");
 }
 
 [Collection(LcmCacheParallelCollections.Group3)]

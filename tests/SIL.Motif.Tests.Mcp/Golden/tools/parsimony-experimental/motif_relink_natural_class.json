@@ -1,0 +1,128 @@
+{
+  "name": "motif_relink_natural_class",
+  "description": "Relink natural-class users. Research first: motif_guide topic nasal-assimilation or conditioned-allomorphs; check best practice. Use only if some users of a class should move to a replacement class; otherwise change the class itself with compose-edit-natural-class (guide nasal-assimilation). Moves explicitly named environments and rewrite-rule contexts to a replacement class created earlier in the Draft. Other users remain on the source class. Only a person can Apply.\nCommand: compose-relink-natural-class. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "draft": {
+        "type": "string",
+        "description": "Draft name from motif_start_proposal."
+      },
+      "source": {
+        "type": "string",
+        "description": "Canonical id, exact name or abbreviation of the class users currently reference; names use NFD and ordinal case-insensitive equality, without trimming."
+      },
+      "replacement": {
+        "type": "string",
+        "description": "Canonical id, exact name or abbreviation of the replacement class; names use NFD and ordinal case-insensitive equality, without trimming."
+      },
+      "replacement_creation_operation": {
+        "type": "string",
+        "description": "Operation id returned by the class create earlier in this Draft."
+      },
+      "environments": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "target": {
+              "type": "string",
+              "description": "Environment id or unique exact name; names use NFD and ordinal case-insensitive equality, without trimming."
+            },
+            "expectedLeft": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "phoneme": {
+                    "type": "string",
+                    "description": "Phoneme id in the first phoneme set."
+                  },
+                  "naturalClass": {
+                    "type": "string",
+                    "description": "Natural class id, exact name or abbreviation; names must resolve uniquely using NFD and ordinal case-insensitive equality, without trimming. The class must have a unique abbreviation."
+                  },
+                  "boundary": {
+                    "type": "string",
+                    "description": "Word edge or declared morpheme boundary.",
+                    "enum": [
+                      "word",
+                      "morpheme"
+                    ]
+                  },
+                  "boundaryMarker": {
+                    "type": "string",
+                    "description": "Declared morpheme-boundary marker id."
+                  }
+                },
+                "additionalProperties": false
+              },
+              "description": "Context items in linguistic order, from the outer left to outer right. Each names exactly one reference."
+            },
+            "expectedRight": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "phoneme": {
+                    "type": "string",
+                    "description": "Phoneme id in the first phoneme set."
+                  },
+                  "naturalClass": {
+                    "type": "string",
+                    "description": "Natural class id, exact name or abbreviation; names must resolve uniquely using NFD and ordinal case-insensitive equality, without trimming. The class must have a unique abbreviation."
+                  },
+                  "boundary": {
+                    "type": "string",
+                    "description": "Word edge or declared morpheme boundary.",
+                    "enum": [
+                      "word",
+                      "morpheme"
+                    ]
+                  },
+                  "boundaryMarker": {
+                    "type": "string",
+                    "description": "Declared morpheme-boundary marker id."
+                  }
+                },
+                "additionalProperties": false
+              },
+              "description": "Context items in linguistic order, from the outer left to outer right. Each names exactly one reference."
+            }
+          },
+          "required": [
+            "target",
+            "expectedLeft",
+            "expectedRight"
+          ],
+          "additionalProperties": false
+        },
+        "description": "Explicit environment users and their exact current typed contexts."
+      },
+      "rule_contexts": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Explicit rewrite-rule context object ids using the source class."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "draft",
+      "source",
+      "replacement",
+      "replacement_creation_operation",
+      "environments",
+      "rule_contexts",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

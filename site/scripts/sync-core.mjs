@@ -541,14 +541,17 @@ async function cleanGeneratedPaths(paths) {
 }
 
 // Reads a Help export: a `help --all --json` file, or the repository's golden folder, where `_envelope.json` holds the
-// top-level fields and each entry is its own `<kind>/<code>.json` file.
+// top-level fields and each entry is its own `<kind>/<code>.json` file, with its `helpPage` in `<kind>/<code>.help.md`.
 export async function readHelpExport(helpExportPath) {
 	if (!(await stat(helpExportPath)).isDirectory()) return JSON.parse(await readFile(helpExportPath, 'utf8'));
 	const helpExport = JSON.parse(await readFile(path.join(helpExportPath, '_envelope.json'), 'utf8'));
 	helpExport.entries = [];
 	for (const kind of (await readdir(helpExportPath, { withFileTypes: true })).filter((item) => item.isDirectory()).map((item) => item.name).sort()) {
 		for (const file of (await readdir(path.join(helpExportPath, kind))).filter((name) => name.endsWith('.json')).sort()) {
-			helpExport.entries.push(JSON.parse(await readFile(path.join(helpExportPath, kind, file), 'utf8')));
+			const entry = JSON.parse(await readFile(path.join(helpExportPath, kind, file), 'utf8'));
+			const page = path.join(helpExportPath, kind, file.replace(/\.json$/, '.help.md'));
+			try { entry.helpPage = await readFile(page, 'utf8'); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+			helpExport.entries.push(entry);
 		}
 	}
 	return helpExport;

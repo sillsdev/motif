@@ -4,7 +4,6 @@
   "slug": "dry-run-wait",
   "title": "Read a Dry Run",
   "description": "Waits for a Draft or finalized Proposal\u0027s Dry Run and prints operation counts, warnings, the Baseline hash and the effects-file path. Add --effects for the full terminal list; --json keeps the full operations and effects arrays with an effectsSummary.",
-  "helpPage": "# Read a Dry Run\n\nWaits for the Dry Run of a Draft or finalized Proposal and reads its effects. Content and Baseline identify whether the evidence remains current.\n\nAdd \u0060--wait-terminal\u0060 to cancel the exact job when the wait deadline expires and return after its execution has stopped. The timeout refusal reports the terminal job status.\n",
   "usage": [
     "Usage: motif dry-run --project \u003Cfwdata\u003E \u003CproposalId\u003E --wait [--wait-terminal] [--wait-timeout-ms \u003Cms\u003E] [--no-background] [--effects] [--json]"
   ],

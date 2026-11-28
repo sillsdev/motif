@@ -1,0 +1,24 @@
+{
+  "name": "motif_capture_baseline",
+  "description": "Capture a Baseline. Reads the saved .fwdata project to create or reuse a file-backed Baseline. Use it when the latest FieldWorks save should be the point of comparison for later work.\nCommand: baseline capture. Agent class: Evaluate.\nno_background: True captures in the foreground only: no Source index or Parsimony job is queued and no runner is woken, so nothing commits after the command returns.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "no_background": {
+        "type": "boolean",
+        "description": "True captures in the foreground only: no Source index or Parsimony job is queued and no runner is woken, so nothing commits after the command returns."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "additionalProperties": false,
+    "required": [
+      "project"
+    ]
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": true
+}

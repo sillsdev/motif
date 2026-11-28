@@ -4,7 +4,6 @@
   "slug": "parsimony-show",
   "title": "Read a Parsimony Report",
   "description": "Reads a stored Parsimony Report by id. It uses the saved Report and does not run PanGloss.",
-  "helpPage": "# Read a Parsimony Report\n\n\u0060parsimony show\u0060 reads a previously stored Parsimony Report by id. It reads the saved Report and does not invoke PanGloss.\n\n## Example\n\n\u0060\u0060\u0060powershell\nmotif parsimony show --project \u0022C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\u0022 \u003CreportId\u003E --json\n\u0060\u0060\u0060\n\nThe response returns the Report id, its frozen Baseline and artifact identities, its Assessment references, findings, and rendered text.\nA check that could not look appears as a note: an information line in the rendered text and in \u0060notes\u0060, never a finding. A Report also lists authored grammar settings the parser ignores, as information only.\n\n## Related commands\n\n- [Review grammar parsimony](cmd:parsimony) creates a Parsimony Report.\n",
   "usage": [
     "Usage: motif parsimony show --project \u003Cfwdata\u003E \u003CreportId\u003E [--json]"
   ],

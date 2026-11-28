@@ -1,0 +1,27 @@
+# Author an affix process
+
+Use this command to stage one new affix whose form is described by a pattern and a realization. An input part names one phoneme, one natural class, or the remaining stem; output items copy named input parts, insert saved or previously staged phonemes, insert one segment of a natural class, or copy an input part with the features of a feature class laid over it.
+
+This example copies a whole stem twice with an existing phoneme between the copies:
+
+```sh
+motif compose-author-affix-process --project language.fwdata --draft reduplication \
+  --intent '{"morphType":"<prefix-or-suffix-id>","gloss":"repeated action","analysisWs":"en","msa":{"kind":"unclassified","category":"<verb-category-id>"},"input":[{"name":"stem","remaining":true}],"output":[{"copy":"stem"},{"insert":["<phoneme-id>"]},{"copy":"stem"}]}'
+```
+
+The intent has `morphType`, `gloss`, `analysisWs`, optional `definition`, optional `form` with its vernacular writing system `formWs` (the entry's headword, written without the hyphens FieldWorks shows on affixes, so the entry can be found in the lexicon; give both or neither), affix-only `msa`, `input` and `output`. The MSA kind is `inflectional`, `derivational` or `unclassified`; its category, optional target category and slots must match that kind and the morph type. References may name saved project objects or objects created earlier in the same Draft or batch; Motif resolves staged references while replaying the Draft.
+
+Each input part has a distinct `name` and exactly one of `phoneme`, `naturalClass` or `remaining: true`. There may be at most one remaining-stem part, and it must be last unless it is the only part. An output may omit an input part, which deletes what it matched (for example the initial consonant in nasal substitution, where `p` becomes `m`: input `p` and `rest`, output insert `pa`, insert `m`, copy `rest`); omitting a part is how a process deletes. The remaining-stem part must still be copied, and at least one input must be copied, so a process cannot delete the whole stem. Each output item has exactly one of `copy`, `insert`, `insertClass`, or `modify` with `features`; inserted phoneme arrays are nonempty. `insertClass` names a natural class (by segments or by features, FieldWorks' insert natural class) and puts one segment of that class into the word; give it a class that picks out one sound unless you mean to leave the choice to the parser. A class of several segments does leave the choice of member to the parser: either member is read as the inserted segment, so a word that shows either one parses. `modify` names an input part (a phoneme, a natural class or the remaining stem), which is copied with the phonological feature values of `features` replacing its own (FieldWorks' modify from input, for example voicing the first consonant: input a voiceless class and `rest`, output `modify` it with a class holding the feature value voiced, then copy `rest`); `features` must be a natural class defined by features, not by segments. On the remaining stem, as in FieldWorks where every copy including the variable part can be a modify, every segment the stem captured takes the features (for example devoicing every voiced consonant), and a segment with no sound of the inventory that has the changed features does not parse. The part that results must be a sound in the phoneme inventory with those features, so give the inventory the voiced counterpart. A modification and an inserted class each count as changing the word, so a process that does only that is not identity-only. The realization must insert material, omit an input part, or copy one more than once, so an identity-only pattern is refused. A process with exactly one input part and one output item is held and allowed, but FieldWorks and PanGloss skip it when they load the grammar, so it will not parse; the Dry Run warns, and the fix is another part (for example a modified stem plus an inserted affix segment).
+
+The limits are 1–16 input parts, 1–64 logical output items, 1–64 phonemes per insertion and 256 expanded output mappings. Nested contexts, truncation, replacing or deleting an existing process are not supported.
+
+Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to record the source on every operation this command produces. The command stages operations in a Draft and does not change the saved FieldWorks project. Dry Run and Trial the Proposal on affected words, then Finalize it for a person to review and Apply.
+
+A derivational affix's composed summary lists a `Derivation: From -> To` line naming both categories, so a swapped pair shows at once, and its Dry Run warns when the project has no stem, subcategory stem or derivation that makes the From category, or when nothing takes the To category (or a subcategory) as input, which usually means the categories are the wrong way round.
+
+## When not to use this
+
+- For nasal assimilation or substitution, use a phonological rule with `compose-author-phonological-rule`; an unconstrained affix process may require substantial parser work, while Verb-restricted processes merged on one entry stopped no words with compounding off.
+- For a form that changes with its sound context, keep allomorphs under one entry with environments, using `compose-author-alternate-form`.
+- For another pattern-based form of an affix that already uses a process, use `compose-author-affix-process-allomorph`.
+- For a plain prefix or suffix, use `compose-author-lexical-entry` and a slot.

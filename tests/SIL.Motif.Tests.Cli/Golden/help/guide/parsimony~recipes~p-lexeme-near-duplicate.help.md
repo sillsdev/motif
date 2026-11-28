@@ -1,0 +1,29 @@
+# Entries differing in spelling
+
+This check finds entries whose forms differ only in case, Unicode form or a fold rule the project declares (`[parsimony] fold`, for example `iy>y` for Cebuano). They are bucketed by a folded form, never compared pairwise.
+
+## Analyse
+
+Read each group of entries that share one folded form and decide whether they are one lexeme.
+
+## Ruling
+
+An applied keep or defer is tied to this finding's exact evidence. See [Ruling](term:ruling) for how it appears in Active and Suppressed lists and returns after relevant evidence changes.
+
+No ruling mapping exists for this finding yet, so it cannot be recorded with a Notebook ruling. Note the decision in the review instead.
+
+## Ask the linguist
+
+Ask whether the entries are one word or two.
+
+## Update
+
+No typed action is available for this finding yet. Merge or variant-link the entries in FieldWorks.
+
+## Verify
+
+Re-run the check and confirm the finding is gone, then confirm that no Approved reading changed.
+
+## Grounding
+
+- **[black-2018]** — H. Andrew Black. 2018. “Introduction to Parsing.” SIL FieldWorks technical document, 12 April 2018. [Source](https://software.sil.org/fieldworks/help/technical-documents/). Describes how an affix attaches to a stem by category; it does not say that a stem without one is wrong, so the finding asks rather than concludes.

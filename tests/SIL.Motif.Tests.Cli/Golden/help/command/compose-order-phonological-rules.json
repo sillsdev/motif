@@ -4,7 +4,6 @@
   "slug": "compose-order-phonological-rules",
   "title": "Reorder sound rules",
   "description": "Moves phonological rules to a new order, with the fewest moves, so a later rule sees the output of the earlier ones. Motif stages a Draft for a person to review and Apply.",
-  "helpPage": "# Reorder sound rules\n\nUse this command to change the order in which phonological rules apply. A later rule sees the output of the earlier ones, so order decides whether a chain such as a class-to-nasal rule and a nasal deletion works at all.\n\n\u0060\u0060\u0060sh\nmotif compose-order-phonological-rules --project language.fwdata --draft rule-order \\\n  --intent \u0027{\u0022rule\u0022:\u0022\u003Crule-id\u003E\u0022,\u0022before\u0022:\u0022\u003Cother-rule-id\u003E\u0022}\u0027\n\u0060\u0060\u0060\n\nGive either one move (\u0060rule\u0060 with \u0060before\u0060 or \u0060after\u0060) or the whole new order (\u0060order\u0060, every rule once). The command plans the fewest moves and refuses an unknown rule, an incomplete order, or an order that changes nothing. Rules keep their contexts, features and disabled state.\n\nDry Run and Trial the Proposal on a word that needs the chain, then Finalize it for a person to review and Apply.\n",
   "usage": [
     "Usage: motif compose-order-phonological-rules --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],

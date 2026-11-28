@@ -1,0 +1,46 @@
+{
+  "name": "motif_edit_inflectional_affix",
+  "description": "Edit an inflectional affix. Research first: motif_guide topic suffix-prefix-slots or feature-conditioned-slots; check best practice. Use only if an inflectional affix belongs in other slots of its category; otherwise author a slot with compose-author-affix-slot. Never copy an affix per slot or per stem class (guide suffix-prefix-slots). Changes which existing category slots an inflectional affix MSA uses. Other MSA kinds and slots outside the category hierarchy are refused; Motif stages a Draft and never Applies it automatically. Only a person can Apply.\nCommand: compose-edit-inflectional-affix. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "draft": {
+        "type": "string",
+        "description": "The draft name from motif_start_proposal."
+      },
+      "target": {
+        "type": "string",
+        "description": "Canonical id of the existing inflectional affix MSA."
+      },
+      "expected_slots": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Current slot ids assigned to the MSA."
+      },
+      "slots": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Requested slot ids; order has no meaning."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "draft",
+      "target",
+      "expected_slots",
+      "slots",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

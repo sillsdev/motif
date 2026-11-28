@@ -4,7 +4,6 @@
   "slug": "hypothesis-answer",
   "title": "Record a speaker\u0027s answer",
   "description": "Records a speaker\u0027s answer to one question queued on a hypothesis.",
-  "helpPage": "# Record a speaker\u0027s answer\n\n\u0060hypothesis answer\u0060 records a speaker\u0027s answer to one question queued on a hypothesis.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif hypothesis answer H-12 --project \u003Cfwdata\u003E --question 1 --answer yes\n\u0060\u0060\u0060\n\n\u0060--question\u0060 is the 1-based number in the hypothesis\u0027s question list.\n\n## Related commands\n\n- [Check a change\u0027s neighbours](cmd:hypothesis%20neighbours) is the check that runs before any new object.\n",
   "usage": [
     "Usage: motif hypothesis answer \u003CH-n\u003E --project \u003Cfwdata\u003E --question \u003Cn\u003E --answer \u003Ctext\u003E [--json]"
   ],

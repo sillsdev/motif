@@ -1,0 +1,71 @@
+{
+  "name": "motif_add_stem_name",
+  "description": "Author a stem name. Research first: motif_guide topic conditioned-allomorphs; check best practice. Use only if a stem\u0027s form depends on the word\u0027s inflection features, such as a past-tense stem; otherwise use environments for sound, or an inflection class for stem groups. Attach it with compose-edit-stem-allomorph-stem-name (guide conditioned-allomorphs). Adds a category-owned stem name with explicit feature regions to a Draft. Each region states where an allomorph bearing this stem name is eligible; attaching it to an allomorph is a separate operation.\nCommand: compose-author-stem-name. Agent class: Draft.\nDraftName: The Draft to append the authored operations to.\nIntentJson: The closed stem name input, resolved against the prepared Draft.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "draft": {
+        "type": "string",
+        "description": "The Draft name from motif_start_proposal."
+      },
+      "category": {
+        "type": "string",
+        "description": "Canonical id of the category owning this stem name."
+      },
+      "name": {
+        "type": "string",
+        "description": "Stem name label."
+      },
+      "ws": {
+        "type": "string",
+        "description": "Writing system tag for the name and abbreviation."
+      },
+      "abbreviation": {
+        "type": "string",
+        "description": "Optional short stem name label."
+      },
+      "regions": {
+        "type": "array",
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "feature": {
+                "type": "string",
+                "description": "Closed feature id in the morphosyntactic system."
+              },
+              "value": {
+                "type": "string",
+                "description": "Value id belonging to that feature."
+              }
+            },
+            "required": [
+              "feature",
+              "value"
+            ],
+            "additionalProperties": false
+          },
+          "description": "Nonempty choices; one value for each feature."
+        },
+        "description": "Nonempty feature regions permitting the named stem."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "draft",
+      "category",
+      "name",
+      "ws",
+      "regions",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

@@ -1,0 +1,20 @@
+{
+  "name": "motif_activity",
+  "description": "Read agent activity. Reads calls, Proposals and jobs from this conversation and the selected project.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "additionalProperties": false,
+    "required": [
+      "project"
+    ]
+  },
+  "readOnlyHint": true,
+  "destructiveHint": false,
+  "idempotentHint": true
+}

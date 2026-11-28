@@ -7,13 +7,15 @@ import unittest
 
 REPO = Path(__file__).resolve().parents[2]
 PROFILES = Path(os.environ.get('MOTIF_GRADE_PROFILES', REPO / 'evals/profiles'))
-GOLDEN = REPO / 'tests/SIL.Motif.Tests.Mcp/Golden'
+GOLDEN = REPO / 'tests/SIL.Motif.Tests.Mcp/Golden/tools'
 SHIPPED = REPO / 'profiles'
 
 
 def golden_tools(profile):
     """Ordered (name, class) pairs; the class is None where the description states none."""
-    tools = json.loads((GOLDEN / f'tools-list.{profile}.json').read_text(encoding='utf-8'))
+    folder = GOLDEN / profile
+    names = json.loads((folder / '_index.json').read_text(encoding='utf-8'))
+    tools = [json.loads((folder / f'{name}.json').read_text(encoding='utf-8')) for name in names]
     result = []
     for tool in tools:
         found = re.search(r'Agent class: (\w+)\.', tool['description'])
@@ -38,7 +40,7 @@ class GradeProfileTests(unittest.TestCase):
                 grade = json.loads(path.read_text(encoding='utf-8'))
                 server = path.name.removeprefix('mcp-').removesuffix('-grade.json')
                 renames = {}
-                if (GOLDEN / f'tools-list.{server}.json').exists():
+                if (GOLDEN / server / '_index.json').exists():
                     expected = golden_tools(server)
                 elif (SHIPPED / f'{server}.json').exists():
                     expected, renames = lean_tools()
@@ -59,8 +61,7 @@ class GradeProfileTests(unittest.TestCase):
 
 
     def test_every_server_golden_has_a_grade_profile(self):
-        goldens = sorted(path.name.removeprefix('tools-list.').removesuffix('.json')
-                         for path in GOLDEN.glob('tools-list.*.json'))
+        goldens = sorted(path.name for path in GOLDEN.iterdir() if path.is_dir())
         missing = [name for name in goldens if not (PROFILES / f'mcp-{name}-grade.json').exists()]
         self.assertEqual([], missing, 'an Arm on these server profiles would be graded with no tool classes')
 

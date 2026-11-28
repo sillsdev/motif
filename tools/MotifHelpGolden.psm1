@@ -4,6 +4,8 @@ Set-StrictMode -Version Latest
 
 # The golden is a folder: `_envelope.json` holds every top-level field except `entries`, and each Help entry is its own
 # file, `<kind>/<code>.json` (a space in a code becomes `_`, a slash `~`), so a change to one command touches one file.
+# The entry's `helpPage` is not in that JSON: it is the raw Markdown file `<kind>/<code>.help.md` beside it, so two
+# edits to different paragraphs of one page merge line by line.
 function Get-MotifHelpGoldenPath {
     param([Parameter(Mandatory)][string] $RepoRoot)
     Join-Path $RepoRoot 'tests/SIL.Motif.Tests.Cli/Golden/help'
@@ -68,7 +70,16 @@ function Split-MotifHelpExport {
             $path = "$kind/$($code.Replace(' ', '_').Replace('/', '~')).json"
             if (-not $seen.Add($path)) { throw "The Help golden lists '$kind $code' twice, or two entries share the file '$path' ignoring case." }
             # The entry sits at four spaces in the export; the file holds it at the left margin.
-            $files[$path] = ($entry.GetRawText() -replace '(?m)^    ', '') + "`n"
+            $text = $entry.GetRawText()
+            $page = [Text.Json.JsonElement]::new()
+            if ($entry.TryGetProperty('helpPage', [ref] $page) -and $page.ValueKind -eq 'String') {
+                # helpPage is a one-line JSON string at six spaces in the raw text; it moves to its own .md file.
+                $stripped = [regex]::Replace($text, '(?m)^      "helpPage": .*(\r?\n)', '')
+                if ($stripped.Length -eq $text.Length) { throw "Could not remove helpPage from the golden entry '$kind $code'." }
+                $text = $stripped
+                $files[$path.Substring(0, $path.Length - '.json'.Length) + '.help.md'] = $page.GetString().Replace("`r`n", "`n")
+            }
+            $files[$path] = ($text -replace '(?m)^    ', '') + "`n"
         }
     }
     finally { $document.Dispose() }
@@ -91,8 +102,8 @@ function Read-MotifHelpGolden {
 function Write-MotifHelpGolden {
     param([Parameter(Mandatory)][string] $RepoRoot, [Parameter(Mandatory)][string] $Json)
     $root = Get-MotifHelpGoldenPath $RepoRoot
-    if (Test-Path -LiteralPath $root) { Remove-Item -LiteralPath $root -Recurse -Force }
     $files = Split-MotifHelpExport $Json
+    if (Test-Path -LiteralPath $root) { Remove-Item -LiteralPath $root -Recurse -Force }
     foreach ($path in $files.Keys) {
         $target = Join-Path $root $path
         [void] [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($target))

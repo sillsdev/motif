@@ -1,0 +1,19 @@
+# Turn a compound rule off or on
+
+```sh
+motif compose-edit-compound-rule --project language.fwdata --draft <name> \
+  --intent '{"target":"<portableId>","expectedDisabled":false,"disabled":true}'
+```
+
+The closed intent names one existing endocentric or exocentric compound rule. `expectedDisabled` must match the value Motif reads while preparing the Draft; a stale value is refused. Set `disabled` to `true` to turn the rule off or `false` to turn it on again.
+
+FieldWorks compound rules can accept any two stems, so a rule that builds non-words can be switched off here. Turning it off removes every word it builds, real compounds included, so test known compounds before and after.
+
+The command stages one write in the Draft. It does not change the FieldWorks project. Finish the Draft, inspect its Dry Run, and compare bounded before and after Trials with the same words. Review the after Report; only a person can Apply a Proposal.
+
+Add `--cite-source <text>` and optionally `--cite-locator <text>` (at most 300 characters) to record the source on every operation this command produces.
+
+## When not to use this
+
+- It turns an existing compound rule off or on and builds nothing; to create one use `compose-author-compound-rule`; it cannot repair a rule that builds the wrong words.
+- Turning a rule off removes real compounds too, so Trial known compounds first and ask the linguist before switching one off.

@@ -4,6 +4,5 @@
   "slug": "reviewed-negative",
   "title": "A human-confirmed forbidden form or reading",
   "description": "A reviewed negative is a human-confirmed form or reading the grammar must not accept. A FieldWorks Disapproved analysis is negative for that reading only, not for the whole word.",
-  "helpPage": "# Reviewed negative\n\nA reviewed negative is a form or reading that a person has explicitly confirmed the grammar must not accept. A FieldWorks Disapproved analysis rejects that reading only; it does not reject every analysis of the word.\n",
   "url": "https://motif-docs.pages.dev/reference/terms/reviewed-negative/"
 }

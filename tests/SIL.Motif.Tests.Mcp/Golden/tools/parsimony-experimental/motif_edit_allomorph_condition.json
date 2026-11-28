@@ -1,0 +1,55 @@
+{
+  "name": "motif_edit_allomorph_condition",
+  "description": "Edit an allomorph condition. Research first: motif_guide topic conditioned-allomorphs; check best practice. Use only if one form\u0027s environments are wrong; otherwise fix the shared environment itself. Write environments with natural classes; under HermitCrab a regular alternation can instead be one phonological rule (guide conditioned-allomorphs). Changes the environment references on one existing stem or affix allomorph after checking its current list. Shared environments remain unchanged for every other allomorph that uses them. Only a person can Apply.\nCommand: compose-edit-allomorph-condition. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "draft": {
+        "type": "string",
+        "description": "The draft name from motif_start_proposal."
+      },
+      "target": {
+        "type": "string",
+        "description": "Canonical id of the existing stem or affix allomorph."
+      },
+      "field": {
+        "type": "string",
+        "description": "LibLCM condition field.",
+        "enum": [
+          "phoneEnv",
+          "position"
+        ]
+      },
+      "expected_environments": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Current environment ids; order matters only for position."
+      },
+      "environments": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Requested environment ids; order matters only for position."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "draft",
+      "target",
+      "field",
+      "expected_environments",
+      "environments",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

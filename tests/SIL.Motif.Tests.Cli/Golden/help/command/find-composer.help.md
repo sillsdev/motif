@@ -1,0 +1,22 @@
+# Find a composer
+
+Finds the composing commands that fit a goal in a linguist's words, or lists every composer that serves a Subject. Reads only; nothing is staged and no project is opened.
+
+Give exactly one of a goal or a Subject.
+
+```sh
+motif find-composer --goal "add a plural suffix to nouns"
+motif find-composer --subject affix-slots-and-templates --detail detailed
+```
+
+`--goal` takes a few words and returns at most five composers, best first. Words are matched against each composer's example goals, its title and its description, and against the titles of the Subjects it serves. `--subject` takes a Subject id and returns every composer that serves it, ordered by command name.
+
+A goal that no composer covers is not answered with a weak list. The rule has two steps. First, every Subject, including the reserved ones (infixation, reduplication, example sentences, grammar explanation, and outside authoring for exports, imports, counts, recordings and the like), has a list of distinctive terms; if the Subject whose terms the goal names most is a reserved one, including on a tie, the answer is no match with that Subject as the nearest. Second, a composer covers the goal only when its example goals and title together contain at least two distinct content words of the goal, or at least one when the goal has two or fewer; a word that appears only in a description or a Subject title does not count. When the Subject whose terms the goal names most is instead a served one, and reserved Subjects have fewer hits, that Subject's composers are also covered even if they miss the overlap threshold; they are listed after the ordinary matches, ranked by the same score. The first step catches phenomena Motif has no composer for, which share common words with composers that serve something else; the second is a plain overlap count. Only covering composers are listed. When none does, the answer says `noMatch: true` with no results. It adds `nearestSubjects` (up to two Subjects with their titles), `nearestComposers` (up to three composers with their weak scores), `missing` (one sentence to tell the person, such as "Motif has no Composer for "export the dictionary" yet; the nearest Subject is Lexical entries and glosses.") and `next`, which says to tell the person what is missing rather than stage a nearby composer. The Motif MCP server keeps a local note of each miss, the goal and its nearest Subject, in its activity log; the command line records nothing, and nothing leaves the machine.
+
+Each result carries the command name, a short title, when to reach for it, the Subjects it serves, its intent schema, and, for a goal search, its `score` and the `matchedWords` of the goal it matched. A composer with a declared shape carries that schema as JSON Schema (`schemaSource` is `shape`). Any other composer has no schema in the result: `schemaSource` is `help`, and the intent it takes is described on its own Help page.
+
+`--detail detailed` adds the first worked example from the composer's Help page, when it has one, and the opening paragraph of the Subject page that fits the search. Concise is the default. Add `--json` for the structured result.
+
+A search that names both a goal and a Subject, or neither, is refused with `composer.goal-or-subject`. An unknown Subject is refused with `composer.unknown-subject`, and a detail level other than concise or detailed with `composer.invalid-detail`.
+
+The MCP tool is `motif_find_composer`, with `goal`, `subject` and `detail` arguments; it requires Advanced AI mode and a profile that selects it.

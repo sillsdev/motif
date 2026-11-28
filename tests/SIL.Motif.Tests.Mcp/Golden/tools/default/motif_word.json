@@ -1,0 +1,39 @@
+{
+  "name": "motif_word",
+  "description": "Read one word\u0027s context. Reads a word\u0027s captured FieldWorks presence and every stored analysis with its individual Opinion. Uses the current Baseline without requiring a Selection or an Assessment, and reports whether FieldWorks has saved since.\nCommand: word-context. Agent class: Read.\nWord: The exact word form to read.\nExpectedBaseline: The required Baseline identity; null accepts the current Baseline.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "word": {
+        "type": "string",
+        "description": "The word, exactly as written in the project."
+      },
+      "detail": {
+        "type": "string",
+        "description": "\u0027concise\u0027 (default) drops empty fields and long lists; \u0027detailed\u0027 returns everything.",
+        "enum": [
+          "concise",
+          "detailed"
+        ]
+      },
+      "limit": {
+        "type": "integer",
+        "description": "Page size for paged reads (findings, operations: default 10; proposals list: default 25), and the most list items in concise mode elsewhere (default 25).",
+        "minimum": 1,
+        "maximum": 200
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "word",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": true,
+  "destructiveHint": false,
+  "idempotentHint": true
+}

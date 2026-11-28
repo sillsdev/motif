@@ -1,0 +1,25 @@
+{
+  "name": "motif_retirement_review",
+  "description": "Read a retirement review. Reads the review state for one staged rule-based allomorph retirement Draft. It returns its latest matching Dry Run and names evidence that is not available yet; it never invents a finding or parser result.\nCommand: parsimony retirement-review. Agent class: Read.\nDraftId: The exact staged Draft Proposal identity.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "draft_id": {
+        "type": "string",
+        "description": "Exact staged Draft Proposal id."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "draft_id",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": true,
+  "destructiveHint": false,
+  "idempotentHint": true
+}

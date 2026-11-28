@@ -1,0 +1,79 @@
+{
+  "name": "motif_lexicon",
+  "description": "Read lexicon. Searches Baseline entries and counts them by morph type and category. Filter by morphType, affix, category, headword or hasGloss. Concise results are one line per entry with its sense ids; detailed results include senses, allomorphs, environments and the writing-system alternatives for Gloss, Definition and notes.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "query": {
+        "type": "string",
+        "description": "Text the headword, a gloss or a form contains."
+      },
+      "exact": {
+        "type": "string",
+        "description": "Only entries whose headword or a form equals this text, ignoring case; a bare \u0027zi\u0027 also finds the affix \u0027zi-\u0027 and exactNote says so, while \u0027zi-\u0027 finds only that prefix."
+      },
+      "morph_type": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Only entries of these morph types, such as \u0027stem\u0027, \u0027root\u0027, \u0027prefix\u0027 or \u0027suffix\u0027."
+      },
+      "affix": {
+        "type": "boolean",
+        "description": "True keeps affix entries (prefix, suffix, infix, circumfix and the like); false keeps the rest."
+      },
+      "category": {
+        "type": "string",
+        "description": "Only entries with an analysis in this category, by exact name or id."
+      },
+      "headword": {
+        "type": "string",
+        "description": "Only entries whose headword starts with this text."
+      },
+      "headword_contains": {
+        "type": "string",
+        "description": "Only entries whose headword contains this text."
+      },
+      "has_gloss": {
+        "type": "boolean",
+        "description": "True keeps entries with a gloss; false keeps those without one."
+      },
+      "offset": {
+        "type": "integer",
+        "description": "Entries to skip; a result\u0027s nextOffset is the value for the next page.",
+        "minimum": 0,
+        "maximum": 100000
+      },
+      "at": {
+        "type": "string",
+        "description": "What to read: \u0027baseline\u0027 (default) for the current Baseline, or a Proposal id for the grammar its latest Trial ran against, with the Proposal\u0027s edits applied. The result returns at, and for a Proposal also atLabel: the Trial\u0027s copy of the grammar, not the Baseline."
+      },
+      "detail": {
+        "type": "string",
+        "description": "\u0027concise\u0027 (default) drops empty fields and long lists; \u0027detailed\u0027 returns everything.",
+        "enum": [
+          "concise",
+          "detailed"
+        ]
+      },
+      "limit": {
+        "type": "integer",
+        "description": "Page size for paged reads (findings, operations: default 10; proposals list: default 25), and the most list items in concise mode elsewhere (default 25).",
+        "minimum": 1,
+        "maximum": 200
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "additionalProperties": false,
+    "required": [
+      "project"
+    ]
+  },
+  "readOnlyHint": true,
+  "destructiveHint": false,
+  "idempotentHint": true
+}

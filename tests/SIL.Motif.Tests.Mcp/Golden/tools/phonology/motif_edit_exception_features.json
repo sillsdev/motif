@@ -1,0 +1,38 @@
+{
+  "name": "motif_edit_exception_features",
+  "description": "Set exception features. Research first: motif_guide topic suffix-prefix-slots; check best practice. Use only if one stem, clitic or inflectional affix carries an arbitrary restriction; otherwise use an inflection class, or compose-edit-derivational-affix-restriction for derivation. Many stems: compose-tag-stems-by-query (guide suffix-prefix-slots). Sets the exact exception features a stem or clitic carries, or the ones an inflectional affix requires of its stem. An empty list clears the set. Derivational affixes use their own command. Motif stages a Draft for a person to review and Apply.\nCommand: compose-edit-exception-features. Agent class: Draft.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "draft": {
+        "type": "string",
+        "description": "Draft name."
+      },
+      "msa": {
+        "type": "string",
+        "description": "Id of the grammatical info of a stem, clitic or inflectional affix entry."
+      },
+      "exception_features": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Exact set of exception feature ids; an empty list removes them all."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "draft",
+      "msa",
+      "exception_features",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

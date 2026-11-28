@@ -374,8 +374,10 @@ Help page at `src/SIL.Motif.Help/Content/en/commands/<slug>.md`. `HelpCatalogTes
 fails the suite when a Released command lacks any of them, so adding or promoting a command means writing them.
 Glossary terms live the same way in `terms.json` and `terms/`; the Guide lives in `src/SIL.Motif.Help/Content/en/guide/`.
 `./build.ps1` ends by running the built CLI's `help --all --json` in off mode and comparing it with
-the golden folder `tests/SIL.Motif.Tests.Cli/Golden/help/` (`_envelope.json` plus one `<kind>/<code>.json` file per Help entry, so concurrent branches touch different files), so a Help edit that leaves the golden stale fails the build in
+the golden folder `tests/SIL.Motif.Tests.Cli/Golden/help/` (`_envelope.json` plus, per Help entry, `<kind>/<code>.json` without its page and the page itself as raw Markdown in `<kind>/<code>.help.md`, so concurrent branches touch different files and different paragraphs of one page merge), so a Help edit that leaves the golden stale fails the build in
 seconds; after an intended edit, run `pwsh ./tools/Update-HelpGolden.ps1 -Configuration <Configuration>` and commit the diff. The xunit test `OffModeHelpAndReleasedCatalogMatchCurrentGolden` is the slower backstop for the same comparison.
+The MCP tool-list golden is one file per tool per profile, `tests/SIL.Motif.Tests.Mcp/Golden/tools/<profile>/<tool>.json`, plus `_index.json` naming the profile's tools in server order;
+after an intended tool or schema change run the Mcp tests with `MOTIF_UPDATE_GOLDEN=1` to rewrite it. Keep the entries of `commands.json` sorted by command name (`CommandsJsonKeepsItsEntriesSortedByOrdinalCommandName` fails otherwise).
 
 Help pages and Guide pages are plain CommonMark read by three readers — `motif help`, the window and the site —
 so they carry no front matter, MDX or HTML. Cross-links name codes, not URLs: `[text](cmd:assess)`,

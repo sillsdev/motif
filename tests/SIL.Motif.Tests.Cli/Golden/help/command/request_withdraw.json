@@ -4,7 +4,6 @@
   "slug": "request-withdraw",
   "title": "Withdraw a Request",
   "description": "Takes back an open Request the linguist no longer wants answered. An answered Request cannot be withdrawn.",
-  "helpPage": "# Withdraw a Request\n\n\u0060request withdraw\u0060 takes back an open Request the linguist no longer wants answered.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif request withdraw \u003CrequestId\u003E --project \u003Cfwdata\u003E\n\u0060\u0060\u0060\n\nGive the full \u0060requestId\u0060 that [list requests](cmd:list%20requests) returns. Only an open Request can be withdrawn; an answered one stays as it is.\n",
   "usage": [
     "Usage: motif request withdraw \u003CrequestId\u003E --project \u003Cfwdata\u003E [--json]"
   ],

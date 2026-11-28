@@ -4,7 +4,6 @@
   "slug": "jobs-assessments",
   "title": "Read job Assessments",
   "description": "Lists the Assessments produced by one completed job. Use it after jobs show reports completion and you need the evidence ids.",
-  "helpPage": "# Read job Assessments\n\n\u0060jobs assessments\u0060 lists the Assessments produced by one completed job.\n\n## When to use it\n\nUse this after \u0060jobs show\u0060 reports that a job completed and you need its evidence ids. The returned ids can be passed to reports, comparisons, or statistics queries.\n\n## Example\n\n\u0060\u0060\u0060powershell\nmotif jobs assessments \u003CjobId\u003E --project \u0022C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\u0022 --json\n\u0060\u0060\u0060\n\n## What it prints\n\nThe response lists the Assessment ids and their recorded kinds. If the job has not produced Assessments, the list is empty; the command does not start another run.\n\n## Related commands\n\n- [Inspect a job](cmd:jobs%20show) checks its state.\n- [Read an Assessment report](cmd:report) queries one stored Assessment.\n",
   "usage": [
     "Usage: motif jobs assessments \u003CjobId\u003E --project \u003Cfwdata\u003E [--json]"
   ],

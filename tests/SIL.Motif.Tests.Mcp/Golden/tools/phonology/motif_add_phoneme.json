@@ -1,0 +1,60 @@
+{
+  "name": "motif_add_phoneme",
+  "description": "Author a phoneme. Research first: motif_guide topic nasal-assimilation or conditioned-allomorphs; check best practice. Use only if the orthography writes a sound that has no phoneme yet, or a rule needs it as output; otherwise add a spelling with compose-edit-phoneme. HermitCrab parses no word with an undefined phoneme (guide nasal-assimilation). Stages a phoneme with literal representations, including symbols such as parentheses and slash, and optional explicit feature values. Put case spellings of the same sound on that phoneme; use its created identity in natural classes or phonological rules. Only a person can Apply.\nCommand: compose-author-phoneme. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "draft": {
+        "type": "string",
+        "description": "Draft name."
+      },
+      "name": {
+        "type": "string",
+        "description": "Phoneme name."
+      },
+      "representations": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Explicit grapheme codes, such as [\u0027a\u0027] or [\u0027sh\u0027, \u0027\u0161\u0027]."
+      },
+      "features": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "feature": {
+              "type": "string",
+              "description": "Closed feature id in the phonological feature system."
+            },
+            "value": {
+              "type": "string",
+              "description": "Symbolic value belonging to that feature."
+            }
+          },
+          "required": [
+            "feature",
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        "description": "Closed phonological feature/value pairs; copy ids from motif_grammar."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "draft",
+      "name",
+      "representations",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

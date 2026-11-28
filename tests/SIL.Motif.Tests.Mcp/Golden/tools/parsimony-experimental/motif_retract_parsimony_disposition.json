@@ -1,0 +1,53 @@
+{
+  "name": "motif_retract_parsimony_disposition",
+  "description": "Retract a ruling. Stages a withdrawal of a saved Parsimony ruling using its exact current Notebook heads and digests. The history stays in FieldWorks, and the finding returns to Active after a person Applies the current retraction.\nCommand: parsimony retract. Agent class: Draft.\nDraftName: The mutable Draft receiving the semantic intent.\nIntentJson: The closed semantic intent consumed by the typed composer.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "draft": {
+        "type": "string",
+        "description": "Draft name from motif_start_proposal."
+      },
+      "record_id": {
+        "type": "string",
+        "description": "Notebook record id of a current ruling head."
+      },
+      "expected_heads": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "revisionId": {
+              "type": "string",
+              "description": "Portable id of the current revision."
+            },
+            "contentDigest": {
+              "type": "string",
+              "description": "Canonical sha256 digest read with the revision."
+            }
+          },
+          "required": [
+            "revisionId",
+            "contentDigest"
+          ],
+          "additionalProperties": false
+        },
+        "description": "Every current head with its exact content digest."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "draft",
+      "record_id",
+      "expected_heads",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

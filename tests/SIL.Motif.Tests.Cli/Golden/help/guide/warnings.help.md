@@ -1,0 +1,11 @@
+# Warnings
+
+Turn on **View → Diagnostics**, then open the **Warnings** tab on **Diagnostics**. It reads the stored grammar check for the current project. Opening the page never starts a check or a parse.
+
+Each row groups findings with the same recorded diagnostic code and shows the actual finding count. Uncoded findings stay separate. Motif does not invent categories or interpret a missing check as no warnings. Select a row to read its explanation, guidance, named objects and exact parser message. Report text stays in the language in which it was recorded.
+
+Named FieldWorks objects open only through verified destinations supplied with their evidence. Missing objects and project settings have no object link. Motif shows evidence and names; read and edit rules in FieldWorks.
+
+Word evidence distinguishes exact identity uses, possible membership matches and spelling matches. A membership or spelling match alone does not establish that a word uses the object. A partial or unavailable full count stays unavailable. **Show Words** brings the selected finding's recorded word list into view. **Hide This Warning** hides one finding (its rule plus its object) for you only. Hidden warnings are listed under **Settings → Hidden Warnings**, where you can unhide them. The warning count shows how many are hidden. Hiding never changes the grammar.
+
+Save grammar edits in FieldWorks and refresh Motif to obtain current evidence. A warning is advice, not an additional Apply condition. See [Diagnostics](guide:diagnostics) for the page's other tab and Proposal evidence.

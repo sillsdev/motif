@@ -1,0 +1,87 @@
+{
+  "name": "motif_difference",
+  "description": "Read Trial Difference. Reads a Trial report for a Proposal by exact report id, at summary, failures or full detail, and pages its retained cases. Unfinished parser cases are separate from words that no longer parse.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "proposal": {
+        "type": "string",
+        "description": "Proposal for the report."
+      },
+      "report": {
+        "type": "string",
+        "description": "Exact Trial report id."
+      },
+      "detail": {
+        "type": "string",
+        "description": "Report disclosure level.",
+        "enum": [
+          "summary",
+          "failures",
+          "full"
+        ]
+      },
+      "section": {
+        "type": "string",
+        "description": "Report section."
+      },
+      "set": {
+        "type": "string",
+        "description": "Review set."
+      },
+      "outcome": {
+        "type": "string",
+        "description": "Outcome selector."
+      },
+      "flag": {
+        "type": "string",
+        "description": "Flag selector."
+      },
+      "filter": {
+        "type": "string",
+        "description": "Case filter."
+      },
+      "word": {
+        "type": "string",
+        "description": "Exact word selector."
+      },
+      "case": {
+        "type": "string",
+        "description": "Exact case selector."
+      },
+      "side": {
+        "type": "string",
+        "description": "Trace side.",
+        "enum": [
+          "before",
+          "after"
+        ]
+      },
+      "trace": {
+        "type": "boolean",
+        "description": "Explicitly run or read a report-bound trace."
+      },
+      "cursor": {
+        "type": "string",
+        "description": "Report page continuation."
+      },
+      "limit": {
+        "type": "integer",
+        "description": "Page size, maximum 200.",
+        "minimum": 1,
+        "maximum": 200
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "additionalProperties": false,
+    "required": [
+      "project"
+    ]
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": false
+}

@@ -1,0 +1,129 @@
+{
+  "name": "motif_parsimony_view",
+  "description": "Read a Parsimony view. Reads a bounded page from a fixed view over one frozen bundle. Parser views use a Report id to bind the exact Assessment references; filters and cursors are bound to the bundle. Only the declared view filters are accepted.\nCommand: parsimony view. Agent class: Read.\nQuery: The declared named Parsimony view and its filters.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "bundle_id": {
+        "type": "string",
+        "description": "Exact Parsimony bundle id."
+      },
+      "view": {
+        "type": "string",
+        "description": "Exact fixed view code.",
+        "enum": [
+          "adhoc-context",
+          "affix-context",
+          "allomorph-context",
+          "alternation-families",
+          "approved-morph-sequences",
+          "environment-excess",
+          "join-quality",
+          "natural-class-context",
+          "natural-class-excess",
+          "null-optional",
+          "parser-cases",
+          "parsimony-active-findings",
+          "parsimony-suppressed",
+          "parsimony-suppression-history",
+          "slot-context",
+          "statement-usage",
+          "template-order",
+          "unslotted-affixes"
+        ]
+      },
+      "report_id": {
+        "type": "string",
+        "description": "Stored Report id for finding views."
+      },
+      "object_id": {
+        "type": "string",
+        "description": "Exact object GUID filter where the view accepts one."
+      },
+      "category_id": {
+        "type": "string",
+        "description": "Exact category GUID filter for template-order views."
+      },
+      "statement_kind": {
+        "type": "string",
+        "description": "Statement kind for statement-usage.",
+        "enum": [
+          "environment",
+          "natural-class"
+        ]
+      },
+      "scope": {
+        "type": "string",
+        "description": "Evidence scope for join-quality.",
+        "enum": [
+          "project-approved",
+          "default-selection"
+        ]
+      },
+      "case_key": {
+        "type": "string",
+        "description": "Exact parser case key."
+      },
+      "measure_id": {
+        "type": "string",
+        "description": "Exact Parsimony measure id filter."
+      },
+      "subject_key": {
+        "type": "string",
+        "description": "Exact finding or judgment subject key."
+      },
+      "disposition": {
+        "type": "string",
+        "description": "Ruling filter.",
+        "enum": [
+          "keep",
+          "defer",
+          "fix",
+          "ask"
+        ]
+      },
+      "state": {
+        "type": "string",
+        "description": "Current or historical finding state.",
+        "enum": [
+          "active",
+          "suppressed",
+          "resurfaced",
+          "no-current-finding",
+          "evidence-unavailable",
+          "conflict",
+          "unavailable",
+          "retracted",
+          "superseded"
+        ]
+      },
+      "search": {
+        "type": "string",
+        "description": "Bounded search over returned captions and reasons."
+      },
+      "limit": {
+        "type": "integer",
+        "description": "Rows in this page. Default 50, maximum 200; a page over about 200 KB returns fewer rows and a next cursor.",
+        "minimum": 1,
+        "maximum": 200
+      },
+      "cursor": {
+        "type": "string",
+        "description": "Next cursor from the same bundle, view and filters."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "bundle_id",
+      "view",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": true,
+  "destructiveHint": false,
+  "idempotentHint": true
+}

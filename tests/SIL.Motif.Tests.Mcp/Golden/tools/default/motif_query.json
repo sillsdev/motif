@@ -1,0 +1,311 @@
+{
+  "name": "motif_query",
+  "description": "Query forms. Filters and groups forms, stems, uses or objects from available Trial evidence with and, or, not and typed field predicates, reads forms from the Baseline or a Proposal\u0027s Trial copy with parse state and analyses (--as-of, --sides both), runs a motif.query.v2 JSON document (--query-json) or prints its schema (--schema), or runs the saved query of a Parsimony Measure.\nCommand: query forms. Agent class: Read.\n",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "query": {
+        "type": "object",
+        "description": "A motif.query.v2 document: version \u0022motif.query.v2\u0022, from, where (and/or/not over {field, op, value} predicates; ops eq ne in nin lt gt has regex contains exists; regex is anchored, contains is not), side, sides, sort, limit, group and the options below. Replaces every other query argument. The full JSON Schema is returned by motif_query_schema and printed by motif query --schema. phon {\u0022phon\u0022:\u0022Stop V Stop V\u0022} and env {\u0022env\u0022:\u0022[Stop] / # _ V\u0022} match phonological patterns through PanGloss (syntax in motif_query_schema; class names from motif_query_schema values=classes); morph, seq and realizes are reserved and refused as not yet available."
+      },
+      "saved": {
+        "type": "string",
+        "description": "A measure id whose saved query replaces from, where and group.",
+        "enum": [
+          "P-env-duplicate",
+          "P-feature-few-carriers",
+          "P-lexeme-near-duplicate",
+          "P-msa-no-category",
+          "P-statement-unused"
+        ]
+      },
+      "from": {
+        "type": "string",
+        "description": "Query source; required unless saved is given.",
+        "enum": [
+          "forms",
+          "stems",
+          "uses",
+          "objects"
+        ]
+      },
+      "where": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "col": {
+              "type": "string",
+              "description": "Column name."
+            },
+            "op": {
+              "type": "string",
+              "description": "Selector operator.",
+              "enum": [
+                "is",
+                "in",
+                "not",
+                "~",
+                "has",
+                "\u003C",
+                "\u003E"
+              ]
+            },
+            "value": {
+              "type": "string",
+              "description": "Selector value."
+            }
+          },
+          "required": [
+            "col",
+            "op",
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        "description": "ANDed selectors."
+      },
+      "group": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Columns to group by; required unless saved is given."
+      },
+      "distinct": {
+        "type": "string",
+        "description": "A column of which a group needs two different values."
+      },
+      "fold": {
+        "type": "string",
+        "description": "Fold set of the fold column: comma-separated nfc, case, iy~y, o~u, e~i, c~k, from\u003Eto or project; default nfc,case."
+      },
+      "min_count": {
+        "type": "integer",
+        "description": "Minimum group count.",
+        "minimum": 1,
+        "maximum": 2147483647
+      },
+      "examples": {
+        "type": "integer",
+        "description": "Maximum examples per group.",
+        "minimum": 0,
+        "maximum": 1000
+      },
+      "ids": {
+        "type": "boolean",
+        "description": "Include canonical ids."
+      },
+      "raw_letters": {
+        "type": "boolean",
+        "description": "Use characters instead of graphemes."
+      },
+      "segment_test": {
+        "type": "string",
+        "description": "How phon and env test a segment: engine (the default) is rule application\u0027s test, a literal matches every segment with its feature bundle and a [class] the union of its members\u0027 features, and the spans are a superset of what a rule rewrites; identity is exact members only. Every phon and env result reports the mode it used.",
+        "enum": [
+          "engine",
+          "identity"
+        ]
+      },
+      "trial_id": {
+        "type": "string",
+        "description": "Trial id; only the latest Trial has query rows."
+      },
+      "change": {
+        "type": "object",
+        "properties": {
+          "dropped": {
+            "type": "string",
+            "description": "Letters the stem edge has today."
+          },
+          "gained": {
+            "type": "string",
+            "description": "Letters the hypothesis puts there; may be empty."
+          },
+          "at": {
+            "type": "string",
+            "description": "Stem edge.",
+            "enum": [
+              "final",
+              "initial"
+            ]
+          },
+          "affixes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Affixes the change fires before (final) or after (initial), without hyphens."
+          },
+          "wordSets": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Ids of attested sampled-tokens word sets that evidence looks forms up in."
+          },
+          "discovery": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Word sets the hypothesis was mined from."
+          },
+          "heldOut": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Held-out word sets; control returns counts only."
+          },
+          "controls": {
+            "type": "integer",
+            "description": "Control letters tried.",
+            "minimum": 1,
+            "maximum": 9
+          },
+          "controlLetters": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Control letters to use instead of the chosen ones."
+          }
+        },
+        "required": [
+          "dropped",
+          "gained",
+          "at",
+          "affixes",
+          "wordSets"
+        ],
+        "additionalProperties": false
+      },
+      "score": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Scorers run over the whole universe: tolerance, reliability, control (need change), split, size (stems or forms); no group."
+      },
+      "exceptions": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "col": {
+              "type": "string",
+              "description": "Column name."
+            },
+            "op": {
+              "type": "string",
+              "description": "Selector operator.",
+              "enum": [
+                "is",
+                "in",
+                "not",
+                "~",
+                "has",
+                "\u003C",
+                "\u003E"
+              ]
+            },
+            "value": {
+              "type": "string",
+              "description": "Selector value."
+            }
+          },
+          "required": [
+            "col",
+            "op",
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        "description": "ANDed selectors marking a universe row an exception for tolerance."
+      },
+      "unit": {
+        "type": "string",
+        "description": "Unit counted by stem scorers; split, size and evidence default to distinct stem forms.",
+        "enum": [
+          "msa",
+          "stem"
+        ]
+      },
+      "members": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Row ids that are the deviants of split and size, or the grouping of evidence."
+      },
+      "context": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "col": {
+              "type": "string",
+              "description": "Column name."
+            },
+            "op": {
+              "type": "string",
+              "description": "Selector operator.",
+              "enum": [
+                "is",
+                "in",
+                "not",
+                "~",
+                "has",
+                "\u003C",
+                "\u003E"
+              ]
+            },
+            "value": {
+              "type": "string",
+              "description": "Selector value."
+            }
+          },
+          "required": [
+            "col",
+            "op",
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        "description": "ANDed selectors naming the context size weighs."
+      },
+      "evidence": {
+        "type": "boolean",
+        "description": "Return the one-screen evidence composite for the grouping that where or members names, over stems or forms."
+      },
+      "as_of": {
+        "type": "string",
+        "description": "Read the forms source from the Baseline (baseline) or a Proposal\u0027s Trial copy (a Proposal id) instead of the latest Trial\u0027s evidence; rows carry parse state and analyses, and a Proposal with no completed Trial returns a pending side."
+      },
+      "sides": {
+        "type": "string",
+        "description": "both returns the Baseline and the Proposal named by as_of side by side.",
+        "enum": [
+          "both"
+        ]
+      },
+      "sort": {
+        "type": "string",
+        "description": "Order of an as_of run\u0027s rows: [baseline.|proposal.]column[:desc], with column form, base, kind, entry, id, morph-type, variant-type, environments, category, tokens, parse-state or parse-tokens."
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "additionalProperties": false,
+    "required": [
+      "project"
+    ]
+  },
+  "readOnlyHint": true,
+  "destructiveHint": false,
+  "idempotentHint": true
+}

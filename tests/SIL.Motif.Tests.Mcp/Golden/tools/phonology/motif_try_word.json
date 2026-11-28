@@ -1,0 +1,43 @@
+{
+  "name": "motif_try_word",
+  "description": "Trace a word. Runs PanGloss for one word against the project\u0027s current Baseline and returns its diagnostic. Use it to inspect recorded analyses and trace events.\nCommand: trace. Agent class: Evaluate.\nWord: The exact word form to trace.\nProposalId: The Proposal whose latest Trial to trace; omitted traces the project evidence.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "word": {
+        "type": "string",
+        "description": "The word to parse."
+      },
+      "proposal": {
+        "type": "string",
+        "description": "A proposal id: parse the word with that Draft or Proposal\u0027s changes, in the copy of its latest motif_trial. Omit to parse against the current Baseline."
+      },
+      "detail": {
+        "type": "string",
+        "description": "\u0027concise\u0027 (default) drops empty fields and long lists; \u0027detailed\u0027 returns everything.",
+        "enum": [
+          "concise",
+          "detailed"
+        ]
+      },
+      "limit": {
+        "type": "integer",
+        "description": "Page size for paged reads (findings, operations: default 10; proposals list: default 25), and the most list items in concise mode elsewhere (default 25).",
+        "minimum": 1,
+        "maximum": 200
+      },
+      "project": {
+        "type": "string",
+        "description": "Known project name or recorded .fwdata path."
+      }
+    },
+    "required": [
+      "word",
+      "project"
+    ],
+    "additionalProperties": false
+  },
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": true
+}

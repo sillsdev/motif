@@ -1,0 +1,7 @@
+# Read a Trial export
+
+Run `motif proposal trial export <jobId> --project <fwdata> --json` with the exact job ID from [Trial progress](cmd:trial%20--wait). Use `--at <digest>` to require its frozen Proposal revision, Baseline digest or saved report digest. The MCP tool `motif_proposal_trial_export` takes `project`, `jobId`, `at` and `page`.
+
+The receipt gives the file's path, byte count, SHA-256, publication time, and counts for the Before and After sides. When the path is too long for the compact receipt, append the reported suffix to the paired store's path. Use `--page 1 --json` for the first 100 word cases and follow `nextPage` for more. Read the complete file for gate provenance, parser causes and ordered Readings. Each case keeps the configured set memberships and the explicit witness marker independently. That marker preserves the first submitted spelling and order after trimming, omitting blank lines and merging canonically equivalent spellings in NFD. Case distinctions are preserved.
+
+Motif writes the complete file during Trial and retains it with the paired store through Assessment and review detail pruning. A Trial that predates retained exports needs a fresh measurement. The export is a historical read of the requested job, including interrupted jobs. Before Apply, resolve the newest Trial across all states, require completion, match its saved report ID and digest to the receipt, and check the parser executable pins for both sides. The file checksum verifies the exported bytes.
