@@ -556,6 +556,37 @@ public sealed class HelpCommandTests
     }
 
     [Fact]
+    public void EveryHelpEntryRendersItsMarkdownSourceAsTheHelpPage()
+    {
+        var result = Run("help", "--all", "--json");
+        var content = Path.Combine(FindRepositoryRoot(), "src", "SIL.Motif.Help", "Content", "en");
+        using var document = JsonDocument.Parse(result.Output);
+        var mismatched = new List<string>();
+        var checkedPages = 0;
+        foreach (var entry in document.RootElement.GetProperty("entries").EnumerateArray())
+        {
+            var kind = entry.GetProperty("kind").GetString()!;
+            var folder = kind switch { "command" => "commands", "term" => "terms", "guide" => "guide", _ => null };
+            var slug = entry.GetProperty("slug").GetString()!;
+            var source = folder is null ? null : Path.Combine(content, folder, slug + ".md");
+            var page = entry.GetProperty("helpPage").GetString();
+            if (source is null || !File.Exists(source))
+            {
+                if (page is not null) mismatched.Add($"{kind} {slug}: a page with no source file");
+                continue;
+            }
+
+            checkedPages++;
+            if (string.IsNullOrEmpty(page) || page != NormalizeNewlines(File.ReadAllText(source)))
+                mismatched.Add($"{kind} {slug}");
+        }
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.True(checkedPages > 100, "Too few Help pages were compared: " + checkedPages);
+        Assert.Empty(mismatched);
+    }
+
+    [Fact]
     public void HelpAllListsEntriesByKindThenOrdinalCode()
     {
         var result = Run("help", "--all", "--json");
@@ -755,7 +786,8 @@ public sealed class HelpCommandTests
                 entry.GetProperty("code").GetString()!.Replace(' ', '_').Replace('/', '~') + ".json";
             Assert.True(files.Keys.All(existing => !string.Equals(existing, path, StringComparison.OrdinalIgnoreCase)),
                 "Two Help entries share the golden file " + path + ", ignoring case.");
-            files[path] = Regex.Replace(entry.GetRawText(), "^    ", "", RegexOptions.Multiline) + "\n";
+            var text = Regex.Replace(entry.GetRawText(), "^    ", "", RegexOptions.Multiline);
+            files[path] = Regex.Replace(text, "^  \"helpPage\": .*,\r?\n", "", RegexOptions.Multiline) + "\n";
         }
         return files;
     }

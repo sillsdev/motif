@@ -376,6 +376,7 @@ Glossary terms live the same way in `terms.json` and `terms/`; the Guide lives i
 `./build.ps1` ends by running the built CLI's `help --all --json` in off mode and comparing it with
 the golden folder `tests/SIL.Motif.Tests.Cli/Golden/help/` (`_envelope.json` plus one `<kind>/<code>.json` file per Help entry, so concurrent branches touch different files), so a Help edit that leaves the golden stale fails the build in
 seconds; after an intended edit, run `pwsh ./tools/Update-HelpGolden.ps1 -Configuration <Configuration>` and commit the diff. The xunit test `OffModeHelpAndReleasedCatalogMatchCurrentGolden` is the slower backstop for the same comparison.
+The golden holds no page text (no `helpPage`): the Markdown under `Content/` is the only copy, and `EveryHelpEntryRendersItsMarkdownSourceAsTheHelpPage` checks that the CLI renders it; the site reads page text from `Content/`.
 
 Help pages and Guide pages are plain CommonMark read by three readers — `motif help`, the window and the site —
 so they carry no front matter, MDX or HTML. Cross-links name codes, not URLs: `[text](cmd:assess)`,

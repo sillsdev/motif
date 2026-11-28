@@ -540,24 +540,38 @@ async function cleanGeneratedPaths(paths) {
 	}
 }
 
+const helpPageFolders = { command: 'commands', term: 'terms', guide: 'guide' };
+
 // Reads a Help export: a `help --all --json` file, or the repository's golden folder, where `_envelope.json` holds the
-// top-level fields and each entry is its own `<kind>/<code>.json` file.
-export async function readHelpExport(helpExportPath) {
+// top-level fields and each entry is its own `<kind>/<code>.json` file. The golden holds no page text, so for a folder
+// each entry's `helpPage` is read from its Markdown source under `helpRoot` (`<locale>/<folder>/<slug>.md`), or is null
+// when the entry has none.
+export async function readHelpExport(helpExportPath, helpRoot) {
 	if (!(await stat(helpExportPath)).isDirectory()) return JSON.parse(await readFile(helpExportPath, 'utf8'));
 	const helpExport = JSON.parse(await readFile(path.join(helpExportPath, '_envelope.json'), 'utf8'));
 	helpExport.entries = [];
 	for (const kind of (await readdir(helpExportPath, { withFileTypes: true })).filter((item) => item.isDirectory()).map((item) => item.name).sort()) {
 		for (const file of (await readdir(path.join(helpExportPath, kind))).filter((name) => name.endsWith('.json')).sort()) {
-			helpExport.entries.push(JSON.parse(await readFile(path.join(helpExportPath, kind, file), 'utf8')));
+			const entry = JSON.parse(await readFile(path.join(helpExportPath, kind, file), 'utf8'));
+			const folder = helpPageFolders[entry.kind];
+			entry.helpPage = null;
+			if (folder) {
+				try {
+					entry.helpPage = (await readFile(path.join(helpRoot, helpExport.locale, folder, `${entry.slug}.md`), 'utf8')).replace(/\r\n/g, '\n');
+				} catch (error) {
+					if (error.code !== 'ENOENT') throw error;
+				}
+			}
+			helpExport.entries.push(entry);
 		}
 	}
 	return helpExport;
 }
 
-export async function syncSiteContent({ repository, site, helpExportPath, walkthroughRoot, docsRoot, apiXmlPath, samplesRoot, samplesOut }) {
+export async function syncSiteContent({ repository, site, helpExportPath, helpRoot, walkthroughRoot, docsRoot, apiXmlPath, samplesRoot, samplesOut }) {
 	const contentRoot = path.join(site, 'src', 'content', 'docs');
 	const publicRoot = path.join(site, 'public');
-	const helpExport = await readHelpExport(helpExportPath);
+	const helpExport = await readHelpExport(helpExportPath, helpRoot);
 	if (!helpExport.locale || !helpExport.siteRoot || !Array.isArray(helpExport.entries)) throw new Error('Invalid help export.');
 	const localeRoot = helpExport.locale === 'en' ? contentRoot : path.join(contentRoot, helpExport.locale);
 	const generatedPaths = [

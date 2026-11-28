@@ -76,9 +76,8 @@ if (production) {
 } else {
 	const helpExportOption = argument(argv, '--help-export') ?? process.env.MOTIF_HELP_EXPORT;
 	helpExportPath = helpExportOption ?? path.join(repository, 'tests', 'SIL.Motif.Tests.Cli', 'Golden', 'help');
-	helpRoot = argument(argv, '--help-root') ?? process.env.MOTIF_HELP_CONTENT_ROOT ?? (helpExportOption
-		? await firstExisting(path.join(repository, 'src', 'SIL.Motif.Help', 'Content'), path.join(fixtureRoot, 'help'))
-		: path.join(fixtureRoot, 'help'));
+	helpRoot = argument(argv, '--help-root') ?? process.env.MOTIF_HELP_CONTENT_ROOT ??
+		await firstExisting(path.join(repository, 'src', 'SIL.Motif.Help', 'Content'), path.join(fixtureRoot, 'help'));
 	walkthroughRoot = argument(argv, '--walkthrough-output') ??
 		process.env.MOTIF_WALKTHROUGH_OUTPUT ?? path.join(fixtureRoot, 'walkthroughs');
 	const samplesRootOption = argument(argv, '--samples-root') ?? process.env.MOTIF_SAMPLES_ROOT;

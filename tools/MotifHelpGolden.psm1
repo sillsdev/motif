@@ -46,7 +46,7 @@ function Invoke-MotifOffModeHelp {
     }
 }
 
-# Splits `help --all --json` output into the golden's files: a map of relative path (forward slashes) to the exact
+# Splits `help --all --json` output into the golden's files (without each entry's `helpPage`): a map of relative path (forward slashes) to the exact
 # text of that file. Parsed with System.Text.Json rather than ConvertFrom-Json -AsHashtable, which throws on object keys
 # that differ only in case; the map is ordinal (case-sensitive), and a path that collides when case is ignored is
 # rejected because the golden must check out on a case-insensitive file system.
@@ -67,8 +67,11 @@ function Split-MotifHelpExport {
             $code = $entry.GetProperty('code').GetString()
             $path = "$kind/$($code.Replace(' ', '_').Replace('/', '~')).json"
             if (-not $seen.Add($path)) { throw "The Help golden lists '$kind $code' twice, or two entries share the file '$path' ignoring case." }
-            # The entry sits at four spaces in the export; the file holds it at the left margin.
-            $files[$path] = ($entry.GetRawText() -replace '(?m)^    ', '') + "`n"
+            # The entry sits at four spaces in the export; the file holds it at the left margin. `helpPage` is the page's
+            # Markdown, already tracked in Content/, so the golden leaves it out (it is one long line and always conflicts).
+            $text = $entry.GetRawText() -replace '(?m)^    ', ''
+            if ($text -notmatch '(?m)^  "helpPage": .*,\r?\n') { throw "The Help export entry '$kind $code' has no helpPage line followed by another property." }
+            $files[$path] = ($text -replace '(?m)^  "helpPage": .*,\r?\n', '') + "`n"
         }
     }
     finally { $document.Dispose() }
