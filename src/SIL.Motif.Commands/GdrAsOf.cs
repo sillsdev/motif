@@ -22,6 +22,9 @@ internal static class GdrAsOf
                 continue;
             switch (operation.Kind)
             {
+                case GdrSectionOperationKinds.Move:
+                    result = result with { Record = result.Record with { ParentId = after.TryGetProperty("parent", out var parent) ? parent.GetString() : null } };
+                    break;
                 case CmPossibilityNameOperationKinds.SetName:
                     result = result with { TitleAlternatives = Replace(result.TitleAlternatives,
                         after.GetProperty("ws").GetString()!, [Plain(after.GetProperty("text").GetString()!, after.GetProperty("ws").GetString()!)]) };

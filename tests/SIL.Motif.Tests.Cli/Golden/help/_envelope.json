@@ -154,6 +154,12 @@
           "helpTopic": "motif help guide list"
         },
         {
+          "name": "guide move",
+          "summary": "Stages the move of one Grammar Guide section, with its subtree, under another parent or to anothe...",
+          "gate": "Advanced AI",
+          "helpTopic": "motif help guide move"
+        },
+        {
           "name": "guide refresh-tables",
           "summary": "Runs each motif query corpus forms block of a Grammar Guide section, or of every section, read-on...",
           "gate": "Advanced AI",

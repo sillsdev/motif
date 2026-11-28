@@ -11,6 +11,7 @@ using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Model.Effects;
+using SIL.Motif.Runner.Execution;
 using SIL.Motif.Model.Snapshot;
 using SIL.Motif.Runner.Snapshotting;
 
@@ -27,6 +28,14 @@ public static class GdrSectionOperationKinds
     /// </summary>
     public const string Create = "guide/section/create";
 
+    /// <summary>
+    /// Moves a Guide item with its subtree: {from, parent?, after?, before?}. The target is the item; its number and
+    /// identity do not change. <c>from</c> is the canonical id of the parent it is expected to leave ("" for the top of the
+    /// list), so a move staged against an older shape is refused at Apply. <c>parent</c> is the new parent (the top of the
+    /// list when absent); <c>after</c> or <c>before</c> names the new sibling it follows or precedes (last when neither).
+    /// </summary>
+    public const string Move = "guide/section/move";
+
 #pragma warning disable CA2255 // Load-time registration makes this kind available before parsing and dispatch.
     [ModuleInitializer]
     internal static void Register()
@@ -34,6 +43,9 @@ public static class GdrSectionOperationKinds
         OperationKindRegistry.Register(Create);
         OperationHandlerRegistry.Register(Create, GdrSectionCreateHandler.Instance);
         OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.GuideSections, false);
+        OperationKindRegistry.Register(Move);
+        OperationHandlerRegistry.Register(Move, GdrSectionMoveHandler.Instance);
+        OperationSlotRegistry.RegisterScalar(Move, "guide/section/parent");
     }
 #pragma warning restore CA2255
 }
@@ -228,5 +240,90 @@ internal sealed class GdrSectionCreateHandler : IOperationHandler
         if (list is not null && number.Length > 0 && GdrSectionSupport.Find(cache, list, number) is { } holder && holder.Guid != entityId.ToGuid())
             result["numberHeldBy"] = CanonicalId.FromGuid(holder.Guid).Value;
         return result;
+    }
+}
+
+/// <summary>A staged move whose section is no longer under the parent it was staged from.</summary>
+internal sealed class GdrMoveStaleRefusal(string message)
+    : ProposalRefusalException(SIL.Motif.Contract.Commands.RefusalCodes.GdrMoveStale, SIL.Motif.Contract.Responses.FailureReason.Refused,
+        message, new Dictionary<string, string>());
+
+/// <summary>Moves a Guide item, with its subtree, under another parent or to another place among its siblings.</summary>
+internal sealed class GdrSectionMoveHandler : IOperationHandler
+{
+    internal static readonly GdrSectionMoveHandler Instance = new();
+    private GdrSectionMoveHandler() { }
+
+    private const string Kind = GdrSectionOperationKinds.Move;
+
+    public ExpectedEffect ApplyAndCaptureEffect(LcmCache cache, OperationEnvelope operation, List<CanonicalId> touchedTargets)
+    {
+        var after = operation.After ?? throw new InvalidOperationException($"'{Kind}' requires after.");
+        ClosedPayloadParsing.RequireObject(after, Kind);
+        ClosedPayloadParsing.RejectUnknownProperties(after, ["from", "parent", "after", "before"], Kind);
+        var from = ClosedPayloadParsing.GetRequiredString(after, "from", Kind);
+        var parentId = Optional(after, "parent");
+        var afterId = Optional(after, "after");
+        var beforeId = Optional(after, "before");
+        if (afterId is not null && beforeId is not null)
+            throw new InvalidOperationException($"'{Kind}': give 'after' or 'before', not both.");
+        var (id, section) = TargetResolution.Resolve<ICmPossibility>(cache, operation, Kind);
+        var list = GdrSectionSupport.FindList(cache, Kind) ??
+            throw new InvalidOperationException($"'{Kind}': the project has no Grammar Guide list.");
+        if (!list.ReallyReallyAllPossibilities.Contains(section))
+            throw new InvalidOperationException($"'{Kind}': '{id.Value}' is not in the Grammar Guide.");
+        var current = section.Owner is ICmPossibility owner ? CanonicalId.FromGuid(owner.Guid).Value : "";
+        if (current != from)
+            throw new GdrMoveStaleRefusal($"'{Kind}': the section is no longer under the parent the move was staged from; stage the move again.");
+        var before = Read(section);
+        ICmPossibility? parent = null;
+        if (parentId is not null)
+            parent = GdrSectionSupport.Find(cache, list, parentId) ?? throw new InvalidOperationException(
+                $"'{Kind}': the new parent '{parentId}' is not in the Grammar Guide.");
+        for (ICmObject walk = parent!; walk is ICmPossibility step; walk = step.Owner)
+            if (step.Guid == section.Guid)
+                throw new InvalidOperationException($"'{Kind}': a section cannot move under itself or its own descendant.");
+        var siblings = parent is null ? list.PossibilitiesOS : parent.SubPossibilitiesOS;
+        var neighbour = afterId ?? beforeId;
+        var index = siblings.Count;
+        if (neighbour is not null)
+        {
+            var sibling = GdrSectionSupport.Find(cache, list, neighbour) ?? throw new InvalidOperationException(
+                $"'{Kind}': the section '{neighbour}' is not in the Grammar Guide.");
+            if (sibling.Guid == section.Guid || !siblings.Contains(sibling))
+                throw new InvalidOperationException($"'{Kind}': '{neighbour}' is not under the new parent.");
+            index = siblings.IndexOf(sibling) + (afterId is not null ? 1 : 0);
+        }
+        if (siblings.Contains(section))
+        {
+            var at = siblings.IndexOf(section);
+            if (at < index) index--;
+            if (at != index) siblings.MoveTo(at, at, siblings, index);
+        }
+        else siblings.Insert(index, section);
+        touchedTargets.Add(id);
+        return new ExpectedEffect(id, SnapshotFields.GuideSections, before, Read(section));
+    }
+
+    public ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation)
+    {
+        var (id, section) = TargetResolution.Resolve<ICmPossibility>(cache, operation, Kind);
+        var current = Read(section);
+        return new ExpectedEffect(id, SnapshotFields.GuideSections, current, current);
+    }
+
+    private static string? Optional(System.Text.Json.JsonElement after, string name) =>
+        after.TryGetProperty(name, out var value) && value.ValueKind == System.Text.Json.JsonValueKind.String ? value.GetString() : null;
+
+    // The footprint: the item's parent and its place among that parent's children.
+    private static Dictionary<string, string> Read(ICmPossibility section)
+    {
+        var siblings = section.Owner is ICmPossibility owner ? owner.SubPossibilitiesOS.Cast<ICmObject>().ToList()
+            : section.Owner is ICmPossibilityList list ? list.PossibilitiesOS.Cast<ICmObject>().ToList() : [];
+        return new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["parent"] = section.Owner is ICmPossibility parent ? CanonicalId.FromGuid(parent.Guid).Value : "",
+            ["index"] = siblings.IndexOf(section).ToString(System.Globalization.CultureInfo.InvariantCulture),
+        };
     }
 }

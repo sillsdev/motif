@@ -173,6 +173,16 @@ public sealed record GdrAddResponse(
     public IReadOnlyList<string> StylesCreated { get; init; } = [];
 }
 
+/// <summary>What staging a Grammar Guide section move added to a Draft.</summary>
+/// <param name="DraftName">The Draft the move is staged in.</param>
+/// <param name="Id">The section's canonical id, which the move keeps.</param>
+/// <param name="Abbreviation">The section's <c>GDR-n</c> number, which the move keeps.</param>
+/// <param name="ParentId">The canonical id of the parent it goes under, or null at the top of the list.</param>
+/// <param name="PreviousParentId">The canonical id of the parent it leaves, or null when it was at the top of the list.</param>
+/// <param name="OperationCount">The Draft operations staged for the move.</param>
+public sealed record GdrMoveResponse(
+    string DraftName, string Id, string Abbreviation, string? ParentId, string? PreviousParentId, int OperationCount);
+
 /// <summary>What refreshing one query block's saved table did.</summary>
 /// <param name="QueryId">The block's <c>id</c>.</param>
 /// <param name="Outcome"><c>saved</c> (staged), <c>unchanged</c> (the saved table already matches) or <c>skipped</c> (see <paramref name="Message"/>).</param>

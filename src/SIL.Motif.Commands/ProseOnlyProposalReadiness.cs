@@ -39,7 +39,7 @@ internal static class ProseOnlyProposalReadiness
         if (operation.After is not { } after) return null;
         try
         {
-            if (operation.Kind == GdrSectionOperationKinds.Create) return SnapshotFields.GuideSections;
+            if (operation.Kind is GdrSectionOperationKinds.Create or GdrSectionOperationKinds.Move) return SnapshotFields.GuideSections;
             if (operation.Kind == StyleCreateOperationKinds.Create) return SnapshotFields.StyleDefinitions;
             if (operation.Kind is CmPossibilityNameOperationKinds.SetName or CmPossibilityNameOperationKinds.ClearName)
                 return isGdrTitle?.Invoke(operation) == true ? SnapshotFields.CmPossibilityName : null;

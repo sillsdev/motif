@@ -278,6 +278,7 @@ public static class CommandCatalog
         new CommandDescriptor("guide check", typeof(GdrCheckRequest), typeof(GdrCheckResponse), CommandSurface.Autonomous, AgentClass.Read),
         new CommandDescriptor("guide edit", typeof(GdrEditRequest), typeof(GdrEditResponse), CommandSurface.AdvancedAi, AgentClass.Draft),
         new CommandDescriptor("guide add", typeof(GdrAddRequest), typeof(GdrAddResponse), CommandSurface.AdvancedAi, AgentClass.Draft),
+        new CommandDescriptor("guide move", typeof(GdrMoveRequest), typeof(GdrMoveResponse), CommandSurface.AdvancedAi, AgentClass.Draft),
         new CommandDescriptor("guide refresh-tables", typeof(GdrRefreshTablesRequest), typeof(GdrRefreshTablesResponse), CommandSurface.AdvancedAi, AgentClass.Draft),
         new CommandDescriptor("guide decide", typeof(GdrDecideRequest), typeof(GdrEditResponse), CommandSurface.Autonomous, AgentClass.Draft),
 

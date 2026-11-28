@@ -15,13 +15,17 @@ public static partial class RefusalCatalog
         Spec(RefusalCodes.GdrLinkNotFound, FailureReason.NotFound),
         Spec(RefusalCodes.GdrLinkPathInvalid, FailureReason.InvalidArgument),
         Spec(RefusalCodes.GdrNoBaseline, FailureReason.NotFound),
-        Spec(RefusalCodes.GdrNotFound, FailureReason.NotFound),
+        Spec(RefusalCodes.GdrNotFound, FailureReason.NotFound, Command("guide list", Caller("project"))),
         Spec(RefusalCodes.GdrRecordMoved, FailureReason.Refused),
         Spec(RefusalCodes.GdrMarkdownInvalid, FailureReason.InvalidArgument),
         Spec(RefusalCodes.GdrTitleInvalid, FailureReason.InvalidArgument),
         Spec(RefusalCodes.GdrListNotWritable, FailureReason.Refused),
         Spec(RefusalCodes.GdrDecisionInvalid, FailureReason.InvalidArgument),
         Spec(RefusalCodes.GdrDecisionsInvalid, FailureReason.InvalidArgument, NextStep.Repeat()),
+        Spec(RefusalCodes.GdrMoveCycle, FailureReason.InvalidArgument, Command("guide list", Caller("project"))),
+        Spec(RefusalCodes.GdrMoveStale, FailureReason.Refused,
+            Command("guide show", Caller("project"), ("id", NextArg.Caller("id")), ("as_of", NextArg.Fact("draftName")))),
+        Spec(RefusalCodes.GdrMovePosition, FailureReason.InvalidArgument, Command("guide list", Caller("project"))),
         Spec(RefusalCodes.GdrStyleCycle, FailureReason.StoreInconsistent),
     ];
 }

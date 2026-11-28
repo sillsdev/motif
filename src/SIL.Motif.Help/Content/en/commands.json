@@ -29,6 +29,18 @@
       "draft": "The name of an existing Draft to stage into; omit to stage into the pending changes."
     }
   },
+  "guide move": {
+    "title": "Move a Grammar Guide section",
+    "description": "Stages the move of one Grammar Guide section, with its subtree, under another parent or to another place among its siblings in a Draft. The section keeps its GDR-n number and its id, so links to it stay valid. Nothing reaches the FieldWorks project until a person applies the Draft. Available in Advanced AI mode.",
+    "source": "Hand-written from the Grammar Guide staging path shared with the window.",
+    "fields": {
+      "id": "The section's GDR-n number or canonical id.",
+      "parent": "The GDR-n number or canonical id of the new parent; omit for the top of the list.",
+      "after": "The GDR-n number or canonical id of the new sibling it follows; omit to put it last under its parent.",
+      "before": "The GDR-n number or canonical id of the new sibling it precedes; not together with after.",
+      "draft": "The name of an existing Draft to stage into; omit to stage into the pending changes."
+    }
+  },
   "guide add": {
     "title": "Add a Grammar Guide section or part",
     "description": "Stages a new Grammar Guide item in a Draft: a title, the part or section it goes under, where it goes, and optionally its body as FieldWorks Markdown in the ADR 0005 template. It takes the next permanent GDR-n number. A project with no Grammar Guide list gets the list too. Nothing reaches the FieldWorks project until a person applies the Draft. On a new project the order is guide add, apply, baseline capture, then guide check: the Guide reads see only the Baseline. Available in Advanced AI mode.",
