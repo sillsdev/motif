@@ -253,10 +253,13 @@ public sealed class StoredGrammarCheckQueryTests : IDisposable
             ("nothing", []));
         var request = new GrammarCheckRequest(grammar.FwDataPath);
         Assess(grammar);
-        Assert.True(GrammarCheckQuery.Query(request, new FakeInvoker
+        var rechecked = GrammarCheckQuery.Query(request, new FakeInvoker
         {
             Respond = _ => new PanGlossOutcome.Completed(report, string.Empty, TimeSpan.Zero),
-        }, CancellationToken.None).Succeeded);
+        }, CancellationToken.None);
+        Assert.True(rechecked.Succeeded);
+        Assert.Equal((2, 0), (rechecked.Value!.MultiReadingTypes!.MeasuredTypes, rechecked.Value.MultiReadingTypes.Types));
+        Assert.Empty(rechecked.Value.MultiReadingTypes.Groups);
 
         var stored = StoredGrammarCheckQuery.Query(request);
 

@@ -38,6 +38,13 @@ public sealed record GrammarCheckResponse(IReadOnlyList<GrammarWarning> Findings
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public ShadowedAlternatesReport? ShadowedAlternates { get; init; }
 
+    /// <summary>
+    /// The word types of the Baseline's matching Assessment that have more than one reading, grouped by morpheme
+    /// pattern; null when the Baseline has no matching Assessment to count. Report-only, with no cap.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public MultiReadingTypes? MultiReadingTypes { get; init; }
+
     /// <summary>The parser's per-code summary rows, used to group findings for display.</summary>
     public IReadOnlyList<GrammarWarningSummary> Summary { get; init; } = [];
 
@@ -92,6 +99,21 @@ public sealed record GrammarCheckResponse(IReadOnlyList<GrammarWarning> Findings
         };
     }
 }
+
+/// <summary>The word types that read more than one way, by morpheme pattern.</summary>
+/// <param name="MeasuredTypes">The word types whose readings were counted.</param>
+/// <param name="Types">The measured word types with more than one reading, the sum of the groups.</param>
+/// <param name="Groups">One group per morpheme pattern, largest first.</param>
+public sealed record MultiReadingTypes(int MeasuredTypes, int Types, IReadOnlyList<MultiReadingGroup> Groups);
+
+/// <summary>The word types whose readings share one morpheme pattern.</summary>
+/// <param name="Pattern">
+/// Each distinct reading as its morphs joined by <c>+</c> (an affix by its gloss, a stem as <c>stem</c>), the
+/// readings joined by <c> | </c>, as <c>stem+APPL+CAUS | stem+CAUS+APPL</c>.
+/// </param>
+/// <param name="Types">How many word types have this pattern.</param>
+/// <param name="Examples">Up to five of them, in alphabetical order.</param>
+public sealed record MultiReadingGroup(string Pattern, int Types, IReadOnlyList<string> Examples);
 
 /// <summary>A Motif observation about a completed grammar check that is not a parser finding.</summary>
 public sealed record GrammarCheckAdvisory(string Code, string Message)

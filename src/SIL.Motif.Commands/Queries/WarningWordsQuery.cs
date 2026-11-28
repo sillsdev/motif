@@ -40,7 +40,10 @@ public static class WarningWordsQuery
         if (!current.Succeeded || current.Value!.Baseline?.Token != checkedBaseline ||
             current.Value.Assessment is not { } assessment)
             return check with { Findings = check.Findings.Select(finding => finding with { YourWords = null }).ToArray() };
-        check = StoredParseWarnings.Merge(check, current.Value);
+        check = StoredParseWarnings.Merge(check, current.Value) with
+        {
+            MultiReadingTypes = MultiReadingTypesReader.Read(assessment.Words),
+        };
         return WithYourWords(check, assessment.Words, current.Value.EffectiveObjectTimings,
             includeResolvedReadings: true, current.Value.TimingDetail);
     }

@@ -2189,6 +2189,7 @@ public static class CommandTextRenderer
         if (response.ObjectTimingDetail is { IsComplete: false, Description: { } detail }) text.AppendLine(detail);
         foreach (var advisory in response.Advisories)
             text.AppendLine($"Advisory: {advisory.Message}");
+        if (response.MultiReadingTypes is { } multi) AppendMultiReadingTypes(text, multi);
         foreach (var summary in response.Summary.Take(KindRowLimit))
             text.AppendLine($"  {summary.Code}: {summary.Count:N0} {summary.Level.ToWireValue()}");
         AppendMoreKinds(text, response.Summary.Count);
@@ -2196,6 +2197,15 @@ public static class CommandTextRenderer
             text.AppendLine($"  {finding.Text}");
         AppendFindingsPage(text, response.FindingsOffset, response.Findings.Count, response.FindingsTotal, response.NextOffset, response.NextStep);
         return text.ToString();
+    }
+
+    private static void AppendMultiReadingTypes(StringBuilder text, MultiReadingTypes multi)
+    {
+        text.AppendLine($"Word types with more than one reading: {multi.Types:N0} of {multi.MeasuredTypes:N0}");
+        foreach (var group in multi.Groups.Take(KindRowLimit))
+            text.AppendLine($"  {group.Pattern}: {group.Types:N0} ({string.Join(", ", group.Examples)})");
+        if (multi.Groups.Count > KindRowLimit)
+            text.AppendLine($"  and {multi.Groups.Count - KindRowLimit:N0} more patterns; --json lists every one");
     }
 
     // The words that use the object, the words it ran in, then what the asked-about words share.

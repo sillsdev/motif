@@ -54,6 +54,10 @@ Motif also reports lexicon hygiene as warnings, with three codes. It only report
 - `compose.one-stem-inflection-class`: an inflection class that exactly one stem analysis uses, counting its subclasses. `text` is the class name.
 - `grammar.orphan-environment`: an environment that no allomorph references. `text` is its pattern; delete it or give it to the forms it was written for.
 
+## Word types with more than one reading
+
+When the Baseline has an Assessment (`motif assess`), `grammar check` also counts the word types of that Assessment that have more than one reading and returns them under `multiReadingTypes`: `measuredTypes` (the types whose readings were counted), `types` (those with more than one reading) and `groups`. Each group has a `pattern`, a `types` count and up to five alphabetical `examples`, largest group first. A reading's pattern is its morphs joined by `+`: an affix by its gloss (its category when it has no gloss, its form when it has neither) and every stem as `stem`. A word's pattern is its distinct reading patterns joined by ` | `, so `stem+APPL+CAUS | stem+CAUS+APPL` is one cut read in two orders and `stem | stem+CAUS` is a lexical twin beside a derivation. The count is the standing stock, not a change from a baseline, so it shows doubling that was there before your edit; for the change an edit makes use `proposal trial delta`. It is report-only: no cap, and it never changes the findings, the exit code or the Baseline's readiness. Without an Assessment for this Baseline the field is absent; run `motif assess` and check again.
+
 ## Related commands
 
 - [Read grammar warnings](cmd:warnings) filters and displays stored findings.
