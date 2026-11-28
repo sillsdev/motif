@@ -55,9 +55,9 @@ public static class TrialReviewTextRenderer
                 text.AppendLine("Retirement multiset of " + attestation.WaivedWords.Count + " waived word(s): " +
                     (attestation.Complete ? "complete" : "incomplete (" + string.Join(", ", attestation.Limitations) + ")") +
                     "; " + attestation.LostCopies + " lost copies across " + attestation.CaseCount + " case(s)");
-            if (losses.RetirementAttestation is { Page: { } shown, PageCount: { } of })
-                text.AppendLine("Retirement rows: page " + shown + " of " + of + " (" + losses.RetirementAttestation.RowCount +
-                    " in all); read the others with --page <N>.");
+            if (losses.RetirementAttestation is { NextCursor: { } nextRows })
+                text.AppendLine("Retirement rows: " + losses.RetirementAttestation.RowCount +
+                    " in all; read the next with --cursor " + nextRows + ".");
         }
         if (report.HeldWords is { Count: > 0 } held)
             text.AppendLine("New second readings held for review: " + string.Join(", ", held));

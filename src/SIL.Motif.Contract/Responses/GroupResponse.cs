@@ -22,12 +22,11 @@ public sealed record GroupResponse(
     [property: JsonRequired] int Known,
     [property: JsonRequired] int Fitting,
     [property: JsonRequired] int NotFitting,
-    [property: JsonRequired] int Page,
-    [property: JsonRequired] int Pages,
     [property: JsonRequired] int Limit,
     [property: JsonRequired] bool Capped,
     [property: JsonRequired] IReadOnlyList<string> Notes,
-    [property: JsonRequired] IReadOnlyList<StemGroup> Rows)
+    [property: JsonRequired] IReadOnlyList<StemGroup> Rows,
+    [property: JsonRequired, JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? NextCursor)
 {
     /// <summary>The current response shape.</summary>
     public const int CurrentSchemaVersion = 1;

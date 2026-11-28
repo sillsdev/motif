@@ -17,9 +17,9 @@ public sealed record CorpusWord(string Form, string ParseState, int Tokens);
 /// <param name="Pattern">A pattern with a named stem group, or null when text selects.</param>
 /// <param name="ParseState">approved, parsed, unparsed or all.</param>
 /// <param name="Limit">The most groups on a page, or null for the default.</param>
-/// <param name="Page">The one-based page, or null for the first.</param>
+/// <param name="Cursor">The cursor a previous page returned, or null for the first page.</param>
 /// <param name="MinStem">The fewest graphemes a stem may have, or null for the default.</param>
-public sealed record GroupSpec(string Kind, string? Text, string? Pattern, string? ParseState, int? Limit, int? Page, int? MinStem = null);
+public sealed record GroupSpec(string Kind, string? Text, string? Pattern, string? ParseState, int? Limit, string? Cursor, int? MinStem = null);
 
 /// <summary>
 /// Groups corpus word types by the stem that remains when an ending or start is removed. Words are compared by their
@@ -92,7 +92,7 @@ public static class WordGrouping
         var requestedLimit = spec.Limit ?? DefaultLimit;
         if (requestedLimit < 1) throw new ArgumentException("The limit must be a positive whole number.");
         var limit = Math.Min(requestedLimit, MaxLimit);
-        if (spec.Page is < 1) throw new ArgumentException("The page must be a positive whole number.");
+        if (!ResultPaging.TryOffset(spec.Cursor, out var start)) throw new ArgumentException("The cursor must be the nextCursor a previous page returned.");
         var minStem = spec.MinStem ?? DefaultMinStem;
         if (minStem < 1) throw new ArgumentException("The minimum stem length must be a positive whole number.");
         var match = BuildMatcher(spec, forward, fold, out var query);
@@ -128,24 +128,22 @@ public static class WordGrouping
         groups.Sort(static (a, b) => a.Group.Tokens != b.Group.Tokens ? b.Group.Tokens.CompareTo(a.Group.Tokens)
             : string.CompareOrdinal(a.Stem, b.Stem));
 
-        var pages = Math.Max(1, (groups.Count + limit - 1) / limit);
-        var page = spec.Page ?? 1;
-        if (page > pages) throw new ArgumentException($"Page {page} is past the last page, {pages}.");
-        var shown = groups.Skip((page - 1) * limit).Take(limit).Select(item => item.Group).ToArray();
-        var capped = requestedLimit > MaxLimit || page * limit < groups.Count;
+        var shown = groups.Skip(start).Take(limit).Select(item => item.Group).ToArray();
+        var nextCursor = ResultPaging.NextCursor(start, shown.Length, groups.Count);
+        var capped = requestedLimit > MaxLimit || nextCursor is not null;
         var allNotes = new List<string>(notes);
         if (requestedLimit > MaxLimit)
             allNotes.Add($"The limit {requestedLimit.ToString(CultureInfo.InvariantCulture)} was reduced to the cap of {MaxLimit}.");
-        if (page * limit < groups.Count)
-            allNotes.Add($"Showing stems {((page - 1) * limit + 1).ToString(CultureInfo.InvariantCulture)} to " +
-                $"{(page * limit).ToString(CultureInfo.InvariantCulture)} of {groups.Count.ToString(CultureInfo.InvariantCulture)}; " +
-                $"--page {(page + 1).ToString(CultureInfo.InvariantCulture)} shows the next.");
+        if (nextCursor is not null)
+            allNotes.Add($"Showing stems {(start + 1).ToString(CultureInfo.InvariantCulture)} to " +
+                $"{(start + shown.Length).ToString(CultureInfo.InvariantCulture)} of {groups.Count.ToString(CultureInfo.InvariantCulture)}; " +
+                $"--cursor {nextCursor} shows the next.");
         if (shown.Any(group => group.WordsTotal > group.Words.Count))
             allNotes.Add($"A stem lists at most {StemGroup.WordsShown} words; its total says how many matched.");
         return new GroupResponse(GroupResponse.CurrentSchemaVersion, spec.Kind, query, state, foldName, readAt, minStem, keys.Length,
             groups.Sum(item => item.Group.WordsTotal), groups.Count, groups.Count(item => item.Group.Status == StemGroup.Known),
             groups.Count(item => item.Group.Status == StemGroup.Fitting),
-            groups.Count(item => item.Group.Status == StemGroup.NotFitting), page, pages, limit, capped, allNotes, shown);
+            groups.Count(item => item.Group.Status == StemGroup.NotFitting), limit, capped, allNotes, shown, nextCursor);
     }
 
     private static Dictionary<string, Entry> Merge(IEnumerable<CorpusWord> corpus, Func<string, string> fold)

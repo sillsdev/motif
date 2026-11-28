@@ -18,7 +18,7 @@ public sealed record QueryArguments(QueryRecord Record, string? Project, string?
 
 /// <summary>The flags of one <c>motif group suffix|prefix</c> command line.</summary>
 public sealed record GroupRunArguments(string Kind, string? Ending, string? Start, string? Pattern, string? ParseState,
-    int? Limit, int? Page, string? AsOf, string? Fold, int? MinStem);
+    int? Limit, string? Cursor, string? AsOf, string? Fold, int? MinStem);
 
 /// <summary>One parsed run line: exactly one of <see cref="Query"/>, <see cref="Group"/> and <see cref="Corpus"/> is set.</summary>
 public sealed record RunLine(string Verb, QueryArguments? Query, GroupRunArguments? Group, SIL.Motif.Contract.Query.Corpus.CorpusFormsRequest? Corpus = null)
@@ -43,7 +43,7 @@ public static class QueryRunLine
     private static readonly string[] SavedFlags = ["project", "examples", "json", "trial"];
 
     private static readonly string[] GroupFlags =
-        ["ending", "start", "pattern", "parse-state", "limit", "page", "fold", "as-of", "min-stem"];
+        ["ending", "start", "pattern", "parse-state", "limit", "cursor", "fold", "as-of", "min-stem"];
 
     private static readonly HashSet<string> Switches = new(StringComparer.Ordinal) { "ids", "raw-letters", "json", "test-result" };
 
@@ -341,11 +341,11 @@ public static class QueryRunLine
                 refusal = Invalid("motif group does not take that flag in a run line.", ("flag", name));
                 return false;
             }
-        if (!TryOptionalCount(flags, "limit", out var limit, out refusal) || !TryOptionalCount(flags, "page", out var page, out refusal) ||
+        if (!TryOptionalCount(flags, "limit", out var limit, out refusal) || !TryOptionalCursor(flags, out var cursor, out refusal) ||
             !TryOptionalCount(flags, "min-stem", out var minStem, out refusal))
             return false;
         parsed = new GroupRunArguments(positionals[0], flags.GetValueOrDefault("ending"), flags.GetValueOrDefault("start"),
-            flags.GetValueOrDefault("pattern"), flags.GetValueOrDefault("parse-state"), limit, page, flags.GetValueOrDefault("as-of"),
+            flags.GetValueOrDefault("pattern"), flags.GetValueOrDefault("parse-state"), limit, cursor, flags.GetValueOrDefault("as-of"),
             flags.GetValueOrDefault("fold"), minStem);
         return true;
     }
@@ -404,6 +404,20 @@ public static class QueryRunLine
         if (int.TryParse(flags.GetValueOrDefault(name, fallback), NumberStyles.Integer, CultureInfo.InvariantCulture, out value) &&
             value >= min && value <= max) return true;
         refusal = Invalid($"--{name} is a whole number from {min} to {max}.", ("flag", name));
+        return false;
+    }
+
+    private static bool TryOptionalCursor(IReadOnlyDictionary<string, string> flags, out string? value, [NotNullWhen(false)] out Refusal? refusal)
+    {
+        value = null;
+        refusal = null;
+        if (!flags.TryGetValue("cursor", out var text)) return true;
+        if (text != "true" && SIL.Motif.Contract.Responses.ResultPaging.TryOffset(text, out _))
+        {
+            value = text;
+            return true;
+        }
+        refusal = Invalid("--cursor must be the nextCursor a previous page returned.", ("flag", "cursor"));
         return false;
     }
 

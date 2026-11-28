@@ -50,15 +50,16 @@ public sealed class ProposalCompareBenchmarkTests(Xunit.Abstractions.ITestOutput
             var loader = new ProposalCompareReads.ApprovedLoader((_, _, _) =>
                 CommandOutcome<ProposalCompareReads.ApprovedBasis>.Success(new("stamp", ApprovedReadingSet.From([], 0))));
             CommandOutcome<SIL.Motif.Contract.Responses.ProposalComparison> Compare(int? page, string? snapshot) =>
-                ProposalCompareReads.Read(new(path, [a, b], null, page, snapshot, null), loader);
+                ProposalCompareReads.Read(new(path, [a, b], null,
+                    page is { } number ? SIL.Motif.Contract.Responses.ResultPaging.Cursor((number - 1) * 100) : null, snapshot, null), loader);
 
             var jobs = new[] { a, b }.Select(id => Trials.NewestFirst(Trials.JobsFor(database, project, CanonicalId.Parse(id)))[0].JobId).ToArray();
-            var exportPages = TrialExportArtifact.Read(database, jobs[0])!.Pages;
+            var exportPages = (TrialExportArtifact.Read(database, jobs[0])!.Denominators.Submitted + 99) / 100;
             var readBytes = GC.GetAllocatedBytesForCurrentThread();
             var readTimer = Stopwatch.StartNew();
             foreach (var job in jobs)
                 for (var page = 1; page <= exportPages; page++)
-                    Assert.NotNull(TrialExportArtifact.Read(database, job, page: page)!.Page);
+                    Assert.NotNull(TrialExportArtifact.Read(database, job, offset: (page - 1) * 100)!.Page);
             var storeReadMs = readTimer.Elapsed.TotalMilliseconds;
             var storeReadMb = (GC.GetAllocatedBytesForCurrentThread() - readBytes) / 1048576.0;
 
@@ -70,15 +71,16 @@ public sealed class ProposalCompareBenchmarkTests(Xunit.Abstractions.ITestOutput
 
             bytes = GC.GetAllocatedBytesForCurrentThread();
             timer.Restart();
-            for (var page = 1; page <= summary.Pages; page++)
+            var comparePages = (summary.RowsTotal + 99) / 100;
+            for (var page = 1; page <= comparePages; page++)
                 Assert.True(Compare(page, summary.Snapshot).Succeeded);
             var pagesMs = timer.Elapsed.TotalMilliseconds;
             var pagesMb = (GC.GetAllocatedBytesForCurrentThread() - bytes) / 1048576.0;
 
             Assert.Equal(1, ProposalCompareReads.JoinsComputedFor(database.FullPath));
-            output.WriteLine($"forms={count} run={run} rows={summary.RowsTotal} comparePages={summary.Pages} exportPages={exportPages} " +
+            output.WriteLine($"forms={count} run={run} rows={summary.RowsTotal} comparePages={comparePages} exportPages={exportPages} " +
                 $"storeReadMs={storeReadMs:F1} storeReadMB={storeReadMb:F1} coldSummaryMs={coldMs:F1} coldMB={coldMb:F1} coldKBPerForm={coldMb * 1024 / count:F1} warmAllPagesMs={pagesMs:F1} " +
-                $"warmMsPerPage={pagesMs / summary.Pages:F2} warmMB={pagesMb:F1}");
+                $"warmMsPerPage={pagesMs / comparePages:F2} warmMB={pagesMb:F1}");
         }
         finally { Directory.Delete(root, recursive: true); }
     }

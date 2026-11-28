@@ -24,16 +24,16 @@ public sealed class TrialExportArgvTests
         using var refusal = JsonDocument.Parse(string.IsNullOrWhiteSpace(wrong.Output) ? wrong.Error : wrong.Output);
         Assert.Equal("trial.export-unavailable", refusal.RootElement.GetProperty("code").GetString());
 
-        var first = await Read("--at", revision, "--page", "1");
-        var second = await Read("--at", baseline, "--page", "2");
+        var first = await Read("--at", revision, "--limit", "100");
+        var second = await Read("--at", baseline, "--cursor", SIL.Motif.Contract.Responses.ResultPaging.Cursor(100));
         Assert.True(first.ExitCode == 0, first.Error);
         Assert.True(second.ExitCode == 0, second.Error);
         using var firstPage = JsonDocument.Parse(first.Output);
         using var secondPage = JsonDocument.Parse(second.Output);
         var firstResult = firstPage.RootElement.GetProperty("page");
         var secondResult = secondPage.RootElement.GetProperty("page");
-        Assert.Equal(2, firstResult.GetProperty("nextPage").GetInt32());
-        Assert.Equal(JsonValueKind.Null, secondResult.GetProperty("nextPage").ValueKind);
+        Assert.Equal(SIL.Motif.Contract.Responses.ResultPaging.Cursor(100), firstResult.GetProperty("nextCursor").GetString());
+        Assert.Equal(JsonValueKind.Null, secondResult.GetProperty("nextCursor").ValueKind);
         var firstWords = firstResult.GetProperty("words").EnumerateArray();
         var secondWords = secondResult.GetProperty("words").EnumerateArray();
         Assert.Equal(100, firstWords.Count());

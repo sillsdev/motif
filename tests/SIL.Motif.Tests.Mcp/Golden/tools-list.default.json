@@ -10795,7 +10795,7 @@
   },
   {
     "name": "motif_trial",
-    "description": "Read a Trial report. Reads the saved report of a Proposal\u0027s Trial: red flags, incomplete cases, named losses, stopped words with their causes and second-reading holds. It reads stored evidence and does not rerun the parser.\nCommand: proposal trial. Agent class: Read.\nproposal: The Proposal ID.\njob: Exact Trial job to resume or read.\nreport: Exact stored report to read.\ndetail: Report disclosure level.\nsection: Report section to read.\nset: Review set to select.\noutcome: Include only rows with this outcome.\nflag: Include only rows with this Review flag.\nfilter: Filter full-detail rows.\nword: Select one reported word.\ncase: Select one reported case.\ntrace: Read a trace for the selected word or case.\nside: Select the before or after readings.\ncursor: Continuation from the same report and filters.\nlimit: Maximum page items. Default 50.\npage: Page of the retirement signature rows of a saved report. Default 1.\nlatest: Read the newest Trial job and its report identity when available.\nTrial a Proposal. Measures a Proposal on a throwaway copy and records review evidence, always including declared gate word sets. Read named losses, incomplete cases and new second readings held for review before deciding what to do.\nCommand: trial. Agent class: Evaluate.\nproposal: The exact canonical Proposal identity.\nwords: The explicit words to measure, or the configured Selection when omitted.\nnegative_words: Attested counterexamples that should not parse.\nno_background: True runs any Baseline recapture this Trial needs in the foreground only: no Source index or Parsimony job is queued and no runner is woken, so nothing commits after the command returns.\nno_base_sample: True measures exactly and leaves out every configured review word set, so the Trial is a working-set Trial that cannot stand in for a gate; it needs Words.\nexpect_loss: Words the author declares as intended losses before this Trial is queued.\ntouched: Adds to every attested word whose Baseline analysis uses an object the Proposal edits; needs .\nRead Trial progress. Waits for a Trial job and reads its state. Read the stored review report after the Trial completes.\nCommand: trial --wait. Agent class: Evaluate.\njob: The exact job identity returned when evidence was queued.\nwait_seconds: The deadline for normal completion.\nwait_terminal: Cancel the job at the deadline and wait for its execution to end.",
+    "description": "Read a Trial report. Reads the saved report of a Proposal\u0027s Trial: red flags, incomplete cases, named losses, stopped words with their causes and second-reading holds. It reads stored evidence and does not rerun the parser.\nCommand: proposal trial. Agent class: Read.\nproposal: The Proposal ID.\njob: Exact Trial job to resume or read.\nreport: Exact stored report to read.\ndetail: Report disclosure level.\nsection: Report section to read.\nset: Review set to select.\noutcome: Include only rows with this outcome.\nflag: Include only rows with this Review flag.\nfilter: Filter full-detail rows.\nword: Select one reported word.\ncase: Select one reported case.\ntrace: Read a trace for the selected word or case.\nside: Select the before or after readings.\ncursor: Continuation from the same report and filters. On a summary read it continues the retirement signature rows.\nlimit: Maximum page items. Default 50.\nlatest: Read the newest Trial job and its report identity when available.\nTrial a Proposal. Measures a Proposal on a throwaway copy and records review evidence, always including declared gate word sets. Read named losses, incomplete cases and new second readings held for review before deciding what to do.\nCommand: trial. Agent class: Evaluate.\nproposal: The exact canonical Proposal identity.\nwords: The explicit words to measure, or the configured Selection when omitted.\nnegative_words: Attested counterexamples that should not parse.\nno_background: True runs any Baseline recapture this Trial needs in the foreground only: no Source index or Parsimony job is queued and no runner is woken, so nothing commits after the command returns.\nno_base_sample: True measures exactly and leaves out every configured review word set, so the Trial is a working-set Trial that cannot stand in for a gate; it needs Words.\nexpect_loss: Words the author declares as intended losses before this Trial is queued.\ntouched: Adds to every attested word whose Baseline analysis uses an object the Proposal edits; needs .\nRead Trial progress. Waits for a Trial job and reads its state. Read the stored review report after the Trial completes.\nCommand: trial --wait. Agent class: Evaluate.\njob: The exact job identity returned when evidence was queued.\nwait_seconds: The deadline for normal completion.\nwait_terminal: Cancel the job at the deadline and wait for its execution to end.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -10936,19 +10936,13 @@
         },
         "cursor": {
           "type": "string",
-          "description": "Continuation from the same report and filters."
+          "description": "Continuation from the same report and filters. On a summary read it continues the retirement signature rows."
         },
         "limit": {
           "type": "integer",
           "description": "Maximum page items. Default 50.",
           "minimum": 1,
           "maximum": 200
-        },
-        "page": {
-          "type": "integer",
-          "description": "Page of the retirement signature rows of a saved report, filled to a byte bound. Default 1; see losses.retirementAttestation.pageCount.",
-          "minimum": 1,
-          "maximum": 1000000
         },
         "project": {
           "type": "string",

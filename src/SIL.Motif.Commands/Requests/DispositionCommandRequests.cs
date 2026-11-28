@@ -29,9 +29,13 @@ public sealed record ShowDispositionRequest(string FwDataPath, string ProductVer
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
 /// <param name="Category">Only this category: name, loan, other-language, abbreviation, numeral, non-word or misspelling. Leave out for all.</param>
 /// <param name="Limit">The most dispositions on one page, from 1 to 200. The default is 50.</param>
-/// <param name="Page">The one-based page. The default is 1.</param>
+/// <param name="Cursor">Opaque cursor from a previous response's nextCursor; omit for the first page.</param>
 public sealed record ListDispositionsRequest(
-    string FwDataPath, string ProductVersion, string? Category = null, int Limit = 50, int Page = 1);
+    string FwDataPath, string ProductVersion, string? Category = null, int Limit = 50, string? Cursor = null)
+{
+    /// <summary>The rows to skip that <see cref="Cursor"/> names, or -1 when it is not a cursor this API issued. A method, so it is not a schema property.</summary>
+    public int CursorOffset() => SIL.Motif.Contract.Responses.ResultPaging.OffsetOrInvalid(Cursor);
+}
 
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>

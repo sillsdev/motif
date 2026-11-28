@@ -55,7 +55,7 @@ public sealed class ImportFamiliesToolTests(PristineProjectFixture pristine)
 
         public string Hash() => Convert.ToHexString(SHA256.HashData(System.IO.File.ReadAllBytes(Project)));
 
-        public async Task<(bool Error, string Text, JsonNode? Result)> Tool(string? draft = null, int? page = null, bool strict = false)
+        public async Task<(bool Error, string Text, JsonNode? Result)> Tool(string? draft = null, string? cursor = null, bool strict = false)
         {
             var arguments = new Dictionary<string, JsonElement>
             {
@@ -63,7 +63,7 @@ public sealed class ImportFamiliesToolTests(PristineProjectFixture pristine)
                 ["file"] = JsonSerializer.SerializeToElement(File),
             };
             if (draft is not null) arguments["draft"] = JsonSerializer.SerializeToElement(draft);
-            if (page is not null) arguments["page"] = JsonSerializer.SerializeToElement(page.Value);
+            if (cursor is not null) arguments["cursor"] = JsonSerializer.SerializeToElement(cursor);
             if (strict) arguments["strict"] = JsonSerializer.SerializeToElement(true);
             var context = new ServerContext(Project, "0.1.0",
                 new NoRunnerLauncher(new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)),
@@ -78,11 +78,11 @@ public sealed class ImportFamiliesToolTests(PristineProjectFixture pristine)
         public CliProcessResult Cli(params string[] arguments) =>
             CliInProcess.Run(RunnerOptions.ResolveRoot(), FakeParser.ExecutablePath, true, [.. arguments]);
 
-        public CliProcessResult Import(string? draft = null, int? page = null, bool strict = false)
+        public CliProcessResult Import(string? draft = null, string? cursor = null, bool strict = false)
         {
             var arguments = new List<string> { "import", "--project", Project, "--file", File, "--json" };
             if (draft is not null) arguments.AddRange(["--draft", draft]);
-            if (page is not null) arguments.AddRange(["--page", page.Value.ToString()]);
+            if (cursor is not null) arguments.AddRange(["--cursor", cursor]);
             if (strict) arguments.Add("--strict");
             return Cli([.. arguments]);
         }
@@ -130,36 +130,37 @@ public sealed class ImportFamiliesToolTests(PristineProjectFixture pristine)
         Assert.True(pages > 2, "the file must need more than two pages");
 
         var seen = new List<string>();
+        string? cursor = null;
         for (var page = 1; page <= pages; page++)
         {
-            var called = await scenario.Tool(page: page);
+            var called = await scenario.Tool(cursor: cursor);
             Assert.False(called.Error, called.Text);
-            Assert.Equal(page, called.Result!["page"]!.GetValue<int>());
-            Assert.Equal(pages, called.Result["pageCount"]!.GetValue<int>());
+            Assert.Equal(page < pages, called.Result!["nextCursor"] is not null);
             Assert.Equal(expected.Length, called.Result["operationCount"]!.GetValue<int>());
             seen.AddRange(Kinds(called.Result));
-            var cli = scenario.Import(page: page);
+            var cli = scenario.Import(cursor: cursor);
             Assert.True(cli.ExitCode == 0, cli.Error + cli.Output);
             Assert.True(JsonNode.DeepEquals(JsonNode.Parse(cli.Output), called.Result), cli.Output + "\n" + called.Text);
+            cursor = called.Result["nextCursor"]?.GetValue<string>();
         }
+        Assert.Null(cursor);
 
         Assert.Equal(expected, seen.Order(StringComparer.Ordinal).ToArray());
         Assert.Equal(before, scenario.Hash());
     }
 
     [Fact]
-    public async Task APagePastTheEndIsTheSameTypedRefusalAsTheCli()
+    public async Task AMalformedCursorIsTheSameTypedRefusalAsTheCli()
     {
         using var scenario = new Scenario(pristine, null, EditAllAdditive);
-        var past = (AdditiveCount + RecordImportPaging.PageSize - 1) / RecordImportPaging.PageSize + 1;
 
-        var called = await scenario.Tool(page: past);
-        var cli = scenario.Import(page: past);
+        var called = await scenario.Tool(cursor: "9");
+        var cli = scenario.Import(cursor: "9");
 
         Assert.True(called.Error, called.Text);
-        Assert.Contains(RefusalCodes.RecordImportInvalidPage, called.Text, StringComparison.Ordinal);
+        Assert.Contains(RefusalCodes.PagingInvalid, called.Text, StringComparison.Ordinal);
         Assert.NotEqual(0, cli.ExitCode);
-        Assert.Equal(RefusalCodes.RecordImportInvalidPage, ProjectionJson.Deserialize<FailureEnvelope>(cli.Error)!.Code);
+        Assert.Equal(RefusalCodes.PagingInvalid, ProjectionJson.Deserialize<FailureEnvelope>(cli.Error)!.Code);
     }
 
     [Fact]

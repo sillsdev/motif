@@ -18,11 +18,10 @@ public sealed record TrialExportReceipt(
     [property: JsonRequired] string ProposalRevision,
     [property: JsonRequired] string BaselineBundle,
     [property: JsonRequired] long PublishMilliseconds,
-    [property: JsonRequired] int Pages,
     [property: JsonRequired] bool ComparisonComplete,
     [property: JsonRequired] bool PathIsStoreSuffix)
 {
-    /// <summary>The requested words, present only when the caller selects a page.</summary>
+    /// <summary>The requested words, present only when the caller gives a cursor or a limit.</summary>
     public TrialExportPage? Page { get; init; }
 
     /// <summary>The per-word parser work limit the Trial ran under; absent for a Trial that froze none.</summary>
@@ -33,11 +32,10 @@ public sealed record TrialExportReceipt(
 /// <summary>A page in the retained export's frozen word order.</summary>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record TrialExportPage(
-    [property: JsonRequired] int Number,
-    [property: JsonRequired, JsonIgnore(Condition = JsonIgnoreCondition.Never)] int? NextPage,
+    [property: JsonRequired, JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? NextCursor,
     [property: JsonRequired] IReadOnlyList<JsonElement> Words)
 {
-    /// <summary>The most word rows returned in a numbered page.</summary>
+    /// <summary>The word rows in a page when the caller gives no limit, and the spacing of the stored page offsets.</summary>
     public const int Size = 100;
 }
 

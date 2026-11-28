@@ -214,17 +214,20 @@ public static class WordTypeDispositionCommands
         }
         if (request.Limit is < 1 or > MaxLimit)
             return Invalid<ListDispositionsResponse>($"The limit must be from 1 to {MaxLimit}.");
-        if (request.Page < 1) return Invalid<ListDispositionsResponse>("The page must be 1 or more.");
+        var offset = request.CursorOffset();
+        if (offset < 0)
+            return CommandOutcome<ListDispositionsResponse>.Refused(new Refusal(RefusalCodes.PagingInvalid, FailureReason.InvalidArgument,
+                "The cursor must be the nextCursor a previous page returned."));
         var none = DispositionCategories.Names.Select(name => new DispositionCategoryCount(name, 0)).ToArray();
-        var absent = CommandOutcome<ListDispositionsResponse>.Success(new([], 0, request.Page, 1, request.Limit,
+        var absent = CommandOutcome<ListDispositionsResponse>.Success(new([], 0, request.Limit,
             category is { } c ? DispositionCategories.Wire(c) : null, none));
         return ProjectStoreCommand.ReadExisting(request.FwDataPath, absent, (database, _) =>
         {
             var repository = new WordTypeDispositionRepository(database);
-            var (page, total) = repository.List(category, checked((request.Page - 1) * request.Limit), request.Limit);
-            return CommandOutcome<ListDispositionsResponse>.Success(new(page, total, request.Page,
-                Math.Max(1, (total + request.Limit - 1) / request.Limit), request.Limit,
-                category is { } chosen ? DispositionCategories.Wire(chosen) : null, repository.CountsByCategory()));
+            var (page, total) = repository.List(category, offset, request.Limit);
+            return CommandOutcome<ListDispositionsResponse>.Success(new(page, total, request.Limit,
+                category is { } chosen ? DispositionCategories.Wire(chosen) : null, repository.CountsByCategory(),
+                ResultPaging.NextCursor(offset, page.Count, total)));
         });
     }
 

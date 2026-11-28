@@ -349,12 +349,17 @@ public sealed class RecordImportPreviewTests(PristineProjectFixture pristine) : 
         File.WriteAllText(file, text.Replace("zzedited", new string('\u00e9', 400), StringComparison.Ordinal)
             .Replace("zzgloss", new string('\u4e2d', 400), StringComparison.Ordinal));
 
-        for (var page = 1; page <= 3; page++)
+        string? cursor = null;
+        var pages = 0;
+        do
         {
-            var response = RecordImportCommand.Run(new(project, file, null, page)).Value!;
-            Assert.Equal(3, response.PageCount);
-            Assert.True(Encoding.UTF8.GetByteCount(ProjectionJson.Serialize(response)) <= RecordImportPaging.SummaryBytes, "page " + page);
+            var response = RecordImportCommand.Run(new(project, file, null, cursor)).Value!;
+            Assert.True(Encoding.UTF8.GetByteCount(ProjectionJson.Serialize(response)) <= RecordImportPaging.SummaryBytes, "page " + pages);
+            cursor = response.NextCursor;
+            pages++;
         }
+        while (cursor is not null);
+        Assert.Equal(3, pages);
     }
 
     [Fact]

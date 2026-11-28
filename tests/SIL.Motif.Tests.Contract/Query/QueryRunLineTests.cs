@@ -48,9 +48,9 @@ public sealed class QueryRunLineTests
     {
         Assert.True(QueryRunLine.TryParseRun("motif query forms --as-of 42", out var query, out _));
         Assert.Equal("42", query.AsOf);
-        Assert.True(QueryRunLine.TryParseRun("motif group suffix --ending an --as-of baseline --parse-state fitting --limit 5 --page 2", out var group, out _));
-        Assert.Equal(("suffix", "an", "fitting", 5, 2, "baseline"),
-            (group.Group!.Kind, group.Group.Ending, group.Group.ParseState, group.Group.Limit, group.Group.Page, group.AsOf));
+        Assert.True(QueryRunLine.TryParseRun("motif group suffix --ending an --as-of baseline --parse-state fitting --limit 5 --cursor cDI", out var group, out _));
+        Assert.Equal(("suffix", "an", "fitting", 5, "cDI", "baseline"),
+            (group.Group!.Kind, group.Group.Ending, group.Group.ParseState, group.Group.Limit, group.Group.Cursor, group.AsOf));
     }
 
     [Fact]

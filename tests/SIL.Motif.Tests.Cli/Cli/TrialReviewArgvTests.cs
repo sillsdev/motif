@@ -549,15 +549,18 @@ public sealed class TrialReviewArgvTests
         finally { Directory.Delete(seed.Root, recursive: true); }
     }
 
-    [Fact]
-    public void RetirementRowsPageByByteBoundWithoutRefusalAndEveryPageReachesTheWholeMultiset()
+    [Theory]
+    [InlineData(0, null)]
+    [InlineData(300, "200")]
+    public void RetirementRowsPageByLimitOrByteBoundWithoutRefusalAndEveryPageReachesTheWholeMultiset(int padding, string? limit)
     {
+        string[] limitArgs = limit is null ? [] : ["--limit", limit];
         var reader = new SIL.Motif.Host.PanGloss.ReadingSignatureReader(null);
         var a = reader.Capture(new ParseAnalysis([new ParseMorph(Form, Msa, null, null)]))
             with { MorphemeAcceptance = [ReadingAcceptance.LexiconBacked] };
         ParseWordEvidence Parsed(string word, params ParseAnalysis[] readings) =>
             new("fieldworks-parse-analysis/v1", 0, word, 0, false, false, false, readings, []);
-        var words = Enumerable.Range(0, 150).Select(index => "w" + index.ToString("D4")).ToArray();
+        var words = Enumerable.Range(0, 150).Select(index => "w" + index.ToString("D4") + new string('x', padding)).ToArray();
         var seed = SeedTrial(_ => (
             words.Select(word => new TrialReviewObservation("case-" + word, word, "analysed", Parsed(word, a))).ToArray(),
             words.Select(word => new TrialReviewObservation("case-" + word, word, "no-analysis", Parsed(word))).ToArray()), words,
@@ -565,36 +568,37 @@ public sealed class TrialReviewArgvTests
         try
         {
             Assert.True(TrialReviewReads.ReadJob(seed.Project, MotifProductVersion.CurrentText, seed.Proposal, seed.Job).Succeeded);
-            var firstRead = RunTrialJson(seed.Project, seed.Proposal);
+            var firstRead = RunTrialJson(seed.Project, seed.Proposal, limitArgs);
             var first = firstRead.GetProperty("report").GetProperty("losses");
             var attestation = first.GetProperty("retirementAttestation");
             Assert.True(attestation.GetProperty("complete").GetBoolean());
             Assert.Equal(150, attestation.GetProperty("rowCount").GetInt64());
             Assert.Equal(150, attestation.GetProperty("lostCopies").GetInt64());
-            var pages = attestation.GetProperty("pageCount").GetInt64();
-            Assert.True(pages > 1, "150 signature rows must not all travel inline.");
-            Assert.Equal(1, attestation.GetProperty("page").GetInt64());
+            Assert.NotEqual(JsonValueKind.Null, attestation.GetProperty("nextCursor").ValueKind);
             var seen = new List<string>();
-            for (var page = 1; page <= pages; page++)
+            var read = firstRead;
+            var reads = 1;
+            while (true)
             {
-                var read = page == 1 ? firstRead : RunTrialJson(seed.Project, seed.Proposal, "--page", page.ToString());
-                var rows = read.GetProperty("report").GetProperty("losses").GetProperty("newlyLostReadings").EnumerateArray().ToArray();
-                Assert.Equal(page, read.GetProperty("report").GetProperty("losses").GetProperty("retirementAttestation")
-                    .GetProperty("page").GetInt64());
-                Assert.InRange(rows.Sum(row => row.GetRawText().Length), 1, 20_000);
+                var losses = read.GetProperty("report").GetProperty("losses");
+                var rows = losses.GetProperty("newlyLostReadings").EnumerateArray().ToArray();
+                Assert.InRange(rows.Sum(row => row.GetRawText().Length), 1, 16 * 1024);
+                if (limit is not null) Assert.True(rows.Length < 200 && rows.Length > 1, "The byte bound ends the page before the limit.");
                 seen.AddRange(rows.Select(row => row.GetProperty("word").GetString()!));
+                var cursor = losses.GetProperty("retirementAttestation");
+                if (!cursor.TryGetProperty("nextCursor", out var next) || next.ValueKind == JsonValueKind.Null) break;
+                read = RunTrialJson(seed.Project, seed.Proposal, ["--cursor", next.GetString()!, .. limitArgs]);
+                reads++;
             }
+            Assert.True(reads > 1, "150 signature rows must not all travel inline.");
             Assert.Equal(words, seen);
             using var output = new StringWriter();
             using var error = new StringWriter();
-            var beyond = SIL.Motif.Cli.Program.Run(["proposal", "trial", "--project", seed.Project, seed.Proposal, "--page",
-                (pages + 1).ToString(), "--json"], output, error,
+            var beyond = SIL.Motif.Cli.Program.Run(["proposal", "trial", "--project", seed.Project, seed.Proposal, "--cursor",
+                "not-a-cursor", "--json"], output, error,
                 new Dictionary<string, string?>(StringComparer.Ordinal), static (_, _) => { });
             Assert.NotEqual(0, beyond);
-            Assert.Contains("difference.invalid-page", output.ToString() + error);
-            var saved = Assert.IsType<AvailableTrialResult>(
-                TrialReviewReads.ReadStored(seed.Project, new ReviewReadRequest("project", seed.Proposal)).Value);
-            Assert.Contains("page 1 of " + pages, SIL.Motif.Cli.Rendering.TrialReviewTextRenderer.Render(saved));
+            Assert.Contains("nextCursor a previous page returned", output.ToString() + error);
         }
         finally { Directory.Delete(seed.Root, recursive: true); }
     }

@@ -3,11 +3,11 @@
   "title": "Proposal comparison: each Trial's own before and after, with the approved analyses each Proposal keeps and loses",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schemaVersion", "basis", "snapshot", "columns", "formsCompared", "formsDiverging", "rowsTotal", "pages", "complete", "limitations", "approvedSkippedOtherAgents", "approvedTotal", "approvedUncounted"],
+  "required": ["schemaVersion", "basis", "snapshot", "columns", "formsCompared", "formsDiverging", "rowsTotal", "complete", "limitations", "approvedSkippedOtherAgents", "approvedTotal", "approvedUncounted"],
   "properties": {
     "schemaVersion": {"const": 1},
     "basis": {"const": "trial-before-after"},
-    "snapshot": {"type": "string", "pattern": "^[0-9a-f]{12}$", "description": "Digest of the exact Trial job IDs and the approved-analyses snapshot read; pass it with --page so every page reads the same Trials and approvals."},
+    "snapshot": {"type": "string", "pattern": "^[0-9a-f]{12}$", "description": "Digest of the exact Trial job IDs and the approved-analyses snapshot read; pass it with --cursor so every page reads the same Trials and approvals."},
     "columns": {
       "type": "array",
       "minItems": 2,
@@ -31,7 +31,6 @@
     "formsCompared": {"type": "integer", "minimum": 0},
     "formsDiverging": {"type": "integer", "minimum": 0},
     "rowsTotal": {"type": "integer", "minimum": 0},
-    "pages": {"type": "integer", "minimum": 0},
     "complete": {"type": "boolean"},
     "approvedSkippedOtherAgents": {"type": "integer", "minimum": 0, "description": "Analyses approved only by a human agent other than the default user agent; they are not counted as approved."},
     "approvedTotal": {"type": "integer", "minimum": 0, "description": "Every analysis the default user agent approves in the Baseline (FieldWorks IWfiWordform.HumanApprovedAnalyses)."},
@@ -52,11 +51,10 @@
     "page": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["number", "nextPage", "rows"],
+      "required": ["nextCursor", "rows"],
       "properties": {
-        "number": {"type": "integer", "minimum": 1},
-        "nextPage": {"anyOf": [{"type": "integer", "minimum": 1}, {"type": "null"}]},
-        "rows": {"type": "array", "maxItems": 100, "items": {"$ref": "#/$defs/Row"}}
+        "nextCursor": {"anyOf": [{"type": "string", "minLength": 1}, {"type": "null"}]},
+        "rows": {"type": "array", "maxItems": 200, "items": {"$ref": "#/$defs/Row"}}
       }
     }
   },

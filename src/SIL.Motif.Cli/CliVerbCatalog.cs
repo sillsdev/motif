@@ -143,8 +143,8 @@ public static class CliVerbCatalog
         new CliVerbDescriptor("Commands", "import", "import",
             new[]
             {
-                "import --project <fwdata> --file <path> [--draft <name> [--strict]] [--page <n>] [--json]",
-                "import --project <fwdata> --dir <folder> [--draft <name> [--strict]] [--page <n> [--refused-only]] " +
+                "import --project <fwdata> --file <path> [--draft <name> [--strict]] [--cursor <c>] [--limit <n>] [--json]",
+                "import --project <fwdata> --dir <folder> [--draft <name> [--strict]] [--rows [--cursor <c>] [--limit <n>] [--refused-only]] " +
                 "[--report <file.jsonl>] [--source <text>] [--revision <text>] [--licence <text>] [--json]",
             }),
         new CliVerbDescriptor("Commands", "record export", "record export",
@@ -502,15 +502,15 @@ public static class CliVerbCatalog
             "Project", "overview", "overview",
             new[] { "overview --project <fwdata> [--proposal <id>] [--json]" }),
         new CliVerbDescriptor("Commands", "group", "group",
-            new[] { "group <suffix|prefix> --project <fwdata> (--ending <text> | --start <text> | --pattern <regex>) [--parse-state parsed|unparsed|approved|all] [--limit <1-200>] [--page <N>] [--min-stem <N>] [--fold <set>] [--as-of baseline|<proposalId>] [--format table|json] [--json]" }),
+            new[] { "group <suffix|prefix> --project <fwdata> (--ending <text> | --start <text> | --pattern <regex>) [--parse-state parsed|unparsed|approved|all] [--limit <1-200>] [--cursor <c>] [--min-stem <N>] [--fold <set>] [--as-of baseline|<proposalId>] [--format table|json] [--json]" }),
         new CliVerbDescriptor("Commands", "proposal compare", "proposal compare",
-            new[] { "proposal compare <proposalId> <proposalId> [<proposalId>...] --project <fwdata> [--at <digest>] [--job <jobId>]... [--page <N> --snapshot <token>] [--json]" }),
+            new[] { "proposal compare <proposalId> <proposalId> [<proposalId>...] --project <fwdata> [--at <digest>] [--job <jobId>]... [--cursor <c> | --limit <n>] [--snapshot <token>] [--json]" }),
         new CliVerbDescriptor("Commands", "proposal trial delta", "proposal trial delta",
             new[] { "proposal trial delta --project <fwdata> (--job <jobId> | --proposal <id>) [--classes lost,gained,changed,doubled,stopped-negative] [--group-by entry|slot] [--write-manifests <dir> [--alias-created true|false] [--keep-case]] [--expect-retired <file>] [--expect-added <file>] [--max-doubled <n>] [--max-doubled-frac <0-1>] [--write-receipt <file>] [--limit <1-200>] [--cursor <cursor>] [--json]" }),
         new CliVerbDescriptor("Commands", "proposal trial export", "proposal trial export",
-            new[] { "proposal trial export <jobId> --project <fwdata> [--at <digest>] [--page <N>] [--json]" }),
+            new[] { "proposal trial export <jobId> --project <fwdata> [--at <digest>] [--cursor <c>] [--limit <n>] [--json]" }),
         new CliVerbDescriptor("Commands", "proposal trial", "proposal trial",
-            new[] { "proposal trial --project <fwdata> <proposalId> [--job <id>|--report <id>] [--detail summary|failures|full] [--section <id>] [--page <N>] [--json]",
+            new[] { "proposal trial --project <fwdata> <proposalId> [--job <id>|--report <id>] [--detail summary|failures|full] [--section <id>] [--cursor <c>] [--limit <n>] [--json]",
                 "proposal trial --project <fwdata> <proposalId> --latest [--json]" }),
         new CliVerbDescriptor(
             "Project", "warnings", "warnings",
@@ -777,7 +777,7 @@ public static class CliVerbCatalog
         new CliVerbDescriptor("Commands", "disposition", "disposition show",
             new[] { "disposition show <form> --project <fwdata> [--json]" }),
         new CliVerbDescriptor("Commands", "disposition", "disposition list",
-            new[] { "disposition list --project <fwdata> [--as <category>] [--limit <1-200>] [--page <N>] [--format table|json] [--json]" }),
+            new[] { "disposition list --project <fwdata> [--as <category>] [--limit <1-200>] [--cursor <c>] [--format table|json] [--json]" }),
         new CliVerbDescriptor("Commands", "request", "request create",
             new[]
             {

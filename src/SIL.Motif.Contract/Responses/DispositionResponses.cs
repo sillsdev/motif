@@ -47,14 +47,13 @@ public sealed record DispositionCategoryCount(string Category, int Types);
 /// <summary>A page of standing dispositions in word type key order.</summary>
 /// <param name="Items">The dispositions on this page.</param>
 /// <param name="Total">How many dispositions match, across every page.</param>
-/// <param name="Page">The one-based page number.</param>
-/// <param name="Pages">How many pages there are at this page size.</param>
 /// <param name="Limit">The page size used.</param>
 /// <param name="Category">The category asked for, or null for all.</param>
 /// <param name="ByCategory">How many types stand in each category across the whole store, ignoring the category filter.</param>
+/// <param name="NextCursor">The cursor for the next page, or null at the end.</param>
 public sealed record ListDispositionsResponse(
-    IReadOnlyList<WordTypeDisposition> Items, int Total, int Page, int Pages, int Limit, string? Category,
-    IReadOnlyList<DispositionCategoryCount> ByCategory);
+    IReadOnlyList<WordTypeDisposition> Items, int Total, int Limit, string? Category,
+    IReadOnlyList<DispositionCategoryCount> ByCategory, string? NextCursor = null);
 
 /// <summary>A row of a <c>wordform dispose --from-file</c> call that was refused, with where it was.</summary>
 /// <param name="Row">The one-based line number in the file, counting the header and blank lines.</param>

@@ -299,12 +299,12 @@ public sealed class RecordImportCommandTests(PristineProjectFixture pristine) : 
         Assert.Equal(RefusalCodes.RecordImportFileUnreadable, missing.Refusal!.Code);
         Assert.Equal(FailureReason.InvalidArgument, missing.Refusal.Reason);
 
-        var page = RecordImportCommand.Run(new(project, file, null, 0));
-        Assert.Equal(RefusalCodes.RecordImportInvalidPage, page.Refusal!.Code);
+        var page = RecordImportCommand.Run(new(project, file, null, "0"));
+        Assert.Equal(RefusalCodes.PagingInvalid, page.Refusal!.Code);
 
         foreach (var code in new[]
                  {
-                     RefusalCodes.RecordImportFileUnreadable, RefusalCodes.RecordImportInvalidPage,
+                     RefusalCodes.RecordImportFileUnreadable, RefusalCodes.PagingInvalid,
                      RefusalCodes.RecordImportNothingToStage, RefusalCodes.RecordImportChangeRefused,
                  })
             Assert.Contains(code, RefusalCatalog.Specs.Keys);
@@ -316,20 +316,26 @@ public sealed class RecordImportCommandTests(PristineProjectFixture pristine) : 
         var (project, file, _, _, _) = Fixture(7, EditGloss);
         var seen = new List<string>();
 
-        for (var page = 1; page <= 2; page++)
+        string? cursor = null;
+        var pages = 0;
+        do
         {
-            var outcome = RecordImportCommand.Run(new(project, file, null, page));
+            var outcome = RecordImportCommand.Run(new(project, file, null, cursor));
             Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
             Assert.Equal(7, outcome.Value!.OperationCount);
-            Assert.Equal(2, outcome.Value.PageCount);
             Assert.True(Encoding.UTF8.GetByteCount(ProjectionJson.Serialize(outcome.Value)) <= RecordImportPaging.SummaryBytes);
             seen.AddRange(outcome.Value.Operations.Select(operation => operation.OperationId));
+            cursor = outcome.Value.NextCursor;
+            pages++;
         }
+        while (cursor is not null);
+        Assert.Equal(2, pages);
         Assert.Equal(7, seen.Count);
         Assert.Equal(7, seen.Distinct().Count());
-        var past = RecordImportCommand.Run(new(project, file, null, 3));
-        Assert.Equal(RefusalCodes.RecordImportInvalidPage, past.Refusal!.Code);
-        Assert.Equal("2", past.Refusal.Facts["pageCount"]);
+        var past = RecordImportCommand.Run(new(project, file, null, ResultPaging.Cursor(12)));
+        Assert.True(past.Succeeded);
+        Assert.Empty(past.Value!.Operations);
+        Assert.Null(past.Value.NextCursor);
     }
 
     [Fact]

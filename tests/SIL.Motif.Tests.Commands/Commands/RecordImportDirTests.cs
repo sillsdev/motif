@@ -100,15 +100,15 @@ public sealed class RecordImportDirTests(PristineProjectFixture pristine) : IDis
         ((RecordAlternatives)sense["gloss"]!).Add("en", new RecordScalar("zzedited"));
     }
 
-    private RecordImportRequest Dry(Seed seed, string? draft = null, bool strict = false, int page = 1, bool? rows = null,
+    private RecordImportRequest Dry(Seed seed, string? draft = null, bool strict = false, string? cursor = null, bool? rows = null,
         bool? refusedOnly = null, string? report = null) =>
-        new(seed.Project, null, draft, page, strict, DirPathOf(seed), rows, refusedOnly, report);
+        new(seed.Project, null, draft, cursor, strict, DirPathOf(seed), rows, refusedOnly, report);
 
     private string DirPathOf(Seed seed) => Folder;
 
     private static Dictionary<string, RecordImportFileRow> AllRows(Seed seed, RecordImportRequest request)
     {
-        var outcome = RecordImportCommand.Run(request with { Rows = true, Page = 1 });
+        var outcome = RecordImportCommand.Run(request with { Rows = true, Cursor = null });
         Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
         return outcome.Value!.Files!.ToDictionary(row => row.Path);
     }
@@ -353,14 +353,15 @@ public sealed class RecordImportDirTests(PristineProjectFixture pristine) : IDis
     {
         var seed = MixedFolder();
 
-        var beyond = RecordImportCommand.Run(Dry(seed, page: 2, rows: true));
-        var refused = RecordImportCommand.Run(Dry(seed, page: 1, rows: true, refusedOnly: true));
+        var beyond = RecordImportCommand.Run(Dry(seed, cursor: ResultPaging.Cursor(200), rows: true));
+        var refused = RecordImportCommand.Run(Dry(seed, rows: true, refusedOnly: true));
         var summary = RecordImportCommand.Run(Dry(seed));
 
-        Assert.Equal(RefusalCodes.RecordImportInvalidPage, beyond.Refusal!.Code);
+        Assert.Empty(beyond.Value!.Files!);
+        Assert.Null(beyond.Value.NextCursor);
         Assert.Equal(3, refused.Value!.Files!.Count);
         Assert.All(refused.Value.Files, row => Assert.Equal("refused", row.Status));
-        Assert.Equal(1, summary.Value!.PageCount);
+        Assert.Null(summary.Value!.NextCursor);
         Assert.True(summary.Value.Dir!.FirstRefused.Count <= RecordImportPaging.SummaryRefusedRows);
     }
 

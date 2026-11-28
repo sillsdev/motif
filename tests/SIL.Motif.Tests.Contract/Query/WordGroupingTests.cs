@@ -15,7 +15,7 @@ public sealed class WordGroupingTests
         WordGrouping.Group(corpus, lexicon, spec, Fold, QueryFold.Default, "test", []);
 
     private static GroupSpec Suffix(string ending, string? state = null, int? limit = null, int? page = null) =>
-        new(WordGrouping.Suffix, ending, null, state, limit, page);
+        new(WordGrouping.Suffix, ending, null, state, limit, page is { } number ? ResultPaging.Cursor((number - 1) * Math.Min(limit ?? WordGrouping.DefaultLimit, WordGrouping.MaxLimit)) : null);
 
     [Fact]
     public void SuffixGroupsWordsByStemAndMarksKnownFittingAndNotFitting()
@@ -174,19 +174,19 @@ public sealed class WordGroupingTests
         var capped = Run(corpus, Suffix("an", null, 9999));
         Assert.Equal(WordGrouping.MaxLimit, capped.Limit);
         Assert.Equal(200, capped.Rows.Count);
-        Assert.Equal(3, capped.Pages);
+        Assert.NotNull(capped.NextCursor);
         Assert.True(capped.Capped);
         Assert.Contains(capped.Notes, note => note.Contains("reduced to the cap of 200", StringComparison.Ordinal));
-        Assert.Contains(capped.Notes, note => note.Contains("--page 2", StringComparison.Ordinal));
+        Assert.Contains(capped.Notes, note => note.Contains("--cursor " + capped.NextCursor, StringComparison.Ordinal));
         var second = Run(corpus, Suffix("an", null, 9999, 2));
         Assert.Equal("s200", second.Rows[0].Stem);
         var last = Run(corpus, Suffix("an", null, 9999, 3));
         Assert.Equal(50, last.Rows.Count);
-        Assert.DoesNotContain(last.Notes, note => note.Contains("--page", StringComparison.Ordinal));
+        Assert.Null(last.NextCursor);
+        Assert.DoesNotContain(last.Notes, note => note.Contains("--cursor", StringComparison.Ordinal));
         Assert.False(Run(corpus, Suffix("an", null, 200, 3)).Capped);
-        Assert.Throws<ArgumentException>(() => Run(corpus, Suffix("an", null, null, 99)));
+        Assert.Empty(Run(corpus, Suffix("an", null, null, 99)).Rows);
         Assert.Throws<ArgumentException>(() => Run(corpus, Suffix("an", null, 0)));
-        Assert.Throws<ArgumentException>(() => Run(corpus, Suffix("an", null, null, 0)));
     }
 
     [Fact]

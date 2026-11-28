@@ -18,7 +18,7 @@ public sealed class ReviewReportExpandedTests
             SIL.Motif.Tests.TestFixtures.ReadingSignatureFixture.NativeFacts(true));
         var losses = new TrialLosses([], [], [new TrialLostReading("w", "c", signature.Id, false, false, [])
             { Signature = signature, Count = 2, RemainingReadingCount = 1 }])
-        { RetirementAttestation = new TrialRetirementAttestation("sha256:r", true, ["w"], 1, 2, 1, []) { Page = 1, PageCount = 3 } };
+        { RetirementAttestation = new TrialRetirementAttestation("sha256:r", true, ["w"], 1, 2, 1, []) { NextCursor = "cDI" } };
         var json = JsonSerializer.Serialize(losses, ReviewJson.Options);
         AssertSchema(json, "TrialLosses");
         var back = JsonSerializer.Deserialize<TrialLosses>(json, ReviewJson.Options)!;
@@ -26,7 +26,7 @@ public sealed class ReviewReportExpandedTests
         Assert.Equal(2, back.NewlyLostReadings.Single().Count);
         Assert.True(back.RetirementAttestation!.Complete);
         Assert.Equal(1, back.RetirementAttestation.RowCount);
-        Assert.Equal(3, back.RetirementAttestation.PageCount);
+        Assert.Equal("cDI", back.RetirementAttestation.NextCursor);
         var extra = JsonNode.Parse(json)!.AsObject();
         extra["retirementAttestation"]!["extra"] = 1;
         Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<TrialLosses>(extra.ToJsonString(), ReviewJson.Options));
@@ -52,9 +52,6 @@ public sealed class ReviewReportExpandedTests
             new TrialRetirementAttestation("d", true, ["w"], -1, 0, 0, []), ReviewJson.Options));
         foreach (var attestation in new[]
         {
-            new TrialRetirementAttestation("d", true, ["w"], 0, 0, 0, []) { Page = 1 },
-            new TrialRetirementAttestation("d", true, ["w"], 0, 0, 0, []) { Page = 0, PageCount = 1 },
-            new TrialRetirementAttestation("d", true, ["w"], 0, 0, 0, []) { Page = 3, PageCount = 2 },
             new TrialRetirementAttestation("d", true, ["w"], 0, 0, -1, []),
         })
             Assert.Throws<JsonException>(() => JsonSerializer.Serialize(attestation, ReviewJson.Options));

@@ -108,13 +108,14 @@ public sealed class ImportFamiliesCliTests(PristineProjectFixture pristine) : ID
 
         var seen = new List<string>();
         var ids = new HashSet<string>();
+        string? cursor = null;
         for (var page = 1; page <= pages; page++)
         {
-            var json = Run("import", "--project", project, "--file", file, "--page", page.ToString(), "--json");
+            var cursorArguments = cursor is null ? Array.Empty<string>() : ["--cursor", cursor];
+            var json = Run(["import", "--project", project, "--file", file, .. cursorArguments, "--json"]);
             Assert.True(json.ExitCode == 0, json.Error + json.Output);
             var node = JsonNode.Parse(json.Output)!;
-            Assert.Equal(page, node["page"]!.GetValue<int>());
-            Assert.Equal(pages, node["pageCount"]!.GetValue<int>());
+            Assert.Equal(page < pages, node["nextCursor"] is not null);
             Assert.Equal(expected.Length, node["operationCount"]!.GetValue<int>());
             Assert.Equal(0, node["refusalCount"]!.GetValue<int>());
             foreach (var operation in node["operations"]!.AsArray())
@@ -125,27 +126,28 @@ public sealed class ImportFamiliesCliTests(PristineProjectFixture pristine) : ID
             Assert.Equal(page == pages ? expected.Length - (pages - 1) * RecordImportPaging.PageSize : RecordImportPaging.PageSize,
                 node["operations"]!.AsArray().Count);
 
-            var text = Run("import", "--project", project, "--file", file, "--page", page.ToString());
+            var text = Run(["import", "--project", project, "--file", file, .. cursorArguments]);
             Assert.True(text.ExitCode == 0, text.Error + text.Output);
-            Assert.Contains($"page {page} of {pages}", text.Output, StringComparison.Ordinal);
-            Assert.Equal(page < pages, text.Output.Contains($"More: --page {page + 1}", StringComparison.Ordinal));
+            var next = node["nextCursor"]?.GetValue<string>();
+            Assert.Equal(next is not null, text.Output.Contains($"More: --cursor {next}", StringComparison.Ordinal));
+            cursor = next;
         }
+        Assert.Null(cursor);
 
         Assert.Equal(expected, seen.Order(StringComparer.Ordinal).ToArray());
         Assert.Equal(before, Hash(project));
     }
 
     [Fact]
-    public void APagePastTheEndIsATypedRefusalWithANonZeroExit()
+    public void AMalformedCursorIsATypedRefusalWithANonZeroExit()
     {
         var (project, file) = Project(null, EditAllAdditive);
-        var pages = (AdditiveCount + RecordImportPaging.PageSize - 1) / RecordImportPaging.PageSize;
 
-        var result = Run("import", "--project", project, "--file", file, "--page", (pages + 1).ToString(), "--json");
+        var result = Run("import", "--project", project, "--file", file, "--cursor", "25", "--json");
 
         Assert.NotEqual(0, result.ExitCode);
         var envelope = ProjectionJson.Deserialize<FailureEnvelope>(result.Error)!;
-        Assert.Equal(RefusalCodes.RecordImportInvalidPage, envelope.Code);
+        Assert.Equal(RefusalCodes.PagingInvalid, envelope.Code);
         Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument), result.ExitCode);
     }
 

@@ -734,7 +734,7 @@ public static class CommandTextRenderer
         var text = new StringBuilder();
         text.Append($"Group {group.Kind}: {group.Query} (read {group.ReadAt}, parse state {group.ParseState}, min stem {group.MinStem}, fold {group.Fold})\n");
         text.Append($"{group.MatchingTypes:N0} of {group.CorpusTypes:N0} word types in {group.Groups:N0} stems: " +
-            $"{group.Known:N0} known, {group.Fitting:N0} fitting, {group.NotFitting:N0} not fitting. Page {group.Page} of {group.Pages}.\n");
+            $"{group.Known:N0} known, {group.Fitting:N0} fitting, {group.NotFitting:N0} not fitting. Showing {group.Rows.Count:N0} stems.\n");
         foreach (var row in group.Rows)
         {
             text.Append($"{row.Stem}  [{row.Status}]  {row.Tokens:N0} tokens  " +
@@ -753,8 +753,8 @@ public static class CommandTextRenderer
     {
         var text = new StringBuilder();
         text.Append("Comparison of each Proposal's Trial before and after, and of the approved analyses each Proposal keeps and loses.\n");
-        text.Append($"Snapshot {comparison.Snapshot} (pass it with --page)\n" +
-            $"Forms compared: {comparison.FormsCompared:N0}  Diverging: {comparison.FormsDiverging:N0}  Rows: {comparison.RowsTotal:N0} ({comparison.Pages:N0} pages)\n");
+        text.Append($"Snapshot {comparison.Snapshot} (pass it with --cursor)\n" +
+            $"Forms compared: {comparison.FormsCompared:N0}  Diverging: {comparison.FormsDiverging:N0}  Rows: {comparison.RowsTotal:N0}\n");
         for (var index = 0; index < comparison.Columns.Count; index++)
         {
             var column = comparison.Columns[index];
@@ -768,7 +768,10 @@ public static class CommandTextRenderer
         text.Append(comparison.Complete ? "Comparison complete" :
             "Comparison incomplete: " + string.Join(", ", comparison.Limitations.Select(RenderLimitation)));
         if (comparison.Page is { } page)
+        {
             foreach (var row in page.Rows) text.Append('\n').Append(ProjectionJson.Serialize(row));
+            if (page.NextCursor is { } next) text.Append("\nMore: --cursor ").Append(next);
+        }
         return text.ToString();
     }
 
@@ -1680,7 +1683,7 @@ public static class CommandTextRenderer
             ? $"Staged {r.OperationCount:N0} operation(s) from {d.Files:N0} file(s) in Draft {r.DraftName} ({r.ProposalId}). Nothing was applied."
             : $"Dry run of {d.Files:N0} file(s): {r.OperationCount:N0} operation(s) would be staged. Nothing was written.");
         text.AppendLine($"  created: {d.Created:N0}; updated: {d.Updated:N0}; unchanged: {d.Unchanged:N0}; refused: {d.Refused:N0}; refused changes: {r.RefusalCount - d.Refused:N0}; ignored: {d.Ignored:N0}");
-        text.AppendLine($"  manifest: {d.Manifest}; row pages: {r.PageCount}");
+        text.AppendLine($"  manifest: {d.Manifest}");
         if (d.Source is not null || d.Revision is not null || d.Licence is not null)
             text.AppendLine($"  source: {d.Source}; revision: {d.Revision}; licence: {d.Licence}");
         if (d.Review is { } review)
@@ -1695,7 +1698,8 @@ public static class CommandTextRenderer
             text.AppendLine($"  refused {row.Path}  {row.Code}: {row.Reason}");
         if (r.Files is { } rows)
             foreach (var row in rows) text.AppendLine(ProjectionJson.SerializeLine(row));
-        else if (r.PageCount > 0) text.AppendLine("  Rows: --page <n> lists the file rows, one JSON line each.");
+        else text.AppendLine("  Rows: --rows lists the file rows, one JSON line each.");
+        if (r.NextCursor is { } nextRows) text.AppendLine($"  More: --cursor {nextRows}");
         return text.ToString();
     }
 
@@ -1706,7 +1710,7 @@ public static class CommandTextRenderer
         text.AppendLine(r.Mode == "draft"
             ? $"Staged {r.OperationCount:N0} operation(s) from the {r.RecordKind} file in Draft {r.DraftName} ({r.ProposalId}); {r.RefusalCount:N0} change(s) refused and not staged. Nothing was applied."
             : $"Dry run of the {r.RecordKind} file: {r.ChangeCount:N0} change(s) lower to {r.OperationCount:N0} operation(s). Nothing was written.");
-        text.AppendLine($"  record: {r.RecordId}; base: {r.BaseVerdict}; refused: {r.RefusalCount:N0}; page {r.Page} of {r.PageCount}");
+        text.AppendLine($"  record: {r.RecordId}; base: {r.BaseVerdict}; refused: {r.RefusalCount:N0}");
         foreach (var change in r.Changes ?? [])
             text.AppendLine($"  change {(change.Status == "refused" ? "REFUSED " + change.RefusalCode + " " : "")}{change.Kind}  {change.Class}.{change.Field}{(change.WritingSystem is null ? "" : "[" + change.WritingSystem + "]")}: " +
                 $"{change.Old ?? "(none)"} -> {change.New ?? "(cleared)"}");
@@ -1714,8 +1718,8 @@ public static class CommandTextRenderer
             text.AppendLine($"  op {operation.OperationId}  {operation.Kind}  {operation.Target}");
         foreach (var refusal in r.Refusals)
             text.AppendLine($"  refused {refusal.Code}  {refusal.Class}.{refusal.Field}: {refusal.Reason}");
-        if (r.Page < r.PageCount)
-            text.AppendLine($"  More: --page {r.Page + 1}");
+        if (r.NextCursor is { } next)
+            text.AppendLine($"  More: --cursor {next}");
         return text.ToString();
     }
 

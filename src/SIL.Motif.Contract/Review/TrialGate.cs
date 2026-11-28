@@ -123,13 +123,9 @@ public sealed record TrialRetirementAttestation(
     [property: JsonRequired] long RowCount,
     [property: JsonRequired] IReadOnlyList<string> Limitations) : IJsonOnDeserialized, IJsonOnSerializing
 {
-    /// <summary>The one-based page of signature rows a read returned. Absent on the stored report; set by a read.</summary>
+    /// <summary>The cursor for the next page of signature rows. Absent on the stored report and on the last page; set by a read.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public long? Page { get; init; }
-
-    /// <summary>The number of pages the signature rows fill at the read's byte bound. Set with <see cref="Page"/>.</summary>
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public long? PageCount { get; init; }
+    public string? NextCursor { get; init; }
 
     void IJsonOnDeserialized.OnDeserialized() => Validate();
     void IJsonOnSerializing.OnSerializing() => Validate();
@@ -139,8 +135,7 @@ public sealed record TrialRetirementAttestation(
         if (ReportDigest is null || WaivedWords is null || WaivedWords.Any(item => item is null) ||
             Limitations is null || Limitations.Any(item => item is null) ||
             CaseCount is < 0 or > 9007199254740991L || LostCopies is < 0 or > 9007199254740991L ||
-            RowCount is < 0 or > 9007199254740991L || (Page is null) != (PageCount is null) ||
-            Page is < 1 or > 9007199254740991L || PageCount is < 1 or > 9007199254740991L || Page > PageCount ||
+            RowCount is < 0 or > 9007199254740991L ||
             Complete && Limitations.Count > 0)
             throw new JsonException("Invalid TrialRetirementAttestation.");
     }

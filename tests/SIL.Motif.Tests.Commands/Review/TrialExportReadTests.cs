@@ -104,11 +104,11 @@ public sealed class TrialExportReadTests
             TrialExportArtifact.Publish(database, id, Counts(words), Provenance(), [], all);
 
             var expected = new List<string>();
-            for (var page = 1; ; page++)
+            for (var offset = 0; ; offset += TrialExportPage.Size)
             {
-                var read = TrialExportArtifact.Read(database, id, page: page)!.Page!;
+                var read = TrialExportArtifact.Read(database, id, offset: offset)!.Page!;
                 expected.AddRange(read.Words.Select(word => word.GetRawText()));
-                if (read.NextPage is null) break;
+                if (read.NextCursor is null) break;
             }
             var seen = new List<string>();
             TrialExportArtifact.ForEachWord(database, id, word => seen.Add(word.GetRawText()));

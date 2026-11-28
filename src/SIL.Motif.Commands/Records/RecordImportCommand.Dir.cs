@@ -99,9 +99,7 @@ public static partial class RecordImportCommand
 
     private static CommandOutcome<RecordImportResponse> RunDir(RecordImportRequest request)
     {
-        if (request.Page < 1)
-            return Refused(RefusalCodes.RecordImportInvalidPage, FailureReason.InvalidArgument,
-                "The page must be a whole number from 1.", ("page", request.Page.ToString()));
+        if (PagingRefusal(request, RecordImportPaging.RowsPerPage) is { } paging) return CommandOutcome<RecordImportResponse>.Refused(paging);
         if (request.Strict && request.DraftName is null)
             return Refused(RefusalCodes.RecordImportStrictNeedsDraft, FailureReason.InvalidArgument,
                 "Strict applies to staging, so it needs a Draft name.");
@@ -170,12 +168,6 @@ public static partial class RecordImportCommand
         if (!read.Succeeded) return CommandOutcome<RecordImportResponse>.Refused(read.Refusal!);
         var found = read.Value!;
         var ignored = listed.Value.Ignored;
-
-        var pages = RowPageCount(found, request.RefusedOnly == true);
-        if (request.Rows == true && request.Page > pages)
-            return Refused(RefusalCodes.RecordImportInvalidPage, FailureReason.InvalidArgument,
-                $"The folder has {pages} page(s) of rows; page {request.Page} does not exist.",
-                ("page", request.Page.ToString()), ("pageCount", pages.ToString()));
 
         CommandOutcome<RecordImportResponse> outcome;
         if (request.DraftName is null)
@@ -712,12 +704,6 @@ public static partial class RecordImportCommand
 
     // ------------------------------------------------------------------ the response
 
-    private static int RowPageCount(BatchPlan plan, bool refusedOnly)
-    {
-        var rows = refusedOnly ? plan.Count(RefusedStatus) : plan.Files.Count;
-        return Math.Max(1, (rows + RecordImportPaging.RowsPerPage - 1) / RecordImportPaging.RowsPerPage);
-    }
-
     private static RecordImportFileRow Row(DirFile file, int length) => new(Clip(file.Input.Path, Math.Max(length, 40))!, file.Kind,
         file.Record is { } record ? CanonicalId.FromGuid(record).Value : null, file.Status, file.Verdict,
         file.Changes, file.Operations, file.RefusedChanges, file.Code, Clip(file.Reason, length));
@@ -726,23 +712,26 @@ public static partial class RecordImportCommand
         string? draftName, string? proposalId)
     {
         var refusedOnly = request.RefusedOnly == true;
-        var pages = RowPageCount(plan, refusedOnly);
-        var page = request.Rows == true ? request.Page : 1;
+        var listRows = request.Rows == true || request.Cursor is not null;
+        var start = request.CursorOffset();
+        var size = request.Limit ?? RecordImportPaging.RowsPerPage;
+        var rowCount = refusedOnly ? plan.Count(RefusedStatus) : plan.Files.Count;
+        var nextCursor = listRows ? ResultPaging.NextCursor(start, Math.Min(size, Math.Max(0, rowCount - start)), rowCount) : null;
         var counted = plan.Staged.Sum(file => file.Operations);
         var refusals = plan.Count(RefusedStatus) + plan.RefusedChanges;
         var firstRefused = plan.Files.Where(file => file.Status == RefusedStatus).Take(RecordImportPaging.SummaryRefusedRows).ToList();
         var manifest = Manifest(plan);
         RecordImportResponse Build(IReadOnlyList<RecordImportFileRow> shown, int length, IReadOnlyList<RecordImportFileRow>? rows,
             RecordImportReview? review) =>
-            new(mode, null, null, "not-checked", plan.Staged.Sum(file => file.Changes), counted, refusals, page, pages, [], [],
+            new(mode, null, null, "not-checked", plan.Staged.Sum(file => file.Changes), counted, refusals, [], [],
                 draftName, proposalId, null,
                 new RecordImportDirSummary(plan.Files.Count, plan.Count(CreatedStatus), plan.Count(UpdatedStatus),
                     plan.Count(UnchangedStatus), plan.Count(RefusedStatus), ignored, manifest, shown, request.Source, request.Revision,
-                    request.Licence, review), rows);
-        if (request.Rows == true)
+                    request.Licence, review), rows, null, nextCursor);
+        if (listRows)
         {
             var source = refusedOnly ? plan.Files.Where(file => file.Status == RefusedStatus) : plan.Files;
-            var rows = source.Skip((page - 1) * RecordImportPaging.RowsPerPage).Take(RecordImportPaging.RowsPerPage)
+            var rows = source.Skip(start).Take(size)
                 .Select(file => Row(file, 300)).ToList();
             return Build([], 0, rows, plan.Review);
         }

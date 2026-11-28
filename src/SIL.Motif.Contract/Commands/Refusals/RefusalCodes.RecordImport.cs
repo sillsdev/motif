@@ -44,8 +44,6 @@ public static partial class RefusalCodes
     public const string RecordImportCreateComputedField = "record-import.create-computed-field";
     /// <summary>A new notebook record's file sets a field only Motif's judgment commands write.</summary>
     public const string RecordImportCreateReservedField = "record-import.create-reserved-field";
-    /// <summary>The page asked for is not a page number from 1.</summary>
-    public const string RecordImportInvalidPage = "record-import.invalid-page";
     /// <summary>Both a file and a folder were given, or neither.</summary>
     public const string RecordImportFileOrDir = "record-import.file-or-dir";
     /// <summary>The folder has no <c>*.fw.md</c> file.</summary>

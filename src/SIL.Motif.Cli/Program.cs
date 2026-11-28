@@ -445,22 +445,26 @@ try
         case "import":
             if (positionals.Count != 0 || !flags.TryGetValue("project", out var importProject) ||
                 flags.ContainsKey("file") == flags.ContainsKey("dir") ||
-                flags.Keys.Any(key => key is not ("project" or "file" or "dir" or "draft" or "page" or "strict" or "json"
+                flags.Keys.Any(key => key is not ("project" or "file" or "dir" or "draft" or "cursor" or "limit" or "rows" or "strict" or "json"
                     or "refused-only" or "report" or "source" or "revision" or "licence")) ||
-                flags.ContainsKey("dir") == false && flags.Keys.Any(key => key is "refused-only" or "report" or "source" or "revision" or "licence") ||
-                flags.ContainsKey("refused-only") && !flags.ContainsKey("page") ||
+                flags.ContainsKey("dir") == false && flags.Keys.Any(key => key is "rows" or "refused-only" or "report" or "source" or "revision" or "licence") ||
+                flags.ContainsKey("refused-only") && !flags.ContainsKey("rows") && !flags.ContainsKey("cursor") ||
+                flags.ContainsKey("dir") && flags.ContainsKey("limit") && !flags.ContainsKey("rows") && !flags.ContainsKey("cursor") ||
                 flags.TryGetValue("draft", out var importDraft) && importDraft == "true" ||
                 flags.ContainsKey("strict") && !flags.ContainsKey("draft"))
                 return Usage(UsageLineFor("import"), asJson);
-            var importPage = 1;
-            if (flags.TryGetValue("page", out var importPageText) &&
-                (!int.TryParse(importPageText, NumberStyles.None, CultureInfo.InvariantCulture, out importPage) || importPage < 1))
-                return Usage(UsageLineFor("import"), asJson);
+            var (importWindow, importPagingRefusal) = PagingFlags.Read(flags, flags.ContainsKey("dir") ? RecordImportPaging.RowsPerPage : RecordImportPaging.PageSize);
+            if (importPagingRefusal is not null)
+            {
+                result = RenderCommand(CommandOutcome<RecordImportResponse>.Refused(importPagingRefusal));
+                break;
+            }
             result = RenderCommand(WriteImportReport(RecordImportCommand.Run(new RecordImportRequest(
-                importProject, flags.GetValueOrDefault("file"), flags.GetValueOrDefault("draft"), importPage,
-                flags.ContainsKey("strict"), flags.GetValueOrDefault("dir"), flags.ContainsKey("page") ? true : null,
+                importProject, flags.GetValueOrDefault("file"), flags.GetValueOrDefault("draft"), flags.GetValueOrDefault("cursor"),
+                flags.ContainsKey("strict"), flags.GetValueOrDefault("dir"), flags.ContainsKey("rows") || flags.ContainsKey("cursor") ? true : null,
                 flags.ContainsKey("refused-only") ? true : null, flags.GetValueOrDefault("report"),
-                flags.GetValueOrDefault("source"), flags.GetValueOrDefault("revision"), flags.GetValueOrDefault("licence"))),
+                flags.GetValueOrDefault("source"), flags.GetValueOrDefault("revision"), flags.GetValueOrDefault("licence"),
+                flags.ContainsKey("limit") ? importWindow.Limit : null)),
                 flags.GetValueOrDefault("report")));
             break;
 
@@ -1897,7 +1901,7 @@ try
             if (positionals.Count != 1 || positionals[0] is not ("suffix" or "prefix") ||
                 !flags.TryGetValue("project", out var groupProject) ||
                 flags.Keys.Any(flag => flag is not ("project" or "json" or "format" or "ending" or "start" or "pattern" or
-                    "parse-state" or "limit" or "page" or "fold" or "as-of" or "min-stem" or "autonomous")))
+                    "parse-state" or "limit" or "cursor" or "fold" or "as-of" or "min-stem" or "autonomous")))
                 return Usage(UsageLineFor("group"), asJson);
             if (flags.TryGetValue("format", out var groupFormat))
             {
@@ -1905,18 +1909,18 @@ try
                 if (groupFormat == "json") asJson = true;
             }
             int? groupLimit = null;
-            int? groupPage = null;
+            string? groupCursor = null;
             if (flags.TryGetValue("limit", out var groupLimitText))
             {
                 if (!int.TryParse(groupLimitText, NumberStyles.None, CultureInfo.InvariantCulture, out var limitNumber) || limitNumber < 1)
                     return Usage("--limit must be a positive integer.", asJson);
                 groupLimit = limitNumber;
             }
-            if (flags.TryGetValue("page", out var groupPageText))
+            if (flags.TryGetValue("cursor", out var groupCursorText))
             {
-                if (!int.TryParse(groupPageText, NumberStyles.None, CultureInfo.InvariantCulture, out var pageNumber) || pageNumber < 1)
-                    return Usage("--page must be a positive integer.", asJson);
-                groupPage = pageNumber;
+                if (groupCursorText == "true" || !ResultPaging.TryOffset(groupCursorText, out _))
+                    return Usage("--cursor must be the nextCursor a previous page returned.", asJson);
+                groupCursor = groupCursorText;
             }
             int? groupMinStem = null;
             if (flags.TryGetValue("min-stem", out var groupMinStemText))
@@ -1927,7 +1931,7 @@ try
             }
             result = RenderCommand(GroupQueryCommand.Run(new GroupRequest(groupProject, positionals[0],
                 flags.GetValueOrDefault("ending"), flags.GetValueOrDefault("start"), flags.GetValueOrDefault("pattern"),
-                flags.GetValueOrDefault("parse-state"), groupLimit, groupPage, flags.GetValueOrDefault("as-of"),
+                flags.GetValueOrDefault("parse-state"), groupLimit, groupCursor, flags.GetValueOrDefault("as-of"),
                 flags.GetValueOrDefault("fold"), groupMinStem)));
             break;
         }
@@ -2096,21 +2100,21 @@ try
             if (positionals is ["compare", ..])
             {
                 if (positionals.Count < 3 || !flags.TryGetValue("project", out var compareReadProject) ||
-                    flags.Keys.Any(flag => flag is not ("project" or "json" or "autonomous" or "page" or "at" or "snapshot" or "job")))
+                    flags.Keys.Any(flag => flag is not ("project" or "json" or "autonomous" or "cursor" or "limit" or "at" or "snapshot" or "job")))
                     return Usage(UsageLineFor("proposal compare"), asJson);
-                if (flags.ContainsKey("snapshot") && !flags.ContainsKey("page"))
-                    return Usage("--snapshot checks the Trials a page was read from, so it needs --page. " +
+                if (flags.ContainsKey("snapshot") && !flags.ContainsKey("cursor") && !flags.ContainsKey("limit"))
+                    return Usage("--snapshot checks the Trials a page was read from, so it needs --cursor or --limit. " +
                         UsageLineFor("proposal compare"), asJson);
-                int? proposalComparePage = null;
-                if (flags.TryGetValue("page", out var proposalCompareText))
+                var (compareWindow, comparePagingRefusal) = PagingFlags.Read(flags, CompareRowPage.Size);
+                if (comparePagingRefusal is not null)
                 {
-                    if (!int.TryParse(proposalCompareText, NumberStyles.None, CultureInfo.InvariantCulture, out var number) || number < 1)
-                        return Usage("--page must be a positive integer.", asJson);
-                    proposalComparePage = number;
+                    result = RenderCommand(CommandOutcome<ProposalComparison>.Refused(comparePagingRefusal));
+                    break;
                 }
                 result = RenderCommand(ProposalCompareReads.Read(new CompareProposalsRequest(compareReadProject,
-                    positionals.Skip(1).ToArray(), flags.GetValueOrDefault("at"), proposalComparePage,
-                    flags.GetValueOrDefault("snapshot"), ReadRepeatedFlagValues(flags, "job"))));
+                    positionals.Skip(1).ToArray(), flags.GetValueOrDefault("at"), flags.GetValueOrDefault("cursor"),
+                    flags.GetValueOrDefault("snapshot"), ReadRepeatedFlagValues(flags, "job"),
+                    flags.ContainsKey("limit") ? compareWindow.Limit : null)));
                 break;
             }
             if (positionals is ["trial", "delta"])
@@ -2132,17 +2136,17 @@ try
             if (positionals is ["trial", "export", ..])
             {
                 if (positionals.Count != 3 || !flags.TryGetValue("project", out var exportProject) ||
-                    flags.Keys.Any(flag => flag is not ("project" or "json" or "autonomous" or "page" or "at")))
+                    flags.Keys.Any(flag => flag is not ("project" or "json" or "autonomous" or "cursor" or "limit" or "at")))
                     return Usage(UsageLineFor("proposal trial export"), asJson);
-                int? page = null;
-                if (flags.TryGetValue("page", out var trialExportPage))
+                var (exportWindow, exportPagingRefusal) = PagingFlags.Read(flags, TrialExportPage.Size);
+                if (exportPagingRefusal is not null)
                 {
-                    if (!int.TryParse(trialExportPage, NumberStyles.None, CultureInfo.InvariantCulture, out var number) || number < 1)
-                        return Usage("--page must be a positive integer.", asJson);
-                    page = number;
+                    result = RenderCommand(CommandOutcome<TrialExportReceipt>.Refused(exportPagingRefusal));
+                    break;
                 }
                 result = RenderCommand(TrialExportReads.Read(new ReadTrialExportRequest(exportProject, positionals[2],
-                    flags.GetValueOrDefault("at"), page)));
+                    flags.GetValueOrDefault("at"), flags.GetValueOrDefault("cursor"),
+                    flags.ContainsKey("limit") ? exportWindow.Limit : null)));
                 break;
             }
             if (positionals.Count != 2 || positionals[0] != "trial" ||
@@ -2164,13 +2168,6 @@ try
             }
             Side? reviewSide = flags.GetValueOrDefault("side") switch
             { null => null, "before" => Side.Before, "after" => Side.After, _ => (Side)(-1) };
-            int? reviewPage = null;
-            if (flags.TryGetValue("page", out var reviewPageText))
-            {
-                if (!int.TryParse(reviewPageText, NumberStyles.None, CultureInfo.InvariantCulture, out var parsedPage) || parsedPage < 1)
-                    return Usage("--page must be a positive integer.", asJson);
-                reviewPage = parsedPage;
-            }
             int? reviewLimit = null;
             if (flags.TryGetValue("limit", out var reviewLimitText))
             {
@@ -2181,7 +2178,7 @@ try
             var reviewRequest = new ReviewReadRequest("project", positionals[1], flags.GetValueOrDefault("job"),
                 flags.GetValueOrDefault("report"), reviewDetail, flags.GetValueOrDefault("section"), flags.GetValueOrDefault("set"),
                 flags.GetValueOrDefault("outcome"), reviewFlag, flags.GetValueOrDefault("filter"), flags.GetValueOrDefault("word"),
-                flags.GetValueOrDefault("case"), flags.ContainsKey("trace"), reviewSide, flags.GetValueOrDefault("cursor"), reviewLimit, reviewPage,
+                flags.GetValueOrDefault("case"), flags.ContainsKey("trace"), reviewSide, flags.GetValueOrDefault("cursor"), reviewLimit,
                 Latest: flags.ContainsKey("latest"));
             if (reviewRequest.Validate() is { } reviewProblem) return Usage(reviewProblem, asJson);
             var refresh = flags.ContainsKey("refresh-report");
@@ -2976,8 +2973,8 @@ try
             var dispositionCommand = positionals.Count > 0 ? positionals[0] : "";
             if (dispositionCommand is not ("show" or "list") || !flags.TryGetValue("project", out var dispositionProject) ||
                 positionals.Count != (dispositionCommand == "show" ? 2 : 1) ||
-                flags.Keys.Any(flag => flag is not ("project" or "json" or "autonomous" or "as" or "limit" or "page" or "format")) ||
-                dispositionCommand == "show" && flags.Keys.Any(flag => flag is "as" or "limit" or "page" or "format"))
+                flags.Keys.Any(flag => flag is not ("project" or "json" or "autonomous" or "as" or "limit" or "cursor" or "format")) ||
+                dispositionCommand == "show" && flags.Keys.Any(flag => flag is "as" or "limit" or "cursor" or "format"))
                 return Usage("Usage: motif disposition (show <form> | list) --project <fwdata>", asJson);
             if (dispositionCommand == "show")
             {
@@ -2994,12 +2991,15 @@ try
             if (flags.TryGetValue("limit", out var dispositionLimitText) &&
                 !int.TryParse(dispositionLimitText, NumberStyles.None, CultureInfo.InvariantCulture, out dispositionLimit))
                 return Usage("--limit must be a positive integer.", asJson);
-            var dispositionPage = 1;
-            if (flags.TryGetValue("page", out var dispositionPageText) &&
-                !int.TryParse(dispositionPageText, NumberStyles.None, CultureInfo.InvariantCulture, out dispositionPage))
-                return Usage("--page must be a positive integer.", asJson);
+            string? dispositionCursor = null;
+            if (flags.TryGetValue("cursor", out var dispositionCursorText))
+            {
+                if (dispositionCursorText == "true" || !ResultPaging.TryOffset(dispositionCursorText, out _))
+                    return Usage("--cursor must be the nextCursor a previous page returned.", asJson);
+                dispositionCursor = dispositionCursorText;
+            }
             result = RenderCommand(WordTypeDispositionCommands.List(new ListDispositionsRequest(dispositionProject,
-                CliProductVersion(), flags.GetValueOrDefault("as"), dispositionLimit, dispositionPage)));
+                CliProductVersion(), flags.GetValueOrDefault("as"), dispositionLimit, dispositionCursor)));
             break;
         }
 

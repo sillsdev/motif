@@ -32,7 +32,6 @@ internal static class TrialReviewTools
         (nameof(ReviewReadRequest.Side), "side"),
         (nameof(ReviewReadRequest.Cursor), "cursor"),
         (nameof(ReviewReadRequest.Limit), "limit"),
-        (nameof(ReviewReadRequest.Page), "page"),
     ];
 
     internal static IEnumerable<KeyValuePair<string, string?>> ReadFieldNames =>
@@ -45,17 +44,13 @@ internal static class TrialReviewTools
         var limit = fields.Single(field => field.Name == "limit").Schema;
         limit["minimum"] = ReviewReadRequest.MinimumPageSize;
         limit["maximum"] = ReviewReadRequest.MaximumPageSize;
-        var page = fields.Single(field => field.Name == "page").Schema;
-        page["description"] = "Page of the retirement signature rows of a saved report, filled to a byte bound. Default 1; see losses.retirementAttestation.pageCount.";
-        page["minimum"] = 1;
-        page["maximum"] = 1000000;
         return fields;
     }
 
     internal static bool HasReadSelectors(ToolArgs args) =>
         args.Has("latest") || args.Has("section") || args.Has("set") || args.Has("outcome") ||
         args.Has("flag") || args.Has("filter") || args.Has("word") || args.Has("case") || args.Has("trace") ||
-        args.Has("side") || args.Has("cursor") || args.Has("limit") || args.Has("page") || args.Optional("detail") is not (null or "summary");
+        args.Has("side") || args.Has("cursor") || args.Has("limit") || args.Optional("detail") is not (null or "summary");
 
     internal static ToolOutcome Read(ServerContext context, string proposal, ToolArgs args)
     {
@@ -129,7 +124,7 @@ internal static class TrialReviewTools
             args.Optional("job"), args.Optional("report"), detail, args.Optional("section"), args.Optional("set"),
             Outcome: args.Optional("outcome"), Flag: flag, Filter: args.Optional("filter"), Word: args.Optional("word"),
             Case: args.Optional("case"), Trace: args.Flag("trace"), Side: side, Cursor: args.Optional("cursor"),
-            Limit: args.OptionalInt("limit"), Page: args.OptionalInt("page"), Latest: args.Flag("latest")));
+            Limit: args.OptionalInt("limit"), Latest: args.Flag("latest")));
     }
 
     internal static ToolOutcome ReadJob(ServerContext context, string proposal, string job)

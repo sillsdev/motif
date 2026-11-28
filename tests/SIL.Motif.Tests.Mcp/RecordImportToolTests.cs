@@ -28,12 +28,12 @@ public sealed class RecordImportToolTests(PristineProjectFixture pristine) : IDi
     }
 
     [Fact]
-    public void TheToolIsADraftToolThatTakesAFileAnOptionalDraftAndAPageAndNeverApplies()
+    public void TheToolIsADraftToolThatTakesAFileAnOptionalDraftAndACursorAndNeverApplies()
     {
         var tool = AgentTools.All.Single(item => item.Name == "motif_import_record");
         Assert.Equal(SIL.Motif.Commands.Catalog.AgentClass.Draft, tool.Class);
         Assert.False(tool.ReadOnly);
-        Assert.Equal(["dir", "draft", "file", "licence", "page", "project", "refused_only", "revision", "source", "strict"], tool.ArgumentNames.Order(StringComparer.Ordinal));
+        Assert.Equal(["cursor", "dir", "draft", "file", "licence", "limit", "project", "refused_only", "revision", "rows", "source", "strict"], tool.ArgumentNames.Order(StringComparer.Ordinal));
         Assert.False(tool.InputSchema["additionalProperties"]!.GetValue<bool>());
         Assert.NotNull(tool.OutputSchema);
         Assert.Contains(tool.Routes, route => route.Command == "import");
@@ -172,7 +172,7 @@ public sealed class RecordImportToolTests(PristineProjectFixture pristine) : IDi
         var ok = await Call(("dir", inside));
         Assert.False(ok.Error, ok.Text);
         Assert.Contains("\"updated\":1", ok.Text.Replace(" ", "").Replace("\n", "").Replace("\r", ""), StringComparison.Ordinal);
-        var rows = await Call(("dir", inside), ("page", 1));
+        var rows = await Call(("dir", inside), ("rows", true));
         Assert.False(rows.Error, rows.Text);
         Assert.Contains("entry.fw.md", rows.Text, StringComparison.Ordinal);
         var root = await Call(("dir", projectFolder));
@@ -189,7 +189,7 @@ public sealed class RecordImportToolTests(PristineProjectFixture pristine) : IDi
         var viaLink = await Call(("dir", Path.Combine(projectFolder, "records", "escape")));
         Assert.True(viaLink.Error);
         Assert.Contains(RefusalCodes.RecordImportFileUnreadable, viaLink.Text, StringComparison.Ordinal);
-        var walked = await Call(("dir", inside), ("page", 1));
+        var walked = await Call(("dir", inside), ("rows", true));
         Assert.DoesNotContain("other.fw.md", walked.Text, StringComparison.Ordinal);
         Assert.DoesNotContain("escaped.fw.md", walked.Text, StringComparison.Ordinal);
     }
@@ -322,12 +322,11 @@ public sealed class RecordImportToolTests(PristineProjectFixture pristine) : IDi
         File.Copy(file, inside, true);
 
         var called = await MotifMcpServer.CallAsync(Context(path, profile), tools, "motif_import_record",
-            Args(("project", path), ("file", inside), ("page", 2)), CancellationToken.None);
+            Args(("project", path), ("file", inside), ("cursor", SIL.Motif.Contract.Responses.ResultPaging.Cursor(4))), CancellationToken.None);
 
         Assert.False(called.IsError == true, called.StructuredContent?.ToString());
         var result = JsonNode.Parse(called.StructuredContent!.Value.GetRawText())!["result"]!.AsObject();
-        Assert.Equal(2, result["page"]!.GetValue<int>());
-        Assert.Equal(2, result["pageCount"]!.GetValue<int>());
+        Assert.Null(result["nextCursor"]);
         Assert.Equal(3, result["operations"]!.AsArray().Count);
         Assert.Equal(3, result["changes"]!.AsArray().Count);
     }

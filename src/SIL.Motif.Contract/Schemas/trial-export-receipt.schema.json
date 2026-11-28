@@ -1,7 +1,7 @@
 {
   "type": "object",
   "additionalProperties": false,
-  "required": ["schemaVersion", "jobId", "path", "bytes", "sha256", "reportId", "reportDigest", "denominators", "proposalRevision", "baselineBundle", "publishMilliseconds", "pages", "comparisonComplete", "pathIsStoreSuffix"],
+  "required": ["schemaVersion", "jobId", "path", "bytes", "sha256", "reportId", "reportDigest", "denominators", "proposalRevision", "baselineBundle", "publishMilliseconds", "comparisonComplete", "pathIsStoreSuffix"],
   "properties": {
     "schemaVersion": {"const": 1},
     "jobId": {"type": "string", "minLength": 1},
@@ -13,17 +13,15 @@
     "proposalRevision": {"type": "string", "minLength": 1},
     "baselineBundle": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
     "publishMilliseconds": {"type": "integer", "minimum": 0},
-    "pages": {"type": "integer", "minimum": 0},
     "comparisonComplete": {"type": "boolean"},
     "pathIsStoreSuffix": {"type": "boolean"},
     "page": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["number", "nextPage", "words"],
+      "required": ["nextCursor", "words"],
       "properties": {
-        "number": {"type": "integer", "minimum": 1},
-        "nextPage": {"anyOf": [{"type": "integer", "minimum": 1}, {"type": "null"}]},
-        "words": {"type": "array", "maxItems": 100, "items": {"$ref": "trial-export.schema.json#/$defs/Word"}}
+        "nextCursor": {"anyOf": [{"type": "string", "minLength": 1}, {"type": "null"}]},
+        "words": {"type": "array", "maxItems": 200, "items": {"$ref": "trial-export.schema.json#/$defs/Word"}}
       }
     },
     "denominators": {

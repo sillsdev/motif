@@ -91,11 +91,11 @@ internal static class DispositionRenderer
     {
         var text = new StringBuilder();
         text.AppendLine($"{response.Total:N0} word types" + (response.Category is null ? "" : $" as {response.Category}") +
-            $". Page {response.Page} of {response.Pages}.");
+            $". Showing {response.Items.Count:N0}.");
         text.AppendLine("By category: " + string.Join(", ", response.ByCategory.Select(count => $"{count.Category} {count.Types:N0}")));
         foreach (var item in response.Items)
             text.AppendLine($"  {item.Form}  {Describe(item)}");
-        if (response.Page < response.Pages) text.AppendLine($"Next page: --page {response.Page + 1}.");
+        if (response.NextCursor is { } next) text.AppendLine($"Next page: --cursor {next} --limit {response.Limit}.");
         return text.ToString();
     }
 

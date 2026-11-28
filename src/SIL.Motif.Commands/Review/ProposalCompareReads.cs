@@ -60,9 +60,12 @@ public static class ProposalCompareReads
     internal static CommandOutcome<ProposalComparison> Read(CompareProposalsRequest request, ApprovedLoader? loader)
     {
         ArgumentNullException.ThrowIfNull(request);
-        if (request.Page is < 1)
-            return Refuse(RefusalCodes.EvidenceInvalidPage, FailureReason.InvalidArgument,
-                "The comparison page must be a positive integer.");
+        if (request.CursorOffset() < 0)
+            return Refuse(RefusalCodes.PagingInvalid, FailureReason.InvalidArgument,
+                "The cursor must be the nextCursor a previous page returned.");
+        if (!ResultPaging.IsValid(0, request.Limit ?? CompareRowPage.Size))
+            return Refuse(RefusalCodes.PagingInvalid, FailureReason.InvalidArgument,
+                $"Use a limit from 1 to {ResultPaging.MaxLimit}.");
         var ids = new List<CanonicalId>();
         foreach (var text in request.ProposalIds ?? [])
         {
@@ -94,7 +97,7 @@ public static class ProposalCompareReads
         ApprovedLoader loadApproved)
     {
         var at = request.At;
-        var page = request.Page;
+        var paged = request.Cursor is not null || request.Limit is not null;
         var requestedSnapshot = request.Snapshot;
         var pins = PinJobs(database, project, ids, request.Jobs, out var pinRefusal);
         if (pinRefusal is not null) return CommandOutcome<ProposalComparison>.Refused(pinRefusal);
@@ -154,19 +157,15 @@ public static class ProposalCompareReads
         if (freshness.Stale > 0) limitations.Add(new(CompareLimitation.TrialStale, freshness.Stale));
         if (freshness.Superseded > 0) limitations.Add(new(CompareLimitation.TrialSuperseded, freshness.Superseded));
         var rows = join.Rows;
-        var pages = (rows.Count + CompareRowPage.Size - 1) / CompareRowPage.Size;
         var summary = new ProposalComparison(1, ProposalComparison.TrialBeforeAfter, snapshot, join.Columns, join.FormsCompared,
-            join.Diverging, rows.Count, pages, limitations.Count == 0, limitations, approved.Set.SkippedOtherHumanAgentApprovals,
+            join.Diverging, rows.Count, limitations.Count == 0, limitations, approved.Set.SkippedOtherHumanAgentApprovals,
             approved.Set.Analyses.Length, join.Uncounted);
-        if (page > Math.Max(pages, 1))
-            return Refuse(RefusalCodes.EvidenceInvalidPage, FailureReason.InvalidArgument,
-                $"The comparison has {Math.Max(pages, 1)} page(s); page {page} does not exist.");
-        if (page is { } number)
-            summary = summary with
-            {
-                Page = new CompareRowPage(number, number < pages ? number + 1 : null,
-                    rows.Skip((number - 1) * CompareRowPage.Size).Take(CompareRowPage.Size).ToArray()),
-            };
+        if (paged)
+        {
+            var start = request.CursorOffset();
+            var shown = rows.Skip(start).Take(request.Limit ?? CompareRowPage.Size).ToArray();
+            summary = summary with { Page = new CompareRowPage(ResultPaging.NextCursor(start, shown.Length, rows.Count), shown) };
+        }
         return CommandOutcome<ProposalComparison>.Success(summary);
     }
 
