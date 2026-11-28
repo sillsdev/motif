@@ -130,6 +130,27 @@ public sealed class GdrStandardStylesTests(PristineProjectFixture pristine)
         Assert.Equal(["Bulleted List", "Heading 3", "Normal"], StyleNames(path).Order(StringComparer.Ordinal));
     }
 
+    // A pipe table creates Table Header and Table Row, and the edit names them in stylesCreated.
+    [Fact]
+    public void EditWithAPipeTableOnAProjectWithNoTableStylesNamesTheTableStylesInStylesCreated()
+    {
+        var path = Project(styles: true);
+        Assert.True(GdrAddCommands.Add(new GdrAddRequest(path, "Verbs", WritingSystem: "en")).Succeeded);
+        Applied(path);
+        using (var cache = new FwDataProjectLoader().LoadScratchCache(path))
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () => cache.LangProject.StylesOC.Clear());
+            new FwDataProjectLoader().Save(cache);
+        }
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), RootFor(path)).Succeeded);
+
+        var edited = GdrEditCommands.Edit(new GdrEditRequest(path, "GDR-1", Markdown: "### How it works\n\n| a | b |\n| --- | --- |\n| 1 | 2 |"));
+
+        Assert.True(edited.Succeeded, edited.Refusal?.Code + ": " + edited.Refusal?.Message);
+        Assert.Contains("Table Header", edited.Value!.StylesCreated);
+        Assert.Contains("Table Row", edited.Value.StylesCreated);
+    }
+
     // A code span is the "Code" character style, staged with the body and shown again as a backtick span.
     private const string CodeBody = "### How it works\n\nSee `AaIUe36vzwMPYN1owvSyWg`, run `motif guide add`, match `^(a_b|c*d)[kK]\\d+$`, and keep a \\` tick.";
 
