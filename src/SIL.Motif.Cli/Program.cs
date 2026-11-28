@@ -3210,6 +3210,22 @@ try
                 WordTraceQuery.Query(new WordTraceRequest(traceProject, traceWord, flags.GetValueOrDefault("proposal")), token)));
             break;
 
+        case "generate" when flags.ContainsKey("batch"):
+        {
+            var genBatchAllowed = new[] { "project", "batch", "out", "at", "timeout-ms", "max-work", "json" };
+            if (!flags.TryGetValue("project", out var genBatchProject) || positionals.Count != 0 ||
+                flags.Keys.Any(flag => !genBatchAllowed.Contains(flag)) ||
+                flags["batch"] == "true" || !flags.TryGetValue("out", out var genBatchOut) || genBatchOut == "true" ||
+                flags.GetValueOrDefault("timeout-ms") is { } genBatchTimeout && !int.TryParse(genBatchTimeout, NumberStyles.None, CultureInfo.InvariantCulture, out _) ||
+                flags.GetValueOrDefault("max-work") is { } genBatchWork && !long.TryParse(genBatchWork, NumberStyles.None, CultureInfo.InvariantCulture, out _))
+                return Usage("Usage: motif " + UsageLineFor("generate --batch"), asJson);
+            var genBatchRequest = new GenerateBatchRequest(genBatchProject, flags["batch"], genBatchOut, flags.GetValueOrDefault("at"),
+                flags.TryGetValue("timeout-ms", out var genBatchTimeoutText) ? int.Parse(genBatchTimeoutText, CultureInfo.InvariantCulture) : null,
+                flags.TryGetValue("max-work", out var genBatchWorkText) ? long.Parse(genBatchWorkText, CultureInfo.InvariantCulture) : null);
+            result = RunWithConsoleCancellation(token => RenderCommand(GenerateBatchQuery.Run(genBatchRequest, token)));
+            break;
+        }
+
         case "parse":
         {
             if (!flags.TryGetValue("project", out var rejectionProject) || positionals.Count != 1 ||

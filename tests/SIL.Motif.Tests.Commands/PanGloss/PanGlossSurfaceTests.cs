@@ -17,7 +17,7 @@ public sealed class PanGlossSurfaceTests
         Assert.Equal(1, realDescription.RootElement.GetProperty("schema_version").GetInt32());
         var commands = SurfaceContract.Commands(realDescription);
         var realHasFacts = SurfaceContract.HasFactsIdentity(realDescription.RootElement);
-        SurfaceContract.AssertRequestsMatch(commands, includeFacts: realHasFacts);
+        SurfaceContract.AssertRequestsMatch(commands, includeFacts: realHasFacts, includeGenerate: true);
         SurfaceContract.AssertTraceCommandIsDeclared(commands);
         Assert.DoesNotContain("compare", commands.Keys);
         Assert.DoesNotContain("golden-diff", commands.Keys);

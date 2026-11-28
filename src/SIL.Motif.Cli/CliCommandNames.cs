@@ -104,6 +104,8 @@ internal static class CliCommandNames
             return "report --list-kinds";
         if (verb == "trace" && flags.ContainsKey("load"))
             return "trace --load";
+        if (verb == "generate" && flags.ContainsKey("batch"))
+            return "generate --batch";
         if (verb is "dry-run" or "trial" && flags.ContainsKey("wait"))
             return verb + " --wait";
         return verb;
