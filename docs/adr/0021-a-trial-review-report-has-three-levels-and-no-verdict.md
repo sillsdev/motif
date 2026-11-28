@@ -144,8 +144,8 @@ The summary keeps the reference and a fixed-size staged-decision fingerprint. Co
 reference, tied to its stored wordform id that expires with detail. Unreadable Applied revisions are named
 and omitted with a warning; other evidence still counts.
 
-`--reference` chooses CLI reference; a separate opt-in tool in the source-validated MCP profile exposes it.
-Default `motif_difference_produce` remains human. Any missing Wordform/Text/Segment authoring family must
+`--reference` chooses the CLI reference; `motif_difference_produce` takes the same `reference` argument, `human` or
+`source-validated`, and defaults to human. Any missing Wordform/Text/Segment authoring family must
 first meet the full schema, coverage, lowering, Apply/read-back, rollback, conflict and conformance contract.
 
 ### D11. Difference production is explicit and publication is atomic

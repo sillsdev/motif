@@ -28,7 +28,7 @@ internal static class AgentTools
 {
     /// <summary>What the source-validated produce tool calls; a test replaces it to see the reference passed.</summary>
     internal static Func<ProposalDifferenceProduceRequest, string, CommandOutcome<ProposalDifferenceResponse>>
-        ProduceSourceValidatedDifference { get; set; } = ProposalDifferenceCommands.Produce;
+        ProduceDifference { get; set; } = ProposalDifferenceCommands.Produce;
 
     private static readonly (string, JsonObject, bool)[] NoArguments = [];
     private static readonly string[] BatchComposerVerbs =
@@ -1208,26 +1208,17 @@ internal static class AgentTools
             { Requests = [typeof(ProposalDifferenceShowRequest)] },
         new("motif_difference_produce", string.Empty, AgentClass.Evaluate,
             Schema.Object(("proposal", Schema.String("Proposal whose completed Trial is compared."), true),
-                ("text", Schema.String("GUID of the Text whose recorded human decisions are compared."), true),
-                ("job", Schema.String("Completed Trial job id; omit for the newest completed Trial."), false)),
+                ("text", Schema.String("GUID of the Text whose recorded decisions are compared."), true),
+                ("job", Schema.String("Completed Trial job id; omit for the newest completed Trial."), false),
+                ("reference", Schema.String("Decisions to compare against: human (default) or those a program staged from cited sources.",
+                    [SIL.Motif.Contract.Requests.ProposalDifferenceReferences.Human,
+                     SIL.Motif.Contract.Requests.ProposalDifferenceReferences.SourceValidated]), false)),
             false, false, false, true,
-            (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalDifferenceCommands.Produce(
+            (c, a, ct) => Task.FromResult(ToolOutcome.From(ProduceDifference(
                 new ProposalDifferenceProduceRequest(c.ProjectPath, a.Required("proposal"), a.Required("text"),
-                    a.Optional("job"))))))
+                    a.Optional("job")),
+                a.Optional("reference") ?? SIL.Motif.Contract.Requests.ProposalDifferenceReferences.Human))))
             { Requests = [typeof(ProposalDifferenceProduceRequest)] },
-        new("motif_difference_produce_source_validated",
-            "Compare a Trial with source-validated decisions. Compares a completed Trial's parses with the decisions a " +
-            "named non-human agent staged from cited sources through Applied Proposals, never a person's, and saves " +
-            "the result. A Proposal keeps one Difference per Text and reference, so this sits beside a saved " +
-            "comparison against human decisions and replaces only an earlier source-validated one. It reads stored evidence, runs no parser and never blocks an Apply.",
-            AgentClass.Evaluate,
-            Schema.Object(("proposal", Schema.String("Proposal whose completed Trial is compared."), true),
-                ("text", Schema.String("GUID of the Text whose source-validated decisions are compared."), true),
-                ("job", Schema.String("Completed Trial job id; omit for the newest completed Trial."), false)),
-            false, false, false, true,
-            (c, a, ct) => Task.FromResult(ToolOutcome.From(ProduceSourceValidatedDifference(
-                new ProposalDifferenceProduceRequest(c.ProjectPath, a.Required("proposal"), a.Required("text"),
-                    a.Optional("job")), SIL.Motif.Contract.Requests.ProposalDifferenceReferences.SourceValidated)))),
         new("motif_decision_evidence", string.Empty, AgentClass.Read,
             Schema.Object(("subject", Schema.String(
                     "Wordform or analysis id to read the evidence for; omit to list records, counted by tier first."), false),

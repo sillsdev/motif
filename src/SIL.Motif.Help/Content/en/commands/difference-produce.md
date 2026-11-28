@@ -10,7 +10,7 @@ Every word is counted, but only words that changed or fall in a category are sav
 
 By default the decisions are the ones people made in FieldWorks. With `--reference source-validated` the parses are read instead against the decisions a named program staged from cited sources through Applied Proposals. They are not a person's decisions, and the summary says so. If staged agents disagree about an analysis, the word is marked `conflicting-decisions` and neither opinion counts as approved. A typo or ill-formed record makes a word form count as incorrect for this reference only; a person's spelling decision is never changed. Each listed word names the evidence tier and agent behind it; `evidence show` gives the full record. A Proposal keeps one comparison per Text and reference, so a comparison against each sits beside the other; producing again replaces only the one for the same Text and reference.
 
-Only Applied Proposals count; the compared Proposal's own staged decisions never do. An Applied Proposal that cannot be read is named in a warning and left out, and the rest still count. The MCP surface offers this reference only through the `motif_difference_produce_source_validated` tool of the opt-in `source-validated` profile; `motif_difference_produce` always compares with people's decisions.
+Only Applied Proposals count; the compared Proposal's own staged decisions never do. An Applied Proposal that cannot be read is named in a warning and left out, and the rest still count. The MCP tool `motif_difference_produce` takes the same `reference` argument.
 
 A token in the Text is counted as unmatched, never guessed, when it cannot be tied to exactly one measured word.
 
