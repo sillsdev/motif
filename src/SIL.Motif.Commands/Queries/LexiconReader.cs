@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using SIL.LCModel;
 using SIL.LCModel.Core.KernelInterfaces;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Query;
 using SIL.Motif.Projection;
 using SIL.Motif.Projection.Grammar;
 using SIL.Motif.Runner.Operations;
@@ -260,12 +261,12 @@ public sealed record LexiconFilter(string? Query = null, IReadOnlyList<string>? 
     /// <summary>The longest one regular-expression match may take, so a pathological pattern is refused rather than hanging a lane.</summary>
     public static readonly TimeSpan RegexTimeout = TimeSpan.FromSeconds(2);
 
-    private readonly Regex? _formRegex = FormRegex is null ? null : new Regex(FormRegex, RegexOptions.CultureInvariant, RegexTimeout);
+    private readonly Regex? _formRegex = FormRegex is null ? null : new Regex(PatternNormalization.Pattern(FormRegex), RegexOptions.CultureInvariant, RegexTimeout);
 
     /// <summary>The reason <paramref name="pattern"/> is not a usable regular expression, or null when it is.</summary>
     public static string? RegexProblem(string pattern)
     {
-        try { _ = new Regex(pattern, RegexOptions.CultureInvariant, RegexTimeout); return null; }
+        try { _ = new Regex(PatternNormalization.Pattern(pattern), RegexOptions.CultureInvariant, RegexTimeout); return null; }
         catch (ArgumentException exception) { return exception.Message; }
     }
 

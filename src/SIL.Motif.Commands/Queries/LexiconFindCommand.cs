@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using SIL.LCModel;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Query;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -65,6 +66,11 @@ public static class LexiconFindCommand
             return InvalidRefusal($"The offset must be between 0 and {MaximumOffset}.");
         if (request.Limit is < 1 or > MaximumPageSize)
             return InvalidRefusal($"The limit must be between 1 and {MaximumPageSize}.");
+        if (request.FormRegex is { } composable)
+        {
+            try { _ = PatternNormalization.Pattern(composable); }
+            catch (QueryRefusalException refused) { return refused.Refusal; }
+        }
         if (request.FormRegex is { } pattern && LexiconFilter.RegexProblem(pattern) is { } problem)
             return InvalidRefusal($"--form-regex is not a valid regular expression: {problem}");
         if (request.Exact is not null && string.IsNullOrWhiteSpace(request.Exact))

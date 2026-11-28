@@ -33,7 +33,7 @@ public sealed class RecordImportToolTests(PristineProjectFixture pristine) : IDi
         var tool = AgentTools.All.Single(item => item.Name == "motif_import_record");
         Assert.Equal(SIL.Motif.Commands.Catalog.AgentClass.Draft, tool.Class);
         Assert.False(tool.ReadOnly);
-        Assert.Equal(["dir", "draft", "file", "licence", "page", "project", "refusedOnly", "revision", "source", "strict"], tool.ArgumentNames.Order(StringComparer.Ordinal));
+        Assert.Equal(["dir", "draft", "file", "licence", "page", "project", "refused_only", "revision", "source", "strict"], tool.ArgumentNames.Order(StringComparer.Ordinal));
         Assert.False(tool.InputSchema["additionalProperties"]!.GetValue<bool>());
         Assert.NotNull(tool.OutputSchema);
         Assert.Contains(tool.Routes, route => route.Command == "import");
@@ -327,7 +327,7 @@ public sealed class RecordImportToolTests(PristineProjectFixture pristine) : IDi
         Assert.False(called.IsError == true, called.StructuredContent?.ToString());
         var result = JsonNode.Parse(called.StructuredContent!.Value.GetRawText())!["result"]!.AsObject();
         Assert.Equal(2, result["page"]!.GetValue<int>());
-        Assert.Equal(3, result["pageCount"]!.GetValue<int>());
+        Assert.Equal(2, result["pageCount"]!.GetValue<int>());
         Assert.Equal(3, result["operations"]!.AsArray().Count);
         Assert.Equal(3, result["changes"]!.AsArray().Count);
     }

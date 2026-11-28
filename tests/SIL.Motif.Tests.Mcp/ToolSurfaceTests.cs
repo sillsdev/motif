@@ -29,7 +29,7 @@ public sealed class ToolSurfaceTests
         Assert.Contains("format fw-md", tool.Description, StringComparison.Ordinal);
         Assert.DoesNotContain("--format", tool.Description, StringComparison.Ordinal);
         Assert.DoesNotContain("--json", tool.Description, StringComparison.Ordinal);
-        Assert.Equal(["asOf", "expectedBaseline", "format", "id", "project"], tool.ArgumentNames.Order(StringComparer.Ordinal));
+        Assert.Equal(["as_of", "expected_baseline", "format", "id", "project"], tool.ArgumentNames.Order(StringComparer.Ordinal));
         var format = tool.InputSchema["properties"]!["format"]!;
         Assert.Equal(["json", "fw-md"], format["enum"]!.AsArray().Select(node => node!.GetValue<string>()));
         Assert.Equal("json", format["default"]!.GetValue<string>());
@@ -48,19 +48,19 @@ public sealed class ToolSurfaceTests
     }
 
     [Theory]
-    [InlineData("motif_edit_allomorph_form", new[] { "draft", "entry", "target", "writingSystem", "expectedForm", "newForm", "project" })]
-    [InlineData("motif_edit_citation_form", new[] { "draft", "target", "writingSystem", "expectedForm", "newForm", "project" })]
-    [InlineData("motif_edit_morph_type", new[] { "draft", "target", "morphType", "project" })]
-    [InlineData("motif_change_affix_kind", new[] { "draft", "msa", "kind", "toCategory", "slots", "project" })]
-    [InlineData("motif_edit_clitic_attachment", new[] { "draft", "target", "expectedCategories", "categories", "project" })]
-    [InlineData("motif_link_variant", new[] { "draft", "target", "component", "variantType", "project" })]
+    [InlineData("motif_edit_allomorph_form", new[] { "draft", "entry", "target", "writing_system", "expected_form", "new_form", "project" })]
+    [InlineData("motif_edit_citation_form", new[] { "draft", "target", "writing_system", "expected_form", "new_form", "project" })]
+    [InlineData("motif_edit_morph_type", new[] { "draft", "target", "morph_type", "project" })]
+    [InlineData("motif_change_affix_kind", new[] { "draft", "msa", "kind", "to_category", "slots", "project" })]
+    [InlineData("motif_edit_clitic_attachment", new[] { "draft", "target", "expected_categories", "categories", "project" })]
+    [InlineData("motif_link_variant", new[] { "draft", "target", "component", "variant_type", "project" })]
     [InlineData("motif_author_compound_rule", new[] { "draft", "kind", "name", "left", "right", "head", "result", "project" })]
-    [InlineData("motif_author_adhoc_prohibition", new[] { "draft", "kind", "first", "rest", "restAnyOf", "adjacency", "project" })]
+    [InlineData("motif_author_adhoc_prohibition", new[] { "draft", "kind", "first", "rest", "rest_any_of", "adjacency", "project" })]
     [InlineData("motif_edit_adhoc_prohibition_references", new[] { "draft", "target", "expected", "references", "project" })]
     [InlineData("motif_delete_adhoc_prohibition", new[] { "draft", "target", "expected", "project" })]
     [InlineData("motif_delete_affix_process", new[] { "draft", "entry", "form", "replacement", "project" })]
-    [InlineData("motif_make_variant_of", new[] { "draft", "entry", "component", "variantType", "hideMinorEntry", "project" })]
-    [InlineData("motif_make_variants_of", new[] { "draft", "variantType", "links", "onlyStubs", "project" })]
+    [InlineData("motif_make_variant_of", new[] { "draft", "entry", "component", "variant_type", "hide_minor_entry", "project" })]
+    [InlineData("motif_make_variants_of", new[] { "draft", "variant_type", "links", "only_stubs", "project" })]
     [InlineData("motif_merge_lexical_entries", new[] { "draft", "entry", "into", "project" })]
     [InlineData("motif_delete_empty_sense", new[] { "draft", "target", "entry", "project" })]
     public void VariantComposersHaveTypedDraftOnlyTools(string name, string[] arguments)
@@ -79,7 +79,7 @@ public sealed class ToolSurfaceTests
         Assert.Contains("does not stop the entry parsing", tool.Description, StringComparison.Ordinal);
         Assert.Contains("all parse a flagged entry", tool.Description, StringComparison.Ordinal);
         Assert.Contains("retype or delete it", tool.Description, StringComparison.Ordinal);
-        Assert.Equal(new[] { "draft", "target", "expectedDoNotParse", "doNotParse", "project" }.Order(StringComparer.Ordinal),
+        Assert.Equal(new[] { "draft", "target", "expected_do_not_parse", "do_not_parse", "project" }.Order(StringComparer.Ordinal),
             tool.ArgumentNames.Order(StringComparer.Ordinal));
     }
 
@@ -365,11 +365,11 @@ public sealed class ToolSurfaceTests
         Assert.Equal("object", entry.Tool.InputSchema["properties"]!["msa"]!["type"]!.GetValue<string>());
         var entryProperties = entry.Tool.InputSchema["properties"]!.AsObject();
         Assert.Contains("environments", entryProperties.Select(property => property.Key));
-        Assert.Contains("inflectionClasses", entryProperties.Select(property => property.Key));
+        Assert.Contains("inflection_classes", entryProperties.Select(property => property.Key));
         Assert.Equal("array", entryProperties["environments"]!["type"]!.GetValue<string>());
-        Assert.Equal("array", entryProperties["inflectionClasses"]!["type"]!.GetValue<string>());
+        Assert.Equal("array", entryProperties["inflection_classes"]!["type"]!.GetValue<string>());
         Assert.Equal("string", entryProperties["environments"]!["items"]!["type"]!.GetValue<string>());
-        Assert.Equal("string", entryProperties["inflectionClasses"]!["items"]!["type"]!.GetValue<string>());
+        Assert.Equal("string", entryProperties["inflection_classes"]!["items"]!["type"]!.GetValue<string>());
         Assert.DoesNotContain(entry.Tool.InputSchema["required"]!.AsArray(), value =>
             value!.GetValue<string>() is "environments" or "inflectionClasses");
 
@@ -377,14 +377,14 @@ public sealed class ToolSurfaceTests
         var alternateProperties = alternate["properties"]!.AsObject();
         Assert.Equal(new[]
         {
-            "draft", "entry", "form", "formWs", "morphType", "environments", "inflectionClasses", "placement", "project",
+            "draft", "entry", "form", "form_ws", "morph_type", "environments", "inflection_classes", "placement", "project",
         }, alternateProperties.Select(property => property.Key));
-        Assert.Equal(new[] { "draft", "entry", "form", "formWs", "morphType", "project" },
+        Assert.Equal(new[] { "draft", "entry", "form", "form_ws", "morph_type", "project" },
             alternate["required"]!.AsArray().Select(value => value!.GetValue<string>()));
         Assert.False(alternate["additionalProperties"]!.GetValue<bool>());
-        foreach (var field in new[] { "environments", "inflectionClasses", "placement" })
+        foreach (var field in new[] { "environments", "inflection_classes", "placement" })
             Assert.DoesNotContain(alternate["required"]!.AsArray(), value => value!.GetValue<string>() == field);
-        foreach (var field in new[] { "environments", "inflectionClasses" })
+        foreach (var field in new[] { "environments", "inflection_classes" })
         {
             Assert.Equal("array", alternateProperties[field]!["type"]!.GetValue<string>());
             Assert.Equal("string", alternateProperties[field]!["items"]!["type"]!.GetValue<string>());
@@ -605,7 +605,7 @@ public sealed class ToolSurfaceTests
             new SIL.Motif.Commands.JobRunnerLaunchOptions("root", null)), new ActivityLog(), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
         Assert.DoesNotContain(tool.InputSchema["required"]!.AsArray(), value => value!.GetValue<string>() == "assessmentId");
         var arguments = new JsonObject { ["output"] = "JsonRows",
-            ["forwardedArguments"] = new JsonArray("--format", "jsonl") };
+            ["forwarded_arguments"] = new JsonArray("--format", "jsonl") };
 
         var result = await tool.Run(context, new ToolArgs(arguments, tool.ArgumentNames), CancellationToken.None);
 
@@ -782,7 +782,7 @@ public sealed class DetailedNaturalClassMemberToolTests(PristineProjectFixture p
         var edited = await MotifMcpServer.CallAsync(editContext, experimentalTools, "motif_edit_natural_class",
             Arguments(("project", project.FwDataPath), ("draft", "member-id-edit"),
                 ("target", naturalClass.GetProperty("id").GetString()!),
-                ("expectedMembers", memberIds), ("members", new[] { memberId })), CancellationToken.None);
+                ("expected_members", memberIds), ("members", new[] { memberId })), CancellationToken.None);
 
         Assert.False(edited.IsError ?? false, edited.StructuredContent?.GetRawText());
         Assert.True(edited.StructuredContent!.Value.GetProperty("ok").GetBoolean(),
@@ -791,7 +791,7 @@ public sealed class DetailedNaturalClassMemberToolTests(PristineProjectFixture p
 
         var missing = await MotifMcpServer.CallAsync(editContext, experimentalTools, "motif_edit_natural_class",
             Arguments(("project", project.FwDataPath), ("draft", "member-id-edit"), ("target", "nasa"),
-                ("expectedMembers", memberIds), ("members", new[] { memberId })), CancellationToken.None);
+                ("expected_members", memberIds), ("members", new[] { memberId })), CancellationToken.None);
         Assert.True(missing.IsError);
         var failure = missing.StructuredContent!.Value;
         Assert.False(failure.GetProperty("ok").GetBoolean());
@@ -800,7 +800,7 @@ public sealed class DetailedNaturalClassMemberToolTests(PristineProjectFixture p
 
         var namedEdit = await MotifMcpServer.CallAsync(editContext, experimentalTools, "motif_edit_natural_class",
             Arguments(("project", project.FwDataPath), ("draft", "member-id-edit"), ("target", "n"),
-                ("expectedMembers", memberIds), ("members", new[] { memberId })), CancellationToken.None);
+                ("expected_members", memberIds), ("members", new[] { memberId })), CancellationToken.None);
         Assert.False(namedEdit.IsError ?? false, namedEdit.StructuredContent?.GetRawText());
         Assert.Equal(1, namedEdit.StructuredContent!.Value.GetProperty("result").GetProperty("operationCount").GetInt32());
 
@@ -836,9 +836,9 @@ public sealed class DetailedNaturalClassMemberToolTests(PristineProjectFixture p
         async Task<ModelContextProtocol.Protocol.CallToolResult> Relink(string target) =>
             await MotifMcpServer.CallAsync(editContext, experimentalTools, "motif_relink_natural_class",
                 Arguments(("project", project.FwDataPath), ("draft", "named-references"), ("source", "N"),
-                    ("replacement", "replacement nasals"), ("replacementCreationOperation", creation.GetProperty("operationId").GetString()),
+                    ("replacement", "replacement nasals"), ("replacement_creation_operation", creation.GetProperty("operationId").GetString()),
                     ("environments", new[] { new { target, expectedLeft = new[] { new { naturalClass = "N" } }, expectedRight = Array.Empty<object>() } }),
-                    ("ruleContexts", Array.Empty<string>())), CancellationToken.None);
+                    ("rule_contexts", Array.Empty<string>())), CancellationToken.None);
         var missingEnvironment = await Relink("absent");
         Assert.True(missingEnvironment.IsError);
         Assert.Equal("draft.invalid", missingEnvironment.StructuredContent!.Value.GetProperty("code").GetString());

@@ -596,6 +596,115 @@ public sealed class GdrEditCommandsTests(PristineProjectFixture pristine)
         }
     }
 
+    private static string Pending(string path) => ProjectStoreCommand.Run(path, MotifProductVersion.CurrentText,
+        (database, _) => CommandOutcome<string>.Success(new ProposalRepository(database).FindPendingChangesDraft()?.ProposalJson ?? "")).Value!;
+
+    [Fact]
+    public void ABatchStagesEveryRowUnderItsSectionInFileOrder()
+    {
+        var path = ProjectWithGdrs(HeadingStyles);
+        var rows = GdrEditCommands.ParseDecisions(
+            "{\"section\":\"GDR-2\",\"choosing\":\"a\",\"over\":\"b\",\"because\":\"one\"}\n\n" +
+            "{\"section\":\"GDR-1\",\"choosing\":\"c\",\"over\":\"d\",\"because\":\"two\"}\n" +
+            "{\"section\":\"GDR-2\",\"choosing\":\"e\",\"over\":\"f\",\"because\":\"three.\"}\n");
+        Assert.True(rows.Succeeded, rows.Refusal?.Message);
+        Assert.Equal([1, 3, 4], rows.Value!.Select(row => row.Row).ToArray());
+
+        var staged = GdrEditCommands.DecideBatch(new GdrDecideBatchRequest(path, rows.Value!));
+
+        Assert.True(staged.Succeeded, staged.Refusal?.Message);
+        Assert.True(staged.Value!.Staged);
+        Assert.Equal(["GDR-2", "GDR-1", "GDR-2"], staged.Value.Rows.Select(row => row.Abbreviation).ToArray());
+        var two = AsOf(path, "GDR-2", staged.Value.DraftName).Replace("\\", "", StringComparison.Ordinal);
+        Assert.Contains("- a or b, I am choosing a, because one.\n- e or f, I am choosing e, because three.", two, StringComparison.Ordinal);
+        Assert.Contains("- c or d, I am choosing c, because two.", AsOf(path, "GDR-1", staged.Value.DraftName).Replace("\\", "", StringComparison.Ordinal), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("raw html", "the <NP> node")]
+    [InlineData("a citation", "see @smith2001")]
+    public void ABadRowRefusesTheWholeBatchNamesItsLineAndStagesNothing(string why, string bad)
+    {
+        var path = ProjectWithGdrs(HeadingStyles);
+        var jsonl = "{\"section\":\"GDR-2\",\"choosing\":\"a\",\"over\":\"b\",\"because\":\"fine\"}\n" +
+                    "{\"section\":\"GDR-1\",\"choosing\":\"" + bad.Replace("\"", "\\\"", StringComparison.Ordinal) + "\",\"over\":\"d\",\"because\":\"two\"}\n";
+        var rows = GdrEditCommands.ParseDecisions(jsonl).Value!;
+        var before = Pending(path);
+
+        var refused = GdrEditCommands.DecideBatch(new GdrDecideBatchRequest(path, rows));
+
+        Assert.False(refused.Succeeded, why);
+        Assert.Equal(RefusalCodes.GdrDecisionsInvalid, refused.Refusal!.Code);
+        Assert.Equal("2", refused.Refusal.Facts["row"]);
+        Assert.Contains("Line 2", refused.Refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("Nothing was staged", refused.Refusal.Message, StringComparison.Ordinal);
+        Assert.Equal(before, Pending(path));
+    }
+
+    [Fact]
+    public void AnUnknownSectionOrAnUnreadableLineRefusesTheBatchWithItsRow()
+    {
+        var path = ProjectWithGdrs(HeadingStyles);
+        var missing = GdrEditCommands.DecideBatch(new GdrDecideBatchRequest(path, [new GdrDecisionRow(7, "GDR-99", "a", "b", "c")]));
+        Assert.Equal(RefusalCodes.GdrNotFound, missing.Refusal!.Code);
+        Assert.Equal("7", missing.Refusal.Facts["row"]);
+
+        foreach (var (text, line) in new[]
+        {
+            ("{\"section\":\"GDR-2\",\"choosing\":\"a\"}", "1"),
+            ("{\"section\":\"GDR-2\",\"choosing\":\"a\",\"over\":\"b\",\"because\":\"c\"}\nnot json", "2"),
+            ("{\"section\":\"GDR-2\",\"choosing\":\"a\",\"over\":\"b\",\"because\":\"c\",\"nonsense\":\"1\"}", "1"),
+            ("{\"section\":\"GDR-2\",\"choosing\":1,\"over\":\"b\",\"because\":\"c\"}", "1"),
+        })
+        {
+            var parsed = GdrEditCommands.ParseDecisions(text);
+            Assert.Equal(RefusalCodes.GdrDecisionsInvalid, parsed.Refusal!.Code);
+            Assert.Equal(line, parsed.Refusal.Facts["row"]);
+        }
+        Assert.Equal(RefusalCodes.GdrDecisionsInvalid, GdrEditCommands.ParseDecisions("\n \n").Refusal!.Code);
+    }
+
+    [Fact]
+    public void ADryRunReportsEachRowAndStagesNothing()
+    {
+        var path = ProjectWithGdrs(HeadingStyles);
+        var before = Pending(path);
+
+        var dry = GdrEditCommands.DecideBatch(new GdrDecideBatchRequest(path, [new GdrDecisionRow(1, "GDR-2", "a", "b", "c")], DryRun: true));
+
+        Assert.True(dry.Succeeded, dry.Refusal?.Message);
+        Assert.False(dry.Value!.Staged);
+        Assert.Equal("- a or b, I am choosing a, because c.", Assert.Single(dry.Value.Rows).Entry);
+        Assert.Equal(before, Pending(path));
+    }
+
+    [Fact]
+    public void ALateFailureWhileStagingLeavesNoSectionStaged()
+    {
+        var path = ProjectWithGdrs(HeadingStyles);
+        var good = GdrMarkdownImport.Read(Show(path, "GDR-1"), "p", "first body").Edits!;
+        var moved = GdrMarkdownImport.Read(Show(path, "GDR-2"), "p", "second body").Edits! with { Identity = new GdrMarkdownIdentity("GDR-99", null, 0) };
+
+        var refused = ProposalCommands.StageGdrMarkdownBatch(path, [good, moved]);
+
+        Assert.False(refused.Succeeded);
+        Assert.DoesNotContain("first body", Pending(path), StringComparison.Ordinal);
+        Assert.True(ProposalCommands.StageGdrMarkdownBatch(path, [good]).Succeeded);
+        Assert.Contains("first body", Pending(path), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RungAndTriedAreWrittenIntoTheReasonAndTheOptionSetAside()
+    {
+        var rows = GdrEditCommands.ParseDecisions(
+            "{\"section\":\"GDR-2\",\"choosing\":\"a\",\"tried\":\"b, c\",\"because\":\"r\",\"rung\":\"2\"}\n" +
+            "{\"section\":\"GDR-2\",\"choosing\":\"a\",\"over\":\"x\",\"tried\":\"y\",\"because\":\"r\"}\n").Value!;
+
+        Assert.Equal(("b, c", "r (rung: 2)"), (rows[0].Over, rows[0].Because));
+        Assert.Equal("x (tried: y)", rows[1].Over);
+        Assert.Contains("lacks the key \"over\"", GdrEditCommands.ParseDecisions("{\"section\":\"GDR-2\",\"choosing\":\"a\",\"because\":\"r\"}").Refusal!.Message, StringComparison.Ordinal);
+    }
+
     private string ProjectWithGdrs(Action<LcmCache>? alsoSeed = null)
     {
         using var cache = pristine.NewScratch();

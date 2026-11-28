@@ -58,7 +58,7 @@ public sealed class MultipleOutcomeRuleAcceptanceTests(PristineProjectFixture pr
         {
             ["project"] = path, ["draft"] = "outcomes", ["name"] = "ordered cases", ["direction"] = "simultaneous",
             ["input"] = JsonSerializer.SerializeToNode(new[] { new { phoneme = phones["n"] } }),
-            ["rightHandSides"] = outcomes.DeepClone(),
+            ["right_hand_sides"] = outcomes.DeepClone(),
         };
         var added = await MotifMcpServer.CallAsync(context, tools, "motif_add_phonological_rule", Arguments(author), CancellationToken.None);
         Assert.False(added.IsError == true, added.StructuredContent?.ToString());

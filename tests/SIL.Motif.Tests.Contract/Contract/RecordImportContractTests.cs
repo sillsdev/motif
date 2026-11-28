@@ -15,6 +15,7 @@ public sealed class RecordImportContractTests
     [Theory]
     [InlineData("request")]
     [InlineData("dry-run")]
+    [InlineData("dry-run-paged")]
     [InlineData("draft")]
     [InlineData("dir-dry-run")]
     [InlineData("dir-draft")]

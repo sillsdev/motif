@@ -21,6 +21,7 @@ public static partial class RefusalCatalog
         Spec(RefusalCodes.GdrTitleInvalid, FailureReason.InvalidArgument),
         Spec(RefusalCodes.GdrListNotWritable, FailureReason.Refused),
         Spec(RefusalCodes.GdrDecisionInvalid, FailureReason.InvalidArgument),
+        Spec(RefusalCodes.GdrDecisionsInvalid, FailureReason.InvalidArgument, NextStep.Repeat()),
         Spec(RefusalCodes.GdrStyleCycle, FailureReason.StoreInconsistent),
     ];
 }

@@ -59,7 +59,7 @@ public sealed class RecordExportToolTests(PristineProjectFixture pristine) : IDi
         Assert.False(tool.InputSchema["additionalProperties"]!.GetValue<bool>());
         Assert.False(tool.ReadOnly);
         Assert.False(tool.Idempotent);
-        Assert.Equal(["all", "kind", "out", "project", "recordId"], tool.ArgumentNames.Order(StringComparer.Ordinal));
+        Assert.Equal(["all", "kind", "out", "project", "record_id"], tool.ArgumentNames.Order(StringComparer.Ordinal));
         Assert.Contains(tool.Routes, route => route.Command == "record export");
         Assert.DoesNotContain(AgentTools.All, item => item.Name.Contains("apply", StringComparison.Ordinal));
     }
@@ -83,7 +83,7 @@ public sealed class RecordExportToolTests(PristineProjectFixture pristine) : IDi
         }
 
         var file = Path.Combine(projectFolder, "exported.md");
-        var exported = await Call("motif_record_export", ("out", file), ("recordId", entry.ToString("D")));
+        var exported = await Call("motif_record_export", ("out", file), ("record_id", entry.ToString("D")));
         Assert.False(exported.Error, exported.Text);
         var result = JsonNode.Parse(exported.Structured!.Value.GetRawText())!["result"]!;
         Assert.Equal(1, result["writtenCount"]!.GetValue<int>());
@@ -101,7 +101,7 @@ public sealed class RecordExportToolTests(PristineProjectFixture pristine) : IDi
         var escapes = Path.Combine(projectFolder, "..", Path.GetFileName(_folder), "escape.md");
         foreach (var candidate in new[] { outside, escapes, Path.GetFullPath("/etc/motif-export-test.md") })
         {
-            var refused = await Call("motif_record_export", ("out", candidate), ("recordId", entry.ToString("D")));
+            var refused = await Call("motif_record_export", ("out", candidate), ("record_id", entry.ToString("D")));
             Assert.True(refused.Error, candidate);
             Assert.Contains(RefusalCodes.RecordExportOutputUnwritable, refused.Text, StringComparison.Ordinal);
         }
@@ -124,7 +124,7 @@ public sealed class RecordExportToolTests(PristineProjectFixture pristine) : IDi
             "record", "export", "--project", path, "--out", viaCli, "--record", entry.ToString("D"), "--json");
         Assert.True(cli.ExitCode == 0, cli.Error);
         var called = await MotifMcpServer.CallAsync(Context(path, profile), MotifMcpServer.Expose(profile), "motif_record_export",
-            Args(("project", path), ("out", viaTool), ("recordId", entry.ToString("D"))), CancellationToken.None);
+            Args(("project", path), ("out", viaTool), ("record_id", entry.ToString("D"))), CancellationToken.None);
         Assert.False(called.IsError == true, called.StructuredContent?.ToString());
 
         Assert.Equal(File.ReadAllBytes(viaCli), File.ReadAllBytes(viaTool));

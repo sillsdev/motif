@@ -120,7 +120,7 @@
           "type": "string",
           "description": "Only entries whose headword or a form equals this text, ignoring case; a bare \u0027zi\u0027 also finds the affix \u0027zi-\u0027 and exactNote says so, while \u0027zi-\u0027 finds only that prefix."
         },
-        "morphType": {
+        "morph_type": {
           "type": "array",
           "items": {
             "type": "string"
@@ -139,11 +139,11 @@
           "type": "string",
           "description": "Only entries whose headword starts with this text."
         },
-        "headwordContains": {
+        "headword_contains": {
           "type": "string",
           "description": "Only entries whose headword contains this text."
         },
-        "hasGloss": {
+        "has_gloss": {
           "type": "boolean",
           "description": "True keeps entries with a gloss; false keeps those without one."
         },
@@ -547,7 +547,7 @@
           "description": "Up to eight ordered phoneme or natural-class items; empty means insertion or deletion.",
           "maxItems": 8
         },
-        "rightHandSides": {
+        "right_hand_sides": {
           "type": "array",
           "items": {
             "type": "object",
@@ -964,7 +964,7 @@
           "description": "Context items in linguistic order, from the outer left to outer right. Each names exactly one reference.",
           "maxItems": 8
         },
-        "inputCategories": {
+        "input_categories": {
           "type": "array",
           "items": {
             "type": "string",
@@ -1006,13 +1006,13 @@
           ],
           "not": {
             "required": [
-              "rightHandSides"
+              "right_hand_sides"
             ]
           }
         },
         {
           "required": [
-            "rightHandSides"
+            "right_hand_sides"
           ],
           "not": {
             "anyOf": [
@@ -1033,7 +1033,7 @@
               },
               {
                 "required": [
-                  "inputCategories"
+                  "input_categories"
                 ]
               }
             ]
@@ -1059,11 +1059,11 @@
           "type": "string",
           "description": "The lexeme form, without affix hyphens."
         },
-        "formWs": {
+        "form_ws": {
           "type": "string",
           "description": "Vernacular writing system tag of the form."
         },
-        "morphType": {
+        "morph_type": {
           "type": "string",
           "description": "Canonical id of the morph type, such as stem, root, prefix or suffix."
         },
@@ -1071,7 +1071,7 @@
           "type": "string",
           "description": "The sense\u0027s gloss."
         },
-        "analysisWs": {
+        "analysis_ws": {
           "type": "string",
           "description": "Analysis writing system tag of the gloss and definition."
         },
@@ -1079,7 +1079,7 @@
           "type": "string",
           "description": "Optional definition of the sense."
         },
-        "inflectionClasses": {
+        "inflection_classes": {
           "type": "array",
           "items": {
             "type": "string"
@@ -1147,10 +1147,10 @@
       "required": [
         "draft",
         "form",
-        "formWs",
-        "morphType",
+        "form_ws",
+        "morph_type",
         "gloss",
-        "analysisWs",
+        "analysis_ws",
         "msa",
         "project"
       ],
@@ -1178,11 +1178,11 @@
           "type": "string",
           "description": "The alternate form, without affix hyphens."
         },
-        "formWs": {
+        "form_ws": {
           "type": "string",
           "description": "Vernacular writing system tag of the form."
         },
-        "morphType": {
+        "morph_type": {
           "type": "string",
           "description": "Canonical id of the morph type; stem-like for a stem entry, affix-like for an affix entry."
         },
@@ -1193,7 +1193,7 @@
           },
           "description": "Canonical ids of the phonological environments this form occurs in; omit for any."
         },
-        "inflectionClasses": {
+        "inflection_classes": {
           "type": "array",
           "items": {
             "type": "string"
@@ -1223,8 +1223,8 @@
         "draft",
         "entry",
         "form",
-        "formWs",
-        "morphType",
+        "form_ws",
+        "morph_type",
         "project"
       ],
       "additionalProperties": false
@@ -3793,7 +3793,7 @@
                       },
                       "writingSystem": {
                         "type": "string",
-                        "description": "Writing system of the slot name. Give with expectedName and name to rename."
+                        "description": "Writing system of the slot name. Give with expected_name and name to rename."
                       },
                       "expectedName": {
                         "type": "string",
@@ -10819,7 +10819,7 @@
           },
           "description": "Words to parse."
         },
-        "wordsFile": {
+        "words_file": {
           "type": "string",
           "description": "Path to a UTF-8 word list."
         },
@@ -11238,7 +11238,7 @@
           },
           "description": "Words to assess; omit for the Default Selection."
         },
-        "wordsFile": {
+        "words_file": {
           "type": "string",
           "description": "Path to a UTF-8 file with one word per line, or word, a tab, then a count, instead of words; counts are used only when the file is saved with the Selection."
         },
@@ -11453,7 +11453,7 @@
           "type": "string",
           "description": "Fold set of the fold column: comma-separated nfc, case, iy~y, o~u, e~i, c~k, from\u003Eto or project; default nfc,case."
         },
-        "minCount": {
+        "min_count": {
           "type": "integer",
           "description": "Minimum group count.",
           "minimum": 1,
@@ -11469,11 +11469,11 @@
           "type": "boolean",
           "description": "Include canonical ids."
         },
-        "rawLetters": {
+        "raw_letters": {
           "type": "boolean",
           "description": "Use characters instead of graphemes."
         },
-        "segmentTest": {
+        "segment_test": {
           "type": "string",
           "description": "How phon and env test a segment: engine (the default) is rule application\u0027s test, a literal matches every segment with its feature bundle and a [class] the union of its members\u0027 features, and the spans are a superset of what a rule rewrites; identity is exact members only. Every phon and env result reports the mode it used.",
           "enum": [
@@ -11481,7 +11481,7 @@
             "identity"
           ]
         },
-        "trialId": {
+        "trial_id": {
           "type": "string",
           "description": "Trial id; only the latest Trial has query rows."
         },
@@ -11653,20 +11653,20 @@
           "type": "boolean",
           "description": "Return the one-screen evidence composite for the grouping that where or members names, over stems or forms."
         },
-        "asOf": {
+        "as_of": {
           "type": "string",
           "description": "Read the forms source from the Baseline (baseline) or a Proposal\u0027s Trial copy (a Proposal id) instead of the latest Trial\u0027s evidence; rows carry parse state and analyses, and a Proposal with no completed Trial returns a pending side."
         },
         "sides": {
           "type": "string",
-          "description": "both returns the Baseline and the Proposal named by asOf side by side.",
+          "description": "both returns the Baseline and the Proposal named by as_of side by side.",
           "enum": [
             "both"
           ]
         },
         "sort": {
           "type": "string",
-          "description": "Order of an asOf run\u0027s rows: [baseline.|proposal.]column[:desc], with column form, base, kind, entry, id, morph-type, variant-type, environments, category, tokens, parse-state or parse-tokens."
+          "description": "Order of an as_of run\u0027s rows: [baseline.|proposal.]column[:desc], with column form, base, kind, entry, id, morph-type, variant-type, environments, category, tokens, parse-state or parse-tokens."
         },
         "project": {
           "type": "string",

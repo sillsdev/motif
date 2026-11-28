@@ -29,7 +29,7 @@ public sealed class AssessWordsFileToolTests
         var exposed = MotifMcpServer.Expose(ToolProfile.Load("full")).Single(entry => entry.Name == tool);
 
         var properties = exposed.Tool.InputSchema["properties"]!.AsObject();
-        Assert.Equal("string", properties["wordsFile"]!["type"]!.GetValue<string>());
+        Assert.Equal("string", properties["words_file"]!["type"]!.GetValue<string>());
     }
 
     [Fact]
@@ -88,7 +88,7 @@ public sealed class AssessWordsFileToolTests
             var arguments = new Dictionary<string, JsonElement>
             {
                 ["project"] = JsonSerializer.SerializeToElement(project),
-                ["wordsFile"] = JsonSerializer.SerializeToElement(wordsFile),
+                ["words_file"] = JsonSerializer.SerializeToElement(wordsFile),
             };
             if (inline is not null) arguments["words"] = JsonSerializer.SerializeToElement(new[] { "baga" });
             if (tool == "motif_trial") arguments["proposal"] = JsonSerializer.SerializeToElement("proposal/x");
@@ -122,7 +122,7 @@ public sealed class AssessWordsFileIngressTests(PristineProjectFixture pristine)
         var context = Context(project.FwDataPath, parser);
 
         var fileResponse = await CallAsync(context, "motif_assess", Arguments(project.FwDataPath,
-            ("wordsFile", JsonSerializer.SerializeToElement(wordsFile)),
+            ("words_file", JsonSerializer.SerializeToElement(wordsFile)),
             ("limit", JsonSerializer.SerializeToElement(2))));
         var filePage = fileResponse.GetProperty("result");
         var assessment = filePage.GetProperty("assessment").GetString();
@@ -177,7 +177,7 @@ public sealed class AssessWordsFileIngressTests(PristineProjectFixture pristine)
         var fileProposal = await StartDraftAsync(context, project.FwDataPath, "words-file-trial");
         var fileResponse = await CallAsync(context, "motif_trial", Arguments(project.FwDataPath,
             ("proposal", JsonSerializer.SerializeToElement(fileProposal)),
-            ("wordsFile", JsonSerializer.SerializeToElement(wordsFile)),
+            ("words_file", JsonSerializer.SerializeToElement(wordsFile)),
             ("wait_seconds", JsonSerializer.SerializeToElement(1))));
         var fileJob = TrialJob(fileResponse);
         var fileInput = TrialJobInput.Parse(ReadJobInput(project.FwDataPath, fileJob));

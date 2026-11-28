@@ -598,11 +598,11 @@ try
             break;
 
         case "compose":
-            if (!flags.TryGetValue("proposal", out var callComposeProposal) ||
+            if (!flags.TryGetValue("draft", out var callComposeProposal) ||
                 !flags.TryGetValue("project", out var callComposeProject) ||
                 !flags.TryGetValue("steps", out var callComposeStepsJson) || positionals.Count != 0)
-                return Usage("Usage: motif compose --proposal <name> --project <fwdata> --steps '<json array>' " +
-                    "[--remove <id>[,<id>...]] [--json]  (--proposal names a Draft or a Proposal)", asJson);
+                return Usage("Usage: motif compose --draft <name> --project <fwdata> --steps '<json array>' " +
+                    "[--remove <id>[,<id>...]] [--json]  (--draft names a Draft or a Proposal)", asJson);
             IReadOnlyList<ComposeStepRequest> callComposeSteps;
             try
             {
@@ -2270,6 +2270,34 @@ try
                 result = RenderCommand(GdrTableCommands.Refresh(new GdrRefreshTablesRequest(gdrRefreshProject,
                     positionals.Count == 2 ? positionals[1] : null, flags.GetValueOrDefault("draft"), flags.GetValueOrDefault("query")),
                     JobRunnerLaunchOptions.ResolveParserPath()));
+                break;
+            }
+            if (flags.TryGetValue("project", out var gdrBatchProject) && positionals is ["decide"] && flags.ContainsKey("from"))
+            {
+                var gdrBatchFrom = flags["from"];
+                var fromAt = Array.IndexOf(args, "--from");
+                var draftAt = Array.IndexOf(args, "--draft");
+                if (gdrBatchFrom == "true" || fromAt + 1 >= args.Length || args[fromAt + 1].StartsWith("--", StringComparison.Ordinal) ||
+                    flags.Keys.Any(key => key is not ("project" or "from" or "draft" or "dry-run" or "json" or "autonomous")) ||
+                    flags.GetValueOrDefault("dry-run", "true") != "true" ||
+                    flags.TryGetValue("draft", out var gdrBatchDraft) && (gdrBatchDraft == "true" || draftAt + 1 >= args.Length || args[draftAt + 1].StartsWith("--", StringComparison.Ordinal)))
+                    return Usage(string.Join(" OR ", CliVerbCatalog.All.First(verb => verb.CommandName == "guide decide").UsageLines), asJson);
+                string gdrBatchText;
+                try
+                {
+                    gdrBatchText = gdrBatchFrom == "-"
+                        ? new StreamReader(Console.OpenStandardInput(), new UTF8Encoding(false)).ReadToEnd()
+                        : File.ReadAllText(gdrBatchFrom);
+                }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                {
+                    return Usage($"The --from '{gdrBatchFrom}' cannot be read: {exception.Message}", asJson);
+                }
+                var gdrRows = GdrEditCommands.ParseDecisions(gdrBatchText);
+                result = gdrRows.Succeeded
+                    ? RenderCommand(GdrEditCommands.DecideBatch(new GdrDecideBatchRequest(gdrBatchProject, gdrRows.Value!,
+                        flags.GetValueOrDefault("draft"), flags.ContainsKey("dry-run"))))
+                    : RenderCommand(CommandOutcome<GdrDecideBatchResponse>.Refused(gdrRows.Refusal!));
                 break;
             }
             if (flags.TryGetValue("project", out var gdrEditProject) && positionals is ["edit" or "decide", var gdrEditId])

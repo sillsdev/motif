@@ -143,7 +143,7 @@ internal static class CatalogTools
     {
         _ = Handler(command);
         var schema = Schema.Object(command.RequestType.GetProperties().Where(property => !IsContext(property.Name) && !IsInternal(property))
-            .Select(property => (JsonNamingPolicy.CamelCase.ConvertName(property.Name),
+            .Select(property => (Schema.Snake(JsonNamingPolicy.CamelCase.ConvertName(property.Name)),
                 FieldSchema(property.PropertyType), Required(command.RequestType, property))).ToArray());
         if (PageLimits.TryGetValue(command.RequestType, out var page) && schema["properties"]?["limit"] is JsonObject limit)
         {
@@ -156,22 +156,22 @@ internal static class CatalogTools
         if (command.RequestType == typeof(CompareProposalsRequest))
         {
             schema["properties"]!["page"]!["minimum"] = 1;
-            schema["properties"]!["proposalIds"]!["minItems"] = 2;
-            schema["properties"]!["proposalIds"]!["maxItems"] = ProposalComparison.MaxProposals;
+            schema["properties"]!["proposal_ids"]!["minItems"] = 2;
+            schema["properties"]!["proposal_ids"]!["maxItems"] = ProposalComparison.MaxProposals;
         }
         if (command.RequestType == typeof(GroupRequest))
         {
             var properties = schema["properties"]!.AsObject();
             properties["kind"] = Schema.String("suffix groups words by the stem before an ending; prefix by the stem after a start.",
                 WordGrouping.Suffix, WordGrouping.Prefix);
-            properties["parseState"] = Schema.String("Which words to list; the default is all.", WordGrouping.Parsed,
+            properties["parse_state"] = Schema.String("Which words to list; the default is all.", WordGrouping.Parsed,
                 WordGrouping.Unparsed, WordGrouping.Approved, WordGrouping.All);
             properties["limit"]!["minimum"] = 1;
             properties["limit"]!["maximum"] = WordGrouping.MaxLimit;
             properties["limit"]!["default"] = WordGrouping.DefaultLimit;
             properties["page"]!["minimum"] = 1;
-            properties["minStem"]!["minimum"] = 1;
-            properties["minStem"]!["default"] = WordGrouping.DefaultMinStem;
+            properties["min_stem"]!["minimum"] = 1;
+            properties["min_stem"]!["default"] = WordGrouping.DefaultMinStem;
             properties["pattern"]!["maxLength"] = WordGrouping.MaxPatternLength;
         }
         if (command.RequestType == typeof(ListDispositionsRequest))
@@ -186,7 +186,7 @@ internal static class CatalogTools
         if (command.RequestType == typeof(CoverageRequest))
         {
             var properties = schema["properties"]!.AsObject();
-            properties["frequencyFormat"] = Schema.String("The frequency list's shape; a .json file is read as json by default.", [.. CoverageCommands.FrequencyFormats]);
+            properties["frequency_format"] = Schema.String("The frequency list's shape; a .json file is read as json by default.", [.. CoverageCommands.FrequencyFormats]);
             properties["limit"]!["minimum"] = 1;
             properties["limit"]!["maximum"] = CoverageCommands.MaxLimit;
             properties["limit"]!["default"] = CoverageCommands.DefaultLimit;
@@ -293,7 +293,8 @@ internal static class CatalogTools
         foreach (var property in command.RequestType.GetProperties().Where(property => !IsContext(property.Name) &&
                      Required(command.RequestType, property)))
             if (!json.ContainsKey(JsonNamingPolicy.CamelCase.ConvertName(property.Name)))
-                throw new ToolArgumentException("tool.missing-argument", $"Argument '{property.Name}' is required.");
+                throw new ToolArgumentException("tool.missing-argument",
+                    $"Argument '{Schema.Snake(JsonNamingPolicy.CamelCase.ConvertName(property.Name))}' is required.");
         object request;
         try { request = json.Deserialize(command.RequestType, Json)!; }
         catch (JsonException exception) { throw new ToolArgumentException("tool.invalid-argument", exception.Message); }

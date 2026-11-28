@@ -3,6 +3,7 @@ using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Query;
 using SIL.Motif.Contract.Query.Corpus;
+using SIL.Motif.Contract.Requests;
 using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
@@ -118,5 +119,59 @@ public sealed class PatternNormalizationQueryTests : IDisposable
         Assert.Equal(composed, Count("form is \"" + nfd + "\""));
         Assert.Equal(composed + 1, Count("form in " + nfd + ",plain"));
         Assert.Equal(composed, Count("form is \"" + nfc + "\"", [.. Words.Select(word => word.Normalize(NormalizationForm.FormD))]));
+    }
+
+    [Fact]
+    public void APairsXPatternThatCannotBeComposedIsRefusedByItsOwnCodeNotAsAnInvalidCorpus()
+    {
+        var path = Path.Combine(_folder, "pairs.tsv");
+        File.WriteAllText(path, "\u0B95\u0BCB\t1\n");
+        var outcome = CorpusQueryCommand.Pairs(new PairsQueryRequest(path, "suffix", X: "\u0BC6(\u0BBE)"));
+        Assert.Equal(RefusalCodes.QueryPatternNotNormalizable, outcome.Refusal?.Code);
+    }
+
+    // Inside an or, a field test runs through the expression compiler.
+    private long CountJson(string where, string[]? words = null)
+    {
+        var path = Path.Combine(_folder, "words.tsv");
+        File.WriteAllText(path, string.Concat((words ?? Words).Select((word, position) => word + "\t" + (position + 1) + "\n")));
+        var json = "{\"version\":\"motif.query.v2\",\"from\":\"forms\",\"where\":" + where + "}";
+        var outcome = CorpusQueryCommand.Forms(new CorpusFormsRequest(path, null, json), null, default, null!, Path.Combine(_folder, "cache"));
+        return outcome.Refusal is null ? outcome.Value!.Rows.Count : throw new Xunit.Sdk.XunitException(outcome.Refusal.Code + ": " + outcome.Refusal.Message);
+    }
+
+    private static string Field(string op, string value) => "{\"field\":\"form\",\"op\":\"" + op + "\",\"value\":" + value + "}";
+
+    [Fact]
+    public void TheExpressionCompilerCountsEqNeInAndNinTheSameInBothForms()
+    {
+        var nfc = "கோ";
+        var nfd = nfc.Normalize(NormalizationForm.FormD);
+        var never = Field("eq", "\"zzz\"");
+        var decomposedWords = Words.Select(word => word.Normalize(NormalizationForm.FormD)).ToArray();
+        long Or(string field, string[]? words = null) => CountJson("{\"or\":[" + field + "," + never + "]}", words);
+        var eq = Or(Field("eq", JsonQuote(nfc)));
+        Assert.True(eq >= 1);
+        Assert.Equal(eq, Or(Field("eq", JsonQuote(nfd))));
+        Assert.Equal(eq, Or(Field("eq", JsonQuote(nfc)), decomposedWords));
+        var ne = Or(Field("ne", JsonQuote(nfc)));
+        Assert.Equal(ne, Or(Field("ne", JsonQuote(nfd))));
+        Assert.Equal(ne, Or(Field("ne", JsonQuote(nfd)), decomposedWords));
+        var inCount = Or(Field("in", "[" + JsonQuote(nfc) + ",\"plain\"]"));
+        Assert.Equal(eq + 1, inCount);
+        Assert.Equal(inCount, Or(Field("in", "[" + JsonQuote(nfd) + ",\"plain\"]")));
+        Assert.Equal(inCount, Or(Field("in", "[" + JsonQuote(nfc) + ",\"plain\"]"), decomposedWords));
+        var nin = Or(Field("nin", "[" + JsonQuote(nfc) + ",\"plain\"]"));
+        Assert.Equal(nin, Or(Field("nin", "[" + JsonQuote(nfd) + ",\"plain\"]")));
+        Assert.Equal(nin, Or(Field("nin", "[" + JsonQuote(nfd) + ",\"plain\"]"), decomposedWords));
+    }
+
+    private static string JsonQuote(string text) => System.Text.Json.JsonSerializer.Serialize(text);
+
+    [Fact]
+    public void ALexiconFormRegexThatCannotBeComposedIsRefusedByItsOwnCode()
+    {
+        var refusal = LexiconFindCommand.Validate(new LexiconFindRequest("project.fwdata", FormRegex: "\u0BC6(\u0BBE)"));
+        Assert.Equal(RefusalCodes.QueryPatternNotNormalizable, refusal?.Code);
     }
 }

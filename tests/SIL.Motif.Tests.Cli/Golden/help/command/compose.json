@@ -5,7 +5,7 @@
   "title": "Compose steps in a Draft",
   "description": "Stages one or more composing steps in a Draft in one call, each a composing command\u0027s name and closed intent, and can first remove earlier operations. A later step sees the earlier ones, and if any step or removal is refused, nothing changes. Only a person can Apply.",
   "usage": [
-    "Usage: motif compose --proposal \u003Cname\u003E --project \u003Cfwdata\u003E --steps \u0027\u003Cjson array\u003E\u0027 [--remove \u003Cid\u003E[,\u003Cid\u003E...]] [--json]"
+    "Usage: motif compose --draft \u003Cname\u003E --project \u003Cfwdata\u003E --steps \u0027\u003Cjson array\u003E\u0027 [--remove \u003Cid\u003E[,\u003Cid\u003E...]] [--json]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/compose/"

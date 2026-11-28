@@ -342,27 +342,22 @@ public static class ProposalCompareReads
         Dictionary<(string Ws, string Key), FormAccumulator> forms, ApprovedReadingSet approved,
         HashSet<(string Ws, string Form)> measured)
     {
-        for (var number = 1; number <= receipt.Pages; number++)
+        TrialExportArtifact.ForEachWord(database, receipt.JobId, word =>
         {
-            var words = TrialExportArtifact.Read(database, receipt.JobId, page: number)?.Page?.Words
-                ?? throw new InvalidDataException("A retained Trial export page is missing.");
-            foreach (var word in words)
+            var ws = word.TryGetProperty("writingSystemId", out var wsValue) && wsValue.ValueKind == JsonValueKind.String
+                ? wsValue.GetString()! : "";
+            foreach (var form in word.GetProperty("expandedForms").EnumerateArray())
             {
-                var ws = word.TryGetProperty("writingSystemId", out var wsValue) && wsValue.ValueKind == JsonValueKind.String
-                    ? wsValue.GetString()! : "";
-                foreach (var form in word.GetProperty("expandedForms").EnumerateArray())
-                {
-                    var key = form.GetProperty("formKey").GetString()!;
-                    if (!forms.TryGetValue((ws, key), out var accumulator))
-                        forms[(ws, key)] = accumulator = new FormAccumulator(ws.Length == 0 ? null : ws,
-                            form.GetProperty("form").GetString()!, key, width);
-                    var text = form.GetProperty("form").GetString()!.Normalize(NormalizationForm.FormD);
-                    var cell = ReadCell(form, approved, ws, text);
-                    if (cell.Measured && ws.Length > 0) measured.Add((ws, text));
-                    accumulator.Cells[column] = accumulator.Cells[column] is { } existing ? existing.Merge(cell) : cell;
-                }
+                var key = form.GetProperty("formKey").GetString()!;
+                if (!forms.TryGetValue((ws, key), out var accumulator))
+                    forms[(ws, key)] = accumulator = new FormAccumulator(ws.Length == 0 ? null : ws,
+                        form.GetProperty("form").GetString()!, key, width);
+                var text = form.GetProperty("form").GetString()!.Normalize(NormalizationForm.FormD);
+                var cell = ReadCell(form, approved, ws, text);
+                if (cell.Measured && ws.Length > 0) measured.Add((ws, text));
+                accumulator.Cells[column] = accumulator.Cells[column] is { } existing ? existing.Merge(cell) : cell;
             }
-        }
+        });
     }
 
     private static Cell ReadCell(JsonElement form, ApprovedReadingSet approved, string ws, string formText)
@@ -378,7 +373,7 @@ public static class ProposalCompareReads
             .Concat(form.GetProperty("lostReadingIds").EnumerateArray().Select(item => item.GetString()!))
             .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
         var complete = before.GetProperty("complete").GetBoolean() && after.GetProperty("complete").GetBoolean();
-        var (kept, lostApproved) = ws.Length == 0 ? ([], []) : Approvals(approved, ws, formText, before, after, complete);
+        var (kept, lostApproved) = ws.Length == 0 || approved.Analyses.IsEmpty ? ([], []) : Approvals(approved, ws, formText, before, after, complete);
         return gained.Length == 0 && lost.Length == 0 && complete && kept.Length == 0 && lostApproved.Length == 0
             ? Unchanged : new Cell(true, complete, gained, lost) { Kept = kept, LostApproved = lostApproved };
     }
@@ -403,7 +398,7 @@ public static class ProposalCompareReads
 
     private static List<ReadingSignature> Signatures(JsonElement readings) =>
         [.. readings.EnumerateArray().Select(reading =>
-            JsonSerializer.Deserialize<ReadingSignature>(reading.GetProperty("signature").GetRawText())
+            reading.GetProperty("signature").Deserialize<ReadingSignature>()
                 ?? throw new InvalidDataException("A retained Trial reading has no signature."))];
 
     private static HashSet<string> Ids(JsonElement readings) =>

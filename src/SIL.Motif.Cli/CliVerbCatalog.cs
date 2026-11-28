@@ -48,7 +48,8 @@ public static class CliVerbCatalog
         new CliVerbDescriptor("Project", "guide", "guide refresh-tables",
             new[] { "guide refresh-tables --project <fwdata> [<GDR-n>] [--query <id>] [--draft <name>] [--json]" }),
         new CliVerbDescriptor("Project", "guide", "guide decide",
-            new[] { "guide decide --project <fwdata> <GDR-n> --choosing <A> --over <B> --because <reason> [--draft <name>] [--json]" }),
+            new[] { "guide decide --project <fwdata> <GDR-n> --choosing <A> --over <B> --because <reason> [--draft <name>] [--json]",
+                "guide decide --project <fwdata> --from <file.jsonl|-> [--dry-run] [--draft <name>] [--json]" }),
         new CliVerbDescriptor("Project", "guide", "guide check",
             new[] { "guide check --project <fwdata> [--no-run | --build] [--timeout <seconds>] [--json]" }),
         new CliVerbDescriptor("Project", "source", "source list",
@@ -247,7 +248,7 @@ public static class CliVerbCatalog
         new CliVerbDescriptor("Commands", "compose-batch", "compose-batch",
             new[] { "compose-batch --draft <name> --project <fwdata> --intents <file.json> [--json]" }),
         new CliVerbDescriptor("Commands", "compose", "compose",
-            new[] { "compose --proposal <name> --project <fwdata> --steps '<json array>' [--remove <id>[,<id>...]] [--json]" }),
+            new[] { "compose --draft <name> --project <fwdata> --steps '<json array>' [--remove <id>[,<id>...]] [--json]" }),
         new CliVerbDescriptor(
             "Commands", "promote-gloss", "promote-gloss",
             new[]
@@ -531,7 +532,7 @@ public static class CliVerbCatalog
             "Project", "grammar", "grammar read",
             new[]
             {
-                "grammar read --project <fwdata> --kind <phoneme|natural_class|environment|part_of_speech|inflection_feature|lexical_entry|phonological_rule> " +
+                "grammar read --project <fwdata> --kind <phoneme|natural_class|environment|part_of_speech|inflection_feature|lexical_entry|phonological_rule|affix_template> " +
                 "[--id <canonicalId> | --query <text> | --exact <form>] [--morph-type <name>[,<name>]] [--at baseline|<proposalId>] [--limit <1-100>] [--offset <n> | --page <N>] [--json]",
             }),
         new CliVerbDescriptor(

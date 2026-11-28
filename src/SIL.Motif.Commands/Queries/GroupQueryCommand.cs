@@ -46,6 +46,10 @@ public static class GroupQueryCommand
                 FailureReason.Refused, "The project has no Motif store, so there is no Baseline or Trial to read as of."),
                 (database, project) => ReadAsOf(database, project, request, spec, asOf));
         }
+        catch (QueryRefusalException refused)
+        {
+            return CommandOutcome<GroupResponse>.Refused(refused.Refusal);
+        }
         catch (ArgumentException error)
         {
             return Refuse(RefusalCodes.GroupRequestInvalid, FailureReason.InvalidArgument, error.Message);
@@ -83,6 +87,10 @@ public static class GroupQueryCommand
         {
             using var reader = BaselineReadCache.Open(path);
             return Group(reader.Cache, project, request, spec, label);
+        }
+        catch (QueryRefusalException refused)
+        {
+            return CommandOutcome<GroupResponse>.Refused(refused.Refusal);
         }
         catch (ArgumentException error)
         {

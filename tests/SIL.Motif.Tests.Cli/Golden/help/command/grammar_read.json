@@ -3,9 +3,9 @@
   "code": "grammar read",
   "slug": "grammar-read",
   "title": "Read grammar objects",
-  "description": "Reads phonemes, natural classes, environments, parts of speech, inflection features, lexical entries or phonological rules from the current Baseline, or with --at \u003CproposalId\u003E from the grammar that Proposal\u0027s latest Trial ran against. Use an exact canonical id, an exact form or a name query, and page through larger lists. A bare exact form such as zi also matches the affix headword zi-, and the result says so; write the marker to match only the marked form.",
+  "description": "Reads phonemes, natural classes, environments, parts of speech, inflection features, lexical entries (with their analyses), phonological rules or affix templates with their slots and affixes from the current Baseline, or with --at \u003CproposalId\u003E from the grammar that Proposal\u0027s latest Trial ran against. Use an exact canonical id, an exact form or a name query, and page through larger lists. A bare exact form such as zi also matches the affix headword zi-, and the result says so; write the marker to match only the marked form.",
   "usage": [
-    "Usage: motif grammar read --project \u003Cfwdata\u003E --kind \u003Cphoneme|natural_class|environment|part_of_speech|inflection_feature|lexical_entry|phonological_rule\u003E [--id \u003CcanonicalId\u003E | --query \u003Ctext\u003E | --exact \u003Cform\u003E] [--morph-type \u003Cname\u003E[,\u003Cname\u003E]] [--at baseline|\u003CproposalId\u003E] [--limit \u003C1-100\u003E] [--offset \u003Cn\u003E | --page \u003CN\u003E] [--json]"
+    "Usage: motif grammar read --project \u003Cfwdata\u003E --kind \u003Cphoneme|natural_class|environment|part_of_speech|inflection_feature|lexical_entry|phonological_rule|affix_template\u003E [--id \u003CcanonicalId\u003E | --query \u003Ctext\u003E | --exact \u003Cform\u003E] [--morph-type \u003Cname\u003E[,\u003Cname\u003E]] [--at baseline|\u003CproposalId\u003E] [--limit \u003C1-100\u003E] [--offset \u003Cn\u003E | --page \u003CN\u003E] [--json]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/grammar-read/"

@@ -28,7 +28,8 @@ public sealed class RecordImportPreviewTests(PristineProjectFixture pristine) : 
     }
 
     /// <summary>A project of <paramref name="senses"/> senses; wrongList sets an illegal status.</summary>
-    private (string Project, string File, Guid Entry) Fixture(int senses = 2, bool wrongList = false, string? reference = null)
+    private (string Project, string File, Guid Entry) Fixture(int senses = 2, bool wrongList = false, string? reference = null,
+        int wrongLists = 0, bool editEvery = false)
     {
         Directory.CreateDirectory(_folder);
         using var cache = pristine.NewScratch();
@@ -61,7 +62,10 @@ public sealed class RecordImportPreviewTests(PristineProjectFixture pristine) : 
         var read = RecordFileReader.Read(exporter.Export(entryId).Text!, schema.Schema, exporter.CreateReadOptions());
         Assert.False(read.HasErrors);
         var items = ((RecordList)read.Document!.Data["senses"]!).Items;
-        ((RecordAlternatives)((RecordObject)items[0])["gloss"]!).Add("en", new RecordScalar("zzedited"));
+        for (var index = 0; index < (editEvery ? items.Count : 1); index++)
+            ((RecordAlternatives)((RecordObject)items[index])["gloss"]!).Add("en", new RecordScalar("zzedited"));
+        for (var index = 0; index < wrongLists; index++)
+            ((RecordObject)items[^(index + 1)]).Set("status", Link(typeItem));
         if (wrongList)
             ((RecordObject)items[^1]).Set("status", Link(typeItem));
         if (reference is not null)
@@ -202,6 +206,91 @@ public sealed class RecordImportPreviewTests(PristineProjectFixture pristine) : 
     }
 
     [Fact]
+    public void ADryRunReportsOneRefusalPerWrongListChangeAndTheStageReportsTheSame()
+    {
+        var (project, file, _) = Fixture(senses: 4, wrongLists: 3);
+
+        var dry = RecordImportCommand.Run(new(project, file)).Value!;
+        var staged = RecordImportCommand.Run(new(project, file, "import-three-wrong")).Value!;
+
+        Assert.Equal(3, dry.RefusalCount);
+        Assert.All(dry.Changes!.Where(change => change.Field == "status"), change => Assert.Equal("refused", change.Status));
+        Assert.Equal(3, dry.Changes!.Count(change => change.Field == "status" && change.RefusalCode == RefusalCodes.RecordImportChangeRefused));
+        Assert.Equal(3, dry.Refusals.Count(row => row.Field == "status" && row.Code == RefusalCodes.RecordImportChangeRefused));
+        Assert.Equal(dry.RefusalCount, staged.RefusalCount);
+        Assert.Equal(dry.Refusals.Select(row => (row.Code, row.Field, row.Object)),
+            staged.Refusals.Select(row => (row.Code, row.Field, row.Object)));
+    }
+
+    [Fact]
+    public void ThePreviewListsFourChangesToAPageWithTheirFieldAndValuesAndThePagesCoverEveryChange()
+    {
+        Assert.Equal(4, RecordImportPaging.PageSize);
+        var (project, file, _) = Fixture(senses: 8, editEvery: true);
+
+        var first = RecordImportCommand.Run(new(project, file)).Value!;
+        var second = RecordImportCommand.Run(new(project, file, null, 2)).Value!;
+
+        Assert.Equal(8, first.ChangeCount);
+        Assert.Equal(2, first.PageCount);
+        Assert.Equal(4, first.Changes!.Count);
+        Assert.Equal(4, second.Changes!.Count);
+        var shown = first.Changes.Concat(second.Changes).ToList();
+        Assert.Equal(8, shown.Select(change => change.Object).Distinct().Count());
+        Assert.All(shown, change =>
+        {
+            Assert.Equal("gloss", change.Field);
+            Assert.Equal("en", change.WritingSystem);
+            Assert.StartsWith("zzgloss", change.Old, StringComparison.Ordinal);
+            Assert.Equal("zzedited", change.New);
+        });
+        Assert.True(Encoding.UTF8.GetByteCount(ProjectionJson.Serialize(first)) <= RecordImportPaging.SummaryBytes);
+    }
+
+    [Fact]
+    public void AStageThatFailsAfterItsDraftWasMadeLeavesNoDraftAndTheNameCanBeUsedAgain()
+    {
+        var (project, file, entry) = Fixture();
+        var draftsWhileStaging = -1;
+        RecordImportCommand.BeforeStage = () =>
+        {
+            draftsWhileStaging = DraftCount(project);
+            using var cache = new FwDataProjectLoader().LoadScratchCache(project);
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                cache.ServiceLocator.GetInstance<ILexEntryRepository>().GetObject(entry).SensesOS[1].Gloss
+                    .set_String(cache.DefaultAnalWs, "changedlater"));
+            new FwDataProjectLoader().Save(cache);
+        };
+
+        var failed = RecordImportCommand.Run(new(project, file, "import-reuse"));
+
+        Assert.Equal(1, draftsWhileStaging);
+        Assert.False(failed.Succeeded);
+        Assert.DoesNotContain("draftNotDiscarded", failed.Refusal!.Facts.Keys);
+        Assert.Equal(0, DraftCount(project));
+        RecordImportCommand.BeforeStage = null;
+        var made = ProposalCommands.New(new(project, "0.1.0", "import-reuse", "x"));
+        Assert.True(made.Succeeded, made.Refusal?.Message);
+        Assert.Equal(1, DraftCount(project));
+    }
+
+    [Fact]
+    public void AFailedStageWhoseDraftCannotBeDiscardedNamesTheDraftAndTheDiscardRefusal()
+    {
+        var (project, file, _) = Fixture();
+        // The Draft is gone by the time the stage reads it, so the stage fails and the discard has nothing to remove.
+        RecordImportCommand.BeforeStage = () =>
+            Assert.True(ProposalCommands.DiscardNamedDraft(new(project, "0.1.0", "import-stuck", null)).Succeeded);
+
+        var failed = RecordImportCommand.Run(new(project, file, "import-stuck"));
+
+        Assert.False(failed.Succeeded);
+        Assert.Equal("import-stuck", failed.Refusal!.Facts["draftNotDiscarded"]);
+        Assert.False(string.IsNullOrEmpty(failed.Refusal.Facts["discardRefusal"]));
+        Assert.Contains("discard-draft", failed.Refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void AnEmptyFileIsRefusedAsNamingNoRecordKindInTheDryRunAndTheStage()
     {
         var (project, _, _) = Fixture();
@@ -260,10 +349,10 @@ public sealed class RecordImportPreviewTests(PristineProjectFixture pristine) : 
         File.WriteAllText(file, text.Replace("zzedited", new string('\u00e9', 400), StringComparison.Ordinal)
             .Replace("zzgloss", new string('\u4e2d', 400), StringComparison.Ordinal));
 
-        for (var page = 1; page <= 4; page++)
+        for (var page = 1; page <= 3; page++)
         {
             var response = RecordImportCommand.Run(new(project, file, null, page)).Value!;
-            Assert.Equal(4, response.PageCount);
+            Assert.Equal(3, response.PageCount);
             Assert.True(Encoding.UTF8.GetByteCount(ProjectionJson.Serialize(response)) <= RecordImportPaging.SummaryBytes, "page " + page);
         }
     }

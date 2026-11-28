@@ -21,7 +21,7 @@ Each change that has no operation is listed with its code:
 - `rule-notation.syntax`, `rule-notation.bad-repeat`, `rule-notation.unknown-phoneme`, `rule-notation.unknown-natural-class`, `rule-notation.ambiguous-label`, `rule-notation.alpha-mismatch`, `rule-notation.index-out-of-range`, `rule-notation.dangling-index`, `rule-notation.context-not-allowed`, `rule-notation.limit-exceeded` and `rule-notation.unsupported-class`: an affix input or output text that cannot be read or written.
 - `rule-notation.shared-class` and `rule-notation.context-has-data`: a phonological rule's contexts that the text cannot change without touching another object or losing a name or description.
 
-The summary stays within 2 KB. Changes, operations and refusals are listed three to a page; `--page <n>` reads the next page. `--json` and the MCP tool `motif_import_record` return the same `RecordImportResponse`.
+The summary stays within 2 KB. Changes, operations and refusals are listed four to a page; `--page <n>` reads the next page. `--json` and the MCP tool `motif_import_record` return the same `RecordImportResponse`.
 
 Each listed change has a `status` (`staged` or `refused`, with the refusal code). Its old and new values are the file's text, not the operation's value, and they are project text.
 

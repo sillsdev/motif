@@ -56,7 +56,7 @@ public sealed class ComposeToolTests
     [Fact]
     public void TheToolTakesProposalStepsAndRemoveAndIsOffUnlessAProfileSelectsIt()
     {
-        Assert.Equal(["project", "proposal", "remove", "steps"], Tool.ArgumentNames.Order(StringComparer.Ordinal));
+        Assert.Equal(["draft", "project", "remove", "steps"], Tool.ArgumentNames.Order(StringComparer.Ordinal));
         Assert.DoesNotContain(MotifMcpServer.Expose(ToolProfile.Builtin), exposed => exposed.Name == Tool.Name);
         var selected = new ToolProfile("compose", null, null, "concise", [new ToolSelection(Tool.Name, null, null, null)]);
         Assert.Contains(MotifMcpServer.Expose(selected), exposed => exposed.Name == Tool.Name);

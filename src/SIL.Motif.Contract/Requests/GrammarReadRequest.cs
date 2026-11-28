@@ -23,6 +23,9 @@ public enum GrammarReadKind
 
     /// <summary>Phonological rules with the whole intent a rule edit guards against.</summary>
     phonological_rule,
+
+    /// <summary>Inflectional affix templates with their ordered slots and the affixes that fill each slot.</summary>
+    affix_template,
 }
 
 /// <summary>Reads a page of one authored object kind from a project's current Baseline.</summary>

@@ -311,7 +311,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
             return response.StructuredContent!.Value;
         }
 
-        var lexicon = await Refused("motif_lexicon", ("morphType", new[] { "prefx" }));
+        var lexicon = await Refused("motif_lexicon", ("morph_type", new[] { "prefx" }));
         Assert.Equal("grammar-read.invalid-request", lexicon.GetProperty("code").GetString());
         Assert.Contains("prefix", lexicon.GetProperty("message").GetString(), StringComparison.Ordinal);
 
@@ -400,15 +400,15 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
             ("label", "Restore underlying forms"), ("rationale", "Retain selected source distinctions."));
         var entryId = CanonicalId.FromGuid(project.Seed.FirstEntryId).Value;
         var args = new List<(string, object?)> { ("draft", "underlying"),
-            ("target", citation ? entryId : alternate), ("writingSystem", ws),
-            ("expectedForm", "stale"), ("newForm", citation ? "páta" : "pātaʔ") };
+            ("target", citation ? entryId : alternate), ("writing_system", ws),
+            ("expected_form", "stale"), ("new_form", citation ? "páta" : "pātaʔ") };
         if (!citation) args.Add(("entry", entryId));
         var tool = citation ? "motif_edit_citation_form" : "motif_edit_allomorph_form";
         var staleArgs = args.ToDictionary(pair => pair.Item1, pair => pair.Item2);
         staleArgs["project"] = project.FwDataPath;
         var refused = await session.Client.CallToolAsync(tool, staleArgs);
         Assert.True(refused.IsError);
-        args[3] = ("expectedForm", expected);
+        args[3] = ("expected_form", expected);
         var result = await session.CallAsync(tool, args.ToArray());
         Assert.True(result.GetProperty("ok").GetBoolean(), result.ToString());
         var operation = Assert.Single(result.GetProperty("result").GetProperty("operations").EnumerateArray());
@@ -509,7 +509,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
 
         var result = await session.CallAsync("motif_set_entry_do_not_parse", ("draft", "entry-flag"),
             ("target", CanonicalId.FromGuid(project.Seed.FirstEntryId).Value),
-            ("expectedDoNotParse", false), ("doNotParse", true));
+            ("expected_do_not_parse", false), ("do_not_parse", true));
 
         Assert.True(result.GetProperty("ok").GetBoolean(), result.ToString());
         var operation = Assert.Single(result.GetProperty("result").GetProperty("operations").EnumerateArray());
@@ -633,9 +633,9 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         var prefix = CanonicalId.FromGuid(MoMorphTypeTags.kguidMorphPrefix).Value;
 
         var entry = await session.CallAsync("motif_add_lexical_entry", ("draft", "affix-authoring"),
-            ("form", "m"), ("formWs", "fr"), ("morphType", prefix), ("gloss", "class 1/2"),
-            ("analysisWs", "en"), ("msa", new { kind = "inflectional", category }),
-            ("inflectionClasses", new[] { classId }), ("environments", new[] { environmentId }));
+            ("form", "m"), ("form_ws", "fr"), ("morph_type", prefix), ("gloss", "class 1/2"),
+            ("analysis_ws", "en"), ("msa", new { kind = "inflectional", category }),
+            ("inflection_classes", new[] { classId }), ("environments", new[] { environmentId }));
         Assert.True(entry.GetProperty("ok").GetBoolean(), entry.ToString());
         var entryOperations = entry.GetProperty("result").GetProperty("operations").EnumerateArray().ToArray();
         Assert.Contains(entryOperations, operation =>
@@ -647,8 +647,8 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         var entryId = entryCreate.GetProperty("entityId").GetString()!;
 
         var alternate = await session.CallAsync("motif_add_alternate_form", ("draft", "affix-authoring"),
-            ("entry", "entry:" + entryId), ("form", "mw"), ("formWs", "fr"), ("morphType", prefix),
-            ("inflectionClasses", new[] { classId }), ("environments", new[] { environmentId }));
+            ("entry", "entry:" + entryId), ("form", "mw"), ("form_ws", "fr"), ("morph_type", prefix),
+            ("inflection_classes", new[] { classId }), ("environments", new[] { environmentId }));
         Assert.True(alternate.GetProperty("ok").GetBoolean(), alternate.ToString());
         var alternateOperations = alternate.GetProperty("result").GetProperty("operations").EnumerateArray().ToArray();
         Assert.Contains(alternateOperations, operation =>
@@ -680,7 +680,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
             .First(operation => operation.TryGetProperty("entityId", out _)).GetProperty("entityId").GetString()!;
         var prefix = CanonicalId.FromGuid(MoMorphTypeTags.kguidMorphPrefix).Value;
         var entry = await session.CallAsync("motif_add_lexical_entry", ("draft", "derivational"),
-            ("form", "pag"), ("formWs", "fr"), ("morphType", prefix), ("gloss", "agentive"), ("analysisWs", "en"),
+            ("form", "pag"), ("form_ws", "fr"), ("morph_type", prefix), ("gloss", "agentive"), ("analysis_ws", "en"),
             ("msa", new { kind = "derivational", category, toCategory = derivedId }));
         Assert.True(entry.GetProperty("ok").GetBoolean(), entry.ToString());
         var entryOperations = entry.GetProperty("result").GetProperty("operations").EnumerateArray().ToArray();
@@ -691,7 +691,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
             operation.GetProperty("kind").GetString() == "lexical/lexDb/createEntries").GetProperty("entityId").GetString()!;
 
         var restricted = await session.CallAsync("motif_edit_derivational_affix_restriction", ("draft", "derivational"),
-            ("msa", msaId), ("fromInflectionClass", classId));
+            ("msa", msaId), ("from_inflection_class", classId));
 
         Assert.True(restricted.GetProperty("ok").GetBoolean(), restricted.ToString());
         Assert.Contains(restricted.GetProperty("result").GetProperty("operations").EnumerateArray(), operation =>
@@ -699,7 +699,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         var refused = await session.Client.CallToolAsync("motif_add_alternate_form", new Dictionary<string, object?>
         {
             ["project"] = project.FwDataPath, ["draft"] = "derivational", ["entry"] = "entry:" + entryId,
-            ["form"] = "mag", ["formWs"] = "fr", ["morphType"] = prefix, ["inflectionClasses"] = new[] { classId },
+            ["form"] = "mag", ["form_ws"] = "fr", ["morph_type"] = prefix, ["inflection_classes"] = new[] { classId },
         });
         Assert.True(refused.IsError);
         Assert.Contains("compose-edit-derivational-affix-restriction", ((TextContentBlock)refused.Content[0]).Text);
@@ -769,8 +769,8 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
             .GetProperty("entityId").GetString()!;
 
         var entry = await session.CallAsync("motif_add_lexical_entry", ("draft", "author-grammar"),
-            ("form", "mcpnoun"), ("formWs", "fr"), ("morphType", stemTypeId),
-            ("gloss", "MCP noun"), ("analysisWs", "en"),
+            ("form", "mcpnoun"), ("form_ws", "fr"), ("morph_type", stemTypeId),
+            ("gloss", "MCP noun"), ("analysis_ws", "en"),
             ("msa", new { kind = "stem", category = categoryId }));
         Assert.True(entry.GetProperty("result").GetProperty("operationCount").GetInt32() > 0);
         var entryId = Assert.Single(entry.GetProperty("result").GetProperty("operations").EnumerateArray(),
@@ -810,8 +810,8 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
             .Single(item => string.Equals(item.GetProperty("name").GetString(), "suffix", StringComparison.OrdinalIgnoreCase))
             .GetProperty("id").GetString()!;
         var affix = await session.CallAsync("motif_add_lexical_entry", ("draft", "author-grammar"),
-            ("form", "mcp-sfx"), ("formWs", "fr"), ("morphType", suffixTypeId),
-            ("gloss", "MCP suffix"), ("analysisWs", "en"),
+            ("form", "mcp-sfx"), ("form_ws", "fr"), ("morph_type", suffixTypeId),
+            ("gloss", "MCP suffix"), ("analysis_ws", "en"),
             ("msa", new { kind = "inflectional", category = categoryId, slots = new[] { slotId } }));
         Assert.True(affix.GetProperty("result").GetProperty("operationCount").GetInt32() > 0);
 
@@ -956,7 +956,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         await session.Client.CallToolAsync("motif_compose", new Dictionary<string, object?>
         {
             ["project"] = session.ProjectPath,
-            ["proposal"] = draft,
+            ["draft"] = draft,
             ["steps"] = steps,
         });
 
@@ -991,7 +991,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         var proposalId = started.GetProperty("result").GetProperty("proposalId").GetString()!;
 
         var added = await session.CallAsync("motif_add_feature_value", ("draft", "feature-value"),
-            ("featStruc", featStruc), ("feature", feature), ("value", value));
+            ("feat_struc", featStruc), ("feature", feature), ("value", value));
 
         Assert.True(added.GetProperty("ok").GetBoolean(), added.ToString());
         Assert.Equal(3, added.GetProperty("result").GetProperty("operationCount").GetInt32());
@@ -1006,7 +1006,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         {
             ["project"] = project.FwDataPath,
             ["draft"] = "feature-value",
-            ["featStruc"] = featStruc,
+            ["feat_struc"] = featStruc,
             ["feature"] = feature,
             ["notAField"] = "x",
         });
@@ -1051,7 +1051,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         var structure = Assert.Single(added.GetProperty("result").GetProperty("createdObjects").EnumerateArray())
             .GetProperty("id").GetString();
         var selected = await session.CallAsync("motif_add_feature_value", ("draft", "required-features"),
-            ("featStruc", structure), ("feature", feature), ("value", value));
+            ("feat_struc", structure), ("feature", feature), ("value", value));
         Assert.True(selected.GetProperty("ok").GetBoolean(), selected.ToString());
         AssertDraftComposers(project.FwDataPath, "required-features", proposalId,
             ["AuthorAllomorphRequiredFeatures", "AuthorFeatureValue"]);
@@ -1719,7 +1719,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         await session.CallAsync("motif_start_proposal", ("draft", "slot-rename"),
             ("label", "Rename one affix slot"), ("rationale", "This is a Draft-only check."));
         var slotRename = await session.CallAsync("motif_edit_affix_slot", ("draft", "slot-rename"),
-            ("target", slotId.Value), ("writingSystem", "en"), ("expectedName", "MCP slot"), ("name", "Renamed slot"));
+            ("target", slotId.Value), ("writing_system", "en"), ("expected_name", "MCP slot"), ("name", "Renamed slot"));
         var renameOperation = Assert.Single(slotRename.GetProperty("result").GetProperty("operations").EnumerateArray());
         Assert.Equal("grammar/moInflAffixSlot/setName", renameOperation.GetProperty("kind").GetString());
 
@@ -1835,8 +1835,8 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         AssertProjectUnchanged(project, projectHash, savedDispositions);
 
         var revised = await session.CallAsync("motif_revise_parsimony_disposition", ("draft", draftName),
-            ("recordId", savedDispositions.ToRevise.RecordId),
-            ("expectedHeads", new[] { new
+            ("record_id", savedDispositions.ToRevise.RecordId),
+            ("expected_heads", new[] { new
             {
                 revisionId = savedDispositions.ToRevise.Head.RevisionId,
                 contentDigest = savedDispositions.ToRevise.Head.ContentDigest,
@@ -1852,8 +1852,8 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         AssertProjectUnchanged(project, projectHash, savedDispositions);
 
         var retracted = await session.CallAsync("motif_retract_parsimony_disposition", ("draft", draftName),
-            ("recordId", savedDispositions.ToRetract.RecordId),
-            ("expectedHeads", new[] { new
+            ("record_id", savedDispositions.ToRetract.RecordId),
+            ("expected_heads", new[] { new
             {
                 revisionId = savedDispositions.ToRetract.Head.RevisionId,
                 contentDigest = savedDispositions.ToRetract.Head.ContentDigest,
@@ -1923,8 +1923,8 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
             .GetProperty("entityId").GetString()!;
 
         var authored = await session.CallAsync("motif_add_affix_process", ("draft", "process"),
-            ("morphType", CanonicalId.FromGuid(MoMorphTypeTags.kguidMorphPrefix).Value),
-            ("gloss", "repeat"), ("analysisWs", "en"),
+            ("morph_type", CanonicalId.FromGuid(MoMorphTypeTags.kguidMorphPrefix).Value),
+            ("gloss", "repeat"), ("analysis_ws", "en"),
             ("msa", new { kind = "unclassified", category = CanonicalId.FromGuid(project.Seed.PartOfSpeechId).Value }),
             ("input", new object[]
             {
@@ -2118,7 +2118,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
 
         var result = await session.CallAsync("motif_edit_allomorph_condition", ("draft", "condition"),
             ("target", CanonicalId.FromGuid(pristine.Seed.FirstLexemeFormId).Value), ("field", "phoneEnv"),
-            ("expectedEnvironments", Array.Empty<string>()), ("environments", Array.Empty<string>()));
+            ("expected_environments", Array.Empty<string>()), ("environments", Array.Empty<string>()));
 
         Assert.True(result.GetProperty("ok").GetBoolean(), result.ToString());
         Assert.Equal(0, result.GetProperty("result").GetProperty("operationCount").GetInt32());
@@ -2136,7 +2136,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
 
         var result = await session.CallAsync("motif_order_allomorphs", ("draft", "order"),
             ("target", CanonicalId.FromGuid(pristine.Seed.FirstEntryId).Value),
-            ("expectedAlternates", expectedAlternates), ("alternates", expectedAlternates.Reverse().ToArray()));
+            ("expected_alternates", expectedAlternates), ("alternates", expectedAlternates.Reverse().ToArray()));
 
         Assert.True(result.GetProperty("ok").GetBoolean(), result.ToString());
         Assert.True(result.GetProperty("result").GetProperty("operationCount").GetInt32() > 0);

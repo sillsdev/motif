@@ -9,14 +9,14 @@ Each step names a composing command and carries the same closed intent that comm
 One step:
 
 ```sh
-motif compose --project grammar.fwdata --proposal plurals \
+motif compose --project grammar.fwdata --draft plurals \
   --steps '[{"verb": "compose-author-phoneme", "intent": {"name": "i", "representations": ["i"]}}]'
 ```
 
 Many steps in order:
 
 ```sh
-motif compose --project grammar.fwdata --proposal sounds --steps '[
+motif compose --project grammar.fwdata --draft sounds --steps '[
   {"verb": "compose-author-phoneme", "intent": {"name": "i", "representations": ["i"]},
    "cite": {"source": "Grammar 2026", "locator": "§ 3"}},
   {"verb": "compose-author-phoneme", "intent": {"name": "u", "representations": ["u"]}}
@@ -28,7 +28,7 @@ Steps run in order and each one sees the changes of the steps before it. A step 
 `--remove` takes operation ids, separated by commas, to take out of the Draft before the steps run, which is how a step replaces something it staged earlier:
 
 ```sh
-motif compose --project grammar.fwdata --proposal sounds --remove <operation id>,<operation id> \
+motif compose --project grammar.fwdata --draft sounds --remove <operation id>,<operation id> \
   --steps '[{"verb": "compose-author-phoneme", "intent": {"name": "e", "representations": ["e"]}}]'
 ```
 
@@ -36,4 +36,4 @@ A removal that would leave another operation depending on it is refused; remove 
 
 The result lists each step's operations and the Draft's operation count afterwards. Add `--json` for the structured result.
 
-The MCP tool is `motif_compose`, with `proposal`, `steps` and `remove` arguments; it requires Advanced AI mode and a profile that selects it. `compose` names its Draft with `--proposal`, because that argument names a Draft or a Proposal; `compose-batch` takes the same steps from a file and does not remove.
+The MCP tool is `motif_compose`, with `draft`, `steps` and `remove` arguments; it requires Advanced AI mode and a profile that selects it. `compose` names its Draft with `--draft`, as the other Draft verbs do; `compose-batch` takes the same steps from a file and does not remove.

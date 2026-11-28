@@ -101,11 +101,12 @@ internal sealed class ToolArgs
     {
         var intent = new JsonObject();
         foreach (var field in fields)
-            if (_arguments.TryGetPropertyValue(field, out var value)) intent[field] = value?.DeepClone();
+            if (_arguments.TryGetPropertyValue(Schema.Snake(field), out var value)) intent[field] = value?.DeepClone();
         return intent.ToJsonString();
     }
 
-    public JsonObject Copy() => _arguments.DeepClone().AsObject();
+    /// <summary>The arguments with top-level names in the camelCase the request and intent records read.</summary>
+    public JsonObject Copy() => Schema.CamelKeys(_arguments);
 
     public bool Flag(string name)
     {
