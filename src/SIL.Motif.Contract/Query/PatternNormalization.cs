@@ -24,16 +24,23 @@ public static class PatternNormalization
     /// <exception cref="QueryRefusalException">The pattern changes meaning when composed.</exception>
     public static string Pattern(string pattern)
     {
-        if (IsNormal(pattern)) return pattern;
+        pattern = DecodeMarkEscapes(pattern);
+        // Punctuation is dropped for the test, so a mark and the letter a group parts from it are seen side by side.
+        if (IsNormal(pattern) && IsNormal(string.Concat(pattern.Where(c => !char.IsAscii(c) || char.IsLetterOrDigit(c))))) return pattern;
         var result = new StringBuilder(pattern.Length);
         var run = new StringBuilder();
+        string? pendingBase = null;
         void FlushRun(int next)
         {
             if (run.Length == 0) return;
             var text = run.ToString();
             var composed = text.Normalize(NormalizationForm.FormC);
-            if (composed != text && next < pattern.Length && pattern[next] is '*' or '+' or '?' or '{' && IsMark(text[^1]))
+            if (composed != text && next < pattern.Length && pattern[next] is '*' or '+' or '?' or '{' && IsMark(LastRune(text)))
                 throw Refuse(pattern, "a quantifier follows a combining mark that composes with the letter before it, so the quantifier would bind to a different character once composed. Group the whole letter, such as (ொ)?, or write the pattern composed");
+            if (composed.Length > 0 && pendingBase is { } before && IsMark(FirstRune(composed)) &&
+                !string.Equals((before + FirstRune(composed).ToString()).Normalize(NormalizationForm.FormC), before + FirstRune(composed).ToString(), StringComparison.Ordinal))
+                throw Refuse(pattern, "a combining mark is separated from the letter before it by a group, so composing would join them across the group. Write the letter and its mark together, such as (ொ)");
+            pendingBase = composed.Length > 0 ? LastRune(composed).ToString() : pendingBase;
             result.Append(composed);
             run.Clear();
         }
@@ -60,6 +67,7 @@ public static class PatternNormalization
             {
                 FlushRun(i);
                 result.Append(c);
+                if (c is not ('(' or ')' or '?' or ':')) pendingBase = null;
             }
             else run.Append(c);
         }
@@ -67,7 +75,42 @@ public static class PatternNormalization
         return result.ToString();
     }
 
-    private static bool IsMark(char c) => CharUnicodeInfo.GetUnicodeCategory(c) is UnicodeCategory.NonSpacingMark or UnicodeCategory.SpacingCombiningMark;
+    private static bool IsMark(Rune r) => Rune.GetUnicodeCategory(r) is UnicodeCategory.NonSpacingMark or UnicodeCategory.SpacingCombiningMark;
+
+    private static Rune LastRune(string text) => Rune.GetRuneAt(text, char.IsLowSurrogate(text[^1]) && text.Length > 1 ? text.Length - 2 : text.Length - 1);
+
+    private static Rune FirstRune(string text) => Rune.GetRuneAt(text, 0);
+
+    private static readonly Regex MarkEscape = new(@"\\(?:u(?<u>[0-9A-Fa-f]{4})|x\{(?<b>[0-9A-Fa-f]{1,6})\}|x(?<x>[0-9A-Fa-f]{2}))", RegexOptions.CultureInvariant);
+
+    // An escape of a combining mark is written out, so it composes with its neighbours like a literal one.
+    private static string DecodeMarkEscapes(string pattern)
+    {
+        if (!pattern.Contains('\\')) return pattern;
+        var changed = false;
+        var result = new StringBuilder(pattern.Length);
+        for (var i = 0; i < pattern.Length; i++)
+        {
+            if (pattern[i] != '\\') { result.Append(pattern[i]); continue; }
+            if (i + 1 >= pattern.Length) { result.Append('\\'); break; }
+            var match = MarkEscape.Match(pattern, i);
+            if (match.Success && match.Index == i && Decode(match) is { } rune && IsMark(rune))
+            {
+                result.Append(rune.ToString());
+                changed = true;
+                i += match.Length - 1;
+            }
+            else { result.Append(pattern[i]).Append(pattern[++i]); }
+        }
+        return changed ? result.ToString() : pattern;
+    }
+
+    private static Rune? Decode(Match match)
+    {
+        var hex = match.Groups["u"].Success ? match.Groups["u"].Value : match.Groups["b"].Success ? match.Groups["b"].Value : match.Groups["x"].Value;
+        var value = int.Parse(hex, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+        return Rune.IsValid(value) ? new Rune(value) : null;
+    }
 
     // A "]" right after "[" or "[^" is literal.
     private static int ClassEnd(string pattern, int start)

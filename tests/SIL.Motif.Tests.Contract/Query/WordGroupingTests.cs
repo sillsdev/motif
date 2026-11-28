@@ -225,4 +225,15 @@ public sealed class WordGroupingTests
         Assert.Contains("note one", result.Notes);
         Assert.Equal(Encoding.UTF8.GetString(Encoding.UTF8.GetBytes(result.Query)), result.Query);
     }
+
+    [Fact]
+    public void ADecomposedRawPatternGroupsTheSameWordsAsTheComposedOne()
+    {
+        // Tamil vowel sign O (U+0BCB) decomposes to U+0BC7 U+0BBE.
+        var corpus = new[] { W("\u0BAA\u0B9F\u0B95\u0BCB"), W("\u0BAE\u0BB0\u0B95\u0BCB"), W("\u0BAA\u0B9F\u0B95\u0BCA") };
+        var composed = Run(corpus, new GroupSpec(WordGrouping.Suffix, null, "(?<stem>.+)\u0B95\u0BCB", null, null, null, 1));
+        Assert.NotEmpty(composed.Rows);
+        var decomposed = Run(corpus, new GroupSpec(WordGrouping.Suffix, null, "(?<stem>.+)\u0B95\u0BC7\u0BBE", null, null, null, 1));
+        Assert.Equal(composed.Rows.Select(row => row.Stem), decomposed.Rows.Select(row => row.Stem));
+    }
 }

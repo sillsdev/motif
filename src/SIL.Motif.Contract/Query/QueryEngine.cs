@@ -131,7 +131,10 @@ internal static class QueryEngine
         }
         if (condition.Op is not ("is" or "in" or "not" or "~" or "has" or "<" or ">"))
             throw new ArgumentException("Unknown query operator.");
-        var targets = condition.Value.Split(',', StringSplitOptions.TrimEntries);
+        var composed = !numeric;
+        string Compose(string text) => composed ? PatternNormalization.Value(text) : text;
+        var value = Compose(condition.Value);
+        var targets = condition.Value.Split(',', StringSplitOptions.TrimEntries).Select(Compose).ToArray();
         long limit = 0;
         if (condition.Op is "<" or ">" && !long.TryParse(condition.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out limit))
             throw new ArgumentException("Expected an integer.");
@@ -140,9 +143,9 @@ internal static class QueryEngine
             var items = row.Get(condition.Col);
             return condition.Op switch
             {
-                "is" => items.Contains(condition.Value, StringComparer.Ordinal),
-                "not" => !items.Contains(condition.Value, StringComparer.Ordinal),
-                "in" or "has" => items.Any(x => targets.Contains(x, StringComparer.Ordinal)),
+                "is" => items.Any(x => string.Equals(Compose(x), value, StringComparison.Ordinal)),
+                "not" => !items.Any(x => string.Equals(Compose(x), value, StringComparison.Ordinal)),
+                "in" or "has" => items.Any(x => targets.Contains(Compose(x), StringComparer.Ordinal)),
                 "~" => items.Any(x => regex!.IsMatch(PatternNormalization.Value(x))),
                 "<" => items.Count > 0 && long.TryParse(items[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out var v) && v < limit,
                 ">" => items.Count > 0 && long.TryParse(items[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out var w) && w > limit,

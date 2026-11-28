@@ -72,10 +72,11 @@ public static class PairsAnalysis
             throw new ArgumentException($"MaxResults must be 1 to {PairsOptions.ResultLimit}.");
         if (options.ExamplesPerX is < 0 or > 100) throw new ArgumentException("ExamplesPerX must be 0 to 100.");
         Regex? pattern = null;
+        var composedSource = options.XPattern is { Length: > 0 } raw ? PatternNormalization.Pattern(raw) : null;
         try
         {
-            if (options.XPattern is { Length: > 0 } source)
-                pattern = new Regex("^(?:" + source + ")$", RegexOptions.NonBacktracking | RegexOptions.CultureInvariant | (fold ? RegexOptions.IgnoreCase : RegexOptions.None));
+            if (composedSource is not null)
+                pattern = new Regex("^(?:" + composedSource + ")$", RegexOptions.NonBacktracking | RegexOptions.CultureInvariant | (fold ? RegexOptions.IgnoreCase : RegexOptions.None));
         }
         catch (ArgumentException exception) { throw new ArgumentException("The X pattern is not a valid regular expression: " + exception.Message); }
 
