@@ -1641,9 +1641,30 @@ public static partial class ProposalCommands
                     Findings = ProposalTexts.Check(database, project, comment.Markdown).Findings,
                 }).ToArray(),
             };
+            if (request.Records is { } grouping) return GroupByRecord(detail, grouping);
             return CommandOutcome<ProposalDetailProjection>.Success(
                 request.WithCurrent && content is not null ? ProposalCurrentValues.Attach(database, project, detail, content) : detail);
         });
+
+    /// <summary>Swaps a record import's operations for one row per record file.</summary>
+    private static CommandOutcome<ProposalDetailProjection> GroupByRecord(ProposalDetailProjection detail, ShowRecordGrouping grouping)
+    {
+        if (!ProposalRecordRow.Sorts.Contains(grouping.Sort, StringComparer.Ordinal))
+            return CommandOutcome<ProposalDetailProjection>.Refused(new Refusal(RefusalCodes.ProposalRecordSortUnknown,
+                FailureReason.InvalidArgument,
+                $"'{grouping.Sort}' is not a record order. Use one of: {string.Join(", ", ProposalRecordRow.Sorts)}.",
+                Fact(("sort", grouping.Sort))));
+        if (ProposalRecordRow.From(detail.ExtensionsJson) is not { } rows)
+            return CommandOutcome<ProposalDetailProjection>.Refused(new Refusal(RefusalCodes.ProposalNoRecordImport,
+                FailureReason.InvalidArgument,
+                "The Proposal holds no record import, so it has no record files to group by.",
+                Fact(("proposal", detail.ProposalId))));
+        return CommandOutcome<ProposalDetailProjection>.Success(detail with
+        {
+            Records = ProposalRecordRow.Arrange(rows, grouping.Sort, grouping.RefusedOnly),
+            Operations = [], ExtensionsJson = null, OperationTotal = detail.Operations.Count,
+        });
+    }
 
     internal static CommandOutcome<ProposalDetailProjection> BuildProposalDetail(
         IProposalRepository repository, string proposalSelector, MotifDatabase? marksDatabase = null,

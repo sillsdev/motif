@@ -53,8 +53,11 @@ internal static class RecordInitialization
         int ordinal, byte identityFields, JsonElement layout, NativeProvenance? provenance)
     {
         if (layout.GetProperty("version").GetInt32() != 2) throw new InvalidDataException("Unknown initialization layout.");
-        if (!layout.TryGetProperty("table", out var table) || table.GetString() != BuiltInLayouts.Version)
-            throw new InvalidDataException("Unknown built-in layout table; reimport the store after an LCM upgrade.");
+        var stored = layout.TryGetProperty("table", out var table) ? table.GetString() : null;
+        if (stored != BuiltInLayouts.Version)
+            throw new InvalidDataException(
+                $"This store was written by a Motif build with a different FieldWorks data model (store layout table '{stored ?? "none"}', this build '{BuiltInLayouts.Version}'). "
+                + "Export it with the Motif build that wrote it, then re-import the export with this build.");
         foreach (var declared in layout.GetProperty("types").EnumerateObject())
             if (!declared.Value.TryGetInt32(out var type) || !KnownType(type)) throw new InvalidDataException("Unknown field type.");
         var record = new GenericRecord

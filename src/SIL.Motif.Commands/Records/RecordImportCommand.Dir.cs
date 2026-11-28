@@ -64,6 +64,8 @@ public static partial class RecordImportCommand
         public int RefusedChanges { get; set; }
         /// <summary>The batch objects this file's new records and owned objects are.</summary>
         public IReadOnlyCollection<Guid> Owns { get; set; } = [];
+        /// <summary>Paths of the other files of the folder this file refers to or depends on.</summary>
+        public SortedSet<string> DependsOn { get; } = new(StringComparer.Ordinal);
         public int Operations => Status is CreatedStatus or UpdatedStatus ? Lowering?.Operations.Count ?? 0 : 0;
 
         public void Refuse(Refusal refusal) => Refuse(refusal.Code, refusal.Message);
@@ -274,7 +276,12 @@ public static partial class RecordImportCommand
             if (file.Record is { } record) entry["record"] = CanonicalId.FromGuid(record).Value;
             if (file.Base is not null) entry["base"] = file.Base;
             if (file.Code is not null) entry["code"] = file.Code;
-            if (file.Status is CreatedStatus or UpdatedStatus) entry["text"] = file.Input.Text;
+            if (file.DependsOn.Count > 0) entry["dependsOn"] = new JsonArray(file.DependsOn.Select(path => (JsonNode?)JsonValue.Create(path)).ToArray());
+            if (file.Status is CreatedStatus or UpdatedStatus)
+            {
+                entry["text"] = file.Input.Text;
+                entry["operations"] = file.Operations;
+            }
             entries.Add(entry);
         }
         var node = new JsonObject
@@ -389,6 +396,7 @@ public static partial class RecordImportCommand
             foreach (var other in DependentsOf(file, files, creators).Where(item => item.Status is CreatedStatus or UpdatedStatus))
                 more.TryAdd(other.Input.Path, RefusedBecause(file, other));
         if (more.Count > 0) throw new RecordImportCascadeException(more);
+        RecordOperationEdges(files);
         var edges = result.Staged.Sum(file => NamedByFile(file, creators).Distinct().Count());
         return result with { Review = review.Summary(edges) };
     }
@@ -490,6 +498,17 @@ public static partial class RecordImportCommand
         var creators = RecordChangeSetLowerer.Creators(units.SelectMany(file => file.Lowering!.Operations));
         foreach (var file in units)
             file.Lowering = file.Lowering! with { Operations = RecordChangeSetLowerer.AddDependencies(file.Lowering.Operations, creators) };
+    }
+
+    /// <summary>Notes each file whose operations wait on another file's operations.</summary>
+    private static void RecordOperationEdges(IReadOnlyList<DirFile> files)
+    {
+        var owner = new Dictionary<CanonicalId, DirFile>();
+        foreach (var file in files.Where(file => file.Status is CreatedStatus or UpdatedStatus && file.Lowering is not null))
+            foreach (var operation in file.Lowering!.Operations) owner[operation.OperationId] = file;
+        foreach (var file in files.Where(file => file.Status is CreatedStatus or UpdatedStatus && file.Lowering is not null))
+            foreach (var dependency in file.Lowering!.Operations.SelectMany(operation => operation.DependsOn))
+                if (owner.TryGetValue(dependency.OperationId, out var other) && other != file) file.DependsOn.Add(other.Input.Path);
     }
 
     private static void Classify(DirFile file)

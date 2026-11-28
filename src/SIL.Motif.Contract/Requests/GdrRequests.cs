@@ -59,3 +59,11 @@ public sealed record GdrLinkToPathRequest(string ProjectPath, string Path, Basel
 /// <param name="BuildIndex">Whether to build the corpus parse index a block needs when it is missing or stale (once per distinct shape); the timeout then bounds the query, not the build.</param>
 public sealed record GdrCheckRequest(string ProjectPath, BaselineToken? ExpectedBaseline = null, bool RunBlocks = true, int BlockTimeoutSeconds = 60,
     bool BuildIndex = false);
+
+
+/// <summary>Stages the saved tables of a Grammar Guide section's query blocks, or of every section's, in a Draft (ADR 0005).</summary>
+/// <param name="ProjectPath">The recorded project path.</param>
+/// <param name="Id">The <c>GDR-n</c> number or canonical id of one section; null refreshes every section that has a query block.</param>
+/// <param name="Draft">The name of an existing Draft to stage into; null stages into the pending changes.</param>
+/// <param name="QueryId">The <c>id</c> of one query block to refresh; null refreshes every block of the section.</param>
+public sealed record GdrRefreshTablesRequest(string ProjectPath, string? Id = null, string? Draft = null, string? QueryId = null);

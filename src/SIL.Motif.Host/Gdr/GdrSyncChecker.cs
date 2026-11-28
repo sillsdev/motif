@@ -292,8 +292,13 @@ public static class GdrSyncChecker
         var current = new List<Paragraph>();
         var texts = new List<string>();
         var started = false;
+        // A saved table is computed, not authored: example claims and interlinear lines never read it (ADR 0005).
+        var saved = GdrSavedTables.TableIndexes(record.Paragraphs.Select(p => p.Contents.Text ?? "").ToArray(),
+            record.Paragraphs.Select(p => p.StyleName).ToArray());
+        var index = -1;
         foreach (var paragraph in record.Paragraphs)
         {
+            if (saved.Contains(++index)) continue;
             if (HeadingLevel(paragraph.StyleName) > 0)
             {
                 if (started || current.Count > 0) yield return new Section(record.Label, title, expectation, current, texts);

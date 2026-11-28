@@ -70,6 +70,35 @@ public sealed class ImportRecordViewModelTests
     }
 
     [UiThreadFact]
+    public async Task StrictIsOffByDefaultAndTheStagedRefusalCountIsNotTheDryRunCount()
+    {
+        var (model, client) = Make((request, _) => Ok(request.DraftName is null
+            ? Plan(operations: 2, refusals: 1) : Plan(operations: 2, refusals: 3, draft: request.DraftName)));
+        await model.PreviewAsync();
+        model.DraftName = "staged";
+        Assert.False(model.Strict);
+        Assert.Null(model.StagedRefusalCount);
+
+        await model.StageAsync();
+
+        Assert.False(client.StageRecordImportRequests.First().Strict);
+        Assert.False(client.StageRecordImportRequests.Last().Strict);
+        Assert.Equal(1, model.RefusalCount);
+        Assert.Equal(3, model.StagedRefusalCount);
+    }
+
+    [UiThreadFact]
+    public async Task StrictIsNotSentWithThePreview()
+    {
+        var (model, client) = Make((_, _) => Ok(Plan()));
+        model.Strict = true;
+
+        await model.PreviewAsync();
+
+        Assert.False(Assert.Single(client.StageRecordImportRequests).Strict);
+    }
+
+    [UiThreadFact]
     public async Task PagingRequestsTheNeighbouringPageAndStopsAtTheEnds()
     {
         var (model, client) = Make((request, _) => Ok(Plan(request.Page, pageCount: 2, operations: 5)));

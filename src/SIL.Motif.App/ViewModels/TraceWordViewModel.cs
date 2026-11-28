@@ -879,7 +879,6 @@ public sealed class TraceAnalysisViewModel
         Availability = string.IsNullOrWhiteSpace(analysis.Availability) ? MotifAppStrings.TraceAvailabilityNotRecorded : analysis.Availability;
         ProjectionStatus = analysis.ProjectionStatus;
         ProjectionError = analysis.ProjectionError;
-        LegacyMorphemes = analysis.LegacyMorphemes;
         RecordCount = recordCount;
         Position = position;
         Morphs = analysis.Morphs.Select(morph => new TraceMorphViewModel(morph, allowLiveLinks, directions)).ToArray();
@@ -891,21 +890,9 @@ public sealed class TraceAnalysisViewModel
     public string Availability { get; }
     public string? ProjectionStatus { get; }
     public string? ProjectionError { get; }
-    public string? LegacyMorphemes { get; }
-    /// <summary>Whether producer morpheme labels lack a projected morph list for the compact comparison.</summary>
-    public bool HasUnprojectedMorphemes => !HasProjectedMorphemes && HasLegacyMorphemes;
-
     /// <summary>Whether the recorded analysis includes projected morphs.</summary>
     public bool HasProjectedMorphemes => Morphs.Count > 0;
 
-    public bool HasLegacyMorphemes => LegacyMorphemes is { Length: > 0 };
-    /// <summary>The parser's recorded morphemes, shown without assigning FieldWorks identities or roles.</summary>
-    public string LegacyMorphemesText => HasLegacyMorphemes
-        ? TraceText.Format(MotifAppStrings.TraceMorphemesFormat, string.Join(" + ", LegacyMorphemes!.Split('+', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)))
-        : string.Empty;
-
-    /// <summary>The parser's own names for the analysis's morphemes, kept for the tooltip on its surface form.</summary>
-    public string? LegacyMorphemesTip => HasLegacyMorphemes ? TraceText.Format(MotifAppStrings.TraceParserMorphemesTipFormat, LegacyMorphemes) : null;
     public IReadOnlyList<TraceMorphViewModel> Morphs { get; }
 
     /// <summary>The analysis's place among the distinct analyses, from 1, once duplicates are merged.</summary>
