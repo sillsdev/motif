@@ -140,6 +140,21 @@ public sealed record GdrEditResponse(
     public IReadOnlyList<string> StylesCreated { get; init; } = [];
 }
 
+/// <summary>One decision of a batch as it is or would be written.</summary>
+/// <param name="Row">The line of the file it came from.</param>
+/// <param name="Abbreviation">The section's permanent <c>GDR-n</c> number.</param>
+/// <param name="Entry">The list item written under the section's Decisions heading.</param>
+public sealed record GdrDecidedRow(int Row, string Abbreviation, string Entry);
+
+/// <summary>What a batch of judgement calls staged, or, on a dry run, would stage.</summary>
+/// <param name="DraftName">The Draft they are staged in, or would be.</param>
+/// <param name="Staged">False on a dry run, which stages nothing.</param>
+/// <param name="Rows">Each row's result, in file order.</param>
+/// <param name="OperationCount">The Draft operations staged; zero on a dry run.</param>
+/// <param name="StylesCreated">The standard styles the Draft also creates; empty when the project had them all.</param>
+public sealed record GdrDecideBatchResponse(
+    string DraftName, bool Staged, IReadOnlyList<GdrDecidedRow> Rows, int OperationCount, IReadOnlyList<string> StylesCreated);
+
 /// <summary>What staging a new Grammar Guide item added to a Draft.</summary>
 /// <param name="DraftName">The Draft the item is staged in.</param>
 /// <param name="Id">The new item's canonical id.</param>

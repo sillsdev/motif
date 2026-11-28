@@ -1,3 +1,4 @@
+using System.Text.Json;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
@@ -53,6 +54,141 @@ public static class GdrEditCommands
             .Single(field => field.Name == "discussion").Body;
         return Stage(request.ProjectPath, shown.Value!, WithDecision(body, entry), request.Draft, null);
     }
+
+    private static readonly string[] RowKeys = ["section", "choosing", "over", "because", "rung", "tried"];
+
+    /// <summary>
+    /// Reads a JSONL file of judgement calls, one object per line with the string keys section, choosing, over and because, and optionally rung and tried (tried stands in for over or is appended to it as "(tried: X)", and rung is appended to because as "(rung: X)").
+    /// Blank lines are skipped and each row keeps its line number. Any unreadable line fails the whole file, so nothing is partly read.
+    /// </summary>
+    public static CommandOutcome<IReadOnlyList<GdrDecisionRow>> ParseDecisions(string jsonl)
+    {
+        ArgumentNullException.ThrowIfNull(jsonl);
+        var rows = new List<GdrDecisionRow>();
+        var lines = jsonl.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
+        for (var i = 0; i < lines.Length; i++)
+        {
+            var line = lines[i].Trim().TrimStart('\uFEFF');
+            if (line.Length == 0) continue;
+            var row = i + 1;
+            string? problem = null;
+            try
+            {
+                using var document = JsonDocument.Parse(line);
+                if (document.RootElement.ValueKind != JsonValueKind.Object) problem = "is not a JSON object";
+                else
+                {
+                    var values = new Dictionary<string, string>(StringComparer.Ordinal);
+                    foreach (var property in document.RootElement.EnumerateObject())
+                    {
+                        if (!RowKeys.Contains(property.Name)) { problem = $"has the unknown key \"{property.Name}\"; the keys are {string.Join(", ", RowKeys)}"; break; }
+                        if (property.Value.ValueKind != JsonValueKind.String) { problem = $"has a \"{property.Name}\" that is not a string"; break; }
+                        values[property.Name] = property.Value.GetString()!;
+                    }
+                    var required = new[] { "section", "choosing", "because" }.Concat(values.ContainsKey("tried") ? [] : ["over"]);
+                    if (problem is null && required.FirstOrDefault(key => !values.ContainsKey(key)) is { } missing) problem = $"lacks the key \"{missing}\"";
+                    if (problem is null)
+                    {
+                        // The Guide template has no rung or tried field: tried names what was set aside, and the rung ends the reason.
+                        var over = values.TryGetValue("tried", out var tried)
+                            ? values.TryGetValue("over", out var named) ? $"{named} (tried: {tried})" : tried
+                            : values["over"];
+                        var because = values.TryGetValue("rung", out var rung) ? $"{values["because"]} (rung: {rung})" : values["because"];
+                        rows.Add(new GdrDecisionRow(row, values["section"], values["choosing"], over, because));
+                    }
+                }
+            }
+            catch (JsonException exception) { problem = "is not valid JSON: " + exception.Message; }
+            if (problem is not null) return CommandOutcome<IReadOnlyList<GdrDecisionRow>>.Refused(RowRefusal(row, $"Line {row} {problem}."));
+        }
+        return rows.Count == 0
+            ? CommandOutcome<IReadOnlyList<GdrDecisionRow>>.Refused(RowRefusal(0, "The file holds no decisions; give one JSON object per line."))
+            : CommandOutcome<IReadOnlyList<GdrDecisionRow>>.Success(rows);
+    }
+
+    /// <summary>
+    /// Adds every row under its section's Decisions heading in one command. Each row is read the way the Guide reads it, with the
+    /// rows before it in place, before anything is staged; a bad row fails the batch, names its line and stages nothing. A dry run
+    /// stops after that check.
+    /// </summary>
+    public static CommandOutcome<GdrDecideBatchResponse> DecideBatch(GdrDecideBatchRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (request.Rows.Count == 0)
+            return CommandOutcome<GdrDecideBatchResponse>.Refused(RowRefusal(0, "The batch holds no decisions."));
+        var project = Path.GetFileNameWithoutExtension(request.ProjectPath);
+        var named = string.IsNullOrWhiteSpace(request.Draft) ? null : request.Draft.Trim();
+        var sections = new Dictionary<string, (GdrShowResponse Shown, string Body, List<(int Row, string Entry)> Added)>(StringComparer.Ordinal);
+        var byGiven = new Dictionary<string, string>(StringComparer.Ordinal);
+        var decided = new List<GdrDecidedRow>();
+        foreach (var row in request.Rows)
+        {
+            var one = new GdrDecideRequest(request.ProjectPath, row.Section, row.Choosing, row.Over, row.Because, request.Draft);
+            if (Entry(one) is not { } entry)
+                return CommandOutcome<GdrDecideBatchResponse>.Refused(RowRefusal(row.Row,
+                    $"Line {row.Row}: give the option chosen, the option set aside and the reason, each on one line."));
+            if (!byGiven.TryGetValue(row.Section, out var id))
+            {
+                var shown = GdrQuery.Show(new GdrShowRequest(request.ProjectPath, row.Section));
+                if (!shown.Succeeded) return CommandOutcome<GdrDecideBatchResponse>.Refused(WithRow(WithAddSectionHint(shown.Refusal!), row.Row));
+                id = shown.Value!.Record.Id;
+                byGiven[row.Section] = id;
+                if (!sections.ContainsKey(id))
+                {
+                    var current = GdrQuery.Show(new GdrShowRequest(request.ProjectPath, row.Section, AsOf: named ?? PendingChanges.DraftName));
+                    if (!current.Succeeded && (named is not null || current.Refusal!.Code != "draft.not-found"))
+                        return CommandOutcome<GdrDecideBatchResponse>.Refused(WithRow(current.Refusal!, row.Row));
+                    var body = new GdrMarkdownView(current.Succeeded ? current.Value! : shown.Value!, project).Fields
+                        .Single(field => field.Name == "discussion").Body;
+                    sections[id] = (shown.Value!, body, []);
+                }
+            }
+            var (baseline, _, added) = sections[id];
+            if (BlockPart(one, baseline, project) is { } block)
+                return CommandOutcome<GdrDecideBatchResponse>.Refused(RowRefusal(row.Row,
+                    $"Line {row.Row}: {block} Escape a literal @ [ * _ ` < or \\ as \\@ \\[ \\* \\_ \\` \\< or \\\\ ."));
+            added.Add((row.Row, entry));
+            decided.Add(new GdrDecidedRow(row.Row, baseline.Record.Abbreviation, entry));
+        }
+        // One read per section; a failure is halved to the first row that breaks it.
+        var edits = new List<GdrMarkdownEdits>();
+        foreach (var (baseline, body, added) in sections.Values)
+        {
+            GdrMarkdownImportResult ReadWith(int count) =>
+                GdrMarkdownImport.Read(baseline, project, added.Take(count).Aggregate(body, (text, item) => WithDecision(text, item.Entry)));
+            var read = ReadWith(added.Count);
+            if (read.HasErrors)
+            {
+                int low = 1, high = added.Count;
+                while (low < high)
+                {
+                    var middle = (low + high) / 2;
+                    if (ReadWith(middle).HasErrors) high = middle; else low = middle + 1;
+                }
+                return CommandOutcome<GdrDecideBatchResponse>.Refused(RowRefusal(added[low - 1].Row,
+                    $"Line {added[low - 1].Row}: the Guide cannot read this decision: {string.Join(" ", ReadWith(low).Errors)} Escape a literal @ [ * _ ` < or \\ with a backslash."));
+            }
+            edits.Add(read.Edits!);
+        }
+        var draftName = named ?? PendingChanges.DraftName;
+        if (request.DryRun)
+            return CommandOutcome<GdrDecideBatchResponse>.Success(new GdrDecideBatchResponse(draftName, false, decided, 0, []));
+        var created = new List<string>();
+        var result = ProposalCommands.StageGdrMarkdownBatch(request.ProjectPath, edits, named, created);
+        if (!result.Succeeded)
+            return CommandOutcome<GdrDecideBatchResponse>.Refused(new Refusal(result.Refusal!.Code, result.Refusal.Reason,
+                result.Refusal.Message + " The batch is staged in one save, so nothing was staged.", result.Refusal.Facts));
+        return CommandOutcome<GdrDecideBatchResponse>.Success(new GdrDecideBatchResponse(
+            result.Value!.LastOrDefault()?.DraftName ?? draftName, true, decided, result.Value!.Sum(item => item.Operations.Count), created.Distinct().ToArray()));
+    }
+
+    private static Refusal RowRefusal(int row, string message) => new(RefusalCodes.GdrDecisionsInvalid, FailureReason.InvalidArgument,
+        message + " Nothing was staged.", new Dictionary<string, string> { ["row"] = row.ToString(System.Globalization.CultureInfo.InvariantCulture) });
+
+    private static Refusal WithRow(Refusal refusal, int row) => new(refusal.Code, refusal.Reason,
+        $"Line {row}: {refusal.Message} Nothing was staged.",
+        refusal.Facts.Concat([new KeyValuePair<string, string>("row", row.ToString(System.Globalization.CultureInfo.InvariantCulture))])
+            .GroupBy(pair => pair.Key, StringComparer.Ordinal).ToDictionary(group => group.Key, group => group.Last().Value));
 
     /// <summary>The judgement call as one list item with its parts as given inline Markdown, or null when a part is blank or spans lines.</summary>
     internal static string? Entry(GdrDecideRequest request)

@@ -41,6 +41,24 @@ public sealed record GdrAddRequest(string ProjectPath, string Title, string? Par
 /// <param name="Draft">The name of an existing Draft to stage into; null stages into the pending changes.</param>
 public sealed record GdrDecideRequest(string ProjectPath, string Id, string Choosing, string Over, string Because, string? Draft = null);
 
+/// <summary>One judgement call of a batch, with the line of the file it came from.</summary>
+/// <param name="Row">The one-based line of the JSONL file, so a refusal names the line to fix.</param>
+/// <param name="Section">The Grammar Guide section, such as <c>GDR-4</c> or its canonical id.</param>
+/// <param name="Choosing">The option chosen, in one line of inline Markdown.</param>
+/// <param name="Over">The option set aside, in one line of inline Markdown.</param>
+/// <param name="Because">The reason, in one line of inline Markdown.</param>
+public sealed record GdrDecisionRow(int Row, string Section, string Choosing, string Over, string Because);
+
+/// <summary>
+/// Stages many judgement calls in one command. Every row is read as the Guide will read it before anything is staged, so a
+/// bad row fails the whole batch and stages nothing.
+/// </summary>
+/// <param name="ProjectPath">The recorded project path.</param>
+/// <param name="Rows">The decisions in file order; rows for one section are added to its Decisions list in that order.</param>
+/// <param name="Draft">The name of an existing Draft to stage into; null stages into the pending changes.</param>
+/// <param name="DryRun">Whether to report each row's result without staging.</param>
+public sealed record GdrDecideBatchRequest(string ProjectPath, IReadOnlyList<GdrDecisionRow> Rows, string? Draft = null, bool DryRun = false);
+
 /// <summary>Finds the object at a project path in the current Baseline, for a link to it.</summary>
 /// <param name="ProjectPath">The recorded project path.</param>
 /// <param name="Path">The FieldWorks Markdown project path, such as <c>/lexicon/entry-1</c>.</param>
