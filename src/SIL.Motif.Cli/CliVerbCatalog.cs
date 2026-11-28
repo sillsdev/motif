@@ -611,13 +611,6 @@ public static class CliVerbCatalog
                 "PanGloss recorded and the Proposal operations that overlap the earlier form (not a cause), or that nothing was recorded.",
             }),
         new CliVerbDescriptor(
-            "Trace", "generate", "generate",
-            new[]
-            {
-                "generate <root> --project <fwdata> --trace [--at <baseline|proposal-id>] [--json]",
-                "The forms PanGloss generates from one root alone, with the rules that made each; the same as forms explain <root>.",
-            }),
-        new CliVerbDescriptor(
             "Trace", "forms", "forms explain",
             new[]
             {

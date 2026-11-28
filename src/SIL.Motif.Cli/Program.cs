@@ -3197,13 +3197,11 @@ try
                 WordTraceQuery.Query(new WordTraceRequest(traceProject, traceWord, flags.GetValueOrDefault("proposal")), token)));
             break;
 
-        case "parse" or "generate":
+        case "parse":
         {
-            var traceVerb = verb;
             if (!flags.TryGetValue("project", out var rejectionProject) || positionals.Count != 1 ||
-                !flags.ContainsKey("trace") || flags["trace"] != "true" ||
-                traceVerb == "generate" && flags.ContainsKey("max-paths"))
-                return Usage("Usage: motif " + UsageLineFor(traceVerb), asJson);
+                !flags.ContainsKey("trace") || flags["trace"] != "true")
+                return Usage("Usage: motif " + UsageLineFor("parse"), asJson);
             int? rejectionMax = null;
             if (flags.TryGetValue("max-paths", out var maxPathsText))
             {
@@ -3215,11 +3213,8 @@ try
                 rejectionMax = parsedMax;
             }
             var rejectionAt = flags.GetValueOrDefault("at");
-            result = traceVerb == "parse"
-                ? RunWithConsoleCancellation(token => RenderCommand(RejectionTraceQuery.Parse(
-                    new ParseTraceRequest(rejectionProject, positionals[0], rejectionAt, rejectionMax), token)))
-                : RunWithConsoleCancellation(token => RenderCommand(FormsExplainQuery.Generate(
-                    new GenerateTraceRequest(rejectionProject, positionals[0], rejectionAt), token)));
+            result = RunWithConsoleCancellation(token => RenderCommand(RejectionTraceQuery.Parse(
+                new ParseTraceRequest(rejectionProject, positionals[0], rejectionAt, rejectionMax), token)));
             break;
         }
 
