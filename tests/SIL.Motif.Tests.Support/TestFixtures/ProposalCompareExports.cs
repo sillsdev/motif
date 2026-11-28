@@ -24,6 +24,9 @@ public static class ProposalCompareExports
 
         /// <summary>Real Reading signatures for the after side, replacing the numbered ones when set.</summary>
         public IReadOnlyList<ReadingSignature>? AfterSignatures { get; init; }
+
+        /// <summary>Gives the after side one retained reading whose signature is missing, as a damaged export would.</summary>
+        public bool AfterReadingWithoutSignature { get; init; }
     }
 
     /// <summary>Records the project's current Baseline as the one <see cref="AddTrial"/> measures with the same fill.</summary>
@@ -75,7 +78,7 @@ public static class ProposalCompareExports
         var list = forms.ToList();
         var words = list.Select((spec, index) => new TrialExportWord("case/" + index, spec.WritingSystemId, spec.Form, [],
             [new TrialExportForm(spec.Form, "key/" + spec.Form, "submitted", TrialExportStatus.Accepted, "ok", [],
-                Side(spec, spec.Before, spec.BeforeSignatures), Side(spec, spec.After, spec.AfterSignatures), [])],
+                Side(spec, spec.Before, spec.BeforeSignatures), Side(spec, spec.After, spec.AfterSignatures, spec.AfterReadingWithoutSignature), [])],
             TrialExportStatus.Accepted, "ok", [])).ToArray();
         var digest = BaselineDigest(baseline);
         var provenance = new TrialExportProvenance(null, proposalId, "revision-" + proposalId[^6..],
@@ -110,10 +113,13 @@ public static class ProposalCompareExports
             target = CanonicalId.FromGuid(Guid.NewGuid()).Value, after = new { ws = "en", text = "changed" } } },
     });
 
-    private static TrialExportSide Side(FormSpec spec, int[] readings, IReadOnlyList<ReadingSignature>? signatures) =>
+    private static TrialExportSide Side(FormSpec spec, int[] readings, IReadOnlyList<ReadingSignature>? signatures,
+        bool withoutSignature = false) =>
         new("complete", spec.Dispatched, spec.Complete, TrialExportStatus.Accepted, "ok", [],
             (signatures ?? [.. (readings ?? []).Select(Signature)]).Select(signature => new TrialExportReading(signature.Id, signature,
-                ReadingAcceptance.LexiconBacked, [])).ToArray());
+                ReadingAcceptance.LexiconBacked, []))
+            .Concat(withoutSignature ? [new TrialExportReading(ReadingId(999), null!, ReadingAcceptance.LexiconBacked, [])] : [])
+            .ToArray());
 
     /// <summary>
     /// The Reading for a number. The entry is <c>number % 1000</c>; <c>number / 1000</c> picks the sense: 0 unresolved,

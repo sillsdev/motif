@@ -75,10 +75,22 @@ public static partial class StoreBackupCommand
             ? Path.Combine(Path.GetDirectoryName(storePath)!,
                 Path.GetFileNameWithoutExtension(project.FullFwDataPath) + ".motif-backup-" + Stamp(now))
             : Path.GetFullPath(request.To);
-        if (File.Exists(destination) || Directory.Exists(destination) && Directory.EnumerateFileSystemEntries(destination).Any())
-            return Refuse<StoreBackupResponse>(RefusalCodes.StoreBackupDestinationExists, FailureReason.InvalidArgument,
-                $"'{destination}' already exists and is not empty. Name a new folder with --to, or leave it off for a timestamped one.",
+        if (File.Exists(destination))
+            return Refuse<StoreBackupResponse>(RefusalCodes.StoreBackupDestinationIsFile, FailureReason.InvalidArgument,
+                $"'{destination}' is an existing file, not a folder. Name a folder with --to, or leave it off for a timestamped one.",
                 project, storePath, ("destination", destination));
+        if (Directory.Exists(destination) && Directory.EnumerateFileSystemEntries(destination).Any())
+        {
+            var inTheWay = Directory.EnumerateFileSystemEntries(destination).Select(Path.GetFileName).Order(StringComparer.Ordinal).ToList();
+            var named = string.Join(", ", inTheWay.Take(5)) + (inTheWay.Count > 5 ? $", and {inTheWay.Count - 5} more" : "");
+            var holdsBackup = inTheWay.Contains(ReceiptName, StringComparer.Ordinal);
+            return Refuse<StoreBackupResponse>(
+                holdsBackup ? RefusalCodes.StoreBackupDestinationHoldsBackup : RefusalCodes.StoreBackupDestinationExists,
+                FailureReason.InvalidArgument,
+                $"'{destination}' already holds {(holdsBackup ? "a backup" : "files")} ({named}); nothing was written or replaced. " +
+                "Name a new or empty folder with --to, or leave it off for a timestamped one.",
+                project, storePath, ("destination", destination), ("inTheWay", named));
+        }
 
         if (OwnedFolderHolding(destination, storePath, project) is { } owned)
             return Refuse<StoreBackupResponse>(RefusalCodes.StoreBackupDestinationOwned, FailureReason.InvalidArgument,
@@ -554,7 +566,12 @@ public static partial class StoreBackupCommand
         try
         {
             if (created) Directory.Delete(destination, recursive: true);
-            else foreach (var entry in Directory.EnumerateFileSystemEntries(destination)) File.Delete(entry);
+            else
+            {
+                // The folder was empty before this backup, so all in it is ours; keep the folder.
+                foreach (var file in Directory.EnumerateFiles(destination)) File.Delete(file);
+                foreach (var folder in Directory.EnumerateDirectories(destination)) Directory.Delete(folder, recursive: true);
+            }
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
     }

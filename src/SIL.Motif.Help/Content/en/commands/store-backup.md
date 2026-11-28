@@ -15,4 +15,4 @@ The folder holds `store.sqlite`, plus `Config.motif.toml` (the project's `.motif
 
 The FieldWorks project file is not included: `fwDataIncluded` is `false`. Back that up with FieldWorks' own store backup.
 
-A project with no Motif store refuses with `store.backup-no-store`; a destination that already holds files refuses with `store.backup-destination-exists`. Restore a backup with [`store restore`](cmd:store%20restore).
+A project with no Motif store refuses with `store.backup-no-store`; an existing empty destination folder is used; a destination that already holds a backup refuses with `store.backup-destination-holds-backup`, one that holds other files with `store.backup-destination-exists`, and one that is a file with `store.backup-destination-is-file`. Each refusal names what is in the way and changes nothing. Restore a backup with [`store restore`](cmd:store%20restore).

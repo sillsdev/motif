@@ -34,6 +34,12 @@ public static class MergePhonemeComposer
     /// <summary>Refusal name: the source is the only member of a natural class, which would be left empty.</summary>
     public const string ClassWouldEmpty = "phoneme-merge-class-would-empty";
 
+    /// <summary>The related-object kind that carries a rule the merged phoneme newly meets.</summary>
+    public const string NewlyMetRuleKind = "newly-met-rule";
+
+    /// <summary>The related-object kind that carries a rule the merge could not check (its reason is in Where).</summary>
+    public const string UncheckedRuleKind = "unchecked-rule";
+
     /// <summary>Composes the class removals, the source's removal and the representations added to the target.</summary>
     public static IReadOnlyList<OperationEnvelope> Build(LcmCache cache, MergePhonemeIntent intent, Func<CanonicalId>? mintId = null)
     {
@@ -72,15 +78,63 @@ public static class MergePhonemeComposer
     {
         ArgumentNullException.ThrowIfNull(cache);
         ArgumentNullException.ThrowIfNull(intent);
-        var (source, _) = ResolvePair(cache, intent);
+        var (source, target) = ResolvePair(cache, intent);
         var environments = source.CodesOS.Select(code => EditPhonemeComposer.Spelling(cache, code)).OfType<string>()
             .SelectMany(spelling => EditPhonemeComposer.ReadEnvironmentsWriting(cache, spelling));
         var classes = ClassesOf(cache, source).Select(naturalClass => new ComposedRelatedObject("natural-class",
             SoundSystemAuthoring.Id(naturalClass).Value,
             EditPhonemeComposer.Named(naturalClass.Name.BestAnalysisAlternative.Text, naturalClass.Guid) +
             " - the source phoneme will be dropped from this class"));
-        return environments.Concat(classes).DistinctBy(user => (user.Kind, user.Id))
+        return environments.Concat(classes).Concat(NewlyMetRules(cache, source, target)).DistinctBy(user => (user.Kind, user.Id))
             .OrderBy(user => user.Kind, StringComparer.Ordinal).ThenBy(user => user.Id, StringComparer.Ordinal).ToArray();
+    }
+
+    /// <summary>Rules whose contexts match the target but never matched the source.</summary>
+    private static IEnumerable<ComposedRelatedObject> NewlyMetRules(LcmCache cache, IPhPhoneme source, IPhPhoneme target)
+    {
+        foreach (var rule in cache.LangProject.PhonologicalDataOA.PhonRulesOS.OfType<IPhSegmentRule>())
+        {
+            var where = new List<string>();
+            var featureBased = false;
+            foreach (var context in rule.StrucDescOS)
+                Collect("input", context);
+            if (rule is IPhRegularRule regular)
+                foreach (var rhs in regular.RightHandSidesOS)
+                {
+                    if (rhs.LeftContextOA is { } left) Collect("left environment", left);
+                    if (rhs.RightContextOA is { } right) Collect("right environment", right);
+                }
+            if (where.Count > 0)
+                yield return new ComposedRelatedObject(NewlyMetRuleKind, SoundSystemAuthoring.Id(rule).Value,
+                    EditPhonemeComposer.Named(rule.Name.BestAnalysisAlternative.Text, rule.Guid), where.Distinct().ToArray());
+            if (featureBased)
+                yield return new ComposedRelatedObject(UncheckedRuleKind, SoundSystemAuthoring.Id(rule).Value,
+                    EditPhonemeComposer.Named(rule.Name.BestAnalysisAlternative.Text, rule.Guid),
+                    ["its input or an environment uses a feature-based natural class or a feature-structure context"]);
+
+            void Collect(string place, IPhPhonContext context)
+            {
+                switch (context)
+                {
+                    case IPhSimpleContextSeg { FeatureStructureRA: { } phoneme } when phoneme.Guid == target.Guid:
+                        where.Add($"{place}: the phoneme itself");
+                        break;
+                    case IPhSimpleContextNC { FeatureStructureRA: IPhNCSegments naturalClass }
+                        when naturalClass.SegmentsRC.Contains(target) && !naturalClass.SegmentsRC.Contains(source):
+                        where.Add($"{place}: natural class '{EditPhonemeComposer.Named(naturalClass.Name.BestAnalysisAlternative.Text, naturalClass.Guid)}'");
+                        break;
+                    case IPhSimpleContextNC { FeatureStructureRA: IPhNCFeatures }:
+                        featureBased = true;
+                        break;
+                    case IPhIterationContext { MemberRA: { } member }:
+                        Collect(place, member);
+                        break;
+                    case IPhSequenceContext sequence:
+                        foreach (var member in sequence.MembersRS) Collect(place, member);
+                        break;
+                }
+            }
+        }
     }
 
     private static (IPhPhoneme Source, IPhPhoneme Target) ResolvePair(LcmCache cache, MergePhonemeIntent intent)

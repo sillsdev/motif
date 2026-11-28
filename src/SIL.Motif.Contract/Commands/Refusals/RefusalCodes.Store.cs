@@ -6,6 +6,10 @@ public static partial class RefusalCodes
     public const string StoreBackupNoStore = "store.backup-no-store";
     /// <summary><c>store backup</c> was given a destination folder that already holds files; nothing was written.</summary>
     public const string StoreBackupDestinationExists = "store.backup-destination-exists";
+    /// <summary><c>store backup</c> was given a destination folder that already holds a finished backup (it has a receipt); nothing was written or replaced.</summary>
+    public const string StoreBackupDestinationHoldsBackup = "store.backup-destination-holds-backup";
+    /// <summary><c>store backup</c> was given a destination that is an existing file; nothing was written.</summary>
+    public const string StoreBackupDestinationIsFile = "store.backup-destination-is-file";
     /// <summary><c>store restore</c> was given a folder with no readable backup receipt, or a receipt that names a file the folder lacks.</summary>
     public const string StoreRestoreInvalid = "store.restore-invalid";
     /// <summary><c>store restore</c> was given a backup whose store schema is newer than this build understands.</summary>

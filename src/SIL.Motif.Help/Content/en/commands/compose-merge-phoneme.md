@@ -7,7 +7,7 @@ motif compose-merge-phoneme --project language.fwdata --draft sounds \
   --intent '{"source":"<phoneme-id-to-remove>","target":"<phoneme-id-to-keep>"}'
 ```
 
-The intent has exactly `source` and `target`. The Dry Run lists the natural classes the source leaves, and the Proposal shows the removal of the source and each spelling added to the target.
+The intent has exactly `source` and `target`. The Dry Run lists the natural classes the source leaves in `relatedObjects`. Its `newlyMetRules` lists each rule whose input or environment names the target or a class that holds the target but not the source: after the merge the rule also fires on what used to be the source's words, so judge each one. Its `uncheckedRules` (`ruleId`, `ruleName`, `reason`) lists the rules the merge could not check because their input or an environment uses a feature-based natural class or a feature-structure context; check those by hand (follow-up #649 will check them). Both fields are absent when empty. The Proposal shows the removal of the source and each spelling added to the target.
 
 What changes and what does not:
 
