@@ -220,6 +220,74 @@ public sealed class StoreBackupCommandTests : IDisposable
     }
 
     [Fact]
+    public void AnExistingEmptyFolderIsAcceptedAsTheDestination()
+    {
+        Directory.CreateDirectory(Folder("empty-dest"));
+        var result = StoreBackupCommand.Backup(new StoreBackupRequest(Project, Folder("empty-dest")));
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        Assert.True(File.Exists(Path.Combine(Folder("empty-dest"), StoreBackupCommand.ReceiptName)));
+    }
+
+    [Fact]
+    public void ARerunIntoAFolderHoldingABackupIsRefusedNamingItAndKeepsItsFiles()
+    {
+        Assert.True(StoreBackupCommand.Backup(new StoreBackupRequest(Project, Folder("day"))).Succeeded);
+        var again = StoreBackupCommand.Backup(new StoreBackupRequest(Project, Folder("day")));
+        Assert.Equal(RefusalCodes.StoreBackupDestinationHoldsBackup, again.Refusal?.Code);
+        Assert.Contains(StoreBackupCommand.ReceiptName, again.Refusal!.Message);
+        Assert.True(File.Exists(Path.Combine(Folder("day"), StoreBackupCommand.ReceiptName)));
+    }
+
+    [Fact]
+    public void AFolderHoldingOtherFilesIsRefusedNamingThemAndKeepsThem()
+    {
+        Directory.CreateDirectory(Folder("other"));
+        File.WriteAllText(Path.Combine(Folder("other"), "notes.txt"), "x");
+        var other = StoreBackupCommand.Backup(new StoreBackupRequest(Project, Folder("other")));
+        Assert.Equal(RefusalCodes.StoreBackupDestinationExists, other.Refusal?.Code);
+        Assert.Contains("notes.txt", other.Refusal!.Message);
+        Assert.Equal("x", File.ReadAllText(Path.Combine(Folder("other"), "notes.txt")));
+    }
+
+    [Fact]
+    public void AnExistingFileAsTheDestinationIsRefusedAndLeftAlone()
+    {
+        File.WriteAllText(Folder("afile"), "x");
+        var file = StoreBackupCommand.Backup(new StoreBackupRequest(Project, Folder("afile")));
+        Assert.Equal(RefusalCodes.StoreBackupDestinationIsFile, file.Refusal?.Code);
+        Assert.Equal("x", File.ReadAllText(Folder("afile")));
+    }
+
+    [Fact]
+    public void ABackupThatFailsPartwayLeavesAnExistingEmptyFolderEmptyAndARetrySucceeds()
+    {
+        if (OperatingSystem.IsWindows()) return;
+        var trial = Path.Combine(MotifDatabase.TrialExportDirectory(Store), "job", "evidence.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(trial)!);
+        File.WriteAllText(trial, "{}");
+        File.SetUnixFileMode(trial, UnixFileMode.None);
+        try
+        {
+            if (CanRead(trial)) return; // a superuser reads anything, so no failure can be provoked
+            Directory.CreateDirectory(Folder("empty-dest"));
+            var failed = StoreBackupCommand.Backup(new StoreBackupRequest(Project, Folder("empty-dest")));
+            Assert.False(failed.Succeeded);
+            Assert.True(Directory.Exists(Folder("empty-dest")));
+            Assert.Empty(Directory.EnumerateFileSystemEntries(Folder("empty-dest")));
+        }
+        finally { File.SetUnixFileMode(trial, UnixFileMode.UserRead | UnixFileMode.UserWrite); }
+
+        var retry = StoreBackupCommand.Backup(new StoreBackupRequest(Project, Folder("empty-dest")));
+        Assert.True(retry.Succeeded, retry.Refusal?.Message);
+    }
+
+    private static bool CanRead(string path)
+    {
+        try { using var _ = File.OpenRead(path); return true; }
+        catch (UnauthorizedAccessException) { return false; }
+    }
+
+    [Fact]
     public void ABackupWhileTheStoreIsHeldExclusivelyIsRefusedAsBusy()
     {
         using var exclusive = new FileStream(Store + ".use.lock", FileMode.OpenOrCreate, FileAccess.Read,
