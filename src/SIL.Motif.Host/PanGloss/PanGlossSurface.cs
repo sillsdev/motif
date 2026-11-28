@@ -53,6 +53,15 @@ internal sealed record PanGlossCapabilities(
         : null;
 
     /// <summary>
+    /// Why this parser cannot run <c>generate --requests --out</c> over target and cell rows, or null when it can: the
+    /// description must declare <c>interfaces.serveOps.generate.batch</c> with <c>target</c> and <c>cell</c> request fields.
+    /// </summary>
+    internal string? GenerateBatchRefusal() =>
+        ServeGenerate is not { BatchTargetsAndCells: true }
+            ? "its description declares no interfaces.serveOps.generate.batch with target and cell rows (PanGloss v0.35.6)"
+            : null;
+
+    /// <summary>
     /// Why this parser cannot answer why-not, or null when it can: the description must expose a visible
     /// <c>why-not</c> command and declare <c>interfaces.whyNot</c> with Motif's schema and the <c>grammar-xml</c> id promise.
     /// </summary>
@@ -78,6 +87,7 @@ internal sealed record PanGlossCapabilities(
     {
         if ((request is PanGlossRequest.Facts or PanGlossRequest.GrammarHealth { FactsContextJson: not null }) && !FactsContractSupported)
             return "the description does not declare the supported grammar-facts and context identity.";
+        if (request is PanGlossRequest.GenerateRequests && GenerateBatchRefusal() is { } noBatch) return noBatch;
         var startInfo = new ProcessStartInfo();
         request.AddArguments(startInfo, "scratch");
         if (startInfo.ArgumentList.Count == 0 ||
@@ -122,7 +132,8 @@ internal sealed record PanGlossCapabilities(
             index++;
         }
 
-        var requiredPositionals = command.Positionals.Count(positional =>
+        // generate's description lists the HC XML morpheme ids as positionals; a batch names only the grammar.
+        var requiredPositionals = request is PanGlossRequest.GenerateRequests ? 1 : command.Positionals.Count(positional =>
             !positional.EndsWith("?", StringComparison.Ordinal));
         return positionalCount < requiredPositionals || positionalCount > command.Positionals.Length
             ? $"the description declares the wrong positional shape for '{commandName}'."
@@ -164,7 +175,8 @@ internal sealed record PanGlossServeEffectsCapability(int? Version, ImmutableArr
 /// <param name="Version">The op's own version, or null when the key is missing.</param>
 /// <param name="Trace">Whether the op can return each surface's rule steps.</param>
 /// <param name="RequestSchema">The <c>generate --request</c> schema version the op reads, or null.</param>
-internal sealed record PanGlossServeGenerateCapability(int? Version, bool Trace, int? RequestSchema);
+/// <param name="BatchTargetsAndCells">Whether <c>generate --requests</c> reads <c>target</c> and <c>cell</c> rows, from <c>batch.requestFields</c>.</param>
+internal sealed record PanGlossServeGenerateCapability(int? Version, bool Trace, int? RequestSchema, bool BatchTargetsAndCells = false);
 
 internal sealed record PanGlossCommandCapabilities(
     bool Hidden, ImmutableArray<string> Positionals, ImmutableDictionary<string, bool> Flags);
@@ -351,8 +363,11 @@ internal static class PanGlossSurface
         int? Number(string name) =>
             generate.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Number &&
             value.TryGetInt32(out var number) ? number : null;
+        var batchFields = generate.TryGetProperty("batch", out var batch) && batch.ValueKind == JsonValueKind.Object &&
+            batch.TryGetProperty("requestFields", out var fields) && fields.ValueKind == JsonValueKind.Object &&
+            fields.TryGetProperty("target", out _) && fields.TryGetProperty("cell", out _);
         return new PanGlossServeGenerateCapability(Number("version"),
-            generate.TryGetProperty("trace", out var trace) && trace.ValueKind == JsonValueKind.True, Number("requestSchema"));
+            generate.TryGetProperty("trace", out var trace) && trace.ValueKind == JsonValueKind.True, Number("requestSchema"), batchFields);
     }
 
     private static PanGlossWhyNotCapability? ReadWhyNot(JsonElement root)

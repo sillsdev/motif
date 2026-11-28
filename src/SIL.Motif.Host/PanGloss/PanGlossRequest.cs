@@ -594,6 +594,52 @@ public abstract record PanGlossRequest
         }
     }
 
+    /// <summary>
+    /// <c>pangloss generate &lt;grammar&gt; --requests &lt;rows.jsonl&gt; --out &lt;rows&gt;</c>: one exact-synthesis row per
+    /// input line, every row written to <paramref name="OutPath"/> and only a bounded summary on standard output. The
+    /// project loads once for the whole batch.
+    /// </summary>
+    /// <param name="GrammarPath">The saved project or snapshot PanGloss generates from.</param>
+    /// <param name="Lines">The request lines in input order; PanGloss numbers its rows by position, and a blank line keeps its number.</param>
+    /// <param name="OutPath">Where PanGloss writes the rows; replaced if present.</param>
+    public sealed record GenerateRequests(string GrammarPath, IReadOnlyList<string> Lines, string OutPath) : PanGlossRequest
+    {
+        private const string RequestsFileName = "requests.jsonl";
+
+        public override string Subcommand => "generate";
+
+        internal override void Validate()
+        {
+            if (string.IsNullOrWhiteSpace(GrammarPath)) throw new ArgumentException("Required.", nameof(GrammarPath));
+            if (string.IsNullOrWhiteSpace(OutPath)) throw new ArgumentException("Required.", nameof(OutPath));
+            ArgumentNullException.ThrowIfNull(Lines);
+            if (!File.Exists(GrammarPath))
+                throw new FileNotFoundException("The project file the parser must read does not exist.", GrammarPath);
+        }
+
+        internal override Task PrepareAsync(string scratch, CancellationToken cancellationToken) =>
+            File.WriteAllLinesAsync(Path.Combine(scratch, RequestsFileName), Lines, cancellationToken);
+
+        internal override void AddArguments(ProcessStartInfo startInfo, string scratch)
+        {
+            startInfo.ArgumentList.Add("generate");
+            startInfo.ArgumentList.Add(GrammarPath);
+            startInfo.ArgumentList.Add("--requests");
+            startInfo.ArgumentList.Add(Path.Combine(scratch, RequestsFileName));
+            startInfo.ArgumentList.Add("--out");
+            startInfo.ArgumentList.Add(OutPath);
+        }
+
+        internal override PanGlossOutcome Finish(string scratch, string standardOutput, string standardError,
+            TimeSpan elapsed, out BatchInvocationEvidence.BatchFileDigests? batchFileDigests)
+        {
+            batchFileDigests = null;
+            return File.Exists(OutPath)
+                ? new PanGlossOutcome.Completed(standardOutput, standardError, elapsed)
+                : new PanGlossOutcome.Incomplete($"pangloss generate exited 0 but wrote no rows to '{OutPath}'.", standardError);
+        }
+    }
+
     /// <summary><c>pangloss import</c>: the grammar snapshot of a saved <c>.fwdata</c>, written where the caller says.</summary>
     public sealed record Import(string FwDataPath, string GrammarJsonPath) : PanGlossRequest
     {
