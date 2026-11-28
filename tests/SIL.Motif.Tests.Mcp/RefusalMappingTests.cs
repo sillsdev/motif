@@ -116,6 +116,27 @@ public sealed class RefusalMappingTests
         Assert.Equal("tool.unknown-argument", result.StructuredContent!.Value.GetProperty("code").GetString());
     }
 
+    [Theory]
+    [InlineData("analysisWs")]
+    [InlineData("proposal")]
+    public async Task ComposeRefusesTheOldCamelCaseAndProposalArgumentNames(string oldName)
+    {
+        var context = new ServerContext("absent.fwdata", "1.0", new SIL.Motif.Commands.NoRunnerLauncher(
+            new SIL.Motif.Commands.JobRunnerLaunchOptions("root", null)), new ActivityLog(), ToolProfile.Load("full"), TextWriter.Null, advancedAiModeEnabled: true);
+        var tools = MotifMcpServer.Expose(ToolProfile.Load("full"));
+        var arguments = new Dictionary<string, JsonElement>
+        {
+            ["draft"] = JsonSerializer.SerializeToElement("d"),
+            ["steps"] = JsonSerializer.SerializeToElement(Array.Empty<string>()),
+            [oldName] = JsonSerializer.SerializeToElement("x"),
+        };
+
+        var result = await MotifMcpServer.CallAsync(context, tools, "motif_compose", arguments, CancellationToken.None);
+
+        Assert.True(result.IsError);
+        Assert.Equal("tool.unknown-argument", result.StructuredContent!.Value.GetProperty("code").GetString());
+    }
+
     [Fact]
     public async Task AnUnknownProjectIsRefusedBeforeOpeningIt()
     {

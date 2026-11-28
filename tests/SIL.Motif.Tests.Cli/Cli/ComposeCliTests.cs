@@ -42,14 +42,14 @@ public sealed class ComposeCliTests : IDisposable
     {
         Assert.Equal(0, Run("new", "--project", _project, "--draft", "d").ExitCode);
 
-        var first = Run("compose", "--project", _project, "--proposal", "d", "--steps", Steps("p", "q"), "--json");
+        var first = Run("compose", "--project", _project, "--draft", "d", "--steps", Steps("p", "q"), "--json");
 
         Assert.True(first.ExitCode == 0, first.Error + first.Output);
         var json = JsonNode.Parse(first.Output)!;
         Assert.Equal(2, json["intents"]!.AsArray().Count);
         var removed = json["intents"]![1]!["operations"]!.AsArray().Select(node => node!["operationId"]!.GetValue<string>()).ToArray();
 
-        var second = Run("compose", "--project", _project, "--proposal", "d", "--steps", Steps("r"),
+        var second = Run("compose", "--project", _project, "--draft", "d", "--steps", Steps("r"),
             "--remove", string.Join(",", removed), "--json");
 
         Assert.True(second.ExitCode == 0, second.Error + second.Output);
@@ -59,13 +59,13 @@ public sealed class ComposeCliTests : IDisposable
         var removedCount = removed.Length;
         var addedCount = after["intents"]![0]!["operations"]!.AsArray().Count;
         Assert.Equal(firstCount - removedCount + addedCount, after["operationCount"]!.GetValue<int>());
-        var text = Run("compose", "--project", _project, "--proposal", "d", "--steps", Steps("s"));
+        var text = Run("compose", "--project", _project, "--draft", "d", "--steps", Steps("s"));
         Assert.True(text.ExitCode == 0, text.Error + text.Output);
         Assert.Contains("compose-author-phoneme", text.Output, StringComparison.Ordinal);
     }
 
     [Theory]
-    [InlineData("compose --project P --proposal d")]
+    [InlineData("compose --project P --draft d")]
     [InlineData("compose --project P --steps []")]
     public void MissingFlagsPrintUsage(string line)
     {
@@ -78,9 +78,17 @@ public sealed class ComposeCliTests : IDisposable
     [Fact]
     public void MalformedStepsAreRefusedAsUsage()
     {
-        var result = Run("compose", "--project", _project, "--proposal", "d", "--steps", "{\"verb\":1}");
+        var result = Run("compose", "--project", _project, "--draft", "d", "--steps", "{\"verb\":1}");
 
         Assert.NotEqual(0, result.ExitCode);
         Assert.Contains("steps", result.Error + result.Output, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void TheOldProposalFlagIsRefused()
+    {
+        var result = Run("compose", "--project", _project, "--proposal", "d", "--steps", Steps("p"));
+
+        Assert.NotEqual(0, result.ExitCode);
     }
 }

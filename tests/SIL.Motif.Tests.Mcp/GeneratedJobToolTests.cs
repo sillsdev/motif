@@ -28,7 +28,7 @@ public sealed class GeneratedJobToolTests(PristineProjectFixture pristine)
         var context = new ServerContext(project, "1.0", runner, new ActivityLog(null),
             ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
         var tool = AgentTools.All.Single(tool => tool.Name == "motif_phonology_examples_check");
-        var arguments = new JsonObject { ["revisionId"] = saved.Value!.ExampleSet.Revision.RevisionId };
+        var arguments = new JsonObject { ["revision_id"] = saved.Value!.ExampleSet.Revision.RevisionId };
 
         var result = await tool.Run(context, new ToolArgs(arguments, tool.ArgumentNames), CancellationToken.None);
 

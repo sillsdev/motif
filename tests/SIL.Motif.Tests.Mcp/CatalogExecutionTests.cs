@@ -60,7 +60,7 @@ public sealed class CatalogExecutionTests
             properties["limit"]!["default"]!.GetValue<int>()));
         Assert.Equal(1, properties["page"]!["minimum"]!.GetValue<int>());
         Assert.Equal(["project", "kind"], actual.InputSchema["required"]!.AsArray().Select(item => item!.GetValue<string>()).Order().Reverse().ToArray());
-        Assert.NotNull(properties["asOf"]);
+        Assert.NotNull(properties["as_of"]);
         Assert.Null(properties["at"]);
         Assert.Single(AgentTools.All, tool => tool.Name.StartsWith("motif_group", StringComparison.Ordinal));
     }
@@ -100,8 +100,8 @@ public sealed class CatalogExecutionTests
         var actual = AgentTools.All.Single(tool => tool.Name == generated.Name);
         Assert.Equal("motif_proposal_compare", actual.Name);
         Assert.True(JsonNode.DeepEquals(generated.InputSchema, actual.InputSchema));
-        Assert.Equal(8, actual.InputSchema["properties"]!["proposalIds"]!["maxItems"]!.GetValue<int>());
-        Assert.Equal(2, actual.InputSchema["properties"]!["proposalIds"]!["minItems"]!.GetValue<int>());
+        Assert.Equal(8, actual.InputSchema["properties"]!["proposal_ids"]!["maxItems"]!.GetValue<int>());
+        Assert.Equal(2, actual.InputSchema["properties"]!["proposal_ids"]!["minItems"]!.GetValue<int>());
     }
 
     [Fact]
@@ -185,11 +185,11 @@ public sealed class CatalogExecutionTests
             var context = new ServerContext(projectPath, "1.0", new NoRunnerLauncher(
                 new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(),
                 ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
-            var arguments = new JsonObject { ["jobId"] = "job-1" };
+            var arguments = new JsonObject { ["job_id"] = "job-1" };
             var command = CommandCatalog.All.Single(item => item.Name == "jobs show");
             var invoke = typeof(CatalogTools).GetMethod("Invoke", BindingFlags.Static | BindingFlags.NonPublic)!;
             var task = Assert.IsAssignableFrom<Task<ToolOutcome>>(
-                invoke.Invoke(null, [command, context, new ToolArgs(arguments, ["jobId"]), CancellationToken.None]));
+                invoke.Invoke(null, [command, context, new ToolArgs(arguments, ["job_id"]), CancellationToken.None]));
             var outcome = await task;
 
             Assert.Null(outcome.Refusal);
@@ -215,10 +215,10 @@ public sealed class CatalogExecutionTests
         Assert.Equal("motif_coverage", actual.Name);
         Assert.True(JsonNode.DeepEquals(generated.InputSchema, actual.InputSchema));
         var properties = actual.InputSchema["properties"]!;
-        Assert.Equal(["frequencyPath", "ledgerPath", "project", "sidecarPath"],
+        Assert.Equal(["frequency_path", "ledger_path", "project", "sidecar_path"],
             actual.InputSchema["required"]!.AsArray().Select(item => item!.GetValue<string>()).Order(StringComparer.Ordinal).ToArray());
         Assert.Equal(["tsv", "tsv-header", "json"],
-            properties["frequencyFormat"]!["enum"]!.AsArray().Select(item => item!.GetValue<string>()).ToArray());
+            properties["frequency_format"]!["enum"]!.AsArray().Select(item => item!.GetValue<string>()).ToArray());
         Assert.Equal((1, 200, 50), (properties["limit"]!["minimum"]!.GetValue<int>(), properties["limit"]!["maximum"]!.GetValue<int>(),
             properties["limit"]!["default"]!.GetValue<int>()));
         Assert.Contains("is not the report verb's coverage kind", actual.Description, StringComparison.Ordinal);
@@ -249,7 +249,7 @@ public sealed class CatalogExecutionTests
             var tool = AgentTools.All.Single(item => item.Name == "motif_coverage");
             ToolArgs Args(string ledgerPath) => new(new JsonObject
             {
-                ["ledgerPath"] = ledgerPath, ["sidecarPath"] = sidecar, ["frequencyPath"] = frequency, ["limit"] = 5,
+                ["ledger_path"] = ledgerPath, ["sidecar_path"] = sidecar, ["frequency_path"] = frequency, ["limit"] = 5,
             }, tool.ArgumentNames);
 
             var result = await tool.Run(context, Args(ledger), CancellationToken.None);

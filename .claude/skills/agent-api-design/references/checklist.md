@@ -9,11 +9,10 @@ Answer each item in the PR description.
    ([ADR 0018](../../../../docs/adr/0018-one-command-catalog-behind-the-cli-window-and-mcp.md),
    [ADR 0009](../../../../docs/adr/0009-assistants-reach-motif-through-one-agent-api.md) D1).
 3. **Name it by the convention.** MCP tools are `motif_<verb>` or `motif_<verb>_<noun>`, arguments
-   are camelCase, and `proposal` and `project` mean the same thing everywhere. Return IDs exactly,
+   are snake_case (a catalog test enforces it), and `proposal` and `project` mean the same thing everywhere. Return IDs exactly,
    with prefixes. `detail` is concise by default or detailed. A response above about 4000 tokens
    pages rather than inlining
    ([ADR 0009](../../../../docs/adr/0009-assistants-reach-motif-through-one-agent-api.md) D9).
-   Epic #572 item #567 fixes the wider naming and paging convention; follow it as it lands.
 4. **Failure contract.** Every refusal uses a code from the closed registry, names the missing
    precondition and the call that satisfies it in the caller's rendering, and puts `next` on both
    the CLI and MCP. A read that cannot look refuses with why; it never returns zeros or an empty

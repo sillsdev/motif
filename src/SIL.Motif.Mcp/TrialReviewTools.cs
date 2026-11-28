@@ -96,7 +96,7 @@ internal static class TrialReviewTools
 
     private static ToolOutcome? ValidateInputs(ToolArgs args, bool refresh)
     {
-        if (args.Has("words") || args.Has("wordsFile") || args.Has("negative_words") ||
+        if (args.Has("words") || args.Has("words_file") || args.Has("negative_words") ||
             args.Has("review_sets") || args.Has("expect_loss") || args.Has("wait_seconds") || args.Has("wait_terminal"))
             return ToolOutcome.Refused("tool.invalid-argument", FailureReason.InvalidArgument, "Stored report reads cannot supply Trial inputs.");
         var job = args.Optional("job");

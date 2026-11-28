@@ -248,7 +248,7 @@ public static class CliVerbCatalog
         new CliVerbDescriptor("Commands", "compose-batch", "compose-batch",
             new[] { "compose-batch --draft <name> --project <fwdata> --intents <file.json> [--json]" }),
         new CliVerbDescriptor("Commands", "compose", "compose",
-            new[] { "compose --proposal <name> --project <fwdata> --steps '<json array>' [--remove <id>[,<id>...]] [--json]" }),
+            new[] { "compose --draft <name> --project <fwdata> --steps '<json array>' [--remove <id>[,<id>...]] [--json]" }),
         new CliVerbDescriptor(
             "Commands", "promote-gloss", "promote-gloss",
             new[]
