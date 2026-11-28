@@ -643,6 +643,142 @@ public sealed class GrammarCheckQueryTests : IDisposable
         Assert.Contains(warnings, item => item.Description.Contains("'ng'", StringComparison.Ordinal));
     }
 
+    private static IPhEnvironment Env(LcmCache cache, string pattern)
+    {
+        var environment = cache.ServiceLocator.GetInstance<IPhEnvironmentFactory>().Create();
+        cache.LangProject.PhonologicalDataOA.EnvironmentsOS.Add(environment);
+        environment.StringRepresentation = SIL.LCModel.Core.Text.TsStringUtils.MakeString(pattern, cache.DefaultVernWs);
+        return environment;
+    }
+
+    [Fact]
+    public void AWholeWordEnvironmentIsAnAdvisoryNamingItsIdAndText_AndOnesWithOtherMaterialAreNot()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        var loader = new FwDataProjectLoader();
+        Guid wholeWord = default;
+        using (var cache = loader.LoadCache(fwDataPath))
+        {
+            AddPhonemes(cache, true, ["t", "a"]);
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var used = Stem(cache, "ta", "/ # t _ a #");
+                wholeWord = used.PhoneEnvRC.Single().Guid;
+                foreach (var pattern in new[]
+                {
+                    "/ # [C] _ a #", "/ # t + _ a #", "/ # t . _ a #", "/ # t | _ a #", "/ # t ~ _ a #", "/ # t ( a ) _ a #",
+                    "/ t _ #", "/ # _ #", "/ # t _ a", "/ t _ a",
+                })
+                    used.PhoneEnvRC.Add(Env(cache, pattern));
+            });
+            loader.Save(cache);
+        }
+
+        Capture(fwDataPath);
+        var check = Check(fwDataPath);
+
+        var advisory = Assert.Single(check.Advisories, item => item.Code == ComposeAdvisoryCodes.WholeWordEnvironment);
+        var hit = Assert.Single(advisory.Objects!);
+        Assert.Equal(CanonicalId.FromGuid(wholeWord).Value, hit.Id);
+        Assert.Equal("/ # t _ a #", hit.Text);
+        Assert.Contains("'/ # t _ a #'", advisory.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnInflectionClassWithOneStemIsAnAdvisoryButOneWithTwoIsNot()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        var loader = new FwDataProjectLoader();
+        Guid lone = default;
+        using (var cache = loader.LoadCache(fwDataPath))
+        {
+            var services = cache.ServiceLocator;
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var category = services.GetInstance<IPartOfSpeechFactory>().Create();
+                cache.LangProject.PartsOfSpeechOA.PossibilitiesOS.Add(category);
+                IMoInflClass Class(string name)
+                {
+                    var made = services.GetInstance<IMoInflClassFactory>().Create();
+                    category.InflectionClassesOC.Add(made);
+                    made.Name.set_String(cache.DefaultAnalWs, name);
+                    return made;
+                }
+                var single = Class("Lone class");
+                var pair = Class("Pair class");
+                lone = single.Guid;
+                void Stem(string form, IMoInflClass inflectionClass)
+                {
+                    var entry = services.GetInstance<ILexEntryFactory>().Create(
+                        services.GetInstance<IMoMorphTypeRepository>().GetObject(MoMorphTypeTags.kguidMorphStem),
+                        SIL.LCModel.Core.Text.TsStringUtils.MakeString(form, cache.DefaultVernWs), "gloss",
+                        new SandboxGenericMSA { MsaType = MsaType.kStem, MainPOS = category });
+                    entry.MorphoSyntaxAnalysesOC.OfType<IMoStemMsa>().Single().InflectionClassRA = inflectionClass;
+                }
+                Stem("one", single);
+                Stem("two", pair);
+                Stem("three", pair);
+            });
+            loader.Save(cache);
+        }
+
+        Capture(fwDataPath);
+        var check = Check(fwDataPath);
+
+        var advisory = Assert.Single(check.Advisories, item => item.Code == ComposeAdvisoryCodes.OneStemInflectionClass);
+        var hit = Assert.Single(advisory.Objects!);
+        Assert.Equal(CanonicalId.FromGuid(lone).Value, hit.Id);
+        Assert.Equal("Lone class", hit.Text);
+    }
+
+    [Fact]
+    public void AnEnvironmentNoFormReferencesIsAnOrphanAdvisoryButAReferencedOneIsNot()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        var loader = new FwDataProjectLoader();
+        Guid orphan = default;
+        Guid referenced = default;
+        using (var cache = loader.LoadCache(fwDataPath))
+        {
+            AddPhonemes(cache, "t", "a");
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                referenced = Stem(cache, "ta", "/ t _").PhoneEnvRC.Single().Guid;
+                orphan = Env(cache, "/ a _").Guid;
+            });
+            loader.Save(cache);
+        }
+
+        Capture(fwDataPath);
+        var check = Check(fwDataPath);
+
+        var orphans = check.Advisories.Where(item => item.Code == GrammarCheckAdvisoryCodes.OrphanEnvironment)
+            .SelectMany(item => item.Objects!).ToArray();
+        var hit = Assert.Single(orphans, item => item.Id == CanonicalId.FromGuid(orphan).Value);
+        Assert.Equal("/ a _", hit.Text);
+        Assert.DoesNotContain(orphans, item => item.Id == CanonicalId.FromGuid(referenced).Value);
+    }
+
+    [Fact]
+    public void AGrammarWithNoAdviceKeepsTheCheckOutputAsItWas()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        Capture(fwDataPath);
+
+        var check = Check(fwDataPath);
+
+        Assert.DoesNotContain(check.Advisories, item => item.Objects is not null);
+        Assert.Empty(check.Advisories);
+        var advisoryCodes = new[]
+        {
+            ComposeAdvisoryCodes.WholeWordEnvironment, ComposeAdvisoryCodes.OneStemInflectionClass,
+            GrammarCheckAdvisoryCodes.OrphanEnvironment,
+        };
+        Assert.DoesNotContain(check.Findings, finding => advisoryCodes.Contains(finding.Code));
+        Assert.DoesNotContain(check.Summary, row => advisoryCodes.Contains(row.Code));
+        Assert.DoesNotContain("\"objects\"", JsonSerializer.Serialize(check.Advisories), StringComparison.Ordinal);
+    }
+
     private static IMoStemAllomorph Stem(LcmCache cache, string form, string environmentText)
     {
         var services = cache.ServiceLocator;
@@ -658,14 +794,19 @@ public sealed class GrammarCheckQueryTests : IDisposable
         return stem;
     }
 
-    private static System.Collections.Generic.Dictionary<string, IPhPhoneme> AddPhonemes(LcmCache cache, params string[] spellings)
+    private static System.Collections.Generic.Dictionary<string, IPhPhoneme> AddPhonemes(LcmCache cache, params string[] spellings) =>
+        AddPhonemes(cache, false, spellings);
+
+    private static System.Collections.Generic.Dictionary<string, IPhPhoneme> AddPhonemes(
+        LcmCache cache, bool intoFirstSet, string[] spellings)
     {
         var made = new System.Collections.Generic.Dictionary<string, IPhPhoneme>();
         NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
         {
             var services = cache.ServiceLocator;
-            var set = services.GetInstance<IPhPhonemeSetFactory>().Create();
-            cache.LangProject.PhonologicalDataOA.PhonemeSetsOS.Add(set);
+            var existing = intoFirstSet ? cache.LangProject.PhonologicalDataOA.PhonemeSetsOS.FirstOrDefault() : null;
+            var set = existing ?? services.GetInstance<IPhPhonemeSetFactory>().Create();
+            if (existing is null) cache.LangProject.PhonologicalDataOA.PhonemeSetsOS.Add(set);
             foreach (var spelling in spellings)
             {
                 var phoneme = services.GetInstance<IPhPhonemeFactory>().Create();

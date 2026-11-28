@@ -27,7 +27,7 @@ public sealed class WritingSystemMissingToolTests(PristineProjectFixture pristin
         using var privateRoot = PrivateManagedRoot.Use(Path.GetDirectoryName(path)!);
         KnownProjectTestSetup.AssignUniqueTag(RunnerOptions.ResolveRoot(), path, "wsfail");
         var context = new ServerContext(path, "1.0", new NoRunnerLauncher(
-            new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(null), ToolProfile.Builtin,
+            new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(), ToolProfile.Builtin,
             TextWriter.Null, advancedAiModeEnabled: true);
 
         CallToolResult result;
@@ -58,7 +58,7 @@ public sealed class WritingSystemMissingToolTests(PristineProjectFixture pristin
         using var privateRoot = PrivateManagedRoot.Use(Path.GetDirectoryName(path)!);
         KnownProjectTestSetup.AssignUniqueTag(RunnerOptions.ResolveRoot(), path, "wsfail");
         var context = new ServerContext(path, "1.0", new NoRunnerLauncher(
-            new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(null), ToolProfile.Builtin,
+            new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(), ToolProfile.Builtin,
             TextWriter.Null, advancedAiModeEnabled: true);
         var tools = MotifMcpServer.Expose(ToolProfile.Builtin);
         var project = new Dictionary<string, JsonElement> { ["project"] = JsonSerializer.SerializeToElement(path) };
@@ -91,7 +91,7 @@ public sealed class WritingSystemMissingToolTests(PristineProjectFixture pristin
         using var privateRoot = PrivateManagedRoot.Use(Path.GetDirectoryName(path)!);
         KnownProjectTestSetup.AssignUniqueTag(RunnerOptions.ResolveRoot(), path, "wsfail");
         var context = new ServerContext(path, "1.0", new NoRunnerLauncher(
-            new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), FakeParser.ExecutablePath)), new ActivityLog(null), ToolProfile.Builtin,
+            new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), FakeParser.ExecutablePath)), new ActivityLog(), ToolProfile.Builtin,
             TextWriter.Null, advancedAiModeEnabled: true, parserPath: FakeParser.ExecutablePath);
         var tools = MotifMcpServer.Expose(ToolProfile.Builtin);
         var captured = await MotifMcpServer.CallAsync(context, tools, "motif_capture_baseline",

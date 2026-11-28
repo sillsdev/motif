@@ -298,6 +298,26 @@ public sealed class AgentChangesArgvTests : IDisposable
         catch (UnauthorizedAccessException) { }
     }
 
+    private static string Spell(Guid id, bool canonical) => canonical ? CanonicalId.FromGuid(id).Value : id.ToString("D");
+
+    [Fact]
+    public async Task ACanonicalIdIsAcceptedByTheOccurrenceFlagsAndTheTextsFlagButAPrefixedOneIsNot()
+    {
+        // The occurrence flags: the scenario itself asserts the Pending change fits.
+        var scenario = await PrepareUncertainOccurrence(canonicalIds: true);
+
+        var canonicalText = CanonicalId.FromGuid(scenario.Text.TextId).Value;
+        var accepted = CliInProcess.Run(_workerRoot, null, true, "selection", "set-default",
+            "--project", scenario.Project, "--name", "canonical-texts", "--texts", canonicalText, "--json");
+        var prefixed = CliInProcess.Run(_workerRoot, null, true, "selection", "set-default",
+            "--project", scenario.Project, "--name", "prefixed-texts", "--texts",
+            CanonicalId.FromGuid(scenario.Text.TextId, "op-").Value, "--json");
+
+        // A refused id prints the verb's usage line, which names --texts; an accepted one never reaches it.
+        Assert.DoesNotContain("--texts", accepted.Output + accepted.Error, StringComparison.Ordinal);
+        Assert.Contains("--texts", prefixed.Output + prefixed.Error, StringComparison.Ordinal);
+    }
+
     private Task CaptureBaseline(string project)
     {
         var result = CliInProcess.Run(_workerRoot, null, false,
@@ -306,7 +326,7 @@ public sealed class AgentChangesArgvTests : IDisposable
         return Task.CompletedTask;
     }
 
-    private async Task<CliOccurrenceScenario> PrepareUncertainOccurrence()
+    private async Task<CliOccurrenceScenario> PrepareUncertainOccurrence(bool canonicalIds = false)
     {
         using var cache = _pristine.NewScratch();
         var text = SeededProject.SeedText(cache, _pristine.Seed);
@@ -336,9 +356,9 @@ public sealed class AgentChangesArgvTests : IDisposable
             "--word", SeededProject.AnalysedWordForm,
             "--wordform-id", CanonicalId.FromGuid(text.AnalysedWordformId).Value,
             "--stored-analysis-id", CanonicalId.FromGuid(text.ApprovedAnalysisId).Value,
-            "--occurrence-text-id", text.TextId.ToString("D"),
-            "--occurrence-paragraph-id", text.FirstParagraphId.ToString("D"),
-            "--occurrence-segment-id", text.FirstSegmentId.ToString("D"),
+            "--occurrence-text-id", Spell(text.TextId, canonicalIds),
+            "--occurrence-paragraph-id", Spell(text.FirstParagraphId, canonicalIds),
+            "--occurrence-segment-id", Spell(text.FirstSegmentId, canonicalIds),
             "--occurrence-index", "0", "--json");
         Assert.Equal("fits", Assert.Single(SuccessfulSnapshot(added).FitSummary).Status);
         return new CliOccurrenceScenario(project, text, otherWordformId);

@@ -21,5 +21,6 @@ public static partial class RefusalCatalog
         Spec(RefusalCodes.RuleNotationUnrenderable, FailureReason.Refused),
         Spec(RefusalCodes.RuleNotationSharedClass, FailureReason.Refused),
         Spec(RefusalCodes.RuleNotationContextHasData, FailureReason.Refused),
+        Spec(RefusalCodes.RuleNotationContextInUse, FailureReason.Refused),
     ];
 }

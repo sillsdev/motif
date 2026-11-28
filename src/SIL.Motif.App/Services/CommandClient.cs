@@ -1,3 +1,4 @@
+using SIL.Motif.Host;
 using SIL.Motif.Commands.Assess;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands;
@@ -67,7 +68,8 @@ public sealed partial class CommandClient : ICommandClient
         _options = options;
         _managedRoot = options.ManagedRoot;
         _projectGate = projectGate;
-        _usageRecorder = options.UsageRecorder ?? UsageRecorder.ForMachineRoot(options.ManagedRoot);
+        _usageRecorder = options.UsageRecorder ?? UsageRecorder.ForCallLog(
+            CallLog.FromEnvironment(AmbientEnvironment.Get, options.ManagedRoot));
     }
 
     public IDisposable BeginUsageAction(string command, params string[] argumentShape) =>

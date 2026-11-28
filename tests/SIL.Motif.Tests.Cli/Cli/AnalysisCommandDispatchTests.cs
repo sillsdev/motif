@@ -7,7 +7,6 @@ using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Store;
-using SIL.Motif.Projection.Usage;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
@@ -43,7 +42,7 @@ public sealed class AnalysisCommandDispatchTests : IDisposable
 
 
     [Fact]
-    public void AnalysesJsonFlagDispatchesToStructuredOutputAndRecordsUsageShape()
+    public void AnalysesJsonFlagDispatchesToStructuredOutputAndRecordsTheCall()
     {
         var result = Run($"analyses --project \"{_fwDataPath}\" --json");
 
@@ -52,11 +51,11 @@ public sealed class AnalysisCommandDispatchTests : IDisposable
         Assert.Contains("\"assessmentState\"", result.Output);
         var entry = Assert.Single(ReadUsage());
         Assert.Equal("analyses", entry.Command);
-        Assert.Equal(new[] { "fwDataPath:text" }, entry.ArgumentShape);
+        Assert.Equal(new[] { "json", "project" }, entry.ArgumentShape);
     }
 
     [Fact]
-    public void AssessmentFlagsDispatchToStoredAssessmentAndRecordOnlyShapes()
+    public void AssessmentFlagsDispatchToStoredAssessmentAndRecordOnlyArgumentNames()
     {
         var assessment = new StoredAssessment(
             new AssessReport(
@@ -76,10 +75,11 @@ public sealed class AnalysisCommandDispatchTests : IDisposable
         Assert.Equal(
             new[]
             {
-                "fwDataPath:text",
-                "assessmentId:text",
-                "currentSelectionSha256:text",
-                "currentGrammarSourceSha256:text",
+                "assessment",
+                "current-grammar-sha256",
+                "current-selection-sha256",
+                "json",
+                "project",
             },
             entry.ArgumentShape);
     }
@@ -128,11 +128,7 @@ public sealed class AnalysisCommandDispatchTests : IDisposable
     }
 
     /// <summary>Reads back what the spawned CLI recorded into this test's isolated machine store.</summary>
-    private IReadOnlyList<UsageLogEntry> ReadUsage()
-    {
-        using var machine = MachineDatabase.Open(_workerRoot);
-        return new MachineUsageLog(machine).ReadAll();
-    }
+    private IReadOnlyList<RecordedCall> ReadUsage() => CallLogReader.ReadAll(_workerRoot);
 
     private (int ExitCode, string Output, string Error) Run(string arguments)
     {

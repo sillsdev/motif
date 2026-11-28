@@ -74,7 +74,7 @@ public sealed class ProposalDifferenceToolTests
                 new KnownProjectRegistry(machine).Record(ProjectWorkspaceKey.Compute(
                     new ProjectLocator(project, "project")), project, DateTimeOffset.UtcNow);
             var context = new ServerContext(project, "1.0", new NoRunnerLauncher(
-                new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(null),
+                new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(),
                 ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
             var arguments = new Dictionary<string, JsonElement>
             {
@@ -109,7 +109,7 @@ public sealed class ProposalDifferenceToolTests
                 new KnownProjectRegistry(machine).Record(ProjectWorkspaceKey.Compute(
                     new ProjectLocator(project, "project")), project, DateTimeOffset.UtcNow);
             var context = new ServerContext(project, "1.0", new NoRunnerLauncher(
-                new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(null),
+                new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(),
                 ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
             var arguments = new Dictionary<string, JsonElement>
             {
@@ -142,7 +142,7 @@ public sealed class ProposalDifferenceToolTests
                 new KnownProjectRegistry(machine).Record(ProjectWorkspaceKey.Compute(
                     new ProjectLocator(project, "project")), project, DateTimeOffset.UtcNow);
             var context = new ServerContext(project, "1.0", new NoRunnerLauncher(
-                new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(null),
+                new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(),
                 ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
             var arguments = new Dictionary<string, JsonElement>
             {
@@ -200,7 +200,7 @@ public sealed class ProposalDifferenceToolTests
                     new ProjectLocator(project, "project")), project, DateTimeOffset.UtcNow);
             var profile = ToolProfile.Load(SourceValidatedProfile());
             var context = new ServerContext(project, "1.0", new NoRunnerLauncher(
-                new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(null),
+                new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(),
                 profile, TextWriter.Null, advancedAiModeEnabled: true);
             var arguments = new Dictionary<string, JsonElement>
             {

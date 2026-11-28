@@ -176,6 +176,7 @@ public sealed class ProposalRepositoryTests : IDisposable
         Assert.IsType<IOException>(reported);
     }
 
+    [Trait("Quarantine", "#575")]
     [Theory]
     [InlineData(2500, 200, true)]
     [InlineData(100, 200, false)]

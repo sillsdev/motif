@@ -91,10 +91,27 @@ function Get-ABProjectPromptLine { return "Work in the Motif project named ``$sc
 # Every Arm reads the same task text followed by the same project line.
 function Get-ABTrialPrompt([string] $TaskPrompt) { return $TaskPrompt.TrimEnd() + "`n`n" + (Get-ABProjectPromptLine) + "`n" }
 
-function Get-ABServerArguments([string] $ProfilePath, [string] $ActivityPath) {
-    $arguments = @('mcp', '--profile', $ProfilePath)
-    if ($ActivityPath) { $arguments += @('--activity-log', $ActivityPath) }
-    return $arguments
+function Get-ABServerArguments([string] $ProfilePath) {
+    return @('mcp', '--profile', $ProfilePath)
+}
+
+# The server writes its call log (MOTIF_CALL_LOG=full:<dir>); the trial record keeps one line per call under the
+# names the report and MeasureRun read.
+function ConvertTo-ABActivityLines([string] $CallsDirectory, [string] $ActivityPath) {
+    $lines = [Collections.Generic.List[string]]::new()
+    $files = if (Test-Path -LiteralPath $CallsDirectory) { @(Get-ChildItem -LiteralPath $CallsDirectory -Filter 'calls-*.jsonl' | Sort-Object Name) } else { @() }
+    foreach ($file in $files) {
+        foreach ($line in (Get-Content -LiteralPath $file.FullName)) {
+            if (-not $line) { continue }
+            $call = $line | ConvertFrom-Json -AsHashtable
+            $lines.Add(([ordered]@{
+                at = $call.ts; tool = $call.tool; args = $call.args; isError = ($call.outcome -ne 'ok'); code = $call.code
+                resultBytes = $call.resultBytes; durationMs = $call.durMs; jobId = $call.jobId; profile = $call.profile
+                findComposer = $call.findComposer; composers = @($call.composers); followedNext = $call.followedPrev
+            } | ConvertTo-Json -Compress -Depth 20))
+        }
+    }
+    Set-Content -LiteralPath $ActivityPath -Value $lines
 }
 
 # Any CLI command that names a project records it as Known; this one only reads writing systems.
@@ -106,4 +123,4 @@ function Get-ABProjectRegistrationArguments([string] $FwDataPath) {
 }
 
 Export-ModuleMember -Function New-ABHostPlan, Get-ABInferenceAuthMode, Get-ABProjectName, Get-ABProjectPromptLine, Get-ABTrialPrompt, `
-    Get-ABServerArguments, Get-ABProjectRegistrationArguments
+    Get-ABServerArguments, ConvertTo-ABActivityLines, Get-ABProjectRegistrationArguments

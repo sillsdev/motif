@@ -298,7 +298,6 @@ try {
         $sharedWorkerAssetsBefore = Get-WorkerAssetHashes $workerAssets
         $frontEndStages = [System.Collections.Generic.List[object]]::new()
         foreach ($frontEnd in @(
-        [ordered]@{ name = 'App'; project = 'src/SIL.Motif.App/SIL.Motif.App.csproj' },
         [ordered]@{ name = 'CLI'; project = 'src/SIL.Motif.Cli/SIL.Motif.Cli.csproj' }
         )) {
             Publish-Project (Join-Path $repositoryRoot $frontEnd.project) $packageRoot
@@ -337,10 +336,9 @@ try {
             }
         }
 
-        $appHost = Join-Path $packageRoot "SIL.Motif.App$entryPointSuffix"
         $cliHost = Join-Path $packageRoot "motif$entryPointSuffix"
         $workerHost = Join-Path $packageRoot "SIL.Motif.Worker$entryPointSuffix"
-        foreach ($hostPath in @($appHost, $cliHost, $workerHost)) {
+        foreach ($hostPath in @($cliHost, $workerHost)) {
             if (-not (Test-Path -LiteralPath $hostPath -PathType Leaf)) {
                 throw "The portable package is missing apphost $([System.IO.Path]::GetFileName($hostPath))."
             }
@@ -349,7 +347,6 @@ try {
             [System.IO.Path]::GetFullPath([System.IO.Path]::GetDirectoryName($workerHost))) {
             throw 'The CLI and Worker apphosts must be siblings in the portable package.'
         }
-        Assert-SelfContained "SIL.Motif.App.runtimeconfig.json"
         Assert-SelfContained 'motif.runtimeconfig.json'
         Assert-SelfContained 'SIL.Motif.Worker.runtimeconfig.json'
 

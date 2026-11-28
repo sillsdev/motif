@@ -67,7 +67,7 @@ public sealed class ImportFamiliesToolTests(PristineProjectFixture pristine)
             if (strict) arguments["strict"] = JsonSerializer.SerializeToElement(true);
             var context = new ServerContext(Project, "0.1.0",
                 new NoRunnerLauncher(new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)),
-                new ActivityLog(null), _profile, TextWriter.Null, advancedAiModeEnabled: true);
+                new ActivityLog(), _profile, TextWriter.Null, advancedAiModeEnabled: true);
             var called = await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(_profile), "motif_import_record",
                 arguments, CancellationToken.None);
             var text = called.StructuredContent?.GetRawText() ?? "";

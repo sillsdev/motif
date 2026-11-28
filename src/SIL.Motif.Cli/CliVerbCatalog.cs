@@ -338,6 +338,10 @@ public static class CliVerbCatalog
             new[] { "evidence export --project <fwdata> [--out <path.json>] [--tier <tier>] [--page-size <n>] [--json]" }),
 
         new CliVerbDescriptor(
+            "Commands", "id", "id convert",
+            new[] { "id convert <id>... [--json]" }),
+
+        new CliVerbDescriptor(
             "Configuration", "config", "config show",
             new[] { "Usage: motif config show --project <fwdata> [--json]" }),
 

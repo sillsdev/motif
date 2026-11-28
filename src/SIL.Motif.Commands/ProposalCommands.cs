@@ -348,7 +348,7 @@ public static partial class ProposalCommands
                 if (!TryLoadDraft(repository, request.DraftName, out var draft, out var loadedJson))
                     return CommandOutcome<SetGlossAddedResponse>.Refused(DraftNotFound(request.DraftName));
 
-                if (!CanonicalId.TryParse(request.Target, out var targetId, out var idError))
+                if (!ObjectId.TryParse(request.Target, out var targetId, out var idError))
                 {
                     return CommandOutcome<SetGlossAddedResponse>.Refused(InvalidTarget(request.Target, idError));
                 }
@@ -428,7 +428,7 @@ public static partial class ProposalCommands
                 if (!TryLoadDraft(repository, request.DraftName, out var draft, out var loadedJson))
                     return CommandOutcome<DeleteLexemeFormAddedResponse>.Refused(DraftNotFound(request.DraftName));
 
-                if (!CanonicalId.TryParse(request.Target, out var targetId, out var idError))
+                if (!ObjectId.TryParse(request.Target, out var targetId, out var idError))
                 {
                     return CommandOutcome<DeleteLexemeFormAddedResponse>.Refused(
                         InvalidTarget(request.Target, idError));
@@ -544,7 +544,7 @@ public static partial class ProposalCommands
                         Fact(("corpusId", request.CorpusId), ("documentId", request.DocumentId))));
                 }
 
-                if (!CanonicalId.TryParse(request.Target, out var targetId, out var idError))
+                if (!ObjectId.TryParse(request.Target, out var targetId, out var idError))
                 {
                     return CommandOutcome<PromoteGlossAddedResponse>.Refused(
                         InvalidTarget(request.Target, idError));
@@ -2706,7 +2706,7 @@ public static partial class ProposalCommands
 
     private static Refusal InvalidTarget(string target, string? error) =>
         new("operation.invalid-target", FailureReason.InvalidArgument,
-            $"--target '{target}' is not a valid canonical id: {error}", Fact(("target", target)));
+            $"--target '{target}' is not a valid canonical id or guid: {error}", Fact(("target", target)));
 
     private static Refusal InvalidWs(string draftName) =>
         new("operation.invalid-writing-system", FailureReason.InvalidArgument, "--ws must not be empty.",

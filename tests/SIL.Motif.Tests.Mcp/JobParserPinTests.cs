@@ -12,7 +12,7 @@ public sealed class JobParserPinTests
     {
         var launcher = new NoRunnerLauncher(new JobRunnerLaunchOptions("/tmp/motif-root", "/tmp/launcher-parser"));
 
-        var context = new ServerContext("/tmp/project.fwdata", "1.0", launcher, new ActivityLog(null),
+        var context = new ServerContext("/tmp/project.fwdata", "1.0", launcher, new ActivityLog(),
             ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: false, parserPath: "/tmp/tool-parser");
 
         Assert.Equal(launcher.Options.ParserPath, context.JobParserPath);

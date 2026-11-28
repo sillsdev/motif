@@ -96,11 +96,23 @@ public sealed record GrammarCheckAdvisory(string Code, string Message)
     /// <summary>The Baseline's stem lexeme count when it is known.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
     public int? StemLexemeCount { get; init; }
+
+    /// <summary>The grammar objects this advisory is about, by id and text; null when it is about the Baseline as a whole.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<GrammarCheckAdvisoryObject>? Objects { get; init; }
 }
+
+/// <summary>One grammar object a <see cref="GrammarCheckAdvisory"/> is about.</summary>
+/// <param name="Id">The object's canonical id.</param>
+/// <param name="Text">The object's text: an environment's pattern, an inflection class's name.</param>
+public sealed record GrammarCheckAdvisoryObject(string Id, string Text);
 
 /// <summary>The stable codes Motif uses for grammar-check advisories.</summary>
 public static class GrammarCheckAdvisoryCodes
 {
     /// <summary>The Baseline contains no lexical entries or stem lexemes.</summary>
     public const string EmptyLexicon = "grammar.empty-lexicon";
+
+    /// <summary>An environment that no allomorph references.</summary>
+    public const string OrphanEnvironment = "grammar.orphan-environment";
 }

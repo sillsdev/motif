@@ -154,6 +154,7 @@ public sealed partial class MotifDatabase : IDisposable
             Retain = safety => StoreBackupRetention.Prune(
                 Path.GetDirectoryName(safety.Directory)!, StoreBackups.PreUpgrade, safety.Directory, supportedSchema,
                 storePath: path),
+            OnWritableOpen = MotifSchema.EnsureStoreId,
             BeforeOpen = connection =>
             {
                 var metadata = MotifSchema.ReadMetadata(connection);
@@ -165,6 +166,30 @@ public sealed partial class MotifDatabase : IDisposable
                     { Newer = true };
             }
         };
+    }
+
+    /// <summary>
+    /// Reads the random id written when the store file at a path was created, or null when the file cannot be read
+    /// as a current Motif store (absent, locked, another schema, or being created). A copy keeps its source's id.
+    /// </summary>
+    public static string? TryReadStoreId(string path)
+    {
+        try
+        {
+            using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+            {
+                DataSource = Path.GetFullPath(path), Mode = SqliteOpenMode.ReadOnly, Pooling = false, DefaultTimeout = 1
+            }.ToString());
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT StoreId FROM MotifStoreIdentity WHERE Id = 1;";
+            return command.ExecuteScalar() as string is { Length: > 0 } id ? id : null;
+        }
+        catch (Exception exception) when (exception is SqliteException or IOException or InvalidOperationException
+            or UnauthorizedAccessException)
+        {
+            return null;
+        }
     }
 
     /// <summary>Returns the store-owned directory for durable Trial evidence.</summary>

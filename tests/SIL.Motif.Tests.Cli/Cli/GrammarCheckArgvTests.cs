@@ -5,7 +5,10 @@ using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Parser;
+using SIL.LCModel;
+using SIL.LCModel.Infrastructure;
 using SIL.Motif.Host.Preferences;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
@@ -51,6 +54,40 @@ public sealed class GrammarCheckArgvTests(PristineProjectFixture pristine) : IDi
         Assert.Equal(check.Findings.Count, response.TotalCount);
         Assert.Equal(check.CheckedLexemeCount, response.CheckedLexemeCount);
         Assert.Equal(check.CheckedRuleCount, response.CheckedRuleCount);
+    }
+
+    [Fact]
+    public void AnOrphanEnvironmentAdvisoryChangesNeitherTheFindingsNorTheExitCode()
+    {
+        Directory.CreateDirectory(_managedRoot);
+        var clean = pristine.CopyProjectFile();
+        var orphaned = pristine.CopyProjectFile();
+        using (var cache = new FwDataProjectLoader().LoadScratchCache(orphaned))
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var environment = cache.ServiceLocator.GetInstance<IPhEnvironmentFactory>().Create();
+                cache.LangProject.PhonologicalDataOA.EnvironmentsOS.Add(environment);
+                environment.StringRepresentation = SIL.LCModel.Core.Text.TsStringUtils.MakeString("/ a _", cache.DefaultVernWs);
+            });
+            new FwDataProjectLoader().Save(cache);
+        }
+        foreach (var project in new[] { clean, orphaned })
+            Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project), _managedRoot).Succeeded);
+
+        var plain = Run("grammar", "check", "--project", clean, "--json");
+        var advised = Run("grammar", "check", "--project", orphaned, "--json");
+
+        Assert.Equal(0, plain.ExitCode);
+        Assert.Equal(plain.ExitCode, advised.ExitCode);
+        var before = ProjectionJson.Deserialize<GrammarCheckResponse>(plain.Output)!;
+        var after = ProjectionJson.Deserialize<GrammarCheckResponse>(advised.Output)!;
+        Assert.Empty(before.Advisories);
+        var advisory = Assert.Single(after.Advisories);
+        Assert.Equal(GrammarCheckAdvisoryCodes.OrphanEnvironment, advisory.Code);
+        Assert.Equal("/ a _", Assert.Single(advisory.Objects!).Text);
+        Assert.Equal(before.Findings.Count, after.Findings.Count);
+        Assert.Equal(before.Summary.Select(row => (row.Code, row.Count)), after.Summary.Select(row => (row.Code, row.Count)));
     }
 
     [Fact]

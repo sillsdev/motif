@@ -93,7 +93,7 @@ public sealed class RefusalMappingTests
     public async Task AnUnknownToolIsAnErrorTheModelCanReadNotAProtocolFailure()
     {
         var context = new ServerContext("absent.fwdata", "1.0", new SIL.Motif.Commands.NoRunnerLauncher(
-            new SIL.Motif.Commands.JobRunnerLaunchOptions("root", null)), new ActivityLog(null), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
+            new SIL.Motif.Commands.JobRunnerLaunchOptions("root", null)), new ActivityLog(), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
         var tools = MotifMcpServer.Expose(ToolProfile.Builtin);
 
         var result = await MotifMcpServer.CallAsync(context, tools, "motif_apply", null, CancellationToken.None);
@@ -106,7 +106,7 @@ public sealed class RefusalMappingTests
     public async Task AnArgumentTheToolDoesNotHaveIsRefusedWithAHint()
     {
         var context = new ServerContext("absent.fwdata", "1.0", new SIL.Motif.Commands.NoRunnerLauncher(
-            new SIL.Motif.Commands.JobRunnerLaunchOptions("root", null)), new ActivityLog(null), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
+            new SIL.Motif.Commands.JobRunnerLaunchOptions("root", null)), new ActivityLog(), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
         var tools = MotifMcpServer.Expose(ToolProfile.Builtin);
         var arguments = new Dictionary<string, JsonElement> { ["force"] = JsonSerializer.SerializeToElement(true) };
 
@@ -121,7 +121,7 @@ public sealed class RefusalMappingTests
     {
         var context = new ServerContext(Path.Combine(Path.GetTempPath(), "no-such-motif-project.fwdata"), "1.0",
             new SIL.Motif.Commands.NoRunnerLauncher(new SIL.Motif.Commands.JobRunnerLaunchOptions("root", null)),
-            new ActivityLog(null), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
+            new ActivityLog(), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
         var tools = MotifMcpServer.Expose(ToolProfile.Builtin);
 
         var result = await MotifMcpServer.CallAsync(context, tools, "motif_proposals", new Dictionary<string, JsonElement>

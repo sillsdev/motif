@@ -4,35 +4,29 @@ $scope = @'
 {
   "always": [],
   "fallback": [
-    "SIL.Motif.Tests.App",
     "SIL.Motif.Tests.Cli",
     "SIL.Motif.Tests.Commands",
     "SIL.Motif.Tests.Contract",
     "SIL.Motif.Tests.LibLcm",
     "SIL.Motif.Tests.Mcp",
-    "SIL.Motif.Tests.Worker",
-    "SIL.Motif.Tests.App.Lifetime"
+    "SIL.Motif.Tests.Worker"
   ],
   "patterns": {
     "src/SIL.Motif.Contract/*": [
-      "SIL.Motif.Tests.App",
       "SIL.Motif.Tests.Cli",
       "SIL.Motif.Tests.Commands",
       "SIL.Motif.Tests.Contract",
       "SIL.Motif.Tests.LibLcm",
       "SIL.Motif.Tests.Mcp",
-      "SIL.Motif.Tests.Worker",
-      "SIL.Motif.Tests.App.Lifetime"
+      "SIL.Motif.Tests.Worker"
     ],
     "src/SIL.Motif.Host/*": [
-      "SIL.Motif.Tests.App",
       "SIL.Motif.Tests.Cli",
       "SIL.Motif.Tests.Commands",
       "SIL.Motif.Tests.Contract",
       "SIL.Motif.Tests.LibLcm",
       "SIL.Motif.Tests.Mcp",
-      "SIL.Motif.Tests.Worker",
-      "SIL.Motif.Tests.App.Lifetime"
+      "SIL.Motif.Tests.Worker"
     ],
     "src/SIL.Motif.Runner/*": [
       "SIL.Motif.Tests.Cli",
@@ -43,33 +37,23 @@ $scope = @'
       "SIL.Motif.Tests.Worker"
     ],
     "src/SIL.Motif.Projection/*": [
-      "SIL.Motif.Tests.App",
       "SIL.Motif.Tests.Cli",
       "SIL.Motif.Tests.Commands",
       "SIL.Motif.Tests.Contract",
       "SIL.Motif.Tests.LibLcm",
       "SIL.Motif.Tests.Mcp",
-      "SIL.Motif.Tests.Worker",
-      "SIL.Motif.Tests.App.Lifetime"
+      "SIL.Motif.Tests.Worker"
     ],
     "tests/SIL.Motif.Tests.Support/*": [
-      "SIL.Motif.Tests.App",
       "SIL.Motif.Tests.Cli",
       "SIL.Motif.Tests.Commands",
       "SIL.Motif.Tests.Contract",
       "SIL.Motif.Tests.LibLcm",
       "SIL.Motif.Tests.Mcp",
-      "SIL.Motif.Tests.Worker",
-      "SIL.Motif.Tests.App.Lifetime"
-    ],
-    "src/SIL.Motif.App/*": [
-      "SIL.Motif.Tests.App",
-      "SIL.Motif.Tests.App.Lifetime"
+      "SIL.Motif.Tests.Worker"
     ],
     "src/SIL.Motif.Help/*": [
-      "SIL.Motif.Tests.Cli",
-      "SIL.Motif.Tests.App",
-      "SIL.Motif.Tests.App.Lifetime"
+      "SIL.Motif.Tests.Cli"
     ],
     "src/SIL.Motif.Mcp/*": [
       "SIL.Motif.Tests.Mcp"
@@ -80,9 +64,7 @@ $scope = @'
     "src/SIL.Motif.Commands/*": [
       "SIL.Motif.Tests.Commands",
       "SIL.Motif.Tests.Cli",
-      "SIL.Motif.Tests.Mcp",
-      "SIL.Motif.Tests.App",
-      "SIL.Motif.Tests.App.Lifetime"
+      "SIL.Motif.Tests.Mcp"
     ],
     "src/SIL.Motif.Worker/*": [
       "SIL.Motif.Tests.Worker",
@@ -92,10 +74,6 @@ $scope = @'
       "SIL.Motif.Tests.LibLcm",
       "SIL.Motif.Tests.Commands",
       "SIL.Motif.Tests.Worker"
-    ],
-    "tests/SIL.Motif.Tests.App/*": [
-      "SIL.Motif.Tests.App",
-      "SIL.Motif.Tests.App.Lifetime"
     ],
     "tests/SIL.Motif.Tests.Cli/*": [
       "SIL.Motif.Tests.Cli"
@@ -128,10 +106,7 @@ $scope = @'
       "SIL.Motif.Tests.Contract"
     ],
     "tests/test-shard-weights.json": [],
-    "tests/test-project-seconds.json": [],
-    "tests/SIL.Motif.Tests.App.Lifetime/*": [
-      "SIL.Motif.Tests.App.Lifetime"
-    ]
+    "tests/test-project-seconds.json": []
   }
 }
 '@ | ConvertFrom-Json -AsHashtable

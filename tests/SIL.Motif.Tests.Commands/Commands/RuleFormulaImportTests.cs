@@ -345,6 +345,32 @@ public sealed class RuleFormulaImportTests(PristineProjectFixture pristine)
         Assert.Contains(plan.ChangeSet.Refusals, refusal => refusal.Kind == RecordRefusalKind.FieldNotWritable);
     }
 
+    // The context constraint rows are written by the phonological rule formulas, not the affix-process ones.
+    private HashSet<string> PhonologicalRuleKinds()
+    {
+        using var scratch = pristine.NewScratch();
+        PhonologicalRuleRecordImportTests.Build(scratch);
+        new FwDataProjectLoader().Save(scratch);
+        var ruleId = scratch.LangProject.PhonologicalDataOA.PhonRulesOS.OfType<IPhRegularRule>().Single().Guid;
+        var path = scratch.ProjectId.Path;
+        var kinds = new HashSet<string>();
+        void Probe(string left)
+        {
+            using var cache = new FwDataProjectLoader().LoadCache(path);
+            kinds.UnionWith(PhonologicalRuleRecordImportTests.Lower(cache, ruleId, document =>
+                PhonologicalRuleRecordImportTests.Rhs(document).Set("left-context", new RecordScalar(left))).Operations.Select(operation => operation.Kind));
+        }
+        void Seed(string draft, string left) => PhonologicalRuleRecordImportTests.Import(path, draft, ruleId, document =>
+            PhonologicalRuleRecordImportTests.Rhs(document).Set("left-context", new RecordScalar(left)));
+        Probe("[V voi:α]");
+        Seed("agree", "[V voi:α]");
+        Probe("[V voi:-α]");
+        Probe("[V]");
+        Seed("disagree", "[V voi:-α]");
+        Probe("[V]");
+        return kinds;
+    }
+
     [Fact]
     public void EveryMemberFieldCoveredAsWrittenByAFormulaKeyIsWrittenByAFormula()
     {
@@ -357,6 +383,7 @@ public sealed class RuleFormulaImportTests(PristineProjectFixture pristine)
         Import(path, "seed", "<[C] [V]> *", "$1 $2 <a i>");
         using (var seeded = new FwDataProjectLoader().LoadCache(path))
             written.UnionWith(Lower(seeded, "<[C] a p> *", "$1 $2 <a p>").Operations.Select(operation => operation.Kind));
+        written.UnionWith(PhonologicalRuleKinds());
         var schema = ProjectRecordSchema.Generate(cache, ProjectRecordSchema.LexiconEntryOverlay);
         var owned = new RecordWritableFields(schema).Entries.Where(entry => entry.Value is WritableFieldResolution.Covered { Owner: not null }).ToList();
         Assert.NotEmpty(owned);

@@ -122,6 +122,11 @@
     "description": "Calculates a named report from an Assessment and project data. Use it to answer a focused question about words, Texts, or grammar without rerunning PanGloss.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
+  "id convert": {
+    "title": "Convert ids",
+    "description": "Prints each id in both forms: the canonical id a Proposal names and the guid a project file stores. It needs no project, and every command that takes an object id accepts either form.",
+    "source": "Hand-written from the id convert command behavior."
+  },
   "report --list-kinds": {
     "title": "List report kinds",
     "description": "Lists the report kinds accepted by report --kind. Run it first when you need to choose a report for stored evidence.",
@@ -486,7 +491,7 @@
   },
   "grammar check": {
     "title": "Check a grammar",
-    "description": "Runs the grammar checker against the project's current Baseline and stores its findings; use warnings to read them afterward. The stored-analysis comparison follows the Default proposal checks setting unless the command overrides it. It returns the first 10 findings with the full counts and names the next offset; --limit, --offset, --page and --all read the rest.",
+    "description": "Runs the grammar checker against the project's current Baseline and stores its findings; use warnings to read them afterward. The stored-analysis comparison follows the Default proposal checks setting unless the command overrides it. It returns the first 10 findings with the full counts and names the next offset; --limit, --offset, --page and --all read the rest; whole-grammar advisories (compose.whole-word-environment, compose.one-stem-inflection-class, grammar.orphan-environment) never change the exit code.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
   "timing": {
@@ -496,7 +501,7 @@
   },
   "activity": {
     "title": "Summarize agent activity",
-    "description": "Reads an activity log written by motif mcp --activity-log and reports calls by tool, errors, refusals by code, and how often the agent followed the advice it was given. Nothing is sent anywhere.",
+    "description": "Reads the call log Motif writes by itself and reports calls by tool, errors, refusals by code, and how often the agent followed the advice it was given. Nothing is sent anywhere.",
     "source": "Authored from the agent activity log contract."
   },
   "handoff": {

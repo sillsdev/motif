@@ -167,6 +167,12 @@ public sealed class GrammarReadArgvTests(PristineProjectFixture pristine) : IDis
         Assert.True(humanLexicalEntry.ExitCode == 0, humanLexicalEntry.Error);
         Assert.Contains("Definition: first sense definition (en)", humanLexicalEntry.Output, StringComparison.Ordinal);
 
+        var guidLexicalEntry = CliInProcess.Run(_root, null, developerCommands: true,
+            "grammar", "read", "--project", project.FwDataPath, "--kind", "lexical_entry", "--id",
+            project.Seed.FirstEntryId.ToString("D"));
+        Assert.True(guidLexicalEntry.ExitCode == 0, guidLexicalEntry.Error);
+        Assert.Equal(humanLexicalEntry.Output, guidLexicalEntry.Output);
+
         using (var query = Read(project.FwDataPath, "lexical_entry", query: SeededProject.FirstGloss))
         {
             Assert.Equal(CanonicalId.FromGuid(project.Seed.FirstEntryId).Value,

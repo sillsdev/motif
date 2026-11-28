@@ -1,8 +1,6 @@
 # Configuration
 
-The machine usage log keeps the newest 10,000 entries. Set `MOTIF_USAGE_MAX_ROWS` to a positive integer
-to choose another limit; the limit is enforced when an entry is recorded. SQLite can reuse freed pages,
-but deleting entries does not immediately shrink an existing database file.
+The call log (see [call-log.md](call-log.md)) keeps 30 days of daily files. `MOTIF_CALL_LOG` sets its folder, `off` or `full`.
 
 The newest three Trial copies per project are retained for inspection and tracing; older copies and copies of
 applied or discarded Proposals are removed. `MOTIF_TRIAL_SCRATCH_MAX_COUNT` sets another positive count.

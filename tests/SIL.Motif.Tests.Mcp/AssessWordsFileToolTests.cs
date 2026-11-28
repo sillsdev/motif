@@ -83,7 +83,7 @@ public sealed class AssessWordsFileToolTests
                 new KnownProjectRegistry(machine).Record(ProjectWorkspaceKey.Compute(
                     new ProjectLocator(project, "project")), project, DateTimeOffset.UtcNow);
             var context = new ServerContext(project, "1.0", new NoRunnerLauncher(
-                new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(null),
+                new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(),
                 ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
             var arguments = new Dictionary<string, JsonElement>
             {
@@ -222,7 +222,7 @@ public sealed class AssessWordsFileIngressTests(PristineProjectFixture pristine)
     private static ServerContext Context(string projectPath, string parser)
     {
         var runner = new NoRunnerLauncher(new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), parser));
-        return new ServerContext(projectPath, "1.0", runner, new ActivityLog(null), ToolProfile.Builtin,
+        return new ServerContext(projectPath, "1.0", runner, new ActivityLog(), ToolProfile.Builtin,
             TextWriter.Null, advancedAiModeEnabled: true, parserPath: parser);
     }
 

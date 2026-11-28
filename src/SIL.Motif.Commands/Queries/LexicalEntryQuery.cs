@@ -32,9 +32,9 @@ public static class LexicalEntryQuery
         foreach (var raw in request.Ids)
         {
             var id = raw?.Trim() ?? "";
-            if (!CanonicalId.TryParse(id, out var canonical))
+            if (!ObjectId.TryParse(id, out var canonical))
                 return Refused(RefusalCodes.LexicalEntryInvalidId, FailureReason.InvalidArgument,
-                    $"'{id}' is not a portable id. Use an id from a Proposal change or from motif_lexicon.");
+                    $"'{id}' is not a portable id or a guid. Use an id from a Proposal change or from motif_lexicon.");
             parsed.Add((id, canonical));
         }
 
