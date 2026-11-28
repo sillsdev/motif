@@ -4,7 +4,6 @@
   "slug": "jobs-cancel",
   "title": "Cancel a job",
   "description": "Requests cancellation of a queued or running job. Use it when the work is no longer needed, then inspect the final state with jobs show.",
-  "helpPage": "# Cancel a job\n\n\u0060jobs cancel\u0060 requests cancellation of one queued or running job for a project.\n\n## When to use it\n\nUse this when the requested work is no longer needed. Cancellation may take time if the job is already running, so inspect its final state afterward.\n\n## Example\n\n\u0060\u0060\u0060powershell\nmotif jobs cancel \u003CjobId\u003E --project \u0022C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\u0022 --json\n\u0060\u0060\u0060\n\n## What it prints\n\nThe response reports the job state after the request. A cancellation request does not erase completed Assessments or change Proposal content.\n\n## Related commands\n\n- [Inspect a job](cmd:jobs%20show) checks whether cancellation completed.\n- [List queued jobs](cmd:jobs%20list) shows work across Known projects.\n",
   "usage": [
     "Usage: motif jobs cancel \u003CjobId\u003E --project \u003Cfwdata\u003E [--json]"
   ],

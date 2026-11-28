@@ -4,6 +4,5 @@
   "slug": "baseline",
   "title": "A saved project starting point",
   "description": "A Baseline is a saved, minimal, file-backed copy of a project from which Motif can make independent Dry Run copies. When captured from a project FieldWorks holds open, it reflects FieldWorks\u0027 last save.",
-  "helpPage": null,
   "url": "https://motif-docs.pages.dev/reference/terms/baseline/"
 }

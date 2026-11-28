@@ -4,7 +4,6 @@
   "slug": "compose-set-source-context",
   "title": "Change a Source\u0027s Context",
   "description": "Stages the books and chapters a Source covers, read in the Source\u0027s versification.",
-  "helpPage": "# Change a Source\u0027s Context\n\nStage the books and chapters a Source covers. The Context is read in the Source\u0027s versification.\n\n\u0060\u0060\u0060sh\nmotif compose-set-source-context --project language.fwdata --draft pending --intent \u0027{\u0022source\u0022:\u0022WEB\u0022,\u0022context\u0022:\u0022MAT-ACT\u0022}\u0027\n\u0060\u0060\u0060\n\nThe command refuses a Context that does not read in the versification.\n",
   "usage": [
     "Usage: motif compose-set-source-context --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],

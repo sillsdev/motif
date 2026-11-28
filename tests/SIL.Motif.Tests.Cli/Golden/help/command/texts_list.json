@@ -4,7 +4,6 @@
   "slug": "texts-list",
   "title": "List project Texts",
   "description": "Lists Text records from the project\u0027s current Baseline with their identity and interlinearization data. Use it to find Text ids for a Default Selection or Assessment.",
-  "helpPage": "# List project Texts\n\n\u0060texts list\u0060 reads Text records from the project\u0027s current Baseline and returns their GUIDs, titles, and interlinearization data.\n\n## When to use it\n\nUse this to find Text GUIDs before choosing them for a Default Selection or an Assessment. The command reads the Baseline, so capture one after saving project changes if you need to see newly added Texts. Titles help a person recognize a Text; the GUID is the stable selector.\n\n## Example\n\n\u0060\u0060\u0060powershell\nmotif texts list --project \u0022C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\u0022 --json\n\u0060\u0060\u0060\n\n## What it prints\n\nHuman output lists each Text\u0027s title, interlinearization percentage, and GUID. JSON returns those details with a flag showing whether a Baseline was available; without a Baseline, human output asks you to capture one first.\n\n## Related commands\n\n- [Choose a Default Selection](cmd:selection%20set-default) stores Text GUIDs for later runs.\n- [Measure a Selection](cmd:assess) can measure words from named Texts.\n",
   "usage": [
     "Usage: motif texts list --project \u003Cfwdata\u003E [--json]"
   ],

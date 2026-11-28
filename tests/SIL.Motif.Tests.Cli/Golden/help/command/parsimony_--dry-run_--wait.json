@@ -4,7 +4,6 @@
   "slug": "parsimony-dry-run-wait",
   "title": "Parsimony dry run wait",
   "description": "Queues the before and after comparison for a completed Dry Run job and waits for its two stored Reports. It does not change the FieldWorks project.",
-  "helpPage": "# Parsimony dry run wait\n\n\u0060parsimony --dry-run \u003Cjob-id\u003E --wait\u0060 queues the comparison of one measure before and after the Proposal behind a completed Dry Run job, and waits for the stored before and after Reports. It does not change the FieldWorks project. Use \u0060--wait-timeout-ms\u0060 to set the wait bound; see [Review grammar parsimony](cmd:parsimony).\n",
   "usage": [
     "Usage: motif parsimony --project \u003Cfwdata\u003E --dry-run \u003Cjob-id\u003E --wait [--measure \u003Cmeasure-id\u003E] [--evidence-scope project-approved|default-selection] [--assessment \u003CParseTime-id\u003E ...] [--wait-timeout-ms \u003Cms\u003E] [--json]"
   ],

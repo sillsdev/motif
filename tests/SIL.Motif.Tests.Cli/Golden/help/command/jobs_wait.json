@@ -4,7 +4,6 @@
   "slug": "jobs-wait",
   "title": "Wait for a job",
   "description": "Waits for a job to reach a terminal state and reports its result. A parsing time limit returns exit code 5 with word counts.",
-  "helpPage": "# Wait for a job\n\n\u0060jobs wait\u0060 waits for a durable job to finish and reports its status.\n\n\u0060\u0060\u0060powershell\nmotif jobs wait \u003CjobId\u003E --project \u0022C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\u0022 --json\n\u0060\u0060\u0060\n\nUse \u0060--wait-timeout-ms\u0060 to limit how long to wait. If parsing stops at the whole run\u0027s time limit, the command exits with code 5 and reports the number of words done and not done. Use [Inspect a job](cmd:jobs%20show) to read its status later.\n\nFor a Dry Run or Trial, add \u0060--wait-terminal\u0060 to cancel that job at the wait limit or on Ctrl\u002BC. Motif allows up to eight more seconds to record cancellation and confirm cleanup. The refusal includes \u0060jobId\u0060, the last observed \u0060status\u0060, whether that status was \u0060terminal\u0060, and whether \u0060cleanup\u0060 was \u0060complete\u0060 or \u0060incomplete\u0060. Inspect the job before starting replacement work if cleanup could not be confirmed.\n",
   "usage": [
     "Usage: motif jobs wait \u003CjobId\u003E --project \u003Cfwdata\u003E [--wait-terminal] [--wait-timeout-ms \u003Cms\u003E] [--json]"
   ],

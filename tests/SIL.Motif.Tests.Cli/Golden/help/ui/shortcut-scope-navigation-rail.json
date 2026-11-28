@@ -4,6 +4,5 @@
   "slug": "shortcut-scope-navigation-rail",
   "title": "Pages Rail",
   "description": "Available when the current page in the Pages rail has keyboard focus.",
-  "helpPage": null,
   "url": "https://motif-docs.pages.dev/reference/controls/shortcut-scope-navigation-rail/"
 }

@@ -4,6 +4,5 @@
   "slug": "shortcut-undo",
   "title": "Undo",
   "description": "Undo the last staging action in this window session.",
-  "helpPage": null,
   "url": "https://motif-docs.pages.dev/reference/controls/shortcut-undo/"
 }

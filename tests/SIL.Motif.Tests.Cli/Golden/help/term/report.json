@@ -4,6 +4,5 @@
   "slug": "report",
   "title": "A finding from frozen evidence",
   "description": "A Report presents statistics and findings from stored evidence. A Parsimony Report may use a frozen evidence bundle without an Assessment and is always advisory; other Report kinds retain their configured regression behavior.",
-  "helpPage": "# Report\n\nA Report presents findings from stored evidence. A Parsimony Report can describe frozen grammar and Text evidence without an Assessment, and its advice never decides whether a person may Apply a change.\n",
   "url": "https://motif-docs.pages.dev/reference/terms/report/"
 }

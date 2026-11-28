@@ -4,7 +4,6 @@
   "slug": "remove-operations",
   "title": "Remove Draft operations",
   "description": "Removes explicit operations from a Draft while respecting declared dependencies. Revise and measure the content again before Finalize. Only a person can Apply.",
-  "helpPage": "# Remove Draft operations\n\nRemoves explicit operations from a Draft while respecting declared dependencies. Revise and measure the content again before Finalize. Only a person can Apply.\n",
   "usage": [
     "Usage: motif remove-operations --project \u003Cfwdata\u003E --draft \u003Cname\u003E \u003CoperationId\u003E [\u003CoperationId\u003E...] [--force]"
   ],

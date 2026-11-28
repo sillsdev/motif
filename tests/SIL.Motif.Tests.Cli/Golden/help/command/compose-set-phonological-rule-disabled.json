@@ -4,7 +4,6 @@
   "slug": "compose-set-phonological-rule-disabled",
   "title": "Turn a sound rule off or on",
   "description": "Disables or enables one phonological rule. A disabled rule stays in place but the parser does not load it. Motif stages a Draft for a person to review and Apply.",
-  "helpPage": "# Turn a sound rule off or on\n\nUse this command to disable or enable a phonological rule. A disabled rule stays in the project, in its place, but the parser does not load it.\n\n\u0060\u0060\u0060sh\nmotif compose-set-phonological-rule-disabled --project language.fwdata --draft rule-off \\\n  --intent \u0027{\u0022target\u0022:\u0022\u003Crule-id\u003E\u0022,\u0022expectedDisabled\u0022:false,\u0022disabled\u0022:true}\u0027\n\u0060\u0060\u0060\n\n\u0060expectedDisabled\u0060 must match the rule\u0027s current state; a stale value is refused. Use this to test a grammar without a rule, or to hold a rule back until its words are in.\n",
   "usage": [
     "Usage: motif compose-set-phonological-rule-disabled --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],

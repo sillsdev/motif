@@ -4,7 +4,6 @@
   "slug": "reopen-proposal",
   "title": "Reopen a Proposal",
   "description": "Opens a declined or withdrawn Proposal again as a Draft under the same id, with its history kept. An applied or superseded Proposal is never reopened.",
-  "helpPage": "# Reopen a Proposal\n\n\u0060motif reopen --proposal \u003Cid\u003E\u0060 opens a declined or withdrawn Proposal again as a Draft, under the same id. Its earlier revisions and [Trials](term:trial) are kept.\n\n## When to use it\n\nUse it when you change your mind about a Proposal you declined, or want to take up one its author withdrew. An applied Proposal is final and is refused with \u0060proposal.applied-final\u0060. A superseded Proposal is refused with \u0060proposal.superseded\u0060, which names the Proposal that replaced it.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif reopen --proposal \u003Cid\u003E --project \u003Cproject\u003E --json\n\u0060\u0060\u0060\n\n## What it prints\n\nThe Proposal\u0027s id, the name of its Draft and how many changes it holds. In the window, **Reopen** on a closed card on **Proposals** does the same. Try the Proposal again before applying it.\n\n## Related commands\n\nSee [Decline a Proposal](cmd:reject%20--proposal) and [Apply one Proposal](cmd:apply%20--proposal).\n",
   "usage": [
     "Usage: motif reopen --proposal \u003Cid\u003E --project \u003Cfwdata\u003E [--json]"
   ],

@@ -4,6 +4,5 @@
   "slug": "parse-all-words",
   "title": "Parse every chosen word",
   "description": "Parse all words asks PanGloss to parse the words you chose and saves the result against the Baseline. A search stopped at a limit is saved as not finished, never as a word that cannot parse.",
-  "helpPage": null,
   "url": "https://motif-docs.pages.dev/reference/terms/parse-all-words/"
 }

@@ -4,7 +4,6 @@
   "slug": "add-set-gloss",
   "title": "Set a sense gloss",
   "description": "Stages the explicitly authored gloss of one sense in one writing system in a Draft. Dry Run and Trial the Draft before Finalize; only a person can Apply.",
-  "helpPage": "# Set a sense gloss\n\nStages the explicitly authored gloss of one sense in one writing system in a Draft. Dry Run and Trial the Draft before Finalize; only a person can Apply.\n\nTo record where the gloss came from, add \u0060--cite-source\u0060 with the work cited and, optionally, \u0060--cite-locator\u0060 with the page or section (at most 300 characters). The [citation](term:citation) shows beside the change when the Proposal is shown or Dry Run, and does not change what the Proposal does.\n",
   "usage": [
     "Usage: motif add-set-gloss --project \u003Cfwdata\u003E --draft \u003Cname\u003E --target \u003CcanonicalId\u003E --ws \u003CwsTag\u003E --text \u003Ctext\u003E [--depends-on \u003CopId\u003E[,\u003CopId\u003E...]] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],

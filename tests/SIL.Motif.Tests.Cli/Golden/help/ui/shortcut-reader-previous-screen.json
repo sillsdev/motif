@@ -4,6 +4,5 @@
   "slug": "shortcut-reader-previous-screen",
   "title": "Move Up One Screen of Lines",
   "description": "Move focus up by the number of lines visible in the reader.",
-  "helpPage": null,
   "url": "https://motif-docs.pages.dev/reference/controls/shortcut-reader-previous-screen/"
 }

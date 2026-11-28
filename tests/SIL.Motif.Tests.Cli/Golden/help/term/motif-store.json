@@ -4,6 +4,5 @@
   "slug": "motif-store",
   "title": "Motif\u0027s project workflow records",
   "description": "The Motif store keeps project workflow records and frozen Report bindings in the project\u0027s paired database. Parsimony judgments remain durable FieldWorks project data, while analysis artifacts are disposable files.",
-  "helpPage": "# Motif store\n\nThe Motif store keeps a project\u0027s Proposals, jobs, Assessments, Reports, Receipts, and other workflow records. Parsimony judgments belong with the FieldWorks project; the files used to analyse a grammar can be rebuilt.\n",
   "url": "https://motif-docs.pages.dev/reference/terms/motif-store/"
 }

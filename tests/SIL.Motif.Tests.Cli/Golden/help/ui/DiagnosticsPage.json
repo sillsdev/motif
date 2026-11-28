@@ -4,6 +4,5 @@
   "slug": "diagnosticspage",
   "title": "Diagnostics",
   "description": "Turn on Diagnostics in the health details or the View menu to add this page to the rail.",
-  "helpPage": null,
   "url": "https://motif-docs.pages.dev/reference/controls/diagnosticspage/"
 }

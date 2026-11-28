@@ -4,7 +4,6 @@
   "slug": "progress",
   "title": "Read Progress",
   "description": "Counts approved and misspelled places in saved Texts, or eligible places in an indexed Source. Source approval counts are unavailable; read a summary or page through Passages.",
-  "helpPage": null,
   "usage": [
     "Usage: motif progress --project \u003Cfwdata\u003E [--texts \u003Cguid,guid\u003E | --source \u003Cid\u003E] [--detail summary|passages] [--limit \u003Cn\u003E] [--cursor \u003Ccursor\u003E] [--since-revision \u003Crevision\u003E] [--json]"
   ],

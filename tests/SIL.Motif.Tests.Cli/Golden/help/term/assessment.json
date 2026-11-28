@@ -4,6 +4,5 @@
   "slug": "assessment",
   "title": "A recorded measurement",
   "description": "An Assessment is one immutable measurement of one kind, made by an Assessor. A PanGloss run may produce several Assessments, such as parse timing and correctness for a Selection.",
-  "helpPage": null,
   "url": "https://motif-docs.pages.dev/reference/terms/assessment/"
 }

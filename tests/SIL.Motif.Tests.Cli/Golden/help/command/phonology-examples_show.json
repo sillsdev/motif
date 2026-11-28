@@ -4,7 +4,6 @@
   "slug": "phonology-examples-show",
   "title": "Show phonology examples",
   "description": "Reads a bounded page from one exact saved Example Set revision, including its citations. It reads stored evidence without capturing a project or running PanGloss.",
-  "helpPage": "# Show phonology examples\n\n\u0060phonology-examples show\u0060 reads one exact saved revision and returns its examples in authored order, including source context and any citations. Example Sets are advisory evidence and do not affect Readiness or Apply.\n\n## When to use it\n\nUse this to inspect a current or historical revision. The command reads Motif\u0027s stored rows and does not capture the project or run PanGloss.\n\n## Example\n\n\u0060\u0060\u0060powershell\nmotif phonology-examples show --project \u0022C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\u0022 \u003CrevisionId\u003E --json\n\u0060\u0060\u0060\n\n## What it prints\n\nEach example includes its underlying form, expected forms, generation context, and optional citation. A continuation cursor marks another page; pass that cursor as JSON with \u0060--continuation\u0060.\n\n## Related commands\n\n- [List phonology examples](cmd:phonology-examples%20list) finds the current revision of each set.\n- [Save phonology examples](cmd:phonology-examples%20save) records a new immutable revision.\n",
   "usage": [
     "Usage: motif phonology-examples show --project \u003Cfwdata\u003E \u003CrevisionId\u003E [--page-size \u003Cn\u003E] [--continuation \u003Ccursor-json\u003E] [--json]"
   ],

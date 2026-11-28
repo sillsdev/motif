@@ -4,7 +4,6 @@
   "slug": "show-corpus",
   "title": "Show a Corpus",
   "description": "Reads the provenance, tokeniser, and licence capabilities recorded for one Corpus. Use it to verify what a Corpus allows before using its text as evidence.",
-  "helpPage": "# Show a Corpus\n\n\u0060show-corpus\u0060 reads the provenance, tokeniser, and licence capabilities recorded for one Corpus.\n\n## When to use it\n\nUse it before relying on Corpus material as evidence, especially when redistribution or derived use matters. The response preserves unknown licence capabilities instead of treating them as permission.\n\n## Example\n\n\u0060\u0060\u0060powershell\nmotif show-corpus --project \u0022C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\u0022 stories --json\n\u0060\u0060\u0060\n\n## What it prints\n\nThe command displays the selected Corpus and its recorded Documents. JSON returns the full detail response, including the three licence capabilities and their recorded basis.\n\n## Related commands\n\n- [List Corpora](cmd:corpora) finds Corpus ids.\n- [Add a Corpus Document](cmd:add-document) records another Document\u0027s source.\n",
   "usage": [
     "Usage: motif show-corpus --project \u003Cfwdata\u003E \u003CcorpusId\u003E [--json]"
   ],

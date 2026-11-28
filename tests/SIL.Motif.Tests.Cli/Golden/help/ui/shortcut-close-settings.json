@@ -4,6 +4,5 @@
   "slug": "shortcut-close-settings",
   "title": "Return from Settings",
   "description": "Return to the previous page when no field is handling Escape.",
-  "helpPage": null,
   "url": "https://motif-docs.pages.dev/reference/controls/shortcut-close-settings/"
 }

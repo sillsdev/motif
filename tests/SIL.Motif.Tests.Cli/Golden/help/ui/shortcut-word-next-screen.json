@@ -4,6 +4,5 @@
   "slug": "shortcut-word-next-screen",
   "title": "Move Down One Screen of Words",
   "description": "Move focus down by the number of rows visible in the list.",
-  "helpPage": null,
   "url": "https://motif-docs.pages.dev/reference/controls/shortcut-word-next-screen/"
 }

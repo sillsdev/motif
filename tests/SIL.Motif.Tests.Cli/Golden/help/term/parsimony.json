@@ -4,6 +4,5 @@
   "slug": "parsimony",
   "title": "Fewer repeated grammar statements",
   "description": "Parsimony is the axis that favors fewer or less-duplicated grammar statements while preserving known valid readings. It is distinct from restrictiveness, which asks how narrowly a statement licenses forms.",
-  "helpPage": "# Parsimony\n\nParsimony favors fewer or less-duplicated grammar statements while preserving known valid readings. It is one of the two axes in a [Parsimony review](term:parsimony-review), alongside [restrictiveness](term:restrictiveness).\n",
   "url": "https://motif-docs.pages.dev/reference/terms/parsimony/"
 }

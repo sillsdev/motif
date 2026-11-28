@@ -4,6 +4,5 @@
   "slug": "progresspage",
   "title": "Progress",
   "description": "Progress shows supported next actions for the current project.",
-  "helpPage": null,
   "url": "https://motif-docs.pages.dev/reference/controls/progresspage/"
 }

@@ -4,6 +4,5 @@
   "slug": "review-changes",
   "title": "Review Changes in a Proposal",
   "description": "Review changes within the selected document on Proposals. Read its Rationale, supported evidence and Comments, then prepare Apply using the current command readiness. There is no separate Review Changes page.",
-  "helpPage": "# Review Changes in a Proposal\n\nReview changes within the selected document on **Proposals**. Read its Rationale, supported evidence and Comments, then prepare Apply using the current command readiness. There is no separate Review Changes page.\n\nSee [Review a Proposal](guide:review-a-proposal) and [Apply to FieldWorks](guide:apply-to-fieldworks).\n",
   "url": "https://motif-docs.pages.dev/guide/review-changes/"
 }

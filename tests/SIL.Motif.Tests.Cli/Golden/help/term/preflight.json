@@ -4,6 +4,5 @@
   "slug": "preflight",
   "title": "The final fit check",
   "description": "The CLI\u0027s preflight command checks changes against the live model before Apply. A change whose required inputs changed or disappeared no longer fits.",
-  "helpPage": null,
   "url": "https://motif-docs.pages.dev/reference/terms/preflight/"
 }

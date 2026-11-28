@@ -4,7 +4,6 @@
   "slug": "reject-proposal",
   "title": "Decline a Proposal",
   "description": "Declines a Proposal you do not want. It is kept with its Trials as history, and you can reopen it later.",
-  "helpPage": "# Decline a Proposal\n\n\u0060motif reject --proposal \u003Cid\u003E\u0060 declines a Proposal you do not want. It is kept, with its [Trials](term:trial), as a record of what was suggested; nothing reaches FieldWorks.\n\n## When to use it\n\nUse it after reading a Proposal you will not apply. A Proposal that is still a Draft is finalized first, so what you declined stays readable. Your own pending changes are not declined; take them out in **Proposals**, under **Your Changes Not Applied Yet**, instead.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif reject --proposal \u003Cid\u003E --project \u003Cproject\u003E --json\n\u0060\u0060\u0060\n\n## What it prints\n\nThe Proposal\u0027s id and its new status, \u0060rejected\u0060. In the window, **Decline** on the Proposal in **Proposals** does the same while the Proposal is open, and the card moves to **Closed** on **Proposals**.\n\n## Related commands\n\nSee [Reopen a Proposal](cmd:reopen%20--proposal) and [Delete a closed Proposal](cmd:delete%20--proposal).\n",
   "usage": [
     "Usage: motif reject --proposal \u003Cid\u003E --project \u003Cfwdata\u003E [--json]"
   ],

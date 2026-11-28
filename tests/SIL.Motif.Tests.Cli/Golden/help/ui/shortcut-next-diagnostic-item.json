@@ -4,6 +4,5 @@
   "slug": "shortcut-next-diagnostic-item",
   "title": "Move to the Next Diagnostic Item",
   "description": "Focus the following item in the diagnostic tree.",
-  "helpPage": null,
   "url": "https://motif-docs.pages.dev/reference/controls/shortcut-next-diagnostic-item/"
 }

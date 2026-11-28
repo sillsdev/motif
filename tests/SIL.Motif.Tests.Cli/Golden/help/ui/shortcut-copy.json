@@ -4,6 +4,5 @@
   "slug": "shortcut-copy",
   "title": "Copy",
   "description": "Copy selected text or the focused word as plain text.",
-  "helpPage": null,
   "url": "https://motif-docs.pages.dev/reference/controls/shortcut-copy/"
 }

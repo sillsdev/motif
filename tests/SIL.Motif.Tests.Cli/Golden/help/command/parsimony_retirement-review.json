@@ -4,7 +4,6 @@
   "slug": "parsimony-retirement-review",
   "title": "Read a retirement review",
   "description": "Reads the review state for one staged rule-based allomorph retirement Draft. It returns its latest matching Dry Run and names evidence that is not available yet; it never invents a finding or parser result.",
-  "helpPage": null,
   "usage": [
     "Usage: motif parsimony retirement-review \u003Cdraft-id\u003E --project \u003Cfwdata\u003E [--json]"
   ],
