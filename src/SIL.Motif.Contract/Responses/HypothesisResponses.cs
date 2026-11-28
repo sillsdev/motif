@@ -103,8 +103,8 @@ public sealed record HypothesisNeighboursResponse(
 /// <summary>One page of hypotheses in id order.</summary>
 /// <param name="Hypotheses">The hypotheses on this page.</param>
 /// <param name="Total">How many match the status asked for.</param>
-/// <param name="Offset">How many were skipped.</param>
-public sealed record HypothesisListResponse(IReadOnlyList<HypothesisItem> Hypotheses, int Total, int Offset);
+/// <param name="NextCursor">The cursor for the next page, or null at the end.</param>
+public sealed record HypothesisListResponse(IReadOnlyList<HypothesisItem> Hypotheses, int Total, string? NextCursor = null);
 
 /// <summary>A record generated from the ledger.</summary>
 /// <param name="Kind"><c>decisions</c> or <c>questions</c>.</param>

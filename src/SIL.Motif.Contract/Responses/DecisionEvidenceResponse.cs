@@ -49,16 +49,16 @@ public sealed record DecisionEvidenceShowResponse(string Subject, IReadOnlyList<
 /// <param name="AppliedProposals">How many Applied Proposals were read.</param>
 /// <param name="Total">How many records match the filter.</param>
 /// <param name="TierCounts">Matching records per tier.</param>
-/// <param name="Offset">The first row of the page.</param>
 /// <param name="Limit">The page size asked for.</param>
 /// <param name="Rows">The page.</param>
+/// <param name="NextCursor">The cursor for the next page, or null at the end.</param>
 public sealed record DecisionEvidenceListResponse(
     int AppliedProposals,
     int Total,
     IReadOnlyDictionary<string, int> TierCounts,
-    int Offset,
     int Limit,
-    IReadOnlyList<DecisionEvidenceRow> Rows);
+    IReadOnlyList<DecisionEvidenceRow> Rows,
+    string? NextCursor = null);
 
 /// <summary>One page of the <c>evidence export</c> read: rows in a fixed order, and where the next page starts.</summary>
 /// <param name="Format">Always <see cref="DecisionEvidenceExport.Format"/>, so a saved file names its own layout.</param>

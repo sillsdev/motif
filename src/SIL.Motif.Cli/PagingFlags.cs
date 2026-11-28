@@ -5,11 +5,10 @@ using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.Cli;
 
-/// <summary>The page a capped read asked for: <c>--offset</c>, <c>--limit</c>, <c>--page</c> or <c>--all</c>.</summary>
-/// <param name="Offset">How many rows to skip.</param>
+/// <summary>The page a capped read asked for: <c>--cursor</c> and <c>--limit</c>.</summary>
+/// <param name="Offset">How many rows to skip, as the cursor names it.</param>
 /// <param name="Limit">The most rows to return.</param>
-/// <param name="All">Whether the caller asked for every row, so no page is cut.</param>
-internal readonly record struct PagingWindow(int Offset, int Limit, bool All)
+internal readonly record struct PagingWindow(int Offset, int Limit)
 {
     /// <summary>The refusal for a window the flags did not describe, as the one registered paging refusal.</summary>
     internal static Refusal Invalid(string message) =>
@@ -20,54 +19,36 @@ internal readonly record struct PagingWindow(int Offset, int Limit, bool All)
 internal static class PagingFlags
 {
     /// <summary>The window the flags name, or the refusal explaining why they do not name one.</summary>
-    internal static (PagingWindow Window, Refusal? Refusal) Read(
-        IReadOnlyDictionary<string, string> flags, int defaultLimit, bool allowAll = true)
+    internal static (PagingWindow Window, Refusal? Refusal) Read(IReadOnlyDictionary<string, string> flags, int defaultLimit)
     {
-        var all = flags.ContainsKey("all") && allowAll;
-        if (all && (flags.ContainsKey("offset") || flags.ContainsKey("limit") || flags.ContainsKey("page")))
-            return Fail("Give --all or a page (--offset, --limit, --page), not both.");
-        if (flags.ContainsKey("page") && flags.ContainsKey("offset"))
-            return Fail("Give --page or --offset, not both.");
         var limit = defaultLimit;
-        if (flags.TryGetValue("limit", out var limitText) && !TryCount(limitText, out limit))
+        if (flags.TryGetValue("limit", out var limitText) &&
+            !int.TryParse(limitText, NumberStyles.None, CultureInfo.InvariantCulture, out limit))
             return Fail($"--limit must be a whole number from 1 to {ResultPaging.MaxLimit}.");
         var offset = 0;
-        if (flags.TryGetValue("offset", out var offsetText) && !TryCount(offsetText, out offset))
-            return Fail("--offset must be a whole number of zero or more.");
-        if (flags.TryGetValue("page", out var pageText))
-        {
-            if (!TryCount(pageText, out var page) || page < 1 || (long)(page - 1) * Math.Max(limit, 1) > int.MaxValue)
-                return Fail("--page must be a positive whole number.");
-            offset = (page - 1) * limit;
-        }
+        if (flags.TryGetValue("cursor", out var cursor) && (cursor == "true" || !ResultPaging.TryOffset(cursor, out offset)))
+            return Fail("--cursor must be the nextCursor a previous page returned.");
         if (!ResultPaging.IsValid(offset, limit))
-            return Fail($"Use an offset of zero or more and a limit from 1 to {ResultPaging.MaxLimit}.");
-        return (new PagingWindow(offset, limit, all), null);
-
-        static bool TryCount(string text, out int value) =>
-            int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out value);
+            return Fail($"Use a limit from 1 to {ResultPaging.MaxLimit}.");
+        return (new PagingWindow(offset, limit), null);
 
         static (PagingWindow, Refusal?) Fail(string message) => (default, PagingWindow.Invalid(message));
     }
 
-    /// <summary>
-    /// The command that reads the page after this one, repeating the caller's own flags and page size;
-    /// <paramref name="keepAll"/> keeps <c>--all</c> for a verb where it selects rows rather than lifting the page.
-    /// </summary>
+    /// <summary>The command that reads the page after this one, repeating the caller's own flags and page size.</summary>
     internal static string NextCommand(
-        string verb, IReadOnlyList<string> positionals, IReadOnlyDictionary<string, string> flags, int next, int limit,
-        bool keepAll = false)
+        string verb, IReadOnlyList<string> positionals, IReadOnlyDictionary<string, string> flags, string nextCursor, int limit)
     {
         var parts = new List<string> { "motif", verb };
         parts.AddRange(positionals.Select(Quote));
         foreach (var (name, value) in flags)
         {
-            if (name is "offset" or "limit" or "page" or "json" || name == "all" && !keepAll) continue;
+            if (name is "cursor" or "limit" or "json") continue;
             parts.Add("--" + name);
             if (value != "true") parts.Add(Quote(value));
         }
-        parts.Add("--offset");
-        parts.Add(next.ToString(CultureInfo.InvariantCulture));
+        parts.Add("--cursor");
+        parts.Add(nextCursor);
         parts.Add("--limit");
         parts.Add(limit.ToString(CultureInfo.InvariantCulture));
         return string.Join(' ', parts);

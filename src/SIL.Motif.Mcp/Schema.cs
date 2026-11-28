@@ -70,11 +70,10 @@ internal static class Schema
         ["type"] = "array", ["items"] = new JsonObject { ["type"] = "string" }, ["description"] = description,
     };
 
-    /// <summary>The <c>offset</c> and <c>all</c> properties that, with <c>limit</c>, page a long list.</summary>
+    /// <summary>The <c>cursor</c> property that, with <c>limit</c>, pages a long list.</summary>
     public static (string, JsonObject, bool)[] Paging() =>
     [
-        ("offset", Integer("How many rows to skip; a result that was cut names the offset of the next page as nextOffset.", 0, int.MaxValue), false),
-        ("all", Boolean("Return every row instead of one page; the page size is limit, or the default, without it."), false),
+        ("cursor", String("Opaque cursor from a previous response's nextCursor; omit for the first page."), false),
     ];
 
     /// <summary>The <c>detail</c> and <c>limit</c> properties every tool with a verbosity choice shares.</summary>

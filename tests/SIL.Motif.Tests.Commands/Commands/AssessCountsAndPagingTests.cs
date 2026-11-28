@@ -94,7 +94,7 @@ public sealed class AssessCountsAndPagingTests
 
         Assert.Equal("showing 1-25 of 97", page["showing"]!.GetValue<string>());
         Assert.Equal(25, page["words"]!.AsArray().Count);
-        Assert.Equal(25, page["nextOffset"]!.GetValue<int>());
+        Assert.Equal(SIL.Motif.Contract.Responses.ResultPaging.Cursor(25), page["nextCursor"]!.GetValue<string>());
         Assert.Equal("a-1", page["assessment"]!.GetValue<string>());
         Assert.Equal(97, page["counts"]!["words"]!.GetValue<int>());
     }
@@ -106,7 +106,7 @@ public sealed class AssessCountsAndPagingTests
 
         Assert.Equal("showing 76-97 of 97", page["showing"]!.GetValue<string>());
         Assert.Equal("w75", page["words"]![0]!["word"]!.GetValue<string>());
-        Assert.Null(page["nextOffset"]);
+        Assert.Null(page["nextCursor"]);
     }
 
     [Fact]

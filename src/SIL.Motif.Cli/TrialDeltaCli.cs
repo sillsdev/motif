@@ -11,7 +11,7 @@ namespace SIL.Motif.Cli;
 internal static class TrialDeltaCli
 {
     private static readonly string[] Allowed =
-        ["project", "json", "autonomous", "proposal", "job", "classes", "group-by", "write-manifests", "alias-created", "keep-case", "limit", "offset", "page",
+        ["project", "json", "autonomous", "proposal", "job", "classes", "group-by", "write-manifests", "alias-created", "keep-case", "limit", "cursor",
          "expect-retired", "expect-added", "max-doubled", "max-doubled-frac", "write-receipt"];
 
     /// <summary>The result, or null with <paramref name="usage"/> set when the flags do not form a request.</summary>
@@ -20,14 +20,14 @@ internal static class TrialDeltaCli
         usage = null;
         if (!flags.TryGetValue("project", out var project) || flags.Keys.Any(flag => !Allowed.Contains(flag)))
             return Fail(out usage, "usage");
-        var (window, refusal) = PagingFlags.Read(flags, 20, allowAll: false);
+        var (window, refusal) = PagingFlags.Read(flags, 20);
         if (refusal is not null) return CommandTextRenderer.Render(CommandOutcome<ReadingDelta>.Refused(refusal), asJson);
         var classes = flags.TryGetValue("classes", out var text)
             ? text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) : null;
         var groupBy = flags.GetValueOrDefault("group-by");
         if (flags.ContainsKey("group-by") && groupBy is "true" or "") return Fail(out usage, "usage");
         var request = new ReadTrialDeltaRequest(project, flags.GetValueOrDefault("job"), flags.GetValueOrDefault("proposal"),
-            classes, window.Offset, window.Limit, groupBy);
+            classes, flags.GetValueOrDefault("cursor"), window.Limit, groupBy);
         var held = Expectations(flags, out var expectationRefusal);
         if (expectationRefusal is not null) return CommandTextRenderer.Render(CommandOutcome<ReadingDelta>.Refused(expectationRefusal), asJson);
         if (held is not null)

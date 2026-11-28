@@ -129,21 +129,29 @@ internal sealed class ToolArgs
         throw new ToolArgumentException("tool.invalid-argument", $"Argument '{name}' must be an integer.");
     }
 
-    /// <summary>Whether the caller named a page (<c>offset</c> or <c>limit</c>) and has not asked for <c>all</c>.</summary>
-    public bool HasPaging => !Flag("all") && (_arguments.ContainsKey("offset") || _arguments.ContainsKey("limit"));
+    /// <summary>Whether the caller named a page (<c>cursor</c> or <c>limit</c>).</summary>
+    public bool HasPaging => _arguments.ContainsKey("cursor") || _arguments.ContainsKey("limit");
+
+    /// <summary>The first row the <c>cursor</c> argument names: zero without one, a refusal for one this API did not issue.</summary>
+    public int Offset()
+    {
+        if (!SIL.Motif.Contract.Responses.ResultPaging.TryOffset(Optional("cursor"), out var offset))
+            throw new ToolArgumentException(SIL.Motif.Contract.Commands.RefusalCodes.PagingInvalid,
+                "cursor must be the nextCursor a previous page returned.");
+        return offset;
+    }
 
     /// <summary>
-    /// <paramref name="whole"/> when <c>all</c> is set, otherwise the page <paramref name="window"/> cuts from the
-    /// <c>offset</c> and <c>limit</c> arguments, refusing a window outside the range every paged read accepts.
+    /// The page <paramref name="window"/> cuts from the <c>cursor</c> and <c>limit</c> arguments, refusing a window
+    /// outside the range every paged read accepts.
     /// </summary>
-    public T Page<T>(T whole, Func<int, int, T> window, int defaultLimit = SIL.Motif.Contract.Responses.ResultPaging.HeavyRowLimit)
+    public T Page<T>(Func<int, int, T> window, int defaultLimit = SIL.Motif.Contract.Responses.ResultPaging.HeavyRowLimit)
     {
-        if (Flag("all")) return whole;
-        var offset = Int("offset", 0);
+        var offset = Offset();
         var limit = Int("limit", defaultLimit);
         if (!SIL.Motif.Contract.Responses.ResultPaging.IsValid(offset, limit))
             throw new ToolArgumentException(SIL.Motif.Contract.Commands.RefusalCodes.PagingInvalid,
-                $"Use an offset of zero or more and a limit from 1 to {SIL.Motif.Contract.Responses.ResultPaging.MaxLimit}.");
+                $"Use a limit from 1 to {SIL.Motif.Contract.Responses.ResultPaging.MaxLimit}.");
         return window(offset, limit);
     }
 

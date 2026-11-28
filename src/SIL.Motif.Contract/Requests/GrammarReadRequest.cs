@@ -33,7 +33,7 @@ public enum GrammarReadKind
 /// <param name="Kind">The one project object kind to read.</param>
 /// <param name="Id">An exact canonical id, when one object is requested.</param>
 /// <param name="Query">Text to match against names, forms, representations or sense glosses.</param>
-/// <param name="Offset">The number of matches to skip.</param>
+/// <param name="Cursor">Opaque cursor from a previous response's nextCursor; omit for the first page.</param>
 /// <param name="Limit">The maximum number of matches to return; the default page is 25 and the most is 100.</param>
 /// <param name="Exact">
 /// Text a name, form or representation must equal, ignoring case and Unicode normalization form, instead of
@@ -53,8 +53,12 @@ public sealed record GrammarReadRequest(
     GrammarReadKind Kind,
     string? Id = null,
     string? Query = null,
-    int Offset = 0,
+    string? Cursor = null,
     int Limit = 25,
     string? Exact = null,
     string? MorphType = null,
-    string? At = null);
+    string? At = null)
+{
+    /// <summary>The rows to skip that <see cref="Cursor"/> names, or -1 when it is not a cursor this API issued. A method, so it is not a schema property.</summary>
+    public int CursorOffset() => SIL.Motif.Contract.Responses.ResultPaging.OffsetOrInvalid(Cursor);
+}

@@ -15,7 +15,7 @@ internal static class LexiconFindCli
     private static readonly string[] Names =
     [
         "project", "query", "exact", "morph-type", "affix", "category", "headword", "headword-contains", "has-gloss",
-        "form-regex", "suffix", "class", "environment", "stem-name", "used-by", "detail", "offset", "limit", "page", "all", "id-format", "at", "json",
+        "form-regex", "suffix", "class", "environment", "stem-name", "used-by", "detail", "cursor", "limit", "id-format", "at", "json",
     ];
 
     /// <summary>The result of the invocation, or null when its words and flags are not a well-formed <c>lexicon find</c>.</summary>
@@ -31,8 +31,8 @@ internal static class LexiconFindCli
         if (refusal is not null) return CommandTextRenderer.Render(CommandOutcome<JsonObject>.Refused(refusal), asJson);
         var outcome = LexiconFindCommand.Find(request!);
         if (asJson || !outcome.Succeeded) return CommandTextRenderer.Render(outcome, asJson);
-        var next = outcome.Value!["nextOffset"] is { } offset
-            ? "# Next: " + PagingFlags.NextCommand("lexicon", positionals, flags, offset.GetValue<int>(), request!.Limit) + "\n" : "";
+        var next = outcome.Value!["nextCursor"] is { } cursor
+            ? "# Next: " + PagingFlags.NextCommand("lexicon", positionals, flags, cursor.GetValue<string>(), request!.Limit) + "\n" : "";
         return new CommandResult(0, RenderPage(outcome.Value!) + next);
     }
 
@@ -106,7 +106,7 @@ internal static class LexiconFindCli
     private static (LexiconFindRequest? Request, Refusal? Refusal) Build(string project, IReadOnlyDictionary<string, string> flags)
     {
         if (flags.Keys.Any(name => name is not "project" and not "json" && !Names.Contains(name)) ||
-            flags.Any(pair => pair.Value == "true" && pair.Key is not ("affix" or "has-gloss" or "all" or "json" or "detail")) ||
+            flags.Any(pair => pair.Value == "true" && pair.Key is not ("affix" or "has-gloss" or "json" or "detail")) ||
             !TryBool(flags, "affix", out var affix) || !TryBool(flags, "has-gloss", out var hasGloss) || !TryBool(flags, "detail", out var detail))
             return (null, null);
         var idFormat = LexiconIdFormat.Canonical;
@@ -124,7 +124,7 @@ internal static class LexiconFindCli
             flags.GetValueOrDefault("exact"), morphTypes, affix, flags.GetValueOrDefault("category"),
             flags.GetValueOrDefault("headword"), flags.GetValueOrDefault("headword-contains"), hasGloss,
             flags.GetValueOrDefault("form-regex"), flags.GetValueOrDefault("suffix"), flags.GetValueOrDefault("class"),
-            window.All ? 0 : window.Offset, window.All ? LexiconFindCommand.MaximumPageSize : window.Limit, idFormat,
+            flags.GetValueOrDefault("cursor"), window.Limit, idFormat,
             flags.GetValueOrDefault("at"), flags.GetValueOrDefault("environment"), flags.GetValueOrDefault("stem-name"),
             flags.GetValueOrDefault("used-by"), detail == true), null);
     }

@@ -106,4 +106,4 @@ The per-stem composers take one target each, and a batch is how a whole clean-up
 
 ## Output size
 
-The report lists the first 25 operations across its intents, and at most 25 intents, whatever the batch added. Every listed intent keeps its index, verb and operation count; `intentTotal`, `operationsAdded` and `nextStep` say what was cut, and the text names it too. The Draft holds every operation: read them in pages with [`show`](cmd:show) (`--offset`, `--limit`, `--all`). `--json` returns the same bounded report. Do not rerun the batch to see the rest: it would add the operations again.
+The report lists the first 25 operations across its intents, and at most 25 intents, whatever the batch added. Every listed intent keeps its index, verb and operation count; `intentTotal`, `operationsAdded` and `nextStep` say what was cut, and the text names it too. The Draft holds every operation: read them in pages with [`show`](cmd:show) (`--cursor`, `--limit`, or `--json` for every operation). `--json` returns the same bounded report. Do not rerun the batch to see the rest: it would add the operations again.

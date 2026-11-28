@@ -8,13 +8,11 @@ namespace SIL.Motif.Contract.Responses;
 /// <summary>A page of project objects read from a saved Baseline.</summary>
 /// <param name="Kind">The kind of objects in the page.</param>
 /// <param name="Total">The number of objects matching the filters.</param>
-/// <param name="Offset">The number of matches skipped before this page.</param>
 /// <param name="Limit">The maximum number of objects requested for this page.</param>
 /// <param name="Items">The typed objects in this page.</param>
 public sealed record GrammarReadResponse(
     GrammarReadKind Kind,
     int Total,
-    int Offset,
     int Limit,
     IReadOnlyList<GrammarReadItem> Items)
 {
@@ -44,8 +42,8 @@ public sealed record GrammarReadResponse(
     /// <summary>The number of objects returned on this page.</summary>
     public int Returned => Items.Count;
 
-    /// <summary>The offset that starts the next page, or <see langword="null"/> when this page ends the matches.</summary>
-    public int? NextOffset => Offset + Items.Count < Total ? Offset + Items.Count : null;
+    /// <summary>The cursor that starts the next page, or <see langword="null"/> when this page ends the matches.</summary>
+    public string? NextCursor { get; init; }
 }
 
 /// <summary>One typed object returned by a grammar read.</summary>

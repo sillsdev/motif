@@ -57,6 +57,63 @@ public sealed class OpenRequestsNoticeTests(PristineProjectFixture pristine)
         Assert.Contains(unstructured.Content.OfType<TextContentBlock>(), block => block.Text.Contains("1 open Motif Request"));
     }
 
+    [Fact]
+    public async Task ListRequestsWalksEveryRequestByCursorToTheEnd()
+    {
+        string path;
+        using (var cache = pristine.NewScratch()) path = cache.ProjectId.Path;
+        using var privateRoot = PrivateManagedRoot.Use(Path.GetDirectoryName(path)!);
+        KnownProjectTestSetup.AssignUniqueTag(RunnerOptions.ResolveRoot(), path, "requests-walk");
+        var profile = new ToolProfile("requests", null, null, "concise", [], AllTools: true);
+        var context = new ServerContext(path, "1.0", new NoRunnerLauncher(new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)),
+            new ActivityLog(), profile, TextWriter.Null, advancedAiModeEnabled: true);
+        var tools = MotifMcpServer.Expose(profile);
+        for (var i = 0; i < 5; i++)
+            Assert.True(RequestCommands.Create(new CreateRequestRequest(path, "1.0", "word", "w" + i, "l" + i, null)).Succeeded);
+
+        var ids = new List<string>();
+        var pages = 0;
+        string? cursor = null;
+        do
+        {
+            var more = new List<(string, string)>();
+            if (cursor is not null) more.Add(("cursor", cursor));
+            var args = new Dictionary<string, JsonElement>
+            {
+                ["project"] = JsonSerializer.SerializeToElement(path),
+                ["limit"] = JsonSerializer.SerializeToElement(2),
+            };
+            foreach (var (name, value) in more) args[name] = JsonSerializer.SerializeToElement(value);
+            var result = await MotifMcpServer.CallAsync(context, tools, "motif_list_requests", args, CancellationToken.None);
+            var body = result.StructuredContent!.Value.GetProperty("result");
+            Assert.False(body.TryGetProperty("offset", out _));
+            ids.AddRange(body.GetProperty("requests").EnumerateArray().Select(item => item.GetProperty("requestId").GetString()!));
+            cursor = body.TryGetProperty("nextCursor", out var next) && next.ValueKind == JsonValueKind.String ? next.GetString() : null;
+            pages++;
+        }
+        while (cursor is not null);
+
+        Assert.Equal(3, pages);
+        Assert.Equal(5, ids.Distinct().Count());
+    }
+
+    [Fact]
+    public void NoToolInputSchemaOffersOffsetPageOrAllToPageAList()
+    {
+        foreach (var tool in MotifMcpServer.Expose(ToolProfile.Load("full")))
+        {
+            var properties = (JsonObject)tool.Tool.InputSchema["properties"]!;
+            Assert.False(properties.ContainsKey("offset"), tool.Name + " offers offset.");
+            if (!properties.ContainsKey("cursor")) continue;
+            Assert.False(properties.ContainsKey("all"), tool.Name + " pages by cursor and still offers all.");
+            Assert.NotEqual("Value for the request field.", properties["cursor"]!["description"]!.GetValue<string>());
+        }
+
+        var requests = MotifMcpServer.Expose(ToolProfile.Load("full")).Single(tool => tool.Name == "motif_list_requests");
+        Assert.Equal("Opaque cursor from a previous response's nextCursor; omit for the first page.",
+            requests.Tool.InputSchema["properties"]!["cursor"]!["description"]!.GetValue<string>());
+    }
+
     private static async Task<CallToolResult> Call(ServerContext context, IReadOnlyList<ExposedTool> tools, string tool,
         string project, params (string Name, string Value)[] more)
     {

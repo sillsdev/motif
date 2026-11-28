@@ -95,7 +95,7 @@ public static class AssessSummary
             ["total"] = words.Count,
             ["inputWords"] = words.Count(row => row.LowercaseOf is null),
             ["lowercaseWords"] = words.Count(row => row.LowercaseOf is not null),
-            ["nextOffset"] = end < words.Count ? end : null,
+            ["nextCursor"] = SIL.Motif.Contract.Responses.ResultPaging.NextCursor(offset, page.Length, words.Count),
             ["costComparison"] = new JsonObject { ["state"] = "unavailable", ["reason"] = "No paired Assessment was selected." },
         };
         if (!string.IsNullOrEmpty(invocationId)) result["invocation"] = invocationId;

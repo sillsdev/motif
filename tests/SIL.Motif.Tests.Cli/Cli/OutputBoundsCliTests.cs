@@ -52,17 +52,16 @@ public sealed class OutputBoundsCliTests : IDisposable
         var flags = new Dictionary<string, string>
             { ["project"] = "/tmp/my project/a.fwdata", ["kind"] = "bad-code", ["left-out"] = "true", ["limit"] = "50", ["json"] = "true" };
 
-        var step = SIL.Motif.Cli.PagingFlags.NextCommand("warnings", [], flags, 50, 50);
+        var step = SIL.Motif.Cli.PagingFlags.NextCommand("warnings", [], flags, SIL.Motif.Contract.Responses.ResultPaging.Cursor(50), 50);
 
-        Assert.Equal("motif warnings --project \"/tmp/my project/a.fwdata\" --kind bad-code --left-out --offset 50 --limit 50", step);
+        Assert.Equal("motif warnings --project \"/tmp/my project/a.fwdata\" --kind bad-code --left-out --cursor " + SIL.Motif.Contract.Responses.ResultPaging.Cursor(50) + " --limit 50", step);
     }
 
     [Theory]
     [InlineData("--limit", "0")]
     [InlineData("--limit", "201")]
-    [InlineData("--offset", "-1")]
+    [InlineData("--cursor", "-1")]
     [InlineData("--limit", "many")]
-    [InlineData("--page", "0")]
     public void AnOutOfRangeWindowIsRefusedWithTheOneRegisteredCode(string flag, string value)
     {
         Assert.Equal(0, Run("new", "--project", _project, "--draft", "d").ExitCode);
@@ -77,15 +76,29 @@ public sealed class OutputBoundsCliTests : IDisposable
     }
 
     [Fact]
-    public void FlagsThatContradictEachOtherAreRefused()
+    public void ListRequestsWalksEveryRequestByCursorToTheEndWithNoOffsetField()
     {
-        Assert.Equal(0, Run("new", "--project", _project, "--draft", "d").ExitCode);
+        for (var i = 0; i < 5; i++)
+            Assert.Equal(0, Run("request", "create", "--project", _project, "--kind", "word", "--target", "w" + i, "--label", "l" + i).ExitCode);
 
-        var offsetAndPage = Run("show", "d", "--project", _project, "--offset", "5", "--page", "2", "--json");
-        var allAndLimit = Run("show", "d", "--project", _project, "--all", "--limit", "5", "--json");
+        var ids = new List<string>();
+        var pages = 0;
+        for (string? cursor = null; ; pages++)
+        {
+            var args = new List<string> { "list", "requests", "--project", _project, "--limit", "2", "--json" };
+            if (cursor is not null) args.AddRange(["--cursor", cursor]);
+            var result = Run(args.ToArray());
+            Assert.True(result.ExitCode == 0, result.Error + result.Output);
+            var page = JsonNode.Parse(result.Output)!;
+            Assert.Null(page["offset"]);
+            Assert.Equal(5, page["total"]!.GetValue<int>());
+            ids.AddRange(page["requests"]!.AsArray().Select(item => item!["requestId"]!.GetValue<string>()));
+            cursor = page["nextCursor"]?.GetValue<string>();
+            if (cursor is null) break;
+        }
 
-        Assert.Contains("paging.invalid", offsetAndPage.Output + offsetAndPage.Error, StringComparison.Ordinal);
-        Assert.Contains("paging.invalid", allAndLimit.Output + allAndLimit.Error, StringComparison.Ordinal);
+        Assert.Equal(3, pages + 1);
+        Assert.Equal(5, ids.Distinct().Count());
     }
 
     [Fact]
@@ -108,31 +121,31 @@ public sealed class OutputBoundsCliTests : IDisposable
         Assert.Equal(added, whole["operations"]!.AsArray().Count);
         Assert.Equal(added, whole["operationTotal"]!.GetValue<int>());
         Assert.Null(whole["operationsTruncated"]);
-        Assert.Null(whole["nextOffset"]);
+        Assert.Null(whole["nextCursor"]);
 
         var first = JsonNode.Parse(Run("show", "d", "--project", _project, "--limit", "10", "--json").Output)!;
         Assert.Equal(10, first["operations"]!.AsArray().Count);
         Assert.Equal(added, first["operationTotal"]!.GetValue<int>());
         Assert.True(first["operationsTruncated"]!.GetValue<bool>());
-        Assert.Equal(10, first["nextOffset"]!.GetValue<int>());
+        Assert.Equal(SIL.Motif.Contract.Responses.ResultPaging.Cursor(10), first["nextCursor"]!.GetValue<string>());
 
         var seen = new List<string>();
-        for (int? offset = 0; offset is { } at;)
+        for (string? cursor = ""; cursor is not null;)
         {
-            var page = JsonNode.Parse(Run("show", "d", "--project", _project, "--offset", at.ToString(), "--limit", "25", "--json").Output)!;
+            var page = JsonNode.Parse(Run("show", "d", "--project", _project, "--cursor", cursor.Length == 0 ? SIL.Motif.Contract.Responses.ResultPaging.Cursor(0) : cursor, "--limit", "25", "--json").Output)!;
             seen.AddRange(page["operations"]!.AsArray().Select(op => op!["operationId"]!.GetValue<string>()));
-            offset = page["nextOffset"]?.GetValue<int>();
+            cursor = page["nextCursor"]?.GetValue<string>();
         }
 
-        var every = JsonNode.Parse(Run("show", "d", "--project", _project, "--all", "--json").Output)!;
+        var every = JsonNode.Parse(Run("show", "d", "--project", _project, "--json").Output)!;
         Assert.Equal(added, every["operationTotal"]!.GetValue<int>());
-        Assert.Null(every["nextOffset"]);
+        Assert.Null(every["nextCursor"]);
         Assert.Equal(every["operations"]!.AsArray().Select(op => op!["operationId"]!.GetValue<string>()), seen);
         Assert.Equal(whole["operations"]!.AsArray().Select(op => op!["operationId"]!.GetValue<string>()), seen);
 
         var text = Run("show", "d", "--project", _project);
         Assert.Contains($"operations (showing 1-10 of {added})", text.Output, StringComparison.Ordinal);
-        Assert.Contains("more operations: motif show d --project " + _project + " --offset 10 --limit 10, or --all or --json for every operation",
+        Assert.Contains("more operations: motif show d --project " + _project + " --cursor " + SIL.Motif.Contract.Responses.ResultPaging.Cursor(10) + " --limit 10, or --json for every operation",
             text.Output, StringComparison.Ordinal);
     }
 

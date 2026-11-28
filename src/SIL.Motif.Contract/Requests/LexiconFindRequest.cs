@@ -27,7 +27,7 @@ public enum LexiconIdFormat
 /// <param name="StemName">A stem name or id some allomorph carries.</param>
 /// <param name="UsedBy">An affix slot or template, by name or id, that an inflectional analysis of the entry reaches.</param>
 /// <param name="Detail">True adds every allomorph (forms in each writing system, stem name, environments) and the slots and templates using the entry.</param>
-/// <param name="Offset">The number of matches to skip.</param>
+/// <param name="Cursor">Opaque cursor from a previous response's nextCursor; omit for the first page.</param>
 /// <param name="Limit">The most entries one page returns.</param>
 /// <param name="IdFormat">How ids are spelled in the result.</param>
 /// <param name="At">What to read: <c>baseline</c> (or absent), or a Proposal id for the grammar its latest Trial ran against.</param>
@@ -44,11 +44,15 @@ public sealed record LexiconFindRequest(
     string? FormRegex = null,
     string? Suffix = null,
     string? InflectionClass = null,
-    int Offset = 0,
+    string? Cursor = null,
     int Limit = 25,
     LexiconIdFormat IdFormat = LexiconIdFormat.Canonical,
     string? At = null,
     string? Environment = null,
     string? StemName = null,
     string? UsedBy = null,
-    bool Detail = false);
+    bool Detail = false)
+{
+    /// <summary>The rows to skip that <see cref="Cursor"/> names, or -1 when it is not a cursor this API issued. A method, so it is not a schema property.</summary>
+    public int CursorOffset() => SIL.Motif.Contract.Responses.ResultPaging.OffsetOrInvalid(Cursor);
+}

@@ -68,7 +68,7 @@ public static class LexiconReader
         if (!detailed) HoistSharedGlossWs(page, result);
         result["offset"] = offset;
         result["returned"] = page.Length;
-        if (offset + page.Length < matches.Count) result["nextOffset"] = offset + page.Length;
+        if (offset + page.Length < matches.Count) result["nextCursor"] = SIL.Motif.Contract.Responses.ResultPaging.Cursor(offset + page.Length);
         result["entries"] = new JsonArray(page.Select(entry => (JsonNode)entry).ToArray());
         return result;
     }

@@ -78,7 +78,7 @@ public sealed partial class ProposalDifferenceCommandsTests : IDisposable
         Assert.Equal(["mutu"], bad.Words.Select(word => word.Word));
         Assert.Equal(["sita"], onlyBucket.Words.Select(word => word.Word));
         Assert.Equal(2, paged.MatchingWords);
-        Assert.Equal(1, paged.NextOffset);
+        Assert.Equal(SIL.Motif.Contract.Responses.ResultPaging.Cursor(1), paged.NextCursor);
         Assert.Equal(JsonSerializer.Serialize(produced.Summary, MotifJson.CreateOptions()),
             JsonSerializer.Serialize(paged.Summary, MotifJson.CreateOptions()));
     }
@@ -136,17 +136,17 @@ public sealed partial class ProposalDifferenceCommandsTests : IDisposable
     }
 
     [Fact]
-    public void PagingPastTheEndReturnsNoWordsAndNoNextOffset()
+    public void PagingPastTheEndReturnsNoWordsAndNoNextCursor()
     {
         using var fixture = new Fixture(_root);
         var id = ProposalDifferenceCommands.Produce(fixture.ProduceRequest()).Value!.Summary.DifferenceId;
 
         var page = ProposalDifferenceCommands.Show(new ProposalDifferenceShowRequest(fixture.ProjectPath,
-            DifferenceId: id, Offset: 5)).Value!;
+            DifferenceId: id, Cursor: SIL.Motif.Contract.Responses.ResultPaging.Cursor(5))).Value!;
 
         Assert.Empty(page.Words);
         Assert.Equal(2, page.MatchingWords);
-        Assert.Null(page.NextOffset);
+        Assert.Null(page.NextCursor);
     }
 
     [Fact]

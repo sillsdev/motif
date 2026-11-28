@@ -44,14 +44,13 @@ internal static class GrammarReader
         return new JsonObject { ["kind"] = kind, ["total"] = all.Count, ["items"] = new JsonArray(all.ToArray()) };
     }
 
-    /// <summary>One page of <paramref name="result"/>'s items, with the offset that starts the next page if any.</summary>
+    /// <summary>One page of <paramref name="result"/>'s items, with the cursor that starts the next page if any.</summary>
     public static JsonObject Page(JsonObject result, int offset, int limit)
     {
         var items = (JsonArray)result["items"]!;
         var page = items.Skip(offset).Take(limit).Select(item => item!.DeepClone()).ToArray();
-        result["offset"] = offset;
         result["returned"] = page.Length;
-        if (offset + page.Length < items.Count) result["nextOffset"] = offset + page.Length;
+        if (offset + page.Length < items.Count) result["nextCursor"] = SIL.Motif.Contract.Responses.ResultPaging.Cursor(offset + page.Length);
         result["items"] = new JsonArray(page);
         return result;
     }

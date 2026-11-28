@@ -17,17 +17,17 @@ public sealed record ProposalListProjection(IReadOnlyList<ProposalListItem> Prop
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public int? Offset { get; init; }
 
-    /// <summary>The offset that starts the next page; null at the end or when this is not a page.</summary>
+    /// <summary>The cursor that starts the next page; null at the end or when this is not a page.</summary>
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    public int? NextOffset { get; init; }
+    public string? NextCursor { get; init; }
 
     /// <summary>The command that reads the next page with the caller's own flags; null at the end or when not set.</summary>
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public string? NextStep { get; init; }
 
-    /// <summary>This page with the command for the next one, built from its offset; unchanged at the end.</summary>
-    public ProposalListProjection WithNextStep(System.Func<int, string> step) =>
-        NextOffset is { } next ? this with { NextStep = step(next) } : this;
+    /// <summary>This page with the command for the next one, built from its cursor; unchanged at the end.</summary>
+    public ProposalListProjection WithNextStep(System.Func<string, string> step) =>
+        NextCursor is { } next ? this with { NextStep = step(next) } : this;
 
     /// <summary>One page of the Proposals, with the total and the offset that starts the next page.</summary>
     public ProposalListProjection Window(int offset, int limit)
@@ -36,7 +36,7 @@ public sealed record ProposalListProjection(IReadOnlyList<ProposalListItem> Prop
         return this with
         {
             Proposals = page, Total = Proposals.Count, Offset = offset,
-            NextOffset = ResultPaging.NextOffset(offset, page.Count, Proposals.Count),
+            NextCursor = ResultPaging.NextCursor(offset, page.Count, Proposals.Count),
         };
     }
 }

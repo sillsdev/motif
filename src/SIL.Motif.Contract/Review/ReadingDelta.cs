@@ -85,16 +85,18 @@ public sealed record ReadingDeltaGroup(string Key, string? Label, long Retired, 
 /// <summary>A page of cause groups, ordered by tokens then key.</summary>
 /// <param name="By">entry or slot.</param>
 /// <param name="Total">Every group, however many rows the page holds.</param>
-/// <param name="Offset">How many groups precede this page.</param>
 /// <param name="Rows">The page.</param>
-public sealed record ReadingDeltaGroups(string By, long Total, int Offset, IReadOnlyList<ReadingDeltaGroup> Rows);
+/// <param name="NextCursor">The cursor for the next page of groups, or null at the end.</param>
+public sealed record ReadingDeltaGroups(string By, long Total, IReadOnlyList<ReadingDeltaGroup> Rows,
+    string? NextCursor = null);
 
 /// <summary>One class of word: how many, and the page of rows the read asked for.</summary>
 /// <param name="Class">One of <see cref="ReadingDeltaClasses"/>.</param>
 /// <param name="Total">Every word of the class, however many rows the page holds.</param>
-/// <param name="Offset">How many rows precede this page.</param>
 /// <param name="Rows">The page, ordered by spelling.</param>
-public sealed record ReadingDeltaClass(string Class, long Total, int Offset, IReadOnlyList<ReadingDeltaWord> Rows);
+/// <param name="NextCursor">The cursor for the next page of this class, or null at the end.</param>
+public sealed record ReadingDeltaClass(string Class, long Total, IReadOnlyList<ReadingDeltaWord> Rows,
+    string? NextCursor = null);
 
 /// <summary>The counts over every measured form of a Trial.</summary>
 /// <param name="Measured">Forms measured on both sides with every Reading identified.</param>

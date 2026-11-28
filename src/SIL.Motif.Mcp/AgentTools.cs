@@ -138,7 +138,7 @@ internal static class AgentTools
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(WarningsCommand.Warnings(
                 new WarningsRequest(c.ProjectPath, a.Optional("kind"), a.Flag("left_out")))
-                .Map(warnings => a.Page(warnings, warnings.Window))))) { Requests = [typeof(WarningsRequest)] },
+                .Map(warnings => a.Page(warnings.Window))))) { Requests = [typeof(WarningsRequest)] },
 
         new("motif_check_grammar",
             string.Empty,
@@ -149,7 +149,7 @@ internal static class AgentTools
             true,
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(GrammarCheckQuery.Query(new GrammarCheckRequest(c.ProjectPath), ct)
-                .Map(check => a.Page(check, check.Window))))) { Requests = [typeof(GrammarCheckRequest)] },
+                .Map(check => a.Page(check.Window))))) { Requests = [typeof(GrammarCheckRequest)] },
 
         // Read
         new("motif_grammar",
@@ -161,7 +161,7 @@ internal static class AgentTools
                 ("query", Schema.String("Only objects whose name or abbreviation contains this text."), false),
                 ("exact", Schema.String("Only objects whose name or abbreviation equals this text, ignoring case."), false),
                 ("id", Schema.String("Only the object with this canonical id."), false),
-                ("offset", Schema.Integer("Items to skip; a result's nextOffset is the value for the next page.", 0, 100000), false),
+                ("cursor", Schema.String("Opaque cursor from a previous response's nextCursor; omit for the first page."), false),
                 ("at", Schema.String("What to read: 'baseline' (default) for the current Baseline, or a Proposal id for the grammar its latest Trial ran against, with the Proposal's edits applied. " +
                     "The result returns at, and for a Proposal also atLabel: the Trial's copy of the grammar, not the Baseline."), false),
                 ..Schema.Verbosity()]),
@@ -183,7 +183,7 @@ internal static class AgentTools
                 ("headword", Schema.String("Only entries whose headword starts with this text."), false),
                 ("headword_contains", Schema.String("Only entries whose headword contains this text."), false),
                 ("has_gloss", Schema.Boolean("True keeps entries with a gloss; false keeps those without one."), false),
-                ("offset", Schema.Integer("Entries to skip; a result's nextOffset is the value for the next page.", 0, 100000), false),
+                ("cursor", Schema.String("Opaque cursor from a previous response's nextCursor; omit for the first page."), false),
                 ("at", Schema.String("What to read: 'baseline' (default) for the current Baseline, or a Proposal id for the grammar its latest Trial ran against, with the Proposal's edits applied. " +
                     "The result returns at, and for a Proposal also atLabel: the Trial's copy of the grammar, not the Baseline."), false),
                 ..Schema.Verbosity()]),
@@ -1123,10 +1123,10 @@ internal static class AgentTools
                 ? ToolOutcome.From(ProposalCommands.Show(new ShowProposalRequest(c.ProjectPath, c.ProductVersion, id, a.Flag("current"),
                     a.Flag("records") || a.Optional("sort") is not null || a.Flag("refused")
                         ? new ShowRecordGrouping(a.Optional("sort") ?? "path", a.Flag("refused")) : null))
-                    .Map(detail => a.HasPaging ? a.Page(detail, detail.Window) : detail.WithTotal()))
+                    .Map(detail => a.HasPaging ? a.Page(detail.Window) : detail.WithTotal()))
                 : ToolOutcome.From(ProposalStandingsCommand.Read(
                     new ProposalStandingsRequest(c.ProjectPath, a.Flag("include_set_aside"), a.Optional("status")), c.JobParserPath)
-                    .Map(standings => a.Page(standings, standings.Window, SIL.Motif.Contract.Responses.ResultPaging.DefaultLimit))))) { Requests = [typeof(ProposalStandingsRequest), typeof(ShowProposalRequest)] },
+                    .Map(standings => a.Page(standings.Window, SIL.Motif.Contract.Responses.ResultPaging.DefaultLimit))))) { Requests = [typeof(ProposalStandingsRequest), typeof(ShowProposalRequest)] },
 
         new("motif_activity",
             string.Empty,
@@ -1151,7 +1151,7 @@ internal static class AgentTools
                 ("words_file", Schema.String("Path to a UTF-8 file with one word per line, or word, a tab, then a count, instead of words; counts are used only when the file is saved with the Selection."), false),
                 ("assessment", Schema.String(
                     "A stored Assessment id from an earlier result: page its words instead of measuring again."), false),
-                ("offset", Schema.Integer("Words to skip when paging. Default 0.", 0, 10000000), false),
+                ("cursor", Schema.String("Opaque cursor from a previous response's nextCursor; omit for the first page."), false),
                 ("no_background", Schema.Boolean("True runs any Baseline recapture in the foreground only: no Source index or Parsimony job is queued and no runner is woken, so nothing commits after the tool returns."), false),
                 ..Schema.Verbosity()]), false, false, true, true,
             (c, a, ct) => Task.Run(() => AssessWords(c, a, ct), ct))
@@ -1198,11 +1198,11 @@ internal static class AgentTools
                 ("occurrence_limit", Schema.Integer("Places of that word per page, maximum 200.", 1, 200), false),
                 ("before_state", Schema.String("Approval state a listed word had before the Proposal.", ApprovalStates), false),
                 ("after_state", Schema.String("Approval state a listed word has after the Proposal.", ApprovalStates), false),
-                ("offset", Schema.Integer("Words to skip.", 0, 1000000), false),
+                ("cursor", Schema.String("Opaque cursor from a previous response's nextCursor; omit for the first page."), false),
                 ("limit", Schema.Integer("Page size, maximum 200.", 1, 200), false)), true, true, false, true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalDifferenceCommands.Show(new ProposalDifferenceShowRequest(
                 c.ProjectPath, a.Optional("proposal"), a.Optional("difference"), a.Flag("could_be_bad"), a.Optional("bucket"),
-                a.Optional("before_state"), a.Optional("after_state"), a.Int("offset", 0), a.Int("limit", 25),
+                a.Optional("before_state"), a.Optional("after_state"), a.Optional("cursor"), a.Int("limit", 25),
                 a.Optional("limitation"), a.Optional("word"), a.OptionalInt("occurrence_offset"), a.OptionalInt("occurrence_limit"),
                 a.Optional("text"), a.Optional("reference"))))))
             { Requests = [typeof(ProposalDifferenceShowRequest)] },
@@ -1233,12 +1233,12 @@ internal static class AgentTools
                     "Wordform or analysis id to read the evidence for; omit to list records, counted by tier first."), false),
                 ("tier", Schema.String("When listing, only records of this tier.",
                     SIL.Motif.Contract.Model.DecisionEvidence.Tiers.ToArray()), false),
-                ("offset", Schema.Integer("Records to skip when listing.", 0, 1000000), false),
+                ("cursor", Schema.String("Opaque cursor from a previous response's nextCursor; omit for the first page."), false),
                 ("limit", Schema.Integer("Page size when listing, maximum 500.", 1, 500), false)), true, true, true, false,
             (c, a, ct) => Task.FromResult(a.Optional("subject") is { } subject
                 ? ToolOutcome.From(ProposalCommands.EvidenceShow(new EvidenceShowRequest(c.ProjectPath, c.ProductVersion, subject)))
                 : ToolOutcome.From(ProposalCommands.EvidenceList(new EvidenceListRequest(c.ProjectPath, c.ProductVersion,
-                    a.Optional("tier"), a.Int("offset", 0), a.Int("limit", 50))))))
+                    a.Optional("tier"), a.Optional("cursor"), a.Int("limit", 50))))))
             { Requests = [typeof(EvidenceShowRequest), typeof(EvidenceListRequest)] },
         ..ParsimonyTools.All,
     ];
@@ -1744,7 +1744,7 @@ internal static class AgentTools
             return ToolOutcome.Refused("grammar-read.invalid-request", FailureReason.InvalidArgument,
                 "An id is read on its own; drop the exact form and name query.");
         var detailed = args.Optional("detail") == "detailed";
-        var offset = args.Int("offset", 0);
+        var offset = args.Offset();
         var limit = args.Int("limit", 25);
         var outcome = BaselineReads.ReadAt(context.ProjectPath, args.Optional("at"), cache => kind is null
             ? GrammarReader.Summary(cache) : GrammarReader.Page(GrammarReader.Read(cache, kind, args.Optional("query"),
@@ -1752,7 +1752,7 @@ internal static class AgentTools
         return ToolOutcome.From(outcome, kind is null
             ? "Pick a kind and call motif_grammar again to list it, or motif_lexicon for stems and affixes."
             : "Use these ids in changes. For detailed natural classes, pass each members[].id unchanged as " +
-                "expectedMembers when editing. Page on with offset=nextOffset while a result has one.");
+                "expectedMembers when editing. Page on with cursor=nextCursor while a result has one.");
     }
 
     private static ToolOutcome ReadLexicon(ServerContext context, ToolArgs args)
@@ -1761,9 +1761,9 @@ internal static class AgentTools
         var filter = new LexiconFilter(args.Optional("query"), args.List("morph_type"), args.OptionalBoolean("affix"),
             args.Optional("category"), args.Optional("headword"), args.Optional("headword_contains"),
             args.OptionalBoolean("has_gloss"), args.Optional("exact"));
-        var outcome = BaselineReads.ReadLexicon(context.ProjectPath, filter, args.Int("limit", 25), args.Int("offset", 0), detailed,
+        var outcome = BaselineReads.ReadLexicon(context.ProjectPath, filter, args.Int("limit", 25), args.Offset(), detailed,
             args.Optional("at"));
-        return ToolOutcome.From(outcome, "Narrow with morphType, affix, category or headword, or page on with offset. " +
+        return ToolOutcome.From(outcome, "Narrow with morphType, affix, category or headword, or page on with cursor. " +
             "Concise entries carry the entry and sense ids changes need; detail=detailed adds allomorphs and grammatical info.");
     }
 
@@ -1875,7 +1875,7 @@ internal static class AgentTools
     private static ToolOutcome AssessWords(ServerContext context, ToolArgs args, CancellationToken cancellation)
     {
         var detailed = args.Optional("detail") == "detailed";
-        var offset = args.Int("offset", 0);
+        var offset = args.Offset();
         var limit = args.Int("limit", 25);
         var stored = args.Optional("assessment");
         var named = WordListFile.Resolve(args.List("words"), args.Optional("words_file"));
@@ -1922,7 +1922,7 @@ internal static class AgentTools
 
     private static string AssessNext(string? assessment, int offset, int limit) => assessment is null
         ? "Read the counts first; narrow the word list to see the rest."
-        : $"Read more words with motif_assess assessment={assessment} offset={offset + limit} limit={limit}; " +
+        : $"Read more words with motif_assess assessment={assessment} cursor={SIL.Motif.Contract.Responses.ResultPaging.Cursor(offset + limit)} limit={limit}; " +
           "detail=detailed adds each word's readings for that page.";
 
     private static async Task<ToolOutcome> Trial(ServerContext context, ToolArgs args, CancellationToken cancellation)

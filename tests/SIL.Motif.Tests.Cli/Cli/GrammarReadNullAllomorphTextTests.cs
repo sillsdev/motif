@@ -13,7 +13,7 @@ public sealed class GrammarReadNullAllomorphTextTests
     {
         var lexeme = new GrammarFormRead("form/one", form, "qaa", kind, "suffix", "type/one", []);
         var entry = new GrammarLexicalEntryRead("entry/one", form, "suffix", "type/one", lexeme, [], []);
-        return GrammarReadTextRenderer.Render(new GrammarReadResponse(GrammarReadKind.lexical_entry, 1, 0, 10, [entry]));
+        return GrammarReadTextRenderer.Render(new GrammarReadResponse(GrammarReadKind.lexical_entry, 1, 10, [entry]));
     }
 
     [Fact]
@@ -35,7 +35,7 @@ public sealed class GrammarReadAffixTemplateTextTests
             [new GrammarAffixSlotRead("slot/one", "Subject", false, [affix])],
             [new GrammarAffixSlotRead("slot/two", "Tense", true, [])]);
 
-        var text = GrammarReadTextRenderer.Render(new GrammarReadResponse(GrammarReadKind.affix_template, 1, 0, 10, [template]));
+        var text = GrammarReadTextRenderer.Render(new GrammarReadResponse(GrammarReadKind.affix_template, 1, 10, [template]));
 
         Assert.Contains("VerbFinite  tpl/one  final", text, StringComparison.Ordinal);
         Assert.True(text.IndexOf("Prefix slot: Subject", StringComparison.Ordinal) < text.IndexOf("Suffix slot: Tense", StringComparison.Ordinal));

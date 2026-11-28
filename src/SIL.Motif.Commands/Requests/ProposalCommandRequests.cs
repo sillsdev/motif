@@ -573,10 +573,14 @@ public sealed record EvidenceShowRequest(string FwDataPath, string ProductVersio
 /// <param name="FwDataPath">The FieldWorks project.</param>
 /// <param name="ProductVersion">The running product version.</param>
 /// <param name="Tier">Only records of this tier, when given.</param>
-/// <param name="Offset">The first row of the page.</param>
+/// <param name="Cursor">Opaque cursor from a previous response's nextCursor; omit for the first page.</param>
 /// <param name="Limit">The page size.</param>
 public sealed record EvidenceListRequest(
-    string FwDataPath, string ProductVersion, string? Tier = null, int Offset = 0, int Limit = 50);
+    string FwDataPath, string ProductVersion, string? Tier = null, string? Cursor = null, int Limit = 50)
+{
+    /// <summary>The rows to skip that <see cref="Cursor"/> names, or -1 when it is not a cursor this API issued. A method, so it is not a schema property.</summary>
+    public int CursorOffset() => SIL.Motif.Contract.Responses.ResultPaging.OffsetOrInvalid(Cursor);
+}
 
 /// <summary>Reads one bounded page of every decision evidence record, for export.</summary>
 /// <param name="FwDataPath">The FieldWorks project.</param>

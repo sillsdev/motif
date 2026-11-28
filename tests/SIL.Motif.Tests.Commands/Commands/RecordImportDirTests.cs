@@ -433,7 +433,7 @@ public sealed class RecordImportDirTests(PristineProjectFixture pristine) : IDis
         var byKind = ProposalCommands.Show(new(seed.Project, Version, "grouped", Records: new ShowRecordGrouping("kind"))).Value!.Records!;
         Assert.Equal(byKind.OrderBy(row => row.Kind, StringComparer.Ordinal).Select(row => row.Kind), byKind.Select(row => row.Kind));
         var page = grouped.Window(0, 4);
-        Assert.Equal((4, 9, 4), (page.Records!.Count, page.RecordTotal, page.NextOffset));
+        Assert.Equal((4, 9, SIL.Motif.Contract.Responses.ResultPaging.Cursor(4)), (page.Records!.Count, page.RecordTotal, page.NextCursor));
     }
 
     [Fact]

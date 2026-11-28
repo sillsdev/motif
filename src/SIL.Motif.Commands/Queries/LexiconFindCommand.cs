@@ -56,14 +56,14 @@ public static class LexiconFindCommand
         var filter = new LexiconFilter(request.Query, request.MorphTypes, request.Affix, request.Category, request.Headword,
             request.HeadwordContains, request.HasGloss, request.Exact, request.FormRegex, request.Suffix, request.InflectionClass,
             request.Environment, request.StemName, request.UsedBy);
-        return ReadPage(cache, filter, request.Limit, request.Offset, detailed: false, withForms: true, request.IdFormat, withAllomorphs: request.Detail);
+        return ReadPage(cache, filter, request.Limit, request.CursorOffset(), detailed: false, withForms: true, request.IdFormat, withAllomorphs: request.Detail);
     }
 
     /// <summary>The refusal for a request whose page, pattern or text is unusable, or null when it can run.</summary>
     public static Refusal? Validate(LexiconFindRequest request)
     {
-        if (request.Offset is < 0 or > MaximumOffset)
-            return InvalidRefusal($"The offset must be between 0 and {MaximumOffset}.");
+        if (request.CursorOffset() is < 0 or > MaximumOffset)
+            return InvalidRefusal("The cursor must be the nextCursor a previous page returned.");
         if (request.Limit is < 1 or > MaximumPageSize)
             return InvalidRefusal($"The limit must be between 1 and {MaximumPageSize}.");
         if (request.FormRegex is { } composable)

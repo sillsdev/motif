@@ -13,10 +13,14 @@ public sealed record CreateRequestRequest(
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
 /// <param name="Status"><c>open</c> or <c>answered</c>; leave out for both.</param>
-/// <param name="Offset">How many Requests to skip, for the next page.</param>
+/// <param name="Cursor">Opaque cursor from a previous response's nextCursor; omit for the first page.</param>
 /// <param name="Limit">The most Requests to return, from 1 to 200.</param>
 public sealed record ListRequestsRequest(
-    string FwDataPath, string ProductVersion, string? Status = null, int Offset = 0, int Limit = 25);
+    string FwDataPath, string ProductVersion, string? Status = null, string? Cursor = null, int Limit = 25)
+{
+    /// <summary>The rows to skip that <see cref="Cursor"/> names, or -1 when it is not a cursor this API issued. A method, so it is not a schema property.</summary>
+    public int CursorOffset() => SIL.Motif.Contract.Responses.ResultPaging.OffsetOrInvalid(Cursor);
+}
 
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>

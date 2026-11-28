@@ -345,12 +345,12 @@ public sealed class LexiconReaderTests(PristineProjectFixture pristine) : IDispo
     }
 
     [Fact]
-    public void ANextOffsetNamesTheNextPageUntilTheLastOneWhichOmitsIt()
+    public void ANextCursorNamesTheNextPageUntilTheLastOneWhichOmitsIt()
     {
-        Assert.Equal(3, Read(new LexiconFilter(), limit: 3)["nextOffset"]!.GetValue<int>());
-        Assert.Equal(6, Read(new LexiconFilter(), limit: 3, offset: 3)["nextOffset"]!.GetValue<int>());
-        Assert.False(Read(new LexiconFilter(), limit: 3, offset: 6).ContainsKey("nextOffset"));
-        Assert.False(Read(new LexiconFilter(), offset: 100).ContainsKey("nextOffset"));
+        Assert.Equal(SIL.Motif.Contract.Responses.ResultPaging.Cursor(3), Read(new LexiconFilter(), limit: 3)["nextCursor"]!.GetValue<string>());
+        Assert.Equal(SIL.Motif.Contract.Responses.ResultPaging.Cursor(6), Read(new LexiconFilter(), limit: 3, offset: 3)["nextCursor"]!.GetValue<string>());
+        Assert.False(Read(new LexiconFilter(), limit: 3, offset: 6).ContainsKey("nextCursor"));
+        Assert.False(Read(new LexiconFilter(), offset: 100).ContainsKey("nextCursor"));
     }
 
     [Fact]

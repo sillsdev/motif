@@ -508,12 +508,12 @@
   },
   "warnings": {
     "title": "Read grammar warnings",
-    "description": "Reads stored grammar findings and allomorph refusals from parsing, with filters by code or warning level. Confirmed uses of Selection words stay separate from spelling and membership matches. It returns the first 10 findings with the full counts and names the next offset; --limit, --offset, --page and --all read the rest.",
+    "description": "Reads stored grammar findings and allomorph refusals from parsing, with filters by code or warning level. Confirmed uses of Selection words stay separate from spelling and membership matches. It returns the first 10 findings with the full counts and names nextCursor; --limit and --cursor read the rest.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
   "grammar check": {
     "title": "Check a grammar",
-    "description": "Runs the grammar checker against the project's current Baseline and stores its findings; use warnings to read them afterward. The stored-analysis comparison follows the Default proposal checks setting unless the command overrides it. It returns the first 10 findings with the full counts and names the next offset; --limit, --offset, --page and --all read the rest; whole-grammar advisories (compose.whole-word-environment, compose.one-stem-inflection-class, grammar.orphan-environment) never change the exit code; multiReadingTypes counts the Assessment's word types that have more than one reading, grouped by morpheme pattern, and is report-only.",
+    "description": "Runs the grammar checker against the project's current Baseline and stores its findings; use warnings to read them afterward. The stored-analysis comparison follows the Default proposal checks setting unless the command overrides it. It returns the first 10 findings with the full counts and names nextCursor; --limit and --cursor read the rest; whole-grammar advisories (compose.whole-word-environment, compose.one-stem-inflection-class, grammar.orphan-environment) never change the exit code; multiReadingTypes counts the Assessment's word types that have more than one reading, grouped by morpheme pattern, and is report-only.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
   "timing": {
@@ -2046,7 +2046,7 @@
   },
   "show": {
     "title": "Show a Proposal",
-    "description": "Reads one saved Proposal or Draft by id, with its status, label, Rationale, Comments and operations; --current adds the value each change's field holds now, and an Applied Proposal carries its appliedRecord: the effects and evidence counts Apply saved. In JSON Comments, missing findings means unchecked, [] means checked and clean, and a non-empty array lists findings. It returns the first 10 operations and names the next offset; --limit, --offset, --page and --all read the rest. It does not change the FieldWorks project.",
+    "description": "Reads one saved Proposal or Draft by id, with its status, label, Rationale, Comments and operations; --current adds the value each change's field holds now, and an Applied Proposal carries its appliedRecord: the effects and evidence counts Apply saved. In JSON Comments, missing findings means unchecked, [] means checked and clean, and a non-empty array lists findings. It returns the first 10 operations and names nextCursor; --limit and --cursor read the rest. It does not change the FieldWorks project.",
     "source": "Authored from the typed command contract."
   },
   "parsimony --dry-run": {

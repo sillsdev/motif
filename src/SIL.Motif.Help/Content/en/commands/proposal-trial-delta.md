@@ -2,7 +2,7 @@
 
 Run `motif proposal trial delta --project <fwdata> --job <jobId> --json`, or `--proposal <id>` for the newest completed Trial with retained evidence. It reads the evidence the Trial already retained, so it measures nothing and needs no second gate run.
 
-The counts cover every measured form. Each class shows a page of rows ordered by spelling, with `--limit` (1 to 200) and `--offset` or `--page`:
+The counts cover every measured form. Each class shows a page of rows ordered by spelling, with `--limit` (1 to 200) and `--cursor` (the `nextCursor` of the previous page):
 
 - `lost`: parsed before the change and has no Reading after it.
 - `gained`: had no Reading before and has one after.
@@ -18,7 +18,7 @@ Each row keeps `caseKey`, the id the report and regression rows use, and lists t
 
 ## Group the changes by cause
 
-`--group-by entry` or `--group-by slot` replaces the per-word rows with one group per cause, so a lane reads which lexical entry or affix slot a change comes from without a script. Each group has `key`, `label`, `retired` and `added` Reading copies, `words` (distinct), `tokens` and up to five `sampleWords`, the most frequent first. Groups are ordered by tokens, most first, then by key, and `--limit` and `--offset` or `--page` page the groups. `--classes` chooses which words count; the class totals stay and their rows are left out. It also works with `--json`, `--write-manifests` and the expectation flags, which still see the whole delta.
+`--group-by entry` or `--group-by slot` replaces the per-word rows with one group per cause, so a lane reads which lexical entry or affix slot a change comes from without a script. Each group has `key`, `label`, `retired` and `added` Reading copies, `words` (distinct), `tokens` and up to five `sampleWords`, the most frequent first. Groups are ordered by tokens, most first, then by key, and `--limit` and `--cursor` page the groups. `--classes` chooses which words count; the class totals stay and their rows are left out. It also works with `--json`, `--write-manifests` and the expectation flags, which still see the whole delta.
 
 - `entry`: the key is the entry's canonical id and the label its headword. A Reading counts toward every entry it names, once.
 - `slot`: the key is the canonical id of an inflectional affix slot of an affix morpheme's analysis, the label its name. Three keys stand for no slot: `(no slot)` for an inflectional affix that names none, `(derivational)` for a derivational affix, and `(unknown msa)` for an analysis the Baseline copy does not hold. Stems are not counted. Slots come from the current Baseline's project copy; if it cannot be opened the command refuses with `trial.delta-group-unsupported`.

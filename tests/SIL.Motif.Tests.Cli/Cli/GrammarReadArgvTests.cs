@@ -233,8 +233,8 @@ public sealed class GrammarReadArgvTests(PristineProjectFixture pristine) : IDis
         Assert.Equal("grammar-read.invalid-request", invalidKind.Refusal!.Code);
         AssertInvalidRequest(new GrammarReadRequest(project.FwDataPath, GrammarReadKind.phoneme, Limit: 0));
         AssertInvalidRequest(new GrammarReadRequest(project.FwDataPath, GrammarReadKind.phoneme, Limit: 101));
-        AssertInvalidRequest(new GrammarReadRequest(project.FwDataPath, GrammarReadKind.phoneme, Offset: -1));
-        AssertInvalidRequest(new GrammarReadRequest(project.FwDataPath, GrammarReadKind.phoneme, Offset: 100_001));
+        AssertInvalidRequest(new GrammarReadRequest(project.FwDataPath, GrammarReadKind.phoneme, Cursor: SIL.Motif.Contract.Responses.ResultPaging.Cursor(-1)));
+        AssertInvalidRequest(new GrammarReadRequest(project.FwDataPath, GrammarReadKind.phoneme, Cursor: SIL.Motif.Contract.Responses.ResultPaging.Cursor(100_001)));
         AssertInvalidRequest(new GrammarReadRequest(project.FwDataPath, GrammarReadKind.phoneme,
             Id: CanonicalId.FromGuid(phonemeId).Value, Query: "q"));
         AssertInvalidRequest(new GrammarReadRequest(project.FwDataPath, GrammarReadKind.phoneme,
@@ -328,7 +328,7 @@ public sealed class GrammarReadArgvTests(PristineProjectFixture pristine) : IDis
         var arguments = new List<string> { "grammar", "read", "--project", projectPath, "--kind", kind };
         if (id is not null) arguments.AddRange(["--id", id]);
         if (query is not null) arguments.AddRange(["--query", query]);
-        if (offset is not null) arguments.AddRange(["--offset", offset.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)]);
+        if (offset is not null) arguments.AddRange(["--cursor", SIL.Motif.Contract.Responses.ResultPaging.Cursor(offset.Value)]);
         if (limit is not null) arguments.AddRange(["--limit", limit.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)]);
         arguments.Add("--json");
         var result = CliInProcess.Run(_root, null, developerCommands: true, arguments.ToArray());

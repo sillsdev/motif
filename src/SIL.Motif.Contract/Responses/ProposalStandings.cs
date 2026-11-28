@@ -155,9 +155,9 @@ public sealed record ProposalStandings(IReadOnlyList<ProposalCard> Proposals, in
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public int? Offset { get; init; }
 
-    /// <summary>The offset that starts the next page; null at the end or when this is not a page.</summary>
+    /// <summary>The cursor that starts the next page; null at the end or when this is not a page.</summary>
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    public int? NextOffset { get; init; }
+    public string? NextCursor { get; init; }
 
     /// <summary>One page of the Proposals, with the total and the offset that starts the next page.</summary>
     public ProposalStandings Window(int offset, int limit)
@@ -168,7 +168,7 @@ public sealed record ProposalStandings(IReadOnlyList<ProposalCard> Proposals, in
             Proposals = page, Total = Proposals.Count, Offset = offset,
             Unreadable = Unreadable.Count > ResultPaging.DefaultLimit ? [.. Unreadable.Take(ResultPaging.DefaultLimit)] : Unreadable,
             UnreadableTotal = Unreadable.Count > ResultPaging.DefaultLimit ? Unreadable.Count : null,
-            NextOffset = ResultPaging.NextOffset(offset, page.Count, Proposals.Count),
+            NextCursor = ResultPaging.NextCursor(offset, page.Count, Proposals.Count),
         };
     }
 }

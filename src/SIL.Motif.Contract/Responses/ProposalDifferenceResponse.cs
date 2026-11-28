@@ -318,7 +318,7 @@ public static class ProposalDifferenceDamagedFacts
 /// <param name="Summary">The totals, matrix and category counts, always first.</param>
 /// <param name="Words">The requested page of matching words, ordered by word.</param>
 /// <param name="MatchingWords">How many words match the filter, before paging.</param>
-/// <param name="NextOffset">The offset of the next page, or null at the end.</param>
+/// <param name="NextCursor">The cursor of the next page, or null at the end.</param>
 /// <param name="WordDetailKept">
 /// False once the Proposal has been decided or deferred: the summary stays, the word detail is gone, and
 /// <paramref name="Words"/> is empty. A deferred Proposal can make the Difference again to see its words.
@@ -353,7 +353,7 @@ public static class ProposalDifferenceDamagedFacts
 /// </param>
 public sealed record ProposalDifferenceResponse(
     ProposalDifferenceSummary Summary, IReadOnlyList<ProposalDifferenceWord> Words, int MatchingWords,
-    int? NextOffset, bool WordDetailKept, ProposalDifferenceOccurrencePage? Occurrences = null,
+    string? NextCursor, bool WordDetailKept, ProposalDifferenceOccurrencePage? Occurrences = null,
     IReadOnlyList<ProposalDifferenceUnreadableEvidence>? UnreadableEvidence = null,
     IReadOnlyList<ProposalDifferenceSaved>? Saved = null, int SavedTotal = 0, int SavedUnreadable = 0,
     IReadOnlyList<ProposalDifferenceDamaged>? SavedDamaged = null, int? WordsListed = null,
