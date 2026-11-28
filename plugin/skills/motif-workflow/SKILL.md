@@ -55,11 +55,16 @@ For a new grammar, use the `motif:linguistic-consultant` skill for its starter m
    `motif_add_phonological_rule` for sound patterns. A lexical-entry intent creates one entry, one
    sense and its structured MSA; choose the morph type and MSA kind together, and give affixes their
    category and any applicable slots or derivational destination.
+   If no tool above fits the change, call `motif_find_composer` with a goal in the linguist's words (or a Subject id)
+   to list the composing commands that cover it, each with its intent schema. If it answers `noMatch`, tell the
+   linguist what Motif lacks; do not stage a nearby composer.
 3. For related composer calls, `motif_compose_batch` takes an `intents` array of `{verb, intent,
    citation?}` objects. Each `intent` is structured semantic input. Referenced entity ids must come
    from earlier completed calls or batches; declare operation ordering and dependencies in the intent
    data, since array position alone does not establish them. Never supply low-level operations as a batch.
-4. Call `motif_dry_run` on the Draft. Read the effects and any refusal before continuing.
+4. To check one word cheaply, call `motif_try_word` with `word` (and `proposal` to parse against that Draft's latest
+   Trial copy; omit it to parse against the Baseline). It names where a failed parse stops.
+   Call `motif_dry_run` on the Draft. Read the effects and any refusal before continuing.
 5. Call `motif_trial` with representative positive words and, when available, attested negative words.
    Read its summary, including unfinished searches, without treating an incomplete search as rejection.
 6. Read the Trial report's flags, Incomplete evidence and limitations. No red flags means only not bad,

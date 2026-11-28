@@ -67,14 +67,14 @@ public sealed class UnreadableProposalToolTests
                 new ProjectLocator(project.ProjectPath, "project")), project.ProjectPath, DateTimeOffset.UtcNow);
         var context = new ServerContext(project.ProjectPath, "1.0", new NoRunnerLauncher(
             new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(),
-            ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
+            ToolProfile.Load("full"), TextWriter.Null, advancedAiModeEnabled: true);
         var arguments = new Dictionary<string, JsonElement>
         {
             ["project"] = JsonSerializer.SerializeToElement(project.ProjectPath),
         };
         foreach (var (name, value) in values) arguments[name] = JsonSerializer.SerializeToElement(value);
 
-        return await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Builtin), tool, arguments,
+        return await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Load("full")), tool, arguments,
             CancellationToken.None);
     }
 }

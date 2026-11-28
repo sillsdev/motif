@@ -22,9 +22,9 @@ public sealed class CaptureBaselineNoBackgroundToolTests(PristineProjectFixture 
         using var privateRoot = PrivateManagedRoot.Use(Path.GetDirectoryName(path)!);
         KnownProjectTestSetup.AssignUniqueTag(RunnerOptions.ResolveRoot(), path, "nobg");
         var context = new ServerContext(path, "1.0", new NoRunnerLauncher(
-            new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(), ToolProfile.Builtin,
+            new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(), ToolProfile.Load("full"),
             TextWriter.Null, advancedAiModeEnabled: true);
-        var tools = MotifMcpServer.Expose(ToolProfile.Builtin);
+        var tools = MotifMcpServer.Expose(ToolProfile.Load("full"));
 
         var foreground = await MotifMcpServer.CallAsync(context, tools, "motif_capture_baseline",
             new Dictionary<string, JsonElement>
@@ -45,7 +45,7 @@ public sealed class CaptureBaselineNoBackgroundToolTests(PristineProjectFixture 
     [Fact]
     public void NoBackgroundIsOneSharedFieldOnEveryToolThatTakesIt()
     {
-        var tools = MotifMcpServer.Expose(ToolProfile.Builtin);
+        var tools = MotifMcpServer.Expose(ToolProfile.Load("full"));
         foreach (var name in new[] { "motif_capture_baseline", "motif_assess", "motif_dry_run", "motif_trial" })
         {
             var tool = tools.Single(candidate => candidate.Name == name);

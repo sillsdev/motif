@@ -29,13 +29,13 @@ public sealed class TrialReviewReportAcceptanceTests
         using (var machine = MachineDatabase.Open(managedRoot))
             new KnownProjectRegistry(machine).Record(fixture.ProjectKey, fixture.Project, DateTimeOffset.UtcNow);
         var context = new ServerContext(fixture.Project, "1.0", new NoRunnerLauncher(new JobRunnerLaunchOptions(managedRoot, null)),
-            new ActivityLog(), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
+            new ActivityLog(), ToolProfile.Load("full"), TextWriter.Null, advancedAiModeEnabled: true);
         var args = new Dictionary<string, JsonElement>
         {
             ["project"] = JsonSerializer.SerializeToElement(fixture.Project),
             ["jobId"] = JsonSerializer.SerializeToElement(receipt.JobId),
         };
-        var mcp = await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Builtin),
+        var mcp = await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Load("full")),
             "motif_proposal_trial_export", args, CancellationToken.None);
         Assert.NotEqual(true, mcp.IsError);
         var cli = await CliProcess.RunAsync(managedRoot, null, false,
@@ -56,7 +56,7 @@ public sealed class TrialReviewReportAcceptanceTests
 
         args["at"] = cliReceipt.GetProperty("reportDigest").Clone();
         args["page"] = JsonSerializer.SerializeToElement(1);
-        var mcpPage = await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Builtin),
+        var mcpPage = await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Load("full")),
             "motif_proposal_trial_export", args, CancellationToken.None);
         Assert.NotEqual(true, mcpPage.IsError);
         var cliPage = await CliProcess.RunAsync(managedRoot, null, false, "proposal", "trial", "export",
@@ -79,7 +79,7 @@ public sealed class TrialReviewReportAcceptanceTests
             using (var machine = MachineDatabase.Open(managedRoot))
                 new KnownProjectRegistry(machine).Record(fixture.ProjectKey, fixture.Project, DateTimeOffset.UtcNow);
             var context = new ServerContext(fixture.Project, "1.0", new NoRunnerLauncher(new JobRunnerLaunchOptions(managedRoot, null)),
-                new ActivityLog(), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
+                new ActivityLog(), ToolProfile.Load("full"), TextWriter.Null, advancedAiModeEnabled: true);
             async Task<JsonElement> Read(string detail, string? cursor = null)
             {
                 var args = new Dictionary<string, JsonElement> {
@@ -87,7 +87,7 @@ public sealed class TrialReviewReportAcceptanceTests
                     ["report"] = JsonSerializer.SerializeToElement(fixture.Report), ["detail"] = JsonSerializer.SerializeToElement(detail) };
                 if (detail == "full") args["limit"] = JsonSerializer.SerializeToElement(1);
                 if (cursor is not null) args["cursor"] = JsonSerializer.SerializeToElement(cursor);
-                var result = await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Builtin), "motif_trial", args, CancellationToken.None);
+                var result = await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Load("full")), "motif_trial", args, CancellationToken.None);
                 Assert.NotEqual(true, result.IsError);
                 return result.StructuredContent!.Value.GetProperty("result").GetProperty("report").Clone();
             }
@@ -163,13 +163,13 @@ public sealed class TrialReviewReportAcceptanceTests
                 ["report"] = JsonSerializer.SerializeToElement(fixture.Report), ["detail"] = JsonSerializer.SerializeToElement("full"),
                 ["case"] = JsonSerializer.SerializeToElement("approved"), ["section"] = JsonSerializer.SerializeToElement("readings"),
                 ["side"] = JsonSerializer.SerializeToElement("before"), ["limit"] = JsonSerializer.SerializeToElement(1) };
-            var first = await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Builtin), "motif_difference", args, CancellationToken.None);
+            var first = await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Load("full")), "motif_difference", args, CancellationToken.None);
             Assert.NotEqual(true, first.IsError);
             var next = first.StructuredContent!.Value.GetProperty("result").GetProperty("report").GetProperty("page").GetProperty("nextCursor").GetString();
             Assert.NotNull(next);
             args["cursor"] = JsonSerializer.SerializeToElement(next);
             args["side"] = JsonSerializer.SerializeToElement("after");
-            var invalid = await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Builtin), "motif_difference", args, CancellationToken.None);
+            var invalid = await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Load("full")), "motif_difference", args, CancellationToken.None);
             Assert.True(invalid.IsError);
             Assert.Equal("review.cursor-invalid", invalid.StructuredContent!.Value.GetProperty("code").GetString());
         }
@@ -220,7 +220,7 @@ public sealed class TrialReviewReportAcceptanceTests
     [Fact]
     public void ThereIsNoParityVerdictOrApplyTool()
     {
-        var names = MotifMcpServer.Expose(ToolProfile.Builtin).Select(item => item.Tool.Name).ToArray();
+        var names = MotifMcpServer.Expose(ToolProfile.Load("full")).Select(item => item.Tool.Name).ToArray();
         Assert.DoesNotContain(names, name => name.Contains("apply", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(names, name => name.Contains("parity", StringComparison.OrdinalIgnoreCase));
     }

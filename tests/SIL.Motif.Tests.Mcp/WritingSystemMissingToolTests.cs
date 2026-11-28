@@ -27,14 +27,14 @@ public sealed class WritingSystemMissingToolTests(PristineProjectFixture pristin
         using var privateRoot = PrivateManagedRoot.Use(Path.GetDirectoryName(path)!);
         KnownProjectTestSetup.AssignUniqueTag(RunnerOptions.ResolveRoot(), path, "wsfail");
         var context = new ServerContext(path, "1.0", new NoRunnerLauncher(
-            new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(), ToolProfile.Builtin,
+            new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(), ToolProfile.Load("full"),
             TextWriter.Null, advancedAiModeEnabled: true);
 
         CallToolResult result;
         Environment.SetEnvironmentVariable(SeamVariable, Path.GetFileName(path));
         try
         {
-            result = await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Builtin),
+            result = await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Load("full")),
                 "motif_capture_baseline", new Dictionary<string, JsonElement> { ["project"] = JsonSerializer.SerializeToElement(path) }, CancellationToken.None);
         }
         finally { Environment.SetEnvironmentVariable(SeamVariable, null); }
@@ -58,9 +58,9 @@ public sealed class WritingSystemMissingToolTests(PristineProjectFixture pristin
         using var privateRoot = PrivateManagedRoot.Use(Path.GetDirectoryName(path)!);
         KnownProjectTestSetup.AssignUniqueTag(RunnerOptions.ResolveRoot(), path, "wsfail");
         var context = new ServerContext(path, "1.0", new NoRunnerLauncher(
-            new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(), ToolProfile.Builtin,
+            new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(), ToolProfile.Load("full"),
             TextWriter.Null, advancedAiModeEnabled: true);
-        var tools = MotifMcpServer.Expose(ToolProfile.Builtin);
+        var tools = MotifMcpServer.Expose(ToolProfile.Load("full"));
         var project = new Dictionary<string, JsonElement> { ["project"] = JsonSerializer.SerializeToElement(path) };
         var captured = await MotifMcpServer.CallAsync(context, tools, "motif_capture_baseline", project, CancellationToken.None);
         Assert.NotEqual(true, captured.IsError);
@@ -91,9 +91,9 @@ public sealed class WritingSystemMissingToolTests(PristineProjectFixture pristin
         using var privateRoot = PrivateManagedRoot.Use(Path.GetDirectoryName(path)!);
         KnownProjectTestSetup.AssignUniqueTag(RunnerOptions.ResolveRoot(), path, "wsfail");
         var context = new ServerContext(path, "1.0", new NoRunnerLauncher(
-            new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), FakeParser.ExecutablePath)), new ActivityLog(), ToolProfile.Builtin,
+            new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), FakeParser.ExecutablePath)), new ActivityLog(), ToolProfile.Load("full"),
             TextWriter.Null, advancedAiModeEnabled: true, parserPath: FakeParser.ExecutablePath);
-        var tools = MotifMcpServer.Expose(ToolProfile.Builtin);
+        var tools = MotifMcpServer.Expose(ToolProfile.Load("full"));
         var captured = await MotifMcpServer.CallAsync(context, tools, "motif_capture_baseline",
             new Dictionary<string, JsonElement> { ["project"] = JsonSerializer.SerializeToElement(path) }, CancellationToken.None);
         Assert.NotEqual(true, captured.IsError);

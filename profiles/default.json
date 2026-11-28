@@ -1,100 +1,92 @@
 {
   "name": "default",
-  "description": "The shipped surface: every default tool, onboarding descriptions, server instructions, concise results and detailed grammar listings.",
+  "description": "The shipped core surface: a provisional set of 28 tools for the grammar-building loop (orient, draft, test, finalize). Everything else is in the full profile: start the server with --profile full.",
   "defaultDetail": "concise",
   "tools": [
-    { "tool": "motif_overview" },
-    { "tool": "motif_capture_baseline" },
-    { "tool": "motif_grammar", "detail": "detailed" },
-    { "tool": "motif_lexicon" },
-    { "tool": "motif_entry" },
-    { "tool": "motif_word" },
-    { "tool": "motif_sources" },
-    { "tool": "motif_source_passage" },
-    { "tool": "motif_current" },
-    { "tool": "motif_progress" },
-    { "tool": "motif_start_proposal" },
-    { "tool": "motif_guide" },
-    { "tool": "motif_add_lexeme_form" },
-    { "tool": "motif_add_feature_structure" },
-    { "tool": "motif_add_phoneme" },
-    { "tool": "motif_add_natural_class" },
-    { "tool": "motif_add_environment" },
-    { "tool": "motif_add_phonological_rule" },
-    { "tool": "motif_add_affix_slot" },
-    { "tool": "motif_add_inflection_feature" },
-    { "tool": "motif_add_inflection_class" },
-    { "tool": "motif_add_stem_name" },
-    { "tool": "motif_add_lexical_entry" },
-    { "tool": "motif_add_alternate_form" },
-    { "tool": "motif_add_part_of_speech" },
-    { "tool": "motif_add_affix_template" },
-    { "tool": "motif_compose_batch" },
-    { "tool": "motif_set_gloss" },
-    { "tool": "motif_remove_operations" },
-    { "tool": "motif_dry_run" },
-    { "tool": "motif_trial" },
-    { "tool": "motif_try_word" },
-    { "tool": "motif_why_not" },
-    { "tool": "motif_why_lost" },
-    { "tool": "motif_finalize_proposal" },
-    { "tool": "motif_withdraw_proposal" },
-    { "tool": "motif_set_rationale" },
-    { "tool": "motif_add_comment" },
-    { "tool": "motif_proposals" },
-    { "tool": "motif_activity" },
-    { "tool": "motif_open" },
-    { "tool": "motif_list_projects" },
-    { "tool": "motif_assess" },
-    { "tool": "motif_difference" },
-    { "tool": "motif_proposal_difference" },
-    { "tool": "motif_difference_produce" },
-    { "tool": "motif_query" },
-    { "tool": "motif_query_schema" },
-    { "tool": "motif_guide_show" },
-    { "tool": "motif_group" },
-    { "tool": "motif_proposal_compare" },
-    { "tool": "motif_proposal_trial_export" },
-    { "tool": "motif_list_requests" },
-    { "tool": "motif_disposition_show" },
-    { "tool": "motif_disposition_list" },
-    { "tool": "motif_coverage" },
-    { "tool": "motif_add_affix_process" },
-    { "tool": "motif_add_affix_process_allomorph" },
-    { "tool": "motif_add_feature_value" },
-    { "tool": "motif_add_allomorph_required_features" },
-    { "tool": "motif_remove_feature_value" },
-    { "tool": "motif_author_adhoc_prohibition" },
-    { "tool": "motif_edit_adhoc_prohibition_references" },
-    { "tool": "motif_delete_adhoc_prohibition" },
-    { "tool": "motif_delete_affix_process" },
-    { "tool": "motif_change_affix_kind" },
-    { "tool": "motif_edit_phoneme" },
-    { "tool": "motif_add_phonological_feature" },
-    { "tool": "motif_add_phonological_feature_value" },
-    { "tool": "motif_edit_phoneme_features" },
-    { "tool": "motif_edit_natural_class_features" },
-    { "tool": "motif_merge_phoneme" },
-    { "tool": "motif_split_phoneme" },
-    { "tool": "motif_edit_derivational_affix_restriction" },
-    { "tool": "motif_author_exception_feature" },
-    { "tool": "motif_edit_exception_features" },
-    { "tool": "motif_edit_phonological_rule_features" },
-    { "tool": "motif_edit_compound_rule" },
-    { "tool": "motif_set_no_default_compounding" },
-    { "tool": "motif_set_affix_max_apps" },
-    { "tool": "motif_set_not_on_clitics" },
-    { "tool": "motif_set_character_class" },
-    { "tool": "motif_add_circumfix" },
-    { "tool": "motif_add_morphosyntax_analysis" },
-    { "tool": "motif_set_entry_do_not_parse" },
-    { "tool": "motif_set_entry_attribution" },
-    { "tool": "motif_set_project_attribution" },
-    { "tool": "motif_rewrite_lexeme_form" },
-    { "tool": "motif_edit_allomorph_form" },
-    { "tool": "motif_edit_citation_form" },
-    { "tool": "motif_edit_definition" },
-    { "tool": "motif_edit_gloss" },
-    { "tool": "motif_edit_lexical_note" }
+    {
+      "tool": "motif_overview"
+    },
+    {
+      "tool": "motif_grammar",
+      "detail": "detailed"
+    },
+    {
+      "tool": "motif_lexicon"
+    },
+    {
+      "tool": "motif_entry"
+    },
+    {
+      "tool": "motif_word"
+    },
+    {
+      "tool": "motif_start_proposal"
+    },
+    {
+      "tool": "motif_guide"
+    },
+    {
+      "tool": "motif_add_lexeme_form"
+    },
+    {
+      "tool": "motif_add_phonological_rule"
+    },
+    {
+      "tool": "motif_add_lexical_entry"
+    },
+    {
+      "tool": "motif_add_alternate_form"
+    },
+    {
+      "tool": "motif_compose_batch"
+    },
+    {
+      "tool": "motif_set_gloss"
+    },
+    {
+      "tool": "motif_remove_operations"
+    },
+    {
+      "tool": "motif_dry_run"
+    },
+    {
+      "tool": "motif_trial"
+    },
+    {
+      "tool": "motif_try_word"
+    },
+    {
+      "tool": "motif_why_not"
+    },
+    {
+      "tool": "motif_finalize_proposal"
+    },
+    {
+      "tool": "motif_set_rationale"
+    },
+    {
+      "tool": "motif_proposals"
+    },
+    {
+      "tool": "motif_open"
+    },
+    {
+      "tool": "motif_list_projects"
+    },
+    {
+      "tool": "motif_assess"
+    },
+    {
+      "tool": "motif_difference"
+    },
+    {
+      "tool": "motif_query"
+    },
+    {
+      "tool": "motif_find_composer"
+    },
+    {
+      "tool": "motif_list_requests"
+    }
   ]
 }

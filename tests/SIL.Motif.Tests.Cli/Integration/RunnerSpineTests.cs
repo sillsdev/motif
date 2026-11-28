@@ -41,7 +41,7 @@ public sealed class RunnerSpineTests : IDisposable
     {
         var project = _projects.CopyProjectFile();
 
-        var jobId = Cli($"baseline-refresh --project \"{project}\"").Output.Trim();
+        var jobId = QueueJob(project);
         Assert.False(string.IsNullOrWhiteSpace(jobId));
         Assert.Equal("queued", StatusOf(project, jobId));
 
@@ -70,17 +70,15 @@ public sealed class RunnerSpineTests : IDisposable
         KnownProjectTestSetup.AssignUniqueTag(_root, second, Path.GetFileNameWithoutExtension(second));
 
         // Registered in this order, but nothing here says the sweep must visit them in this order.
-        var secondRun = Cli($"baseline-refresh --project \"{second}\"");
-        var firstRun = Cli($"baseline-refresh --project \"{first}\"");
-        var secondJobId = secondRun.Output.Trim();
-        var firstJobId = firstRun.Output.Trim();
+        var secondJobId = QueueJob(second);
+        var firstJobId = QueueJob(first);
         Assert.False(string.IsNullOrWhiteSpace(firstJobId));
         Assert.False(string.IsNullOrWhiteSpace(secondJobId));
 
         RunRunnerToCompletion((first, firstJobId), (second, secondJobId));
 
         Assert.True(StatusOf(first, firstJobId) != "queued" && StatusOf(second, secondJobId) != "queued",
-            "A job was never claimed. CLI said: " + firstRun.Error + secondRun.Error + " Runner said: " + string.Join(" | ", _log));
+            "A job was never claimed. Runner said: " + string.Join(" | ", _log));
         Assert.NotEqual("running", StatusOf(first, firstJobId));
         Assert.NotEqual("running", StatusOf(second, secondJobId));
         Assert.True(PublishedBaselineCount(first) == 1,
@@ -198,7 +196,7 @@ public sealed class RunnerSpineTests : IDisposable
         const int rounds = 5;
         for (var round = 1; round <= rounds; round++)
         {
-            var jobId = Cli($"baseline-refresh --project \"{project}\"").Output.Trim();
+            var jobId = QueueJob(project);
             // Killing before it claims would prove nothing, so wait until the row is genuinely held.
             var runner = StartRunner(leaseSeconds: 1);
             JobProgress.WaitUntil(project, jobId,
@@ -270,6 +268,14 @@ public sealed class RunnerSpineTests : IDisposable
     }
 
     /// Runs the real CLI against this test's own isolated runner root, the one <see cref="StartRunner"/> uses too.
+    // A Baseline capture queues the Source index job the runner then claims.
+    private string QueueJob(string project)
+    {
+        var capture = Cli($"baseline capture --project \"{project}\"");
+        Assert.True(capture.ExitCode == 0, capture.Error);
+        return JobProgress.LatestJobId(project, "source-index") ?? throw new InvalidOperationException("No job was queued.");
+    }
+
     private CliRun Cli(string arguments)
     {
         var executable = BuildOutput.Cli;
