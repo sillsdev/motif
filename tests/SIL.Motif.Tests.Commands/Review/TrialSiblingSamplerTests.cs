@@ -315,4 +315,22 @@ public sealed class TrialSiblingSamplerTests : IDisposable
 
         Assert.Equal(kept, sample.Succeeded && sample.Value!.Words.Any(word => word.StartsWith("kwa")));
     }
+
+    [Fact]
+    public void ADecomposedSiblingsPatternSelectsTheSameTypesAsTheComposedOne()
+    {
+        // Tamil vowel sign O (U+0BCB) decomposes to U+0BC7 U+0BBE; the corpus types are kept composed.
+        var corpus = Types(("\u0BAA\u0B9F\u0B95\u0BCB", true), ("\u0BAE\u0BB0\u0B95\u0BCB", false), ("\u0BAA\u0B9F\u0B95\u0BCA", true));
+        var composed = TrialSiblingSampler.Sample(corpus, "sha", ["x"], ".*\u0B95\u0BCB", 10, "rev", None).Value!;
+        Assert.Equal(2, composed.Words.Count);
+        var decomposed = TrialSiblingSampler.Sample(corpus, "sha", ["x"], ".*\u0B95\u0BC7\u0BBE", 10, "rev", None).Value!;
+        Assert.Equal(composed.Words.Order(), decomposed.Words.Order());
+    }
+
+    [Fact]
+    public void ASiblingsPatternThatCannotBeComposedIsRefusedByItsOwnCode()
+    {
+        var outcome = TrialSiblingSampler.Sample(Types(("a", true)), "sha", ["x"], "\u0BC6(\u0BBE)", 10, "rev", None);
+        Assert.Equal(RefusalCodes.QueryPatternNotNormalizable, outcome.Refusal?.Code);
+    }
 }

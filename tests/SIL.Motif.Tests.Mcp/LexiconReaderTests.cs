@@ -359,6 +359,7 @@ public sealed class LexiconReaderTests(PristineProjectFixture pristine) : IDispo
         Fill();
         Assert.Equal(["balay", "kaon"], Headwords(Read(new LexiconFilter(FormRegex: "^(ba|ka)[a-z]+$"))));
         Assert.Equal(["mása"], Headwords(Read(new LexiconFilter(FormRegex: "^m\\u00e1sa$"))));
+        Assert.Equal(["mása"], Headwords(Read(new LexiconFilter(FormRegex: "^ma\u0301sa$"))));
         Assert.Equal(["an", "kaon"], Headwords(Read(new LexiconFilter(Suffix: "N"))));
         var services = _cache.ServiceLocator;
         NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
