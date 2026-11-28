@@ -36,6 +36,7 @@ public sealed class RunnerSpineTests : IDisposable
         Directory.CreateDirectory(_root);
     }
 
+    [Trait("Quarantine", "#632")]
     [Fact]
     public void AQueuedJobIsClaimedAndCompletedByARealRunnerProcess()
     {

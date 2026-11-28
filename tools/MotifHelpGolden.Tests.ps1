@@ -15,6 +15,9 @@ Assert-Equal "{`n  `"locale`": `"en`"`n}`n" $split['_envelope.json'] 'The envelo
 Assert-Equal "{`"kind`":`"command`",`"code`":`"a b`",`"x`":{`"y`":1}}`n" $split['command/a_b.json'] 'A space in a code becomes an underscore in the file name.'
 Assert-Equal 'True' ([string] $split.ContainsKey('command/A.json')) 'Codes that differ only in case keep their own entry.'
 
+$paged = Split-MotifHelpExport "{`"entries`":[`n    {`n      `"kind`": `"command`",`n      `"code`": `"p`",`n      `"helpPage`": `"# P`",`n      `"url`": `"u`"`n    }`n  ]}"
+Assert-Equal "{`n  `"kind`": `"command`",`n  `"code`": `"p`",`n  `"url`": `"u`"`n}`n" $paged['command/p.json'] 'An entry''s helpPage is left out of the golden.'
+
 $threw = $false
 try { Split-MotifHelpExport '{"entries":[{"kind":"k","code":"c"},{"kind":"k","code":"C"}]}' | Out-Null }
 catch { $threw = $_.Exception.Message -like '*twice*' }

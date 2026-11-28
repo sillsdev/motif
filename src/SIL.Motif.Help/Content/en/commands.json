@@ -2064,7 +2064,7 @@
   },
   "proposal trial delta": {
     "title": "Read a Trial's Reading changes",
-    "description": "Lists the words a Trial lost, gained, changed or doubled by Reading signature, or groups the retired and added Readings by entry or slot, from the evidence the Trial already retained, and writes the expected-retired and expected-added manifests. It measures nothing.",
+    "description": "Lists the words a Trial lost, gained, changed or doubled by Reading signature, or groups the retired and added Readings by entry or slot, from the evidence the Trial already retained, and writes the expected-retired and expected-added manifests. A retired and an added Reading that differ only in sense resolution count as one change (counts.senseChanged, counts.readingChanges). It measures nothing.",
     "source": "Authored from the typed command contract."
   },
   "proposal trial export": {

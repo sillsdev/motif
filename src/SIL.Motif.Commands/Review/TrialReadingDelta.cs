@@ -119,7 +119,7 @@ public static class TrialReadingDelta
             Count(forms, ReadingDeltaClasses.Lost), Count(forms, ReadingDeltaClasses.Gained),
             Count(forms, ReadingDeltaClasses.Changed), Count(forms, ReadingDeltaClasses.Doubled),
             Count(forms, ReadingDeltaClasses.Rejected), forms.Sum(form => form.Retired.Sum(item => item.Count)),
-            forms.Sum(form => form.Added.Sum(item => item.Count)), unmeasured.Count);
+            forms.Sum(form => form.Added.Sum(item => item.Count)), unmeasured.Count, forms.Sum(form => form.SenseChanged));
         var grouped = request.GroupBy is not null;
         var shown = classes.Distinct(StringComparer.Ordinal).Select(name =>
         {
@@ -313,7 +313,7 @@ public static class TrialReadingDelta
     private static long Count(IEnumerable<ReadingDeltaForm> forms, string name) => forms.Count(form => form.Classes.Contains(name));
 
     private static ReadingDeltaWord Row(ReadingDeltaForm form) => new(form.Word, form.CaseKey, form.BeforeCount, form.AfterCount,
-        [.. form.Retired.Select(Reading)], [.. form.Added.Select(Reading)]);
+        [.. form.Retired.Select(Reading)], [.. form.Added.Select(Reading)], form.SenseChanged);
 
     private static ReadingDeltaReading Reading((ReadingSignature Signature, long Count) item) =>
         new(item.Signature.Id, item.Count, ReadingManifestFormat.ToElement(item.Signature));

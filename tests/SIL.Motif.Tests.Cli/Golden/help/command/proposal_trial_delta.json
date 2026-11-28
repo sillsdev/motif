@@ -3,7 +3,7 @@
   "code": "proposal trial delta",
   "slug": "proposal-trial-delta",
   "title": "Read a Trial\u0027s Reading changes",
-  "description": "Lists the words a Trial lost, gained, changed or doubled by Reading signature, or groups the retired and added Readings by entry or slot, from the evidence the Trial already retained, and writes the expected-retired and expected-added manifests. It measures nothing.",
+  "description": "Lists the words a Trial lost, gained, changed or doubled by Reading signature, or groups the retired and added Readings by entry or slot, from the evidence the Trial already retained, and writes the expected-retired and expected-added manifests. A retired and an added Reading that differ only in sense resolution count as one change (counts.senseChanged, counts.readingChanges). It measures nothing.",
   "usage": [
     "Usage: motif proposal trial delta --project \u003Cfwdata\u003E (--job \u003CjobId\u003E | --proposal \u003Cid\u003E) [--classes lost,gained,changed,doubled,stopped-negative] [--group-by entry|slot] [--write-manifests \u003Cdir\u003E [--alias-created true|false] [--keep-case]] [--expect-retired \u003Cfile\u003E] [--expect-added \u003Cfile\u003E] [--max-doubled \u003Cn\u003E] [--max-doubled-frac \u003C0-1\u003E] [--write-receipt \u003Cfile\u003E] [--limit \u003C1-200\u003E] [--offset \u003Cn\u003E | --page \u003CN\u003E] [--json]"
   ],

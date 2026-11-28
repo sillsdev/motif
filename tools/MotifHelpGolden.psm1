@@ -70,7 +70,8 @@ function Split-MotifHelpExport {
             # The entry sits at four spaces in the export; the file holds it at the left margin. `helpPage` is the page's
             # Markdown, already tracked in Content/, so the golden leaves it out (it is one long line and always conflicts).
             $text = $entry.GetRawText() -replace '(?m)^    ', ''
-            if ($text -notmatch '(?m)^  "helpPage": .*,\r?\n') { throw "The Help export entry '$kind $code' has no helpPage line followed by another property." }
+            $hasPage = $null -ne ($entry.EnumerateObject() | Where-Object { $_.Name -ceq 'helpPage' } | Select-Object -First 1)
+            if ($hasPage -and $text -notmatch '(?m)^  "helpPage": .*,\r?\n') { throw "The Help export entry '$kind $code' has a helpPage that is not a middle property line." }
             $files[$path] = ($text -replace '(?m)^  "helpPage": .*,\r?\n', '') + "`n"
         }
     }

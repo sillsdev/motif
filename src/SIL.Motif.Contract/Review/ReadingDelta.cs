@@ -42,8 +42,9 @@ public sealed record ReadingDeltaReading(string Id, long Count, JsonElement Sign
 /// <param name="AfterCount">The lexicon-backed Reading copies after it.</param>
 /// <param name="Retired">The Readings before minus after.</param>
 /// <param name="Added">The Readings after minus before.</param>
+/// <param name="SenseChanged">How many retired Readings pair with an added one that differs only in sense resolution; each pair is one change.</param>
 public sealed record ReadingDeltaWord(string Word, string CaseKey, long BeforeCount, long AfterCount,
-    IReadOnlyList<ReadingDeltaReading> Retired, IReadOnlyList<ReadingDeltaReading> Added);
+    IReadOnlyList<ReadingDeltaReading> Retired, IReadOnlyList<ReadingDeltaReading> Added, long SenseChanged);
 
 /// <summary>The ways a Trial's Reading changes can be grouped by cause.</summary>
 public static class ReadingDeltaGroupings
@@ -106,8 +107,15 @@ public sealed record ReadingDeltaClass(string Class, long Total, int Offset, IRe
 /// <param name="RetiredReadings">Reading copies retired across every measured form.</param>
 /// <param name="AddedReadings">Reading copies added across every measured form.</param>
 /// <param name="Unmeasured">Forms left out because a side did not finish or a Reading has no complete identity.</param>
+/// <param name="SenseChanged">Retired and added Reading pairs that share entry, MSA and allomorph and differ only in sense resolution,
+/// as when a form that resolved to one sense now has several candidates. Each pair is one change, not a loss and a gain; the
+/// Readings stay in the retired and added counts and the manifests.</param>
 public sealed record ReadingDeltaCounts(long Measured, long ParsedBefore, long Lost, long Gained, long Changed,
-    long Doubled, long RejectedNegatives, long RetiredReadings, long AddedReadings, long Unmeasured);
+    long Doubled, long RejectedNegatives, long RetiredReadings, long AddedReadings, long Unmeasured, long SenseChanged)
+{
+    /// <summary>The Reading changes with each sense-resolution pair counted once.</summary>
+    public long ReadingChanges => RetiredReadings + AddedReadings - SenseChanged;
+}
 
 /// <summary>Reading copies grouped by one object a manifest row names.</summary>
 /// <param name="Id">The entry, morphosyntactic analysis or allomorph.</param>
@@ -176,9 +184,10 @@ public sealed record ReadingDeltaInput(string Word, string CaseKey, bool Negativ
 /// <param name="Retired">Signature and copies before minus after, ordered as a manifest orders its rows.</param>
 /// <param name="Added">Signature and copies after minus before, ordered as a manifest orders its rows.</param>
 /// <param name="Classes">The classes the form belongs to.</param>
+/// <param name="SenseChanged">Retired and added copies that pair as one sense-resolution change.</param>
 public sealed record ReadingDeltaForm(string Word, string CaseKey, long BeforeCount, long AfterCount,
     IReadOnlyList<(ReadingSignature Signature, long Count)> Retired, IReadOnlyList<(ReadingSignature Signature, long Count)> Added,
-    IReadOnlySet<string> Classes);
+    IReadOnlySet<string> Classes, long SenseChanged = 0);
 
 /// <summary>Computes the Reading delta of measured forms; the one definition of lost, gained, changed and doubled.</summary>
 public static class ReadingDeltaBuilder
@@ -208,9 +217,32 @@ public static class ReadingDeltaBuilder
             if (beforeCount == 0 && afterCount > 0) classes.Add(ReadingDeltaClasses.Gained);
             if (beforeCount > 0 && afterCount > 0 && !before.Keys.Any(after.ContainsKey)) classes.Add(ReadingDeltaClasses.Changed);
             if (beforeCount > 0 && retired.Count == 0 && afterCount > beforeCount) classes.Add(ReadingDeltaClasses.Doubled);
-            result.Add(new ReadingDeltaForm(form.Word, form.CaseKey, beforeCount, afterCount, Ordered(retired), Ordered(added), classes));
+            result.Add(new ReadingDeltaForm(form.Word, form.CaseKey, beforeCount, afterCount, Ordered(retired), Ordered(added), classes,
+                SenseChangePairs(retired, added)));
         }
         return result;
+    }
+
+    // Pairs by equal sense-free identity, one copy to one.
+    private static long SenseChangePairs(Dictionary<string, (ReadingSignature Signature, long Count)> retired,
+        Dictionary<string, (ReadingSignature Signature, long Count)> added)
+    {
+        var open = added.Values.Select(item => (item.Signature.SenseFree().Id, Count: item.Count)).ToList();
+        long pairs = 0;
+        foreach (var item in retired.Values.OrderBy(item => item.Signature.Id, StringComparer.Ordinal))
+        {
+            var left = item.Count;
+            var key = item.Signature.SenseFree().Id;
+            for (var index = 0; index < open.Count && left > 0; index++)
+            {
+                if (open[index].Id != key) continue;
+                var take = Math.Min(left, open[index].Count);
+                left -= take;
+                pairs += take;
+                open[index] = (key, open[index].Count - take);
+            }
+        }
+        return pairs;
     }
 
     private static Dictionary<string, (ReadingSignature Signature, long Count)> Tally(IEnumerable<ReadingCopy> readings)

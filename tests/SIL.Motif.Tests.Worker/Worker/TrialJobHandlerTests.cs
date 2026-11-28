@@ -1424,6 +1424,18 @@ public sealed class TrialJobHandlerTests : IDisposable
     }
 
     [Fact]
+    public void AMorphemeWhoseMsaIsNotInTheLexiconStaysUnresolvedAndIsNotMeasured()
+    {
+        var source = _baselines.GetCurrent(ProjectWorkspaceKey.Compute(_project))!.FwDataPath;
+        using var project = BaselineReadCache.Open(source);
+        var reading = new ParseAnalysis([new(_seed.FirstLexemeFormId.ToString("D"), Guid.NewGuid().ToString("D"), null, null)]);
+        var captured = new ReadingSignatureReader(project.Cache).Capture(reading);
+        Assert.Equal(ReadingAcceptance.Unresolved, Assert.Single(captured.MorphemeAcceptance!));
+        Assert.Equal(ReadingSenseStatus.Unresolved, Assert.Single(captured.Signature!.Morphemes).SenseStatus);
+        Assert.False(ReadingManifestFormat.IsComplete(captured.Signature));
+    }
+
+    [Fact]
     public void ReadingIdentityPreservesAuthoredFeatureNestingAndDerivationalDirection()
     {
         var source = _baselines.GetCurrent(ProjectWorkspaceKey.Compute(_project))!.FwDataPath;
