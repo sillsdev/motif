@@ -87,6 +87,55 @@ public sealed class TrialExportReadTests
         });
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(99)]
+    [InlineData(100)]
+    [InlineData(101)]
+    [InlineData(250)]
+    public void ForEachWordVisitsTheWordsThatReadReturnsPageByPageInTheSameOrder(int words)
+    {
+        InStore(string.Empty, (database, project, id) =>
+        {
+            // Commas, quotes and escapes inside words must survive; only the comma between words is dropped.
+            string[] awkward = [",", ",a", "a,", "\"a,b\"", "{\"x\":1},", "line\nbreak,", "\\,"];
+            var all = Enumerable.Range(0, words).Select(index => Word(awkward[index % awkward.Length] + index)).ToArray();
+            TrialExportArtifact.Publish(database, id, Counts(words), Provenance(), [], all);
+
+            var expected = new List<string>();
+            for (var page = 1; ; page++)
+            {
+                var read = TrialExportArtifact.Read(database, id, page: page)!.Page!;
+                expected.AddRange(read.Words.Select(word => word.GetRawText()));
+                if (read.NextPage is null) break;
+            }
+            var seen = new List<string>();
+            TrialExportArtifact.ForEachWord(database, id, word => seen.Add(word.GetRawText()));
+
+            Assert.Equal(words, expected.Count);
+            Assert.Equal(expected, seen);
+            Assert.Equal(all.Select(word => word.SubmittedForm),
+                seen.Select(text => System.Text.Json.JsonDocument.Parse(text).RootElement.GetProperty("submittedForm").GetString()));
+        });
+    }
+
+    [Fact]
+    public void ForEachWordRefusesAnExportWhoseFileIsMissingOrChanged()
+    {
+        InStore(string.Empty, (database, project, id) =>
+        {
+            TrialExportArtifact.Publish(database, id, Counts(1), Provenance(), [], [Word("a")]);
+            var path = TrialExportArtifact.Read(database, id)!.Path;
+            File.AppendAllText(path, " ");
+
+            Assert.Throws<InvalidDataException>(() => TrialExportArtifact.ForEachWord(database, id, _ => { }));
+            File.Delete(path);
+            Assert.Throws<InvalidDataException>(() => TrialExportArtifact.ForEachWord(database, id, _ => { }));
+            Assert.Throws<InvalidDataException>(() => TrialExportArtifact.ForEachWord(database, "job/unknown", _ => { }));
+        });
+    }
+
     private static MotifDatabase Open(ProjectLocator project) =>
         MotifDatabase.OpenOwned(ProjectDatabaseCatalog.DatabasePathFor(project), project, MotifSchema.CurrentSchema, new(1, 0));
 

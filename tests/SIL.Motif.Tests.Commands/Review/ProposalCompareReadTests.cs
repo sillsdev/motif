@@ -465,6 +465,56 @@ public sealed class ProposalCompareReadTests(Xunit.Abstractions.ITestOutputHelpe
     private static string StoredJson(MotifDatabase database, string proposal) =>
         new SIL.Motif.Worker.Store.ProposalRepository(database).Get(CanonicalId.Parse(proposal)).ProposalJson!;
 
+    // A set matching nothing takes the full path; each run needs its own stamp, as the join is cached per stamp.
+    [Fact]
+    public void AnEmptyApprovedSetGivesTheSameComparisonAsASetNothingInTheExportMatches()
+    {
+        InStore((database, project) =>
+        {
+            var a = AddTrial(database, project, [F("f1", [1], [1, 2]), F("f2", [3], []), F("f3", [4], [4], complete: false),
+                F("f4", [], [5]), F("f5", [6], [6], dispatched: false), F("f6", [1], [1], ws: null)]);
+            var b = AddTrial(database, project, [F("f1", [1], []), F("f2", [3], [3]), F("f3", [4], [4]),
+                F("f4", [], []), F("f5", [6], [6]), F("f6", [1], [2], ws: null)]);
+
+            var early = Compare(project, [a, b], page: 1, approved: Approvals([], "stamp-empty")).Value!;
+            var full = Compare(project, [a, b], page: 1, approved: Approvals([Approved(777, "elsewhere")], "stamp-full")).Value!;
+
+            Assert.Equal(1, full.ApprovedTotal);
+            Assert.Equal(0, early.ApprovedTotal);
+            Assert.All(full.Columns.Concat(early.Columns), column => Assert.Equal([0, 0], [column.ApprovedKept, column.ApprovedLost]));
+            Assert.Equal(early.Columns.Select(Counts), full.Columns.Select(Counts));
+            Assert.Equal(early.Columns.Select(column => (column.Gained, column.Lost, column.Incomplete)),
+                full.Columns.Select(column => (column.Gained, column.Lost, column.Incomplete)));
+            Assert.Equal(early.Page!.Rows.Count, full.Page!.Rows.Count);
+            Assert.Equal(Json(early.Page.Rows), Json(full.Page.Rows));
+            Assert.Equal(early.Complete, full.Complete);
+            Assert.All(early.Page.Rows.SelectMany(row => row.Cells), cell =>
+            {
+                Assert.Empty(cell.ApprovedKeptIds);
+                Assert.Empty(cell.ApprovedLostIds);
+            });
+        });
+    }
+
+    // Deliberate: with nothing approved no signature is read, so a damaged one does not refuse.
+    [Fact]
+    public void AReadingWithoutASignatureOnlyRefusesTheComparisonWhenSomethingIsApproved()
+    {
+        InStore((database, project) =>
+        {
+            var a = AddTrial(database, project, [new FormSpec("f1", [1], [1]) { AfterReadingWithoutSignature = true }]);
+            var b = AddTrial(database, project, [F("f1", [1], [1])]);
+
+            var none = Compare(project, [a, b], page: 1, approved: Approvals([])).Value!;
+            Assert.Equal(1, none.Page!.Rows.Count(row => row.Form == "f1"));
+
+            var refused = Compare(project, [a, b], page: 1, approved: Approvals([Approved(1, "f1")], "stamp-signed"));
+            Assert.Equal("proposal.compare-trial-missing", refused.Refusal?.Code);
+        });
+    }
+
+    private static string Json<T>(T value) => System.Text.Json.JsonSerializer.Serialize(value, SIL.Motif.Contract.MotifJson.CreateOptions());
+
     [Fact]
     public void ApprovalsWithNoSignatureOrOnUnmeasuredFormsAreUncountedAndMakeTheComparisonIncomplete()
     {
