@@ -9,6 +9,7 @@ using SIL.Motif.Contract.Canonicalization;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
+using SIL.Motif.Contract.Query;
 using SIL.Motif.Contract.Review;
 using SIL.Motif.Host.Baselines;
 using SIL.Motif.Contract.Responses;
@@ -219,8 +220,12 @@ internal static class TrialSiblingSampler
             try
             {
                 var joined = "(?:" + string.Join("|", keys.Select(Regex.Escape)) + ")";
-                regex = new Regex("^(?:" + pattern.Replace("{form}", joined, StringComparison.Ordinal) + ")$",
+                regex = new Regex("^(?:" + PatternNormalization.Pattern(pattern).Replace("{form}", joined, StringComparison.Ordinal) + ")$",
                     RegexOptions.CultureInvariant | RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1));
+            }
+            catch (QueryRefusalException refused)
+            {
+                return CommandOutcome<TrialSiblingSample>.Refused(refused.Refusal);
             }
             catch (ArgumentException exception)
             {

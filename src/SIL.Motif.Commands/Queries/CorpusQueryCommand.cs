@@ -33,6 +33,10 @@ public static class CorpusQueryCommand
             var summary = new CorpusSummary(request.CorpusPath, corpus.TypeCount, corpus.TokenCount, corpus.SegmentationLabel, request.FoldCase);
             return CommandOutcome<PairsQueryResponse>.Success(PairsQueryResponse.From(summary, result));
         }
+        catch (QueryRefusalException refused)
+        {
+            return CommandOutcome<PairsQueryResponse>.Refused(refused.Refusal);
+        }
         catch (ArgumentException exception)
         {
             return Refuse(RefusalCodes.QueryCorpusInvalid, exception.Message);

@@ -60,6 +60,13 @@ public sealed class GroupQueryCommandTests(PristineProjectFixture pristine)
         Assert.Equal(3, pattern.Value!.Groups);
     }
 
+    [Fact]
+    public void APatternThatCannotBeComposedIsRefusedByItsOwnCodeNotAsAnInvalidRequest()
+    {
+        var outcome = GroupQueryCommand.Run(new GroupRequest(Fixture(), "suffix", Pattern: "(?<stem>.+)\u0BC6(\u0BBE)"));
+        Assert.Equal(RefusalCodes.QueryPatternNotNormalizable, outcome.Refusal?.Code);
+    }
+
     private static List<string> Snapshot(string folder) =>
         [.. Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories).Order(StringComparer.Ordinal).Select(file =>
             $"{Path.GetRelativePath(folder, file)} {File.GetLastWriteTimeUtc(file).Ticks} {Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(file)))}")];
