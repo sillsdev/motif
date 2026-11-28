@@ -75,6 +75,7 @@ internal static class Program
             [new("--out", true), new("--context", true), new("--stats", true),
                 new("--stats-manifest", true), new("--light", false), new("--json", false)], RunFacts),
         new("import", ["project.fwdata", "out.json"], [], RunImport),
+        new("generate", ["grammar", "root-morpheme-id", "other-morpheme-id..."], [new("--requests", true), new("--out", true)], RunGenerateBatch),
         new("describe", [], [], RunDescription),
         new("stats", ["project-or-grammar"],
             [new("--cache", true), new("--group", true), new("--format", true)], RunStats),
@@ -278,6 +279,14 @@ internal static class Program
     {
         RecordArgv(AppContext.BaseDirectory, args);
         return PhonologyExamples.Run(args);
+    }
+
+    // Described so the interface pin finds generate; the fake answers no batch.
+    private static int RunGenerateBatch(string[] args)
+    {
+        RecordArgv(AppContext.BaseDirectory, args);
+        Console.Error.WriteLine("the fake pangloss describes generate but does not answer it");
+        return 64;
     }
 
     private static int Unrecognised(string command)

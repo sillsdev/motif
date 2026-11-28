@@ -53,6 +53,32 @@ the Trial and print far less (the `MEASURE` lines in the log). GitHub's publishe
 repository, `ubuntu-22.04` and `windows-latest`, have 4 vCPUs and 16 GB; for a private repository they have 2 vCPUs
 and 8 GB. Either holds 2.0 GB with room to spare, so the remaining ones run on the hosted runner.
 
+## Not in the run: the record import scale test
+
+`RecordImportScaleTests.FiveThousandNewEntriesAndFiveHundredVariantsAreDryRunAndStagedAsOneProposal` (Commands) skips
+without `MOTIF_RECORD_SCALE=1` and is in no run. It generates 5,000 new entries plus 500 variants as 5,500 `.fw.md`
+files in sub-folders of 1,000, then times `import --dir` as a dry run and as a stage into one Draft, and logs
+`RECORD_SCALE` lines to `record-import-scale.log` beside the test assembly. By hand:
+
+```
+MOTIF_RECORD_SCALE=1 pwsh ./test.ps1 -Project SIL.Motif.Tests.Commands -Filter "FullyQualifiedName~RecordImportScaleTests" -Configuration Release
+```
+
+Measured 2026-11-28 (Release, WSL2, 20 processors, load average about 30 from other lanes, one run, `nice -n 10 ionice -c 3`):
+
+| Measure | Dry run | Stage |
+|---|---|---|
+| Wall time | 90 s | 117 s |
+| Operations | 58,000 | 58,000 |
+| Files created / refused | 5,500 / 0 | 5,500 / 0 |
+| Allocated by the import call alone | 19.3 GB | 39.4 GB |
+| Test host peak working set (includes generating the folder; not the import's own peak) | 421 MB | 990 MB |
+
+Generating the folder took 1.6 s. The Draft is 34.3 MB and the Proposal JSON 29.2 MB. That is 10.6 operations per
+entry and about 500 bytes per operation, inside the design's estimates (40,000 to 75,000 operations, 15 to 40 MB), and
+well under the caps of 10,000 files and 250,000 operations. Allocation is cumulative, not resident: the working set
+is the figure that bounds a runner.
+
 ## Not in the run: the Commands Difference measurement
 
 `ProposalDifferenceCommandsTests.ProducingADifferenceOverALargeWordListReportsMemoryAndRows` also skips without

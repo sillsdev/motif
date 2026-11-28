@@ -610,6 +610,16 @@ public static class CliVerbCatalog
                 "PanGloss recorded and the Proposal operations that overlap the earlier form (not a cause), or that nothing was recorded.",
             }),
         new CliVerbDescriptor(
+            "Trace", "generate", "generate --batch",
+            new[]
+            {
+                "generate --batch <rows.jsonl> --project <fwdata> --out <rows-out.jsonl> [--at <baseline|proposal-id>] [--timeout-ms <n>] [--max-work <n>] [--json]",
+                "Exact synthesis for many cells in one PanGloss run. Each input line is {\"id\":\"r1\",\"entry\":\"<entry guid or Motif id, or entry:msa>\"," +
+                "\"sense\":\"<sense id>\",\"cell\":[\"<affix>\",...]}: an entry or a sense, and a cell of affix names (an array of arrays is one cell each).",
+                "--out receives one row per root analysis and cell: every surface with the entry, analysis and allomorph ids and the rules that fired, or none with its cause.",
+                "Stdout is a bounded summary: counts per status and cause, the first none and error rows, and the out path. A missing surface is never read as impossible: a row a cap stopped says so.",
+            }),
+        new CliVerbDescriptor(
             "Trace", "forms", "forms explain",
             new[]
             {

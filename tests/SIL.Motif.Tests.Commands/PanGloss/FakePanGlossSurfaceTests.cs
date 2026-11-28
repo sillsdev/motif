@@ -132,7 +132,7 @@ public sealed class FakePanGlossSurfaceTests
         Assert.Equal("pangloss", description.RootElement.GetProperty("binary").GetString());
         AssertFactsIdentity(description.RootElement.GetProperty("facts"));
         var commands = Commands(description);
-        Assert.Equal(new[] { "batch", "describe", "facts", "grammar-health", "import", "parse", "serve", "stats" },
+        Assert.Equal(new[] { "batch", "describe", "facts", "generate", "grammar-health", "import", "parse", "serve", "stats" },
             commands.Keys.OrderBy(name => name));
         AssertRequestsMatch(commands);
         AssertTraceCommandIsDeclared(commands);
@@ -179,7 +179,7 @@ public sealed class FakePanGlossSurfaceTests
             .ToDictionary(command => command.GetProperty("name").GetString()!, command => command);
 
     internal static void AssertRequestsMatch(
-        IReadOnlyDictionary<string, JsonElement> commands, bool includeFacts = true)
+        IReadOnlyDictionary<string, JsonElement> commands, bool includeFacts = true, bool includeGenerate = false)
     {
         PanGlossRequest[] requests =
         [
@@ -188,18 +188,22 @@ public sealed class FakePanGlossSurfaceTests
             new PanGlossRequest.Stats("project.fwdata", "cache.sqlite", ["--group", "word", "--format", "jsonl"]),
             new PanGlossRequest.Facts("snapshot.json", "{}", "facts-artifact"),
             new PanGlossRequest.Import("project.fwdata", "grammar.json"),
+            new PanGlossRequest.GenerateRequests("project.fwdata", [], "rows.jsonl"),
             new PanGlossRequest.GrammarHealth("project.fwdata", "project")
                 { SnapshotPath = "grammar.json", FactsContextJson = "{}", FactsLight = true },
             new PanGlossRequest.Trace("project.fwdata", "motifa")
                 { ParserWorkLimit = SIL.Motif.Contract.Assess.ParserWorkLimit.Default },
         ];
         if (!includeFacts) requests = requests.Where(request => request is not PanGlossRequest.Facts).ToArray();
+        // The fake parser does not advertise generate; the real description does, with --requests and --out.
+        if (!includeGenerate) requests = requests.Where(request => request is not PanGlossRequest.GenerateRequests).ToArray();
         // Trace requests are checked elsewhere; the fake parser does not advertise why-not.
         var requestTypes = typeof(PanGlossRequest).GetNestedTypes()
             .Where(type => typeof(PanGlossRequest).IsAssignableFrom(type) && type != typeof(PanGlossRequest.Trace) &&
                 type != typeof(PanGlossRequest.RejectionTrace) && type != typeof(PanGlossRequest.PhonologyExamples) &&
                 type != typeof(PanGlossRequest.WhyNot))
             .Where(type => includeFacts || type != typeof(PanGlossRequest.Facts))
+            .Where(type => includeGenerate || type != typeof(PanGlossRequest.GenerateRequests))
             .OrderBy(type => type.Name);
         Assert.Equal(requestTypes, requests.Where(request => request is not PanGlossRequest.Trace)
             .Select(request => request.GetType()).OrderBy(type => type.Name));
@@ -208,7 +212,7 @@ public sealed class FakePanGlossSurfaceTests
         var pinnedRequests = pin.RootElement.GetProperty("interfaces").GetProperty("requests");
         Assert.Equal(requests.Select(request => request.Subcommand).OrderBy(name => name, StringComparer.Ordinal),
             pinnedRequests.EnumerateObject().Select(command => command.Name)
-                .Where(name => includeFacts || name != "facts").OrderBy(name => name, StringComparer.Ordinal));
+                .Where(name => includeFacts || name != "facts").Where(name => includeGenerate || name != "generate").OrderBy(name => name, StringComparer.Ordinal));
         foreach (var request in requests)
         {
             var start = new ProcessStartInfo();
@@ -225,7 +229,9 @@ public sealed class FakePanGlossSurfaceTests
                             ? name is "--word-timeout-ms" or "--work-cap" or "--capture-cap-mib" or "--threads" or "--analyses" or "--stats" or "--cache" or "--stats-manifest"
                             : request.Subcommand == "parse"
                                 ? name is "--trace" or "--trace-format" or "--trace-details" or "--work-cap"
-                                : request.Subcommand == "facts"
+                                : request.Subcommand == "generate"
+                                    ? name is "--requests" or "--out"
+                                    : request.Subcommand == "facts"
                                     ? name is "--out" or "--context" or "--stats" or "--stats-manifest" or "--json" or "--light"
                                     : request.Subcommand == "grammar-health" && name is "--fw-project" or "--stored-analyses" or
                                         "--fst" or "--snapshot-out" or "--facts-out" or "--facts-context" or "--facts-light")
@@ -256,7 +262,8 @@ public sealed class FakePanGlossSurfaceTests
             var declaredPositionals = command.GetProperty("positionals").EnumerateArray()
                 .Select(positional => positional.GetString()!)
                 .ToArray();
-            var requiredPositionals = declaredPositionals.Count(positional =>
+            // generate's description lists the HC XML morpheme ids; a batch names only the grammar.
+            var requiredPositionals = request is PanGlossRequest.GenerateRequests ? 1 : declaredPositionals.Count(positional =>
                 !positional.EndsWith("?", StringComparison.Ordinal));
             Assert.InRange(positionals, requiredPositionals, declaredPositionals.Length);
         }

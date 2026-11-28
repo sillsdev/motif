@@ -156,6 +156,7 @@ public static class CommandTextRenderer
             WhyNotResponse r => WhyNotRenderer.Render(r),
             WhyLostResponse r => WhyLostRenderer.Render(r),
             FormsExplainResponse r => FormsExplainMarkdown.Render(r),
+            GenerateBatchResponse r => GenerateBatchMarkdown.Render(r),
             FormsQueryResponse r => RenderFormsQuery(r),
             GrammarReadResponse r => GrammarReadTextRenderer.Render(r),
             ProjectStoreResetResponse r => r.Deleted

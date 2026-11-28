@@ -534,6 +534,11 @@
     "description": "Asks PanGloss whether a word parses as each morph sequence you expected, and for a rejection names the first failing constraint, the morphs and the grammar object it is about. Use it to see why a word did not parse as these morphs.",
     "source": "Hand-written from command behavior."
   },
+  "generate --batch": {
+    "title": "Generate many cells at once",
+    "description": "Runs exact synthesis for a file of entries or senses and affix cells in one PanGloss run, and writes every surface with the ids and rules that made it, or none with its cause, to an artifact file. Use it to check many words at once instead of one at a time.",
+    "source": "Hand-written from command behavior."
+  },
   "forms explain": {
     "title": "Explain a morpheme's forms",
     "description": "Asks PanGloss to generate every form of a root, alone or with the morphemes you list, and shows each surface, the allomorphs chosen and the rules that fired in order. Use it to see why a morpheme surfaces as it does, and to learn whether a cap stopped the generation.",
