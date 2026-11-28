@@ -6,7 +6,7 @@
     { "tool": "motif_grammar" },
     { "tool": "motif_word" },
     { "tool": "motif_proposal_difference" },
-    { "tool": "motif_difference_produce_source_validated" },
+    { "tool": "motif_difference_produce" },
     { "tool": "motif_decision_evidence" },
     { "tool": "motif_evidence_export" }
   ]

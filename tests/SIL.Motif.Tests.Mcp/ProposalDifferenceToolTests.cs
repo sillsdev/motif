@@ -165,20 +165,23 @@ public sealed class ProposalDifferenceToolTests
         Path.Combine(AppContext.BaseDirectory, "profiles", "source-validated.json");
 
     [Fact]
-    public void TheDefaultProduceToolOffersNoReferenceAndTheSourceValidatedOneIsOptIn()
+    public void OneProduceToolOffersBothReferencesAndTheOldSourceValidatedToolIsGone()
     {
-        var defaults = MotifMcpServer.Expose(ToolProfile.Load("full"));
+        var all = MotifMcpServer.Expose(ToolProfile.Load("full"));
         var optIn = MotifMcpServer.Expose(ToolProfile.Load(SourceValidatedProfile()));
 
-        var produce = defaults.Single(tool => tool.Name == "motif_difference_produce");
+        var produce = all.Single(tool => tool.Name == "motif_difference_produce");
         var properties = (System.Text.Json.Nodes.JsonObject)produce.Tool.InputSchema["properties"]!;
-        Assert.Null(properties["reference"]);
-        Assert.Contains(optIn, tool => tool.Name == "motif_difference_produce_source_validated");
+        Assert.Equal(["human", "source-validated"],
+            properties["reference"]!["enum"]!.AsArray().Select(node => node!.GetValue<string>()).ToArray());
+        Assert.DoesNotContain(all, tool => tool.Name == "motif_difference_produce_source_validated");
+        Assert.DoesNotContain(optIn, tool => tool.Name == "motif_difference_produce_source_validated");
+        Assert.Contains(optIn, tool => tool.Name == "motif_difference_produce");
         Assert.Contains(optIn, tool => tool.Name == "motif_proposal_difference");
     }
 
     [Fact]
-    public async Task TheSourceValidatedProduceToolAsksForTheSourceValidatedReference()
+    public async Task TheProduceToolPassesTheSourceValidatedReferenceToTheCommand()
     {
         var directory = Path.Combine(Path.GetTempPath(), "motif-proposal-difference-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
@@ -186,8 +189,8 @@ public sealed class ProposalDifferenceToolTests
         var project = Path.Combine(directory, "project.fwdata");
         File.WriteAllText(project, "");
         var seen = new System.Collections.Concurrent.ConcurrentDictionary<string, string>();
-        var original = AgentTools.ProduceSourceValidatedDifference;
-        AgentTools.ProduceSourceValidatedDifference = (request, reference) =>
+        var original = AgentTools.ProduceDifference;
+        AgentTools.ProduceDifference = (request, reference) =>
         {
             seen[request.ProposalId] = reference;
             return original(request, reference);
@@ -206,10 +209,11 @@ public sealed class ProposalDifferenceToolTests
                 ["project"] = JsonSerializer.SerializeToElement(project),
                 ["proposal"] = JsonSerializer.SerializeToElement("proposal/none-for-reference"),
                 ["text"] = JsonSerializer.SerializeToElement(Guid.NewGuid().ToString()),
+                ["reference"] = JsonSerializer.SerializeToElement("source-validated"),
             };
 
             var result = await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(profile),
-                "motif_difference_produce_source_validated", arguments, CancellationToken.None);
+                "motif_difference_produce", arguments, CancellationToken.None);
 
             Assert.True(result.IsError);
             Assert.Equal("difference.invalid-proposal", result.StructuredContent!.Value.GetProperty("code").GetString());
@@ -217,7 +221,7 @@ public sealed class ProposalDifferenceToolTests
         }
         finally
         {
-            AgentTools.ProduceSourceValidatedDifference = original;
+            AgentTools.ProduceDifference = original;
             Directory.Delete(directory, true);
         }
     }
