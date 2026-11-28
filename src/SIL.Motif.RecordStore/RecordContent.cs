@@ -57,7 +57,7 @@ internal sealed partial class RecordContent
     public IReadOnlyList<ContentRow> Pending => pending;
 
     /// <summary>
-    /// Set by a format 6 writer: every new row's identity is also written to <c>RecordContentIdentity</c>, and a store
+    /// Set by a writer: every new row's identity is also written to <c>RecordContentIdentity</c>, and a store
     /// that already has rows finds a value's identity there instead of hashing every row to build a dictionary.
     /// </summary>
     internal bool PersistIdentities { get; set; }

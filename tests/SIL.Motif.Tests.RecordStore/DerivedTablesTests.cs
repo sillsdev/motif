@@ -231,140 +231,9 @@ public sealed partial class DeletionSafetyTests
     }
 
     [Fact]
-    public async Task AFormatSixBinaryRefusesAFormatSevenStoreAndAFormatSevenReaderOpensFormatSixWithoutUpgrading()
+    public async Task AFailureInALaterBatchOfOneListPublicationRollsBackEverything()
     {
         var seed = await Import();
-        var failure = Assert.Throws<InvalidDataException>(() => Store.OpenWithFormatCeiling(Database, 6));
-        Assert.Equal("Unsupported record store format.", failure.Message);
-        MakeFormatSix();
-        await using (var six = Store.OpenWithFormatCeiling(Database, 6)) Assert.NotEmpty(await six.ReadAsync());
-        await using var reader = Store.OpenPublishedReader(Database);
-        Assert.False(reader.HasDerivedTables);
-        Assert.NotEmpty(await reader.ReadAsync());
-        Assert.NotNull(await reader.ReferencesAsync());
-        var absent = await Assert.ThrowsAsync<DerivedTablesUnavailableException>(() => reader.ReadRecordAsync(seed.FirstEntryId));
-        Assert.Contains("tables: absent", absent.Message);
-        await Assert.ThrowsAsync<DerivedTablesUnavailableException>(() => reader.ReadHeadersAsync());
-        Assert.Equal(6L, Scalar("PRAGMA user_version"));
-        Assert.Equal(0L, Scalar("SELECT count(*) FROM sqlite_master WHERE name IN ('RecordHeaders', 'RecordChunks', 'RecordPublicationBinding')"));
-    }
-
-    public enum Operation { FieldWrite, ListOperation, Verify, RebuildIndex }
-
-    [Theory]
-    [InlineData(Operation.FieldWrite)]
-    [InlineData(Operation.ListOperation)]
-    [InlineData(Operation.Verify)]
-    [InlineData(Operation.RebuildIndex)]
-    public async Task TheFirstReadWriteOperationUpgradesFormatSixAtomicallyReportsItAndRecordsItsCost(Operation operation)
-    {
-        var seed = await Import();
-        MakeFormatSix();
-        var told = new List<string>();
-        await using (var store = new Store(Database) { Progress = told.Add })
-        {
-            Assert.False(store.HasDerivedTables);
-            Assert.Null(store.LastUpgrade);
-            switch (operation)
-            {
-                case Operation.FieldWrite:
-                    var (revision, old) = await Current(store, seed.FirstEntryId);
-                    await Bump(store, seed.FirstEntryId, revision, old, old.GetInt32() + 1);
-                    break;
-                case Operation.ListOperation: await store.CommitListOperationsAsync([await SwapFirstList(store)], Guid.NewGuid()); break;
-                case Operation.Verify: await store.VerifyAsync(); break;
-                default: await store.RebuildReferenceIndexAsync(); break;
-            }
-            Assert.Single(told, line => line.Contains("format 7"));
-            Assert.True(store.UpgradedFormat);
-            Assert.True(store.HasDerivedTables);
-            Assert.Equal(6, store.LastUpgrade!.FromFormat);
-            Assert.Equal(7, store.LastUpgrade.ToFormat);
-            Assert.True(store.LastUpgrade.Elapsed > TimeSpan.Zero);
-            await store.VerifyAsync();
-        }
-        Assert.Equal(7L, Scalar("PRAGMA user_version"));
-        AssertDerivedConsistent();
-        await using var reopened = new Store(Database);
-        Assert.Equal(StoreVerification.Certified, reopened.Verification);
-        Assert.NotNull(await reopened.ReadRecordAsync(seed.FirstEntryId));
-    }
-
-    [Fact]
-    public async Task AFormatFiveStoreUpgradesThroughSixToSevenInOneWrite()
-    {
-        var seed = await Import();
-        MakeFormatFive();
-        await using (var store = new Store(Database))
-        {
-            var (revision, old) = await Current(store, seed.FirstEntryId);
-            await Bump(store, seed.FirstEntryId, revision, old, old.GetInt32() + 1);
-            Assert.Equal(5, store.LastUpgrade!.FromFormat);
-            await store.VerifyAsync();
-        }
-        Assert.Equal(7L, Scalar("PRAGMA user_version"));
-        AssertDerivedConsistent();
-    }
-
-    [Theory]
-    [InlineData(WriteStage.HistoryWritten)]
-    [InlineData(WriteStage.StateWritten)]
-    public async Task AFailureAfterTheUpgradeStartedRollsBackTheUpgradeTheHistoryAndThePublicationTogether(WriteStage stage)
-    {
-        var seed = await Import();
-        MakeFormatSix();
-        var revision = (string)Scalar("SELECT Revision FROM RecordStoreState")!;
-        var commits = Scalar("SELECT count(*) FROM Commits");
-        await using (var crashing = new Store(Database))
-        {
-            var swap = await SwapFirstList(crashing);
-            crashing.WriteStageReached = reached => { if (reached == stage) throw new Crash(); };
-            await Assert.ThrowsAsync<Crash>(() => crashing.CommitListOperationsAsync([swap], Guid.NewGuid()));
-            Assert.False(crashing.UpgradedFormat);
-        }
-        Assert.Equal(6L, Scalar("PRAGMA user_version"));
-        Assert.Equal(0L, Scalar("SELECT count(*) FROM sqlite_master WHERE name IN ('RecordHeaders', 'RecordChunks', 'RecordPublicationBinding')"));
-        Assert.Equal(revision, Scalar("SELECT Revision FROM RecordStoreState"));
-        Assert.Equal(commits, Scalar("SELECT count(*) FROM Commits"));
-        await using var reopened = new Store(Database);
-        Assert.Equal(StoreVerification.Certified, reopened.Verification);
-        await reopened.VerifyAsync();
-        Assert.NotEmpty(await reopened.ReadAsync());
-        Assert.NotNull(seed);
-    }
-
-    [Theory]
-    [InlineData("unknown record")]
-    [InlineData("not a list")]
-    [InlineData("corrupt history")]
-    public async Task AnUpgradeOnARefusedListOperationDoesNotStart(string kind)
-    {
-        var seed = await Import();
-        MakeFormatSix();
-        var told = new List<string>();
-        await using var store = new Store(Database) { Progress = told.Add };
-        var swap = await SwapFirstList(store);
-        if (kind == "corrupt history")
-            Run("UPDATE ChangeEntities SET EntityId = randomblob(16) WHERE rowid = (SELECT min(rowid) FROM ChangeEntities)");
-        var operation = kind switch
-        {
-            "unknown record" => new ListRecordOp(Guid.NewGuid(), 1, swap.Operation),
-            "not a list" => new ListRecordOp(seed.FirstEntryId, Homograph, swap.Operation),
-            _ => swap
-        };
-        await Assert.ThrowsAnyAsync<Exception>(() => store.CommitListOperationsAsync([operation], Guid.NewGuid()));
-        Assert.Empty(told);
-        Assert.False(store.UpgradedFormat);
-        Assert.Null(store.LastUpgrade);
-        Assert.Equal(6L, Scalar("PRAGMA user_version"));
-        Assert.Equal(0L, Scalar("SELECT count(*) FROM sqlite_master WHERE name IN ('RecordHeaders', 'RecordChunks', 'RecordPublicationBinding')"));
-    }
-
-    [Fact]
-    public async Task AFailureInALaterBatchOfOneListPublicationRollsBackEverythingIncludingTheUpgrade()
-    {
-        var seed = await Import();
-        MakeFormatSix();
         var commits = Scalar("SELECT count(*) FROM Commits");
         var state = Scalar("SELECT Revision FROM RecordStoreState");
         var batch = Enumerable.Range(0, 500).Select(n => (IChange)new SetRecordValue(seed.FirstEntryId, Homograph.ToString(),
@@ -373,7 +242,6 @@ public sealed partial class DeletionSafetyTests
             await Assert.ThrowsAsync<InvalidDataException>(() => store.CommitChangesAsync(batch, Guid.NewGuid()));
         Assert.Equal(commits, Scalar("SELECT count(*) FROM Commits"));
         Assert.Equal(state, Scalar("SELECT Revision FROM RecordStoreState"));
-        Assert.Equal(6L, Scalar("PRAGMA user_version"));
         await using var reopened = new Store(Database);
         Assert.Equal(StoreVerification.Certified, reopened.Verification);
         await reopened.VerifyAsync();
@@ -416,16 +284,12 @@ public sealed partial class DeletionSafetyTests
     }
 
     [Fact]
-    public async Task AnEmptyListBatchOnAFormatSixStoreNeitherUpgradesNorRepublishes()
+    public async Task AnEmptyListBatchDoesNotRepublish()
     {
         await Import();
-        MakeFormatSix();
         var state = Scalar("SELECT Revision FROM RecordStoreState");
-        var told = new List<string>();
-        await using (var store = new Store(Database) { Progress = told.Add })
+        await using (var store = new Store(Database))
             await store.CommitListOperationsAsync([], Guid.NewGuid());
-        Assert.Empty(told);
-        Assert.Equal(6L, Scalar("PRAGMA user_version"));
         Assert.Equal(state, Scalar("SELECT Revision FROM RecordStoreState"));
     }
 
@@ -443,28 +307,6 @@ public sealed partial class DeletionSafetyTests
         Assert.Null(second.DeletedAt);
         var chunk = (await reader.ReadChunkAsync(Store.ChunkOf(seed.FirstEntryId))).First(r => r.Id == seed.FirstEntryId);
         Assert.Equal(original.GetInt32(), chunk.Values[Homograph.ToString()].GetInt32());
-    }
-
-    [Theory]
-    [InlineData("verify")]
-    [InlineData("rebuild")]
-    public async Task AFailureInsideTheUpgradeOfAVerifyOrRebuildLeavesTheFormatSixStoreUntouched(string operation)
-    {
-        await Import();
-        MakeFormatSix();
-        var state = Scalar("SELECT Revision FROM RecordStoreState");
-        await using (var store = new Store(Database) { Progress = _ => throw new Crash() })
-        {
-            if (operation == "verify") await Assert.ThrowsAsync<Crash>(() => store.VerifyAsync());
-            else await Assert.ThrowsAsync<Crash>(() => store.RebuildReferenceIndexAsync());
-        }
-        Assert.Equal(6L, Scalar("PRAGMA user_version"));
-        Assert.Equal(0L, Scalar("SELECT count(*) FROM sqlite_master WHERE name IN ('RecordHeaders', 'RecordChunks', 'RecordPublicationBinding')"));
-        Assert.Equal(state, Scalar("SELECT Revision FROM RecordStoreState"));
-        await using var again = new Store(Database);
-        await again.VerifyAsync();
-        Assert.Equal(7L, Scalar("PRAGMA user_version"));
-        AssertDerivedConsistent();
     }
 
     [Fact]

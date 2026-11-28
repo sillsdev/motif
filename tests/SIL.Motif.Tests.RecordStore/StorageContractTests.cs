@@ -93,7 +93,7 @@ public sealed class StorageContractTests : IDisposable
             command.CommandText = "PRAGMA user_version=999";
             command.ExecuteNonQuery();
             Assert.Throws<InvalidDataException>(() => new Store(path));
-            command.CommandText = "PRAGMA user_version=5";
+            command.CommandText = "PRAGMA user_version=7";
             command.ExecuteNonQuery();
             command.CommandText = "UPDATE ChangeEntities SET Change = x'ff'";
             command.ExecuteNonQuery();
@@ -144,6 +144,8 @@ public sealed class StorageContractTests : IDisposable
     [Theory]
     [InlineData(2)]
     [InlineData(3)]
+    [InlineData(5)]
+    [InlineData(6)]
     public async Task EarlierDevelopmentFormatsAreRefusedWithAClearMessage(int format)
     {
         var path = PathFor("format" + format);

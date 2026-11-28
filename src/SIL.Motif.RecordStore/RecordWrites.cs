@@ -71,14 +71,13 @@ public sealed partial class RecordStore
                 await AbandonWriteAsync(start);
                 return state.Revision;
             }
-            if (format >= DerivedFormat) await RequireBindingBeforeWriteAsync(state);
+            await RequireBindingBeforeWriteAsync(state);
             // Only a non-owning single reference carries an index edge; other supported types have none.
             NativeReference? removed = type == 24 && prior.ValueKind != JsonValueKind.Null ? new(target, field, -1, prior.GetGuid(), false) : null;
             NativeReference? added = type == 24 && value.ValueKind != JsonValueKind.Null ? new(target, field, -1, value.GetGuid(), false) : null;
             var updated = (GenericRecord)record.Copy();
             updated.Values[key] = value.Clone();
             var expectedItem = SnapshotItem(updated);
-            await UpgradeInTransactionAsync();
             writingStarted = true;
             var commit = await model.AddChange(clientId, new SetRecordValue(target, key, value));
             database.ChangeTracker.Clear();
@@ -89,17 +88,9 @@ public sealed partial class RecordStore
             var extended = await ReplayIntegrity.ExtendAsync(database, replay, commit.Id);
             WriteStageReached?.Invoke(WriteStage.HistoryWritten);
             var snapshot = verified.Snapshot.Remove(SnapshotItem(record)).Add(expectedItem);
-            var unproven = backfillDerived ? verified.UnprovenNative : null;
             var index = verified.IndexDigest.WithEdge(removed, added);
-            if (unproven is { } failing)
-            {
-                // The upgrade keeps the store off the certified path, as a rebuild of a failing store does.
-                var limitation = $"{NativeUsageSchema.ProvenanceLimitation}: record {failing:D}.";
-                index = index with { Limitations = index.Limitations.Append(limitation).Order(StringComparer.Ordinal).ToArray() };
-            }
             await ReferencePersistence.ApplyAsync(database, removed, added);
             var stored = await database.Set<StoreState>().SingleAsync();
-            if (unproven is not null) stored.IndexLimitations = string.Join("\n", index.Limitations);
             stored.Revision = revision;
             stored.IndexDigest = index.Final();
             stored.ReplayDigest = extended.Final();
@@ -107,16 +98,7 @@ public sealed partial class RecordStore
             stored.ContentDigest = content.Digest();
             stored.Published = true;
             await StageCertificateAsync(stored, extended, scanned ? CertificateProvenance.FullVerify : CertificateProvenance.Incremental);
-            var chunk = ChunkOf(target);
-            if (backfillDerived)
-            {
-                // The upgrade writes every derived row from the decode this point came from, moved by this one edit.
-                var derived = verified.Derived ?? throw new InvalidOperationException("The retained point carries no derived tables to backfill.");
-                var chunks = (SetDigest[])derived.Chunks.Clone();
-                chunks[chunk] = chunks[chunk].Remove(SnapshotItem(record)).Add(expectedItem);
-                WriteDerived(stored, chunks, derived.Headers);
-            }
-            else if (format >= DerivedFormat) MoveChunk(stored, chunk, SnapshotItem(record), expectedItem);
+            MoveChunk(stored, ChunkOf(target), SnapshotItem(record), expectedItem);
             await database.SaveChangesAsync();
             WriteStageReached?.Invoke(WriteStage.StateWritten);
             var published = await database.Set<StoreState>().AsNoTracking().SingleAsync();
@@ -124,11 +106,9 @@ public sealed partial class RecordStore
             await transaction.CommitAsync();
             committed = true;
             ownWriteFlag = false;
-            CompleteUpgrade();
             if (verified.Replay is null) Verification = scanned ? StoreVerification.Full : StoreVerification.Certified;
             WriteStageReached?.Invoke(WriteStage.Committed);
             var records = verified.Records.With(updated, published);
-            if (unproven is not null) { point = null; return revision; }
             point = new VerifiedPoint(published, records, verified.Index.WithEdge(revision, removed, added), snapshot, index)
             { Replay = extended, Anchors = verified.Anchors, WritingSystems = verified.WritingSystems, ProjectId = verified.ProjectId };
             return revision;
@@ -141,7 +121,6 @@ public sealed partial class RecordStore
             database.ChangeTracker.Clear();
             if (!committed)
             {
-                AbandonUpgrade();
                 await transaction.RollbackAsync();
                 if (!writingStarted) await TryAbandonWriteAsync(start);
             }

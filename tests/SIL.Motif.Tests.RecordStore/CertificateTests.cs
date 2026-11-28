@@ -7,7 +7,7 @@ using Store = SIL.Motif.RecordStore.RecordStore;
 
 namespace SIL.Motif.Tests.RecordStore;
 
-/// <summary>The store certificate: trusted cold writes, crash flag, tampering, the format 6 upgrade and persisted content identity.</summary>
+/// <summary>The store certificate: trusted cold writes, crash flag, tampering and persisted content identity.</summary>
 public sealed partial class DeletionSafetyTests
 {
     private static readonly int Homograph = LexEntryTags.kflidHomographNumber;
@@ -198,60 +198,6 @@ public sealed partial class DeletionSafetyTests
         await Assert.ThrowsAsync<InvalidDataException>(() => Bump(forced, seed.FirstEntryId, revision2, old2, old2.GetInt32() + 1));
     }
 
-    private void MakeFormatSix()
-    {
-        Run("DROP TABLE RecordHeaders");
-        Run("DROP TABLE RecordChunks");
-        Run("DROP TABLE RecordPublicationBinding");
-        Run("PRAGMA user_version=6");
-    }
-
-    private void MakeFormatFive()
-    {
-        MakeFormatSix();
-        Run("DROP TABLE RecordStoreCertificate");
-        Run("DROP TABLE RecordContentIdentity");
-        Run("PRAGMA user_version=5");
-    }
-
-    [Fact]
-    public async Task AFormatFiveStoreReadsWithoutUpgradingAndUpgradesInItsFirstWriteTransaction()
-    {
-        var seed = await Import();
-        MakeFormatFive();
-        await using (var reader = new Store(Database))
-        {
-            Assert.Equal(StoreVerification.Uncertified, reader.Verification);
-            Assert.NotEmpty(await reader.ReadAsync());
-            Assert.NotNull(await reader.ReferencesAsync());
-            await Assert.ThrowsAsync<StaleRevisionException>(() => Bump(reader, seed.FirstEntryId, "stale",
-                JsonSerializer.SerializeToElement(1), 2));
-            Assert.Equal(5L, Scalar("PRAGMA user_version"));
-            Assert.Equal(0L, Scalar("SELECT count(*) FROM sqlite_master WHERE name IN ('RecordStoreCertificate', 'RecordContentIdentity')"));
-            var (revision, old) = await Current(reader, seed.FirstEntryId);
-            await Bump(reader, seed.FirstEntryId, revision, old, old.GetInt32() + 1);
-            Assert.Equal(1, reader.HistoryScans);
-        }
-        Assert.Equal(7L, Scalar("PRAGMA user_version"));
-        Assert.Equal("full-verify", Scalar("SELECT Provenance FROM RecordStoreCertificate"));
-        Assert.Equal(Scalar("SELECT count(*) FROM RecordContent"), Scalar("SELECT count(*) FROM RecordContentIdentity"));
-        await using var upgraded = new Store(Database);
-        Assert.Equal(StoreVerification.Certified, upgraded.Verification);
-        await upgraded.VerifyAsync();
-    }
-
-    [Fact]
-    public async Task AFormatFiveReaderRefusesAFormatSevenStore()
-    {
-        await Import();
-        Assert.Equal(7L, Scalar("PRAGMA user_version"));
-        var failure = Assert.Throws<InvalidDataException>(() => Store.OpenWithFormatCeiling(Database, 5));
-        Assert.Equal("Unsupported record store format.", failure.Message);
-        MakeFormatFive();
-        await using var five = Store.OpenWithFormatCeiling(Database, 5);
-        Assert.NotEmpty(await five.ReadAsync());
-    }
-
     [Fact]
     public async Task TheFirstContentWriteFindsIdentitiesInTheStoreAndNeverBuildsTheDictionary()
     {
@@ -338,48 +284,24 @@ public sealed partial class DeletionSafetyTests
         throw new InvalidOperationException("The seed has no list with two items.");
     }
 
-    [Theory]
-    [InlineData(5)]
-    [InlineData(6)]
-    public async Task ANoOpWriteLeavesNoWriteStateBehindAndTheNextWriteStillWorks(int format)
+    [Fact]
+    public async Task ANoOpWriteLeavesNoWriteStateBehindAndTheNextWriteStillWorks()
     {
         var seed = await Import();
-        if (format == 5) MakeFormatFive();
-        else MakeFormatSix();
         await using (var store = new Store(Database))
         {
             var (revision, old) = await Current(store, seed.FirstEntryId);
             Assert.Equal(revision, await Bump(store, seed.FirstEntryId, revision, old, old.GetInt32()));
-            Assert.False(store.UpgradedFormat);
-            Assert.Equal((long)format, Scalar("PRAGMA user_version"));
-            if (format == 6) Assert.Equal(0L, Scalar("SELECT WriteInProgress FROM RecordStoreCertificate"));
+            Assert.Equal(7L, Scalar("PRAGMA user_version"));
+            Assert.Equal(0L, Scalar("SELECT WriteInProgress FROM RecordStoreCertificate"));
             var moved = await Bump(store, seed.FirstEntryId, revision, old, old.GetInt32() + 1);
             Assert.NotEqual(revision, moved);
-            Assert.True(store.UpgradedFormat);
             Assert.Equal(0L, Scalar("SELECT WriteInProgress FROM RecordStoreCertificate"));
             await store.VerifyAsync();
         }
         Assert.Equal(7L, Scalar("PRAGMA user_version"));
         await using var reopened = new Store(Database);
         Assert.Equal(StoreVerification.Certified, reopened.Verification);
-    }
-
-    [Fact]
-    public async Task ARefusedFirstWriteOnAFormatFiveStoreNeverStartsTheUpgrade()
-    {
-        var seed = await Import();
-        MakeFormatFive();
-        var told = new List<string>();
-        await using var store = new Store(Database) { Progress = told.Add };
-        var old = (await store.ReadAsync()).Single(r => r.Id == seed.FirstEntryId).Values[Homograph.ToString()];
-        await Assert.ThrowsAsync<StaleRevisionException>(() => Bump(store, seed.FirstEntryId, "stale", old, 9));
-        Assert.Empty(told);
-        Assert.False(store.UpgradedFormat);
-        Assert.Equal(5L, Scalar("PRAGMA user_version"));
-        var (revision, _) = await Current(store, seed.FirstEntryId);
-        await Bump(store, seed.FirstEntryId, revision, old, old.GetInt32() + 1);
-        Assert.Equal(2, told.Count);
-        Assert.True(store.UpgradedFormat);
     }
 
     [Fact]

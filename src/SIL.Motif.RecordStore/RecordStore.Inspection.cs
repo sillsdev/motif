@@ -13,7 +13,7 @@ internal sealed record RescannedDigests(string Snapshot, string Index, string Co
 
 public sealed partial class RecordStore
 {
-    /// <summary>Tables a later format adds; a status names them absent until they exist.</summary>
+    /// <summary>Hand-projection tables; a status names them absent until they exist.</summary>
     private static readonly string[] DerivedTables = ["HandProjectionState", "HandFacts"];
 
     /// <summary>
@@ -75,7 +75,7 @@ public sealed partial class RecordStore
             result.Add(new("Commits", state is null || state.Revision == revision ? "current" : "revision-mismatch", $"{hashes.Count} commits"));
         }
         else result.Add(new("Commits", "absent"));
-        if (!existing.Contains("RecordStoreCertificate")) result.Add(new("RecordStoreCertificate", "absent", "format 5 or earlier"));
+        if (!existing.Contains("RecordStoreCertificate")) result.Add(new("RecordStoreCertificate", "absent"));
         else
         {
             using var command = connection.CreateCommand();
@@ -102,7 +102,7 @@ public sealed partial class RecordStore
                 result.Add(new("RecordStoreCertificate", label, "provenance " + certificate.Provenance));
             }
         }
-        if (!existing.Contains("RecordContentIdentity")) result.Add(new("RecordContentIdentity", "absent", "format 5 or earlier"));
+        if (!existing.Contains("RecordContentIdentity")) result.Add(new("RecordContentIdentity", "absent"));
         else
         {
             var identities = Convert.ToInt64(Scalar("SELECT count(*) FROM RecordContentIdentity"));
@@ -115,8 +115,8 @@ public sealed partial class RecordStore
         foreach (var table in new[] { "RecordHeaders", "RecordChunks" })
             result.Add(existing.Contains(table)
                 ? new(table, "present", Convert.ToInt64(Scalar($"SELECT count(*) FROM {table}")) + " rows")
-                : new(table, "absent", "format 6 or earlier"));
-        if (!existing.Contains("RecordPublicationBinding")) result.Add(new("RecordPublicationBinding", "absent", "format 6 or earlier"));
+                : new(table, "absent"));
+        if (!existing.Contains("RecordPublicationBinding")) result.Add(new("RecordPublicationBinding", "absent"));
         else
         {
             using var command = connection.CreateCommand();

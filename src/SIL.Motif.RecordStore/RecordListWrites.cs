@@ -8,7 +8,7 @@ public sealed partial class RecordStore
     /// Commits authored list operations and republishes the index, digests and derived tables. This is the entry the typed list
     /// edit contract will use; it is internal until that contract has its own guarded revision and reference checks.
     /// The history rows and the publication are one transaction: a crash or failure at any point before its commit leaves the
-    /// store exactly as it was, so no history can be committed ahead of its publication. A refused operation never starts an upgrade.
+    /// store exactly as it was, so no history can be committed ahead of its publication. A refused operation writes nothing.
     /// </summary>
     internal async Task CommitListOperationsAsync(IEnumerable<ListRecordOp> operations, Guid clientId)
     {
@@ -19,12 +19,12 @@ public sealed partial class RecordStore
         if (state.ReplayDigest != await ReplayIntegrity.DigestAsync(database, Workers))
             throw new InvalidDataException("History is corrupt; the list operations were refused.");
         var batch = operations.ToArray();
-        // An empty batch writes nothing, so it must not upgrade or republish either.
+        // An empty batch writes nothing, so it must not republish either.
         if (batch.Length == 0) return;
         // The snapshots are about to be republished, so they too must match the stored digest first.
         var current = await DecodeLatestAsync(digest: true, default);
         VerifySnapshots(state, current.Digest);
-        // Dry-run against current records: a refused operation is rejected here, before anything is stored or upgraded.
+        // Dry-run against current records: a refused operation is rejected here, before anything is stored.
         var records = current.Records.ToDictionary(r => r.Id, r => (GenericRecord)r.Copy());
         foreach (var operation in batch)
         {
@@ -53,8 +53,6 @@ public sealed partial class RecordStore
         await using var transaction = await database.Database.BeginTransactionAsync();
         try
         {
-            // The upgrade is part of this transaction and precedes the history it will publish.
-            await UpgradeInTransactionAsync();
             // AddManyChanges starts its own transaction; AddChanges joins this one.
             foreach (var part in batch.Chunk(MaximumChangesPerCommit)) await model.AddChanges(clientId, part);
             database.ChangeTracker.Clear();
@@ -63,13 +61,11 @@ public sealed partial class RecordStore
             await PublishIndexAsync(latest.Records, await CommitRevisionAsync(), tombstones: latest.Tombstones, refuseUnprovenNative: true);
             WriteStageReached?.Invoke(WriteStage.StateWritten);
             await transaction.CommitAsync();
-            CompleteUpgrade();
             WriteStageReached?.Invoke(WriteStage.Committed);
         }
         catch
         {
             requiresReopen = true;
-            AbandonUpgrade();
             throw;
         }
     }
