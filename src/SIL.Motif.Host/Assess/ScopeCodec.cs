@@ -90,7 +90,7 @@ public static class ScopeCodec
         try
         {
             return JsonSerializer.Deserialize<StoredScope.PhonologyExamples>(
-                PhonologyStoredJson.DropRemovedStepMembers(scopeJson), PhonologyJson.CreateOptions())
+                scopeJson, PhonologyJson.CreateOptions())
                 ?? throw Unreadable(reportKind);
         }
         catch (JsonException) { throw Unreadable(reportKind); }

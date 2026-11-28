@@ -85,6 +85,16 @@ internal sealed class JobProgress
             throw new InvalidOperationException("Job '" + jobId + "' is not in the project's database.");
     }
 
+    /// <summary>Queues a bare job of the Baseline refresh kind straight into the project's store, for tests of the job verbs.</summary>
+    internal static string QueueJob(string projectPath)
+    {
+        using var database = ProjectMotifDatabase.Open(projectPath);
+        var jobId = SIL.Motif.Contract.Ids.CanonicalId.Mint("job/").Value;
+        new JobRepository(database).Create(jobId, SIL.Motif.Worker.Projects.ProjectWorkspaceKey.Compute(database.Project),
+            "baseline-refresh", "{}", JobTimestamp.FormatUtc(DateTimeOffset.UtcNow));
+        return jobId;
+    }
+
     /// <summary>The most recently created job of <paramref name="kind"/>, or <see langword="null"/> when there is none.</summary>
     internal static string? LatestJobId(string projectPath, string kind)
     {

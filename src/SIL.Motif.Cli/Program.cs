@@ -348,10 +348,6 @@ try
         ? compose()
         : ProposalCommands.ComposeIntent(new(project, CliProductVersion(), draft, verb, intent, commandCitation));
 
-    // A flag that was renamed names its replacement instead of failing as an unknown option.
-    if (verb != "phonology-examples" && flags.ContainsKey("step-cap"))
-        return Usage("--step-cap was renamed --parser-work-limit <work|unbounded>.", asJson);
-
     switch (verb)
     {
         case var typedVerb when ProposalCommands.ComposerDescriptors.Any(composer => composer.Verb == typedVerb):
@@ -1531,16 +1527,6 @@ try
                 new ShowCorpusRequest(showCorpusProject, CliProductVersion(), positionals[0])));
             break;
 
-        case "baseline-refresh":
-            if (!flags.TryGetValue("project", out var refreshProject))
-                return Usage("Usage: motif baseline-refresh --project <fwdata>", asJson);
-            result = RenderCommand(
-                JobCommands.EnqueueBaselineRefresh(
-                    new EnqueueBaselineRefreshRequest(refreshProject, CliProductVersion())),
-                successAsJson: false);
-            if (result.ExitCode == 0) startRunner(refreshProject, error.WriteLine);
-            break;
-
         case "config":
             if (positionals.Count == 0)
                 return Usage(ConfigUsage(), asJson);
@@ -2693,8 +2679,6 @@ try
                 case "check":
                     if (positionals.Count != 2)
                         return Usage(UsageLineFor("phonology-examples check"), asJson);
-                    if (flags.ContainsKey("step-cap"))
-                        return Usage("--step-cap was removed with PanGloss 0.14.0; use --work-cap and --timeout-ms.", asJson);
                     var checkLimits = PhonologyExampleValidation.DefaultLimits;
                     if (!TryReadCheckCeiling(flags, "work-cap", checkLimits.WorkCap, out var checkWorkCap) ||
                         !TryReadCheckCeiling(flags, "timeout-ms", checkLimits.TimeoutMs, out var checkTimeout) ||
@@ -4367,7 +4351,7 @@ static Exception? RecordKnownProject(string fwDataPath, string root, TextWriter 
 
 static bool QueuesJobs(string verb, IReadOnlyList<string> positionals) => verb switch
 {
-    "dry-run" or "trial" or "baseline-refresh" or "parsimony" => true,
+    "dry-run" or "trial" or "parsimony" => true,
     "phonology-examples" => positionals.Count > 0 && positionals[0] == "check",
     "jobs" => positionals.Count > 0 && positionals[0] == "requeue",
     _ => false,

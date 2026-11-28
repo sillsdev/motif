@@ -2,7 +2,7 @@
 
 Stages one or more composing steps in a Draft in one call, through the same checks as each composing command alone, and can first remove earlier operations from it. If any step is refused, or a removal is, nothing is added or removed. Only a person can Apply.
 
-Composing operations does not set the Draft's review text. Before Finalize, add both a short label with `motif label` and a comment with `motif comment`.
+Composing operations does not set the Draft's review text. Before Finalize, add both a short label with `motif label` and a Rationale with [`proposal rationale`](cmd:proposal%20rationale).
 
 Each step names a composing command and carries the same closed intent that command's `--intent` takes. A step may add a `cite` object, which Motif records as operation provenance without changing the intent or its digest.
 

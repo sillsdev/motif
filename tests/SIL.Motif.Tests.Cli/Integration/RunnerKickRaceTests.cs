@@ -34,7 +34,7 @@ public sealed class RunnerKickRaceTests : IDisposable
 
         var run = await Cli(project);
         Assert.True(run.ExitCode == 0, run.Error);
-        var jobId = run.Output.Trim();
+        var jobId = JobProgress.LatestJobId(project, "source-index") ?? string.Empty;
         Assert.False(string.IsNullOrWhiteSpace(jobId));
         await WaitForWakeWaiter(occupying.OwnerName, run.Error);
         Assert.Equal(JobStatus.Queued, JobProgress.Read(project, jobId).Status);
@@ -98,7 +98,7 @@ public sealed class RunnerKickRaceTests : IDisposable
         var run = await Cli(project);
 
         Assert.True(run.ExitCode == 0, run.Error);
-        var jobId = run.Output.Trim();
+        var jobId = JobProgress.LatestJobId(project, "source-index")!;
         Assert.Equal(JobStatus.Queued, JobProgress.Read(project, jobId).Status);
         occupying.Dispose();
         var completed = JobProgress.WaitUntilFinished(project, jobId, "The capturing caller's Baseline refresh");
@@ -121,7 +121,7 @@ public sealed class RunnerKickRaceTests : IDisposable
     private async Task<CliRun> Cli(string project)
     {
         var options = new JobRunnerLaunchOptions(_root, null) { OwnerNamespace = _ownerNamespace };
-        var start = CliProcess.Start(options, "baseline-refresh", "--project", project);
+        var start = CliProcess.Start(options, "baseline", "capture", "--project", project);
         start.Environment[RunnerOptions.IdleVariable] = "2";
         start.Environment.Remove(ProcessRunnerLauncher.SuppressVariable);
         using var process = Process.Start(start)!;

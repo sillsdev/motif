@@ -2,6 +2,8 @@ using SIL.Motif.Host.Assess;
 using System.Diagnostics;
 using Microsoft.Data.Sqlite;
 using SIL.Motif.Cli;
+using SIL.Motif.Commands;
+using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Responses;
@@ -310,9 +312,10 @@ public sealed class JobQueueVerbArgvTests : IDisposable
 
     private string Enqueue(string project)
     {
-        var result = RunInProcess($"baseline-refresh --project \"{project}\"");
-        Assert.Equal(0, result.ExitCode);
-        return result.Output.Trim();
+        var queuedId = JobProgress.QueueJob(project);
+        // The CLI lists and claims across the projects it has recorded as Known.
+        Assert.Null(KnownProjectRecorder.TryRecord(_root, new ProjectLocator(project, Path.GetFileNameWithoutExtension(project))));
+        return queuedId;
     }
 
     private string[] ListAllJobIds()

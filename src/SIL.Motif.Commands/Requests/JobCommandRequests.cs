@@ -5,10 +5,6 @@ namespace SIL.Motif.Commands.Requests;
 
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
-public sealed record EnqueueBaselineRefreshRequest(string FwDataPath, string ProductVersion);
-
-/// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
-/// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
 /// <param name="ProposalId">The exact canonical Proposal identity.</param>
 /// <param name="NoBackground">True queues no Parsimony Baseline bundle job when the Dry Run runs, so nothing commits after the command returns.</param>
 public sealed record EnqueueDryRunRequest(string FwDataPath, string ProductVersion, string ProposalId, bool NoBackground = false);

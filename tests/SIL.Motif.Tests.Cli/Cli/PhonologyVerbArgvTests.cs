@@ -97,18 +97,6 @@ public sealed class PhonologyVerbArgvTests(PristineProjectFixture pristine)
         Assert.Contains("--work-cap", badCeiling.Error, StringComparison.Ordinal);
     }
 
-    [Fact]
-    public void CheckRefusesTheRemovedStepCap()
-    {
-        var project = pristine.CopyProjectFile();
-
-        var refused = Run("phonology-examples", "check", "--project", project, "any-revision", "--step-cap", "5", "--json");
-
-        Assert.NotEqual(0, refused.ExitCode);
-        Assert.Contains("--step-cap", refused.Error, StringComparison.Ordinal);
-        Assert.Contains("--work-cap", refused.Error, StringComparison.Ordinal);
-    }
-
     private static (int ExitCode, string Output, string Error) Run(params string[] arguments)
     {
         var start = new ProcessStartInfo(BuildOutput.Cli)

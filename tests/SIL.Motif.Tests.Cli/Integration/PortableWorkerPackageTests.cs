@@ -60,7 +60,7 @@ public sealed partial class PortableWorkerPackageTests(PristineProjectFixture pr
             var run = await RunCliAsync(cliHost, project, root, ownerNamespace);
             Assert.True(run.ExitCode == 0, run.Error);
 
-            var jobId = run.Output.Trim();
+            var jobId = JobProgress.LatestJobId(project, "source-index") ?? string.Empty;
             Assert.False(string.IsNullOrWhiteSpace(jobId));
             var completed = JobProgress.WaitUntilFinished(project, jobId,
                 "The packaged CLI's sibling Worker Baseline refresh");
@@ -95,7 +95,8 @@ public sealed partial class PortableWorkerPackageTests(PristineProjectFixture pr
             UseShellExecute = false,
             CreateNoWindow = true,
         };
-        start.ArgumentList.Add("baseline-refresh");
+        start.ArgumentList.Add("baseline");
+        start.ArgumentList.Add("capture");
         start.ArgumentList.Add("--project");
         start.ArgumentList.Add(project);
         start.Environment[RunnerOptions.RootVariable] = root;

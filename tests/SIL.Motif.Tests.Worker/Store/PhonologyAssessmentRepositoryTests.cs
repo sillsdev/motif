@@ -24,17 +24,6 @@ public sealed class PhonologyAssessmentRepositoryTests : IDisposable
     public PhonologyAssessmentRepositoryTests() => Directory.CreateDirectory(_root);
 
     [Fact]
-    public void LimitsStoredWithAStepCapStillRead()
-    {
-        const string stored = "{\"stepCap\":100,\"workCap\":200,\"timeoutMs\":5000}";
-
-        var limits = JsonSerializer.Deserialize<PhonologyLimits>(
-            PhonologyStoredJson.DropRemovedStepMembers(stored), PhonologyJson.CreateOptions());
-
-        Assert.Equal(new PhonologyLimits(200, 5000), limits);
-    }
-
-    [Fact]
     public void ProducedAndUnavailableReopenWithOriginalCitationsAndIndependentBindings()
     {
         PhonologyExampleSetHeader revision;
