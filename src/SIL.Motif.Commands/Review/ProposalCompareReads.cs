@@ -373,7 +373,7 @@ public static class ProposalCompareReads
             .Concat(form.GetProperty("lostReadingIds").EnumerateArray().Select(item => item.GetString()!))
             .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
         var complete = before.GetProperty("complete").GetBoolean() && after.GetProperty("complete").GetBoolean();
-        var (kept, lostApproved) = ws.Length == 0 ? ([], []) : Approvals(approved, ws, formText, before, after, complete);
+        var (kept, lostApproved) = ws.Length == 0 || approved.Analyses.IsEmpty ? ([], []) : Approvals(approved, ws, formText, before, after, complete);
         return gained.Length == 0 && lost.Length == 0 && complete && kept.Length == 0 && lostApproved.Length == 0
             ? Unchanged : new Cell(true, complete, gained, lost) { Kept = kept, LostApproved = lostApproved };
     }
