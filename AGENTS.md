@@ -267,6 +267,9 @@ For PR review, PR copy, review-comment responses, or Jira bug work, read
 they do not replace Motif's Proposal, Dry Run, or Assessment contracts.
 A known flake is quarantined when its issue is filed: `[Trait("Quarantine", "#NNN")]` (see the development workflow).
 
+Before you add, change, rename or remove a CLI verb, MCP tool, option or output shape, read
+[`agent-api-design`](.claude/skills/agent-api-design/SKILL.md): no migrations, no legacy.
+
 **Landing:** before you enqueue, requeue or cancel anything in the merge queue, read
 [Landing through the merge queue](docs/development-workflow.md#landing-through-the-merge-queue). It holds the
 owner's standing orders, including that a Windows-only failure does not stop merging.
