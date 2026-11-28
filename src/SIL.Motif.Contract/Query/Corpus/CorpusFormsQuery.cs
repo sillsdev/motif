@@ -29,12 +29,13 @@ namespace SIL.Motif.Contract.Query.Corpus;
 /// <param name="ByMorph">Group the rows of a <c>realizes</c> query per morpheme.</param>
 /// <param name="BaselineGrammarPath">A second grammar whose parse of the corpus is the baseline: the columns <c>base.parse.state</c>, <c>base.readings</c> and <c>change</c> compare <paramref name="GrammarPath"/> with it, word by word.</param>
 /// <param name="Twin">Templates that rewrite each match of the where's <c>form ~</c> regex from its groups; the twin columns describe the results.</param>
+/// <param name="Approved">A JSONL file of approved readings in the linguist-oracle format, one <c>{"type": "&lt;word&gt;", "readings": [{"gloss": "...", "class": "correct"}, ...]}</c> line per word, where a reading is approved when its <c>class</c> is <c>correct</c> and its <c>gloss</c> is the rendered morph sequence (<c>text/gloss</c> per morph joined by <c> + </c>); the answer then carries an <c>approved</c> comparison with what the grammar produces. Needs <paramref name="GrammarPath"/>.</param>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record CorpusFormsRequest(string CorpusPath, string? Where = null, string? QueryJson = null, string? GrammarPath = null,
     string? SegmentsPath = null, bool FoldCase = false, bool SplitHyphens = false, int? Limit = null, string? SegmentTest = null,
     string? ProjectPath = null, string? GroupBy = null, IReadOnlyList<string>? WhatIfRetire = null, bool Thorough = false, string? Sum = null, int? Sample = null,
     long? Seed = null, string? WriteWords = null, bool WithCounts = false, bool Force = false, string? CountBy = null, bool Adjacent = false, bool ByMorph = false,
-    IReadOnlyList<string>? Twin = null, string? BaselineGrammarPath = null);
+    IReadOnlyList<string>? Twin = null, string? BaselineGrammarPath = null, string? Approved = null);
 
 /// <summary>One word of a corpus that satisfied the query.</summary>
 /// <param name="Form">The word.</param>
@@ -168,6 +169,7 @@ public sealed record WordsWritten(string Path, int Words, bool WithCounts);
 /// <param name="MorphSeqs">The <c>--count-by morph-seq</c> report; null when not asked.</param>
 /// <param name="ByMorph">The <c>--by-morph</c> groups of a <c>realizes</c> query, by tokens; null when not asked.</param>
 /// <param name="BaselineInfo">The corpus parse under <c>--baseline-grammar</c> and whether it is complete; null when not asked. When it is not complete <c>readingsInfo.complete</c> is false too.</param>
+/// <param name="Approved">The <c>--approved</c> comparison of an approved-readings file with the grammar's readings; null when not asked.</param>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record CorpusFormsResponse(string Schema, CorpusSummary Corpus, string? Where, int Matched,
     IReadOnlyList<CorpusFormRow> Rows, [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] PhonReport? Phon,
@@ -181,7 +183,8 @@ public sealed record CorpusFormsResponse(string Schema, CorpusSummary Corpus, st
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] WordsWritten? Written = null,
     [property: JsonPropertyName("morphSeqs"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] MorphSeqReport? MorphSeqs = null,
     [property: JsonPropertyName("byMorph"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<MorphemeGroup>? ByMorph = null,
-    [property: JsonPropertyName("baselineInfo"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ReadingsReport? BaselineInfo = null)
+    [property: JsonPropertyName("baselineInfo"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ReadingsReport? BaselineInfo = null,
+    [property: JsonPropertyName("approved"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ApprovedReport? Approved = null)
 {
     /// <summary>The schema name of the JSON form.</summary>
     public const string SchemaName = "motif.query.corpus-forms.v1";

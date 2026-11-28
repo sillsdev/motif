@@ -103,11 +103,18 @@ public static class CorpusQueryCommand
         }
         var readingsOnly = wantsCauses || wantsMorphSeqs || request.WhatIfRetire is { Count: > 0 };
         if (request.WhatIfRetire is { Count: 0 }) return Invalid("what-if-retire needs at least one id.");
-        if ((request.Where is null) == (request.QueryJson is null) && !((readingsOnly || groupsColumns is not null || request.BaselineGrammarPath is not null || request.Sum is not null || request.Sample is not null || request.WriteWords is not null) && request.Where is null && request.QueryJson is null))
+        if ((request.Where is null) == (request.QueryJson is null) && !((readingsOnly || groupsColumns is not null || request.BaselineGrammarPath is not null || request.Approved is not null || request.Sum is not null || request.Sample is not null || request.WriteWords is not null) && request.Where is null && request.QueryJson is null))
             return Invalid("Give the query as --where <expression> or as --query-json, one of the two.");
         if (limit < 1) return Invalid("limit is a positive whole number.");
+        ApprovedReadingsFile.Content? approvedWords = null;
         try
         {
+            if (request.Approved is { } approvedPath)
+            {
+                if (string.IsNullOrWhiteSpace(approvedPath)) return Invalid("approved names a file of approved readings.");
+                if (string.IsNullOrWhiteSpace(request.GrammarPath)) return CommandOutcome<CorpusFormsResponse>.Refused(ReadingsRefusals.NeedsGrammar("--approved").Refusal);
+                approvedWords = ApprovedReadingsFile.Read(approvedPath, request.FoldCase);
+            }
             if (request.Where is null && request.QueryJson is null) { where = null; segmentTest = PhonSegmentTest.Normalize(request.SegmentTest, "segment-test"); }
             else if (request.QueryJson is { } json)
             {
@@ -200,14 +207,14 @@ public static class CorpusQueryCommand
         var seqItems = MorphSeqSupport.ItemsOf(where);
         var twinParse = twins is not null && !string.IsNullOrWhiteSpace(request.GrammarPath);
         var comparing = request.BaselineGrammarPath is not null;
-        var usesReadings = comparing || readingsOnly || OnlyViaLowering.UsesReadings(where) || liveState || groupsRead || seqItems.Count > 0 || twinParse;
+        var usesReadings = comparing || approvedWords is not null || readingsOnly || OnlyViaLowering.UsesReadings(where) || liveState || groupsRead || seqItems.Count > 0 || twinParse;
         MorphSeqPlan? seqPlan = null;
         if (usesReadings)
         {
             try
             {
                 var needsEntries = OnlyViaLowering.Find(where).Select(via => new ReadingTarget(via.Kind, via.Id)).Concat(retire).Where(target => target.Kind == "entry").ToList();
-                var needsClasses = wantsCauses || retire.Count > 0 || OnlyViaLowering.Find(where).Count > 0 || seqItems.Any(item => item.NeedsProject);
+                var needsClasses = wantsCauses || approvedWords is not null || retire.Count > 0 || OnlyViaLowering.Find(where).Count > 0 || seqItems.Any(item => item.NeedsProject);
                 string? catalogFailure = null;
                 var loaded = catalog;
                 var formEntries = new Dictionary<string, string?>(StringComparer.Ordinal);
@@ -309,7 +316,7 @@ public static class CorpusQueryCommand
                 if (request.Limit is null) limit = Math.Max(limit, sampleSize);
             }
             // A grouping is a summary: it lists no rows unless --limit asks for some.
-            if ((groups is not null || wantsMorphSeqs) && request.Sample is null && request.Limit is null && request.QueryJson is null) limit = 0;
+            if ((groups is not null || wantsMorphSeqs || approvedWords is not null) && request.Sample is null && request.Limit is null && request.QueryJson is null) limit = 0;
             WordsWritten? written = null;
             if (request.WriteWords is { } writePath)
             {
@@ -340,10 +347,13 @@ public static class CorpusQueryCommand
             if (request.ByMorph && realizes is not null) byMorph = ByMorphemes(realizes, matchedRows);
             if (readings is not null && retire.Count > 0)
                 whatIf = Retirement.Estimate(readings, [.. matchedRows.Select(row => (row.Form, row.Tokens))], retire, readingsReport!.Complete, limit);
+            ApprovedReport? approvedReport = null;
+            if (readings is not null && approvedWords is not null)
+                approvedReport = ApprovedReadingsComparison.Compare(approvedWords, corpus, readings, readingsReport!.Complete);
             Phase("query", queryStart);
             return CommandOutcome<CorpusFormsResponse>.Success(new CorpusFormsResponse(CorpusFormsResponse.SchemaName, summary,
                 printed is null ? null : QueryExprText.Print(printed), matched, [.. rows.Take(limit)], phon is { Ran: true } ? phon.Report : null,
-                realizes?.Sets, readingsReport, causes, whatIf, groups, totals, sample, written, morphSeqs, byMorph, baselineReport));
+                realizes?.Sets, readingsReport, causes, whatIf, groups, totals, sample, written, morphSeqs, byMorph, baselineReport, approvedReport));
         }
         catch (QueryRefusalException refused)
         {

@@ -30,6 +30,17 @@ public sealed class CorpusQueryCliTests : IDisposable
     private string Words() => Write("words.tsv", Tsv(("kaon", 5), ("kaonan", 3), ("kaonin", 1), ("baha", 2), ("bahaan", 4), ("lis", 1), ("lisan", 4)));
 
     [Fact]
+    public void ApprovedIsAFlagOfCorpusFormsAndAMalformedFileIsRefusedWithItsLine()
+    {
+        var approved = Write("approved.jsonl", "{\"type\": \"kaon\", \"readings\": [{\"gloss\": \"k/a\", \"class\": \"correct\"}]}\nnot json\n");
+        var (code, output, error) = Run("query", "--corpus", Words(), "forms", "--approved", approved, "--grammar", Write("grammar.fwdata", "x"), "--json");
+        Assert.NotEqual(0, code);
+        Assert.Equal("", output);
+        Assert.Contains("query.approved-invalid", error);
+        Assert.Contains("Line 2", error);
+    }
+
+    [Fact]
     public void PairsPrintsAReadableTableWithNoProject()
     {
         var (code, output, error) = Run("query", "--corpus", Words(), "pairs", "--differ", "suffix");

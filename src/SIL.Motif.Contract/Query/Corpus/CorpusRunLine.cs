@@ -22,7 +22,7 @@ public static class CorpusRunLine
 
     private static readonly string[] WriteFlags = ["write-words", "with-counts", "force"];
 
-    private static readonly string[] NotShownFlags = ["query-json", "what-if-retire", "count-by", "by-morph"];
+    private static readonly string[] NotShownFlags = ["query-json", "what-if-retire", "count-by", "by-morph", "approved"];
 
     /// <summary>Whether the tokens after <c>motif query</c> start a corpus line.</summary>
     public static bool IsCorpusLine(IReadOnlyList<string> arguments) => arguments is ["corpus", "forms", ..];
@@ -114,7 +114,7 @@ public static class CorpusRunLine
         return request with
         {
             CorpusPath = string.Join("\n", sources), GrammarPath = One(request.GrammarPath), SegmentsPath = One(request.SegmentsPath),
-            ProjectPath = One(request.ProjectPath), BaselineGrammarPath = One(request.BaselineGrammarPath),
+            ProjectPath = One(request.ProjectPath), BaselineGrammarPath = One(request.BaselineGrammarPath), Approved = One(request.Approved),
         };
     }
 

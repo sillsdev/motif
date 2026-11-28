@@ -36,6 +36,35 @@ internal static class CorpusFormsText
                     string.Join(", ", entry.Examples)));
             if (seqs.Distinct > seqs.Sequences.Count) text.AppendLine("  ... " + (seqs.Distinct - seqs.Sequences.Count).ToString(CultureInfo.InvariantCulture) + " more sequences; --limit shows more");
         }
+        if (response.Approved is { } approved)
+        {
+            var totals = approved.Totals;
+            text.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                "Approved: {0} words ({1} in the corpus, {2} not), {3} approved readings: {4} kept, {5} missing; {6} extra readings{7}", totals.ApprovedWords,
+                totals.ApprovedWordsInCorpus, totals.ApprovedWordsNotInCorpus, totals.ApprovedReadings, totals.Kept, totals.Missing, totals.Extra,
+                approved.Complete ? "" : " (INCOMPLETE: capped or failed words may have more readings)"));
+            text.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                "  Token shares are over the {0} approved words in the corpus ({1} tokens); words not in the corpus are outside them.", totals.ApprovedWordsInCorpus, totals.Tokens));
+            text.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                "  approvedShareTokens {0} ({1} of {2} tokens: approved readings all produced, no extras); ignoring extras {3} ({4} tokens)",
+                Percent(totals.ApprovedShareTokens), totals.TokensAllKeptNoExtras, totals.Tokens, Percent(totals.ApprovedShareTokensIgnoringExtras), totals.TokensAllKept));
+            if (totals.IncompleteWords > 0)
+                text.AppendLine(string.Format(CultureInfo.InvariantCulture,
+                    "  {0} words ({1} tokens) were capped, timed out or failed: their readings are incomplete, so they are left out of the numerators and the shares are lower bounds",
+                    totals.IncompleteWords, totals.IncompleteTokens));
+            if (totals.WordsWithoutApprovedReading > 0)
+                text.AppendLine(string.Format(CultureInfo.InvariantCulture, "  {0} words in the file have no reading whose class is correct and are not compared.", totals.WordsWithoutApprovedReading));
+            var absent = approved.Words.Where(word => !word.InCorpus).Select(word => word.Word).ToArray();
+            if (absent.Length > 0)
+                text.AppendLine("  Not in the corpus: " + string.Join(", ", absent.Take(20)) + (absent.Length > 20 ? string.Format(CultureInfo.InvariantCulture, " ... and {0} more", absent.Length - 20) : ""));
+            foreach (var word in approved.Words)
+            {
+                text.AppendLine(string.Format(CultureInfo.InvariantCulture, "  {0}\t{1} tokens\t{2}\t{3} kept, {4} missing, {5} extra", word.Word, word.Tokens, word.ParseState,
+                    word.Kept.Count, word.Missing.Count, word.Extra.Count));
+                foreach (var reading in word.Missing) text.AppendLine("      missing " + reading);
+                foreach (var reading in word.Extra) text.AppendLine("      extra " + reading);
+            }
+        }
         if (response.ByMorph is { } morphemes)
         {
             text.AppendLine("By morpheme:");
@@ -57,6 +86,8 @@ internal static class CorpusFormsText
                     (word.Alternative is { Count: > 0 } alternative ? "; keeps " + string.Join(" | ", alternative) : ""));
         }
     }
+
+    private static string Percent(double? share) => share is { } value ? (value * 100).ToString("0.0", CultureInfo.InvariantCulture) + "%" : "n/a";
 
     public static string Render(CorpusFormsResponse response)
     {
