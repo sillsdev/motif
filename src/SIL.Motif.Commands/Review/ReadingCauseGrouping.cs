@@ -47,7 +47,9 @@ internal static class ReadingCauseGrouping
         }
         var rows = groups.Select(pair => pair.Value.ToGroup(pair.Key, source))
             .OrderByDescending(group => group.Tokens).ThenBy(group => group.Key, StringComparer.Ordinal).ToArray();
-        return new ReadingDeltaGroups(by, rows.Length, offset, [.. rows.Skip(offset).Take(limit)]);
+        var page = rows.Skip(offset).Take(limit).ToArray();
+        return new ReadingDeltaGroups(by, rows.Length, page,
+            SIL.Motif.Contract.Responses.ResultPaging.NextCursor(offset, page.Length, rows.Length));
     }
 
     private static void Tally(string by, ReadingDeltaForm form, IReadOnlyList<(ReadingSignature Signature, long Count)> readings,

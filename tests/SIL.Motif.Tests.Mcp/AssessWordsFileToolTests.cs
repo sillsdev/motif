@@ -33,13 +33,13 @@ public sealed class AssessWordsFileToolTests
     }
 
     [Fact]
-    public void TheAssessToolPagesAStoredAssessmentWithOffsetAndAssessment()
+    public void TheAssessToolPagesAStoredAssessmentWithCursorAndAssessment()
     {
         var exposed = MotifMcpServer.Expose(ToolProfile.Load("full")).Single(entry => entry.Name == "motif_assess");
 
         var properties = exposed.Tool.InputSchema["properties"]!.AsObject();
         Assert.True(properties.ContainsKey("assessment"));
-        Assert.True(properties.ContainsKey("offset"));
+        Assert.True(properties.ContainsKey("cursor"));
     }
 
     [Fact]
@@ -134,7 +134,7 @@ public sealed class AssessWordsFileIngressTests(PristineProjectFixture pristine)
         Assert.NotEmpty(parserCallsBeforeStoredPage);
         var storedResponse = await CallAsync(context, "motif_assess", Arguments(project.FwDataPath,
             ("assessment", JsonSerializer.SerializeToElement(assessment!)),
-            ("offset", JsonSerializer.SerializeToElement(2)),
+            ("cursor", JsonSerializer.SerializeToElement(SIL.Motif.Contract.Responses.ResultPaging.Cursor(2))),
             ("limit", JsonSerializer.SerializeToElement(2))));
         var storedPage = storedResponse.GetProperty("result");
 
@@ -142,8 +142,8 @@ public sealed class AssessWordsFileIngressTests(PristineProjectFixture pristine)
         Assert.Equal(words.Length, storedPage.GetProperty("total").GetInt32());
         Assert.Equal(2, storedPage.GetProperty("offset").GetInt32());
         Assert.Equal(words[2..], PageWords(storedPage));
-        Assert.False(storedPage.TryGetProperty("nextOffset", out var nextOffset) &&
-            nextOffset.ValueKind != JsonValueKind.Null);
+        Assert.False(storedPage.TryGetProperty("nextCursor", out var nextCursor) &&
+            nextCursor.ValueKind != JsonValueKind.Null);
         Assert.True(JsonElement.DeepEquals(filePage.GetProperty("counts"), storedPage.GetProperty("counts")));
         Assert.Equal(parserCallsBeforeStoredPage, FakeParser.Invocations(parser));
 

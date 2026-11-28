@@ -257,7 +257,7 @@ public sealed class CommandTextRendererReviewFindingsTests
     [Fact]
     public void GrammarReadTextShowsAbbreviationsFormMetadataAndBaselineIdentity()
     {
-        var response = new GrammarReadResponse(GrammarReadKind.lexical_entry, 3, 0, 25,
+        var response = new GrammarReadResponse(GrammarReadKind.lexical_entry, 3, 25,
             [
                 new GrammarNaturalClassRead("class/one", "class-name", "class-abbr", "segment", [], []),
                 new GrammarPartOfSpeechRead("category/one", "category-name", "category-abbr", null),

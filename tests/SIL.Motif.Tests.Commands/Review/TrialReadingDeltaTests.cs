@@ -776,12 +776,11 @@ public sealed class TrialReadingDeltaTests
         var lostOnly = TrialReadingDelta.Read(new ReadTrialDeltaRequest(fixture.Project, ProposalId: proposal,
             Classes: ["lost"], GroupBy: "entry"), causes).Value!.Groups!;
         var paged = TrialReadingDelta.Read(new ReadTrialDeltaRequest(fixture.Project, ProposalId: proposal,
-            Offset: 1, Limit: 2, GroupBy: "entry"), causes).Value!.Groups!;
+            Cursor: SIL.Motif.Contract.Responses.ResultPaging.Cursor(1), Limit: 2, GroupBy: "entry"), causes).Value!.Groups!;
 
         Assert.Equal([Id(1)], lostOnly.Rows.Select(row => row.Key));
         Assert.Equal(4, paged.Total);
         Assert.Equal([Id(2), Id(3)], paged.Rows.Select(row => row.Key));
-        Assert.Equal(1, paged.Offset);
     }
 
     [Fact]

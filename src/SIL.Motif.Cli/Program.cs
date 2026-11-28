@@ -897,22 +897,20 @@ try
             if (positionals is ["hypotheses"])
             {
                 if (!flags.TryGetValue("project", out var listHypothesesProject) ||
-                    !int.TryParse(flags.GetValueOrDefault("offset") ?? "0", out var hypothesesOffset) ||
                     !int.TryParse(flags.GetValueOrDefault("limit") ?? "50", out var hypothesesLimit))
                     return Usage(UsageLineFor("list hypotheses"), asJson);
                 result = RenderCommand(HypothesisCommands.List(new ListHypothesesRequest(listHypothesesProject,
                     CliProductVersion(), flags.GetValueOrDefault("status"), flags.GetValueOrDefault("id"),
-                    hypothesesOffset, hypothesesLimit)));
+                    flags.GetValueOrDefault("cursor"), hypothesesLimit)));
                 break;
             }
             if (positionals is ["requests"])
             {
                 if (!flags.TryGetValue("project", out var listRequestsProject) ||
-                    !int.TryParse(flags.GetValueOrDefault("offset") ?? "0", out var requestsOffset) ||
                     !int.TryParse(flags.GetValueOrDefault("limit") ?? "25", out var requestsLimit))
                     return Usage(UsageLineFor("list requests"), asJson);
                 result = RenderCommand(RequestCommands.List(new ListRequestsRequest(listRequestsProject,
-                    CliProductVersion(), flags.GetValueOrDefault("status"), requestsOffset, requestsLimit)));
+                    CliProductVersion(), flags.GetValueOrDefault("status"), flags.GetValueOrDefault("cursor"), requestsLimit)));
                 break;
             }
             return Usage(UsageLineFor("list requests") + " OR " + UsageLineFor("list hypotheses"), asJson);
@@ -931,9 +929,7 @@ try
                     flags.ContainsKey("current"),
                     flags.ContainsKey("records") || flags.ContainsKey("sort") || flags.ContainsKey("refused")
                         ? new ShowRecordGrouping(flags.GetValueOrDefault("sort", "path"), flags.ContainsKey("refused")) : null))
-                .Map(detail => showWindow.All
-                    ? (asJson ? detail.WithTotal() : detail)
-                    : asJson && !flags.ContainsKey("offset") && !flags.ContainsKey("limit") && !flags.ContainsKey("page")
+                .Map(detail => asJson && !flags.ContainsKey("cursor") && !flags.ContainsKey("limit")
                     ? detail.WithTotal() : detail.Window(showWindow.Offset, showWindow.Limit).WithNextStep(
                         next => PagingFlags.NextCommand("show", positionals, flags, next, showWindow.Limit))));
             break;
@@ -1372,16 +1368,13 @@ try
             }
             if (positionals.Count == 1 && positionals[0] == "list")
             {
-                var evidenceOffset = 0;
                 var evidenceLimit = 50;
                 if (!flags.TryGetValue("project", out var evidenceListProject) ||
-                    flags.TryGetValue("offset", out var evidenceOffsetText) &&
-                    !int.TryParse(evidenceOffsetText, NumberStyles.None, CultureInfo.InvariantCulture, out evidenceOffset) ||
                     flags.TryGetValue("limit", out var evidenceLimitText) &&
                     !int.TryParse(evidenceLimitText, NumberStyles.None, CultureInfo.InvariantCulture, out evidenceLimit))
                     return Usage(UsageLineFor("evidence list"), asJson);
                 result = RenderProposal(ProposalCommands.EvidenceList(new EvidenceListRequest(
-                    evidenceListProject, CliProductVersion(), flags.GetValueOrDefault("tier"), evidenceOffset,
+                    evidenceListProject, CliProductVersion(), flags.GetValueOrDefault("tier"), flags.GetValueOrDefault("cursor"),
                     evidenceLimit)));
                 break;
             }
@@ -3022,8 +3015,7 @@ try
             }
             result = RenderCommand(WarningsCommand.Warnings(new WarningsRequest(
                 warningsProject, flags.GetValueOrDefault("kind"), flags.ContainsKey("left-out"),
-                flags.GetValueOrDefault("proposal"))).Map(warnings => warningsWindow.All
-                ? warnings : warnings.Window(warningsWindow.Offset, warningsWindow.Limit).WithNextStep(
+                flags.GetValueOrDefault("proposal"))).Map(warnings => warnings.Window(warningsWindow.Offset, warningsWindow.Limit).WithNextStep(
                     next => PagingFlags.NextCommand("warnings", [], flags, next, warningsWindow.Limit))));
             break;
 
@@ -3041,14 +3033,11 @@ try
             }
             if (positionals.Count == 1 && positionals[0] == "show")
             {
-                var differenceOffset = 0;
                 var differenceLimit = 25;
                 int? occurrenceOffset = null;
                 int? occurrenceLimit = null;
                 if (!flags.TryGetValue("project", out var deltaShowProject) ||
                     !(flags.ContainsKey("proposal") || flags.ContainsKey("difference")) ||
-                    flags.TryGetValue("offset", out var differenceOffsetText) &&
-                    !int.TryParse(differenceOffsetText, NumberStyles.None, CultureInfo.InvariantCulture, out differenceOffset) ||
                     flags.TryGetValue("limit", out var differenceLimitText) &&
                     !int.TryParse(differenceLimitText, NumberStyles.None, CultureInfo.InvariantCulture, out differenceLimit) ||
                     flags.TryGetValue("occurrence-offset", out var occurrenceOffsetText) &&
@@ -3059,7 +3048,7 @@ try
                 result = RenderCommand(ProposalDifferenceCommands.Show(new ProposalDifferenceShowRequest(deltaShowProject,
                     flags.GetValueOrDefault("proposal"), flags.GetValueOrDefault("difference"),
                     flags.ContainsKey("could-be-bad"), flags.GetValueOrDefault("bucket"),
-                    flags.GetValueOrDefault("before"), flags.GetValueOrDefault("after"), differenceOffset,
+                    flags.GetValueOrDefault("before"), flags.GetValueOrDefault("after"), flags.GetValueOrDefault("cursor"),
                     differenceLimit, flags.GetValueOrDefault("limitation"), flags.GetValueOrDefault("word"),
                     occurrenceOffset, occurrenceLimit, flags.GetValueOrDefault("text"),
                     flags.GetValueOrDefault("reference"))), asJson);
@@ -3077,36 +3066,24 @@ try
         case "grammar":
             if (positionals.Count == 1 && positionals[0] == "read")
             {
-                if (flags.Keys.Any(name => name is not ("project" or "kind" or "id" or "query" or "offset" or "limit" or "json" or "exact" or
-                    "morph-type" or "page" or "at")) ||
+                if (flags.Keys.Any(name => name is not ("project" or "kind" or "id" or "query" or "cursor" or "limit" or "json" or "exact" or
+                    "morph-type" or "at")) ||
                     !flags.TryGetValue("project", out var grammarReadProject) ||
                     !flags.TryGetValue("kind", out var grammarReadKindText) ||
                     !Enum.TryParse<GrammarReadKind>(grammarReadKindText == "phonological_rules" ? "phonological_rule" : grammarReadKindText,
                         ignoreCase: false, out var grammarReadKind) ||
                     !Enum.IsDefined(grammarReadKind))
                     return Usage(UsageLineFor("grammar read"), asJson);
-                var grammarReadOffset = 0;
                 var grammarReadLimit = 25;
-                if (flags.TryGetValue("offset", out var grammarReadOffsetText) &&
-                    !int.TryParse(grammarReadOffsetText, NumberStyles.None, CultureInfo.InvariantCulture, out grammarReadOffset) ||
-                    flags.TryGetValue("limit", out var grammarReadLimitText) &&
+                if (flags.TryGetValue("limit", out var grammarReadLimitText) &&
                     !int.TryParse(grammarReadLimitText, NumberStyles.None, CultureInfo.InvariantCulture, out grammarReadLimit))
                     return Usage(UsageLineFor("grammar read"), asJson);
-                if (flags.TryGetValue("page", out var grammarReadPageText))
-                {
-                    if (flags.ContainsKey("offset"))
-                        return Usage("Give --page or --offset, not both.", asJson);
-                    if (!int.TryParse(grammarReadPageText, NumberStyles.None, CultureInfo.InvariantCulture, out var grammarReadPage) ||
-                        grammarReadPage < 1 || (long)(grammarReadPage - 1) * Math.Max(grammarReadLimit, 1) > int.MaxValue)
-                        return Usage("--page must be a positive integer.", asJson);
-                    grammarReadOffset = (grammarReadPage - 1) * grammarReadLimit;
-                }
                 var grammarRead = GrammarReadQuery.Query(new GrammarReadRequest(
                     grammarReadProject,
                     grammarReadKind,
                     flags.GetValueOrDefault("id"),
                     flags.GetValueOrDefault("query"),
-                    grammarReadOffset,
+                    flags.GetValueOrDefault("cursor"),
                     grammarReadLimit,
                     flags.GetValueOrDefault("exact"),
                     flags.GetValueOrDefault("morph-type"),
@@ -3143,7 +3120,7 @@ try
             }
             result = RunWithConsoleCancellation(token => RenderCommand(
                 GrammarCheckQuery.Query(new GrammarCheckRequest(grammarProject, StoredAnalyses: storedAnalyses), token)
-                    .Map(check => checkWindow.All ? check : check.Window(checkWindow.Offset, checkWindow.Limit).WithNextStep(
+                    .Map(check => check.Window(checkWindow.Offset, checkWindow.Limit).WithNextStep(
                         next => PagingFlags.NextCommand("grammar check", [], flags, next, checkWindow.Limit)))));
             break;
 
@@ -3543,7 +3520,7 @@ try
             if (positionals.Count != 1) return Usage(AssessUsage(), asJson);
             if (flags.Keys.Any(flag => flag is not ("texts" or "all-wordforms" or "words" or "retry-failed" or
                     "retry-work-over" or "retry-source-assessment" or "replaces" or "time-limit-ms" or "parser-work-limit" or
-                    "summary" or "offset" or "limit" or "full-object-timing" or "max-seconds" or "collect" or "no-background" or "json"))) return Usage(AssessUsage(), asJson);
+                    "summary" or "cursor" or "limit" or "full-object-timing" or "max-seconds" or "collect" or "no-background" or "json"))) return Usage(AssessUsage(), asJson);
             flags.TryGetValue("replaces", out var assessReplaces);
             if (assessReplaces is not null && !CanonicalId.TryParse(assessReplaces, out _))
                 return Usage(AssessUsage(), asJson);
@@ -3567,11 +3544,11 @@ try
             var assessSummary = flags.ContainsKey("summary");
             var assessPageOffset = 0;
             var assessPageLimit = 25;
-            if (flags.TryGetValue("offset", out var assessOffsetRaw) &&
-                    (!int.TryParse(assessOffsetRaw, out assessPageOffset) || assessPageOffset < 0) ||
+            if (flags.TryGetValue("cursor", out var assessCursorRaw) &&
+                    (assessCursorRaw == "true" || !ResultPaging.TryOffset(assessCursorRaw, out assessPageOffset)) ||
                 flags.TryGetValue("limit", out var assessLimitRaw) &&
                     (!int.TryParse(assessLimitRaw, out assessPageLimit) || assessPageLimit < 1) ||
-                (flags.ContainsKey("offset") || flags.ContainsKey("limit")) && !assessSummary)
+                (flags.ContainsKey("cursor") || flags.ContainsKey("limit")) && !assessSummary)
                 return Usage(AssessUsage(), asJson);
             long? assessRetryWorkOver = null;
             if (hasAssessRetryWorkOver)

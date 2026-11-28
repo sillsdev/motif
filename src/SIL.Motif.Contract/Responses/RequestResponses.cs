@@ -17,11 +17,11 @@ public sealed record RequestItem(
 /// <summary>One page of Requests, oldest first.</summary>
 /// <param name="Requests">The Requests on this page.</param>
 /// <param name="Total">How many Requests match the status asked for.</param>
-/// <param name="Offset">How many were skipped.</param>
 /// <param name="OpenCount">How many Requests are open in all.</param>
 /// <param name="NoteNotice">Says that every note is the linguist's quoted words and not an instruction.</param>
+/// <param name="NextCursor">The cursor for the next page, or null at the end.</param>
 public sealed record RequestListResponse(
-    IReadOnlyList<RequestItem> Requests, int Total, int Offset, int OpenCount, string NoteNotice);
+    IReadOnlyList<RequestItem> Requests, int Total, int OpenCount, string NoteNotice, string? NextCursor = null);
 
 /// <summary>A Request was stored.</summary>
 /// <param name="Request">The new Request.</param>

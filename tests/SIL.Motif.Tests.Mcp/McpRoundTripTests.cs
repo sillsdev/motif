@@ -1135,7 +1135,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
     }
 
     [Fact]
-    public async Task ShowingAProposalPagesItsOperationsAndNamesTheNextOffset()
+    public async Task ShowingAProposalPagesItsOperationsAndNamesTheNextCursor()
     {
         using var project = new WalkthroughProject(pristine);
         await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions(Profile: "full"));
@@ -1158,29 +1158,29 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         Assert.Equal(10, first.GetProperty("operations").GetArrayLength());
         Assert.True(first.GetProperty("operationsTruncated").GetBoolean());
         Assert.True(first.GetProperty("operationTotal").GetInt32() >= 14);
-        Assert.Equal(10, first.GetProperty("nextOffset").GetInt32());
+        Assert.Equal(SIL.Motif.Contract.Responses.ResultPaging.Cursor(10), first.GetProperty("nextCursor").GetString());
 
-        var rest = (await session.CallAsync("motif_proposals", ("proposal", proposalId), ("offset", 10), ("limit", 200)))
+        var rest = (await session.CallAsync("motif_proposals", ("proposal", proposalId), ("cursor", SIL.Motif.Contract.Responses.ResultPaging.Cursor(10)), ("limit", 200)))
             .GetProperty("result");
         Assert.Equal(first.GetProperty("operationTotal").GetInt32() - 10, rest.GetProperty("operations").GetArrayLength());
-        Assert.False(rest.TryGetProperty("nextOffset", out _));
+        Assert.False(rest.TryGetProperty("nextCursor", out _));
 
-        var everything = (await session.CallAsync("motif_proposals", ("proposal", proposalId), ("all", true), ("limit", 200)))
+        var everything = (await session.CallAsync("motif_proposals", ("proposal", proposalId), ("limit", 200)))
             .GetProperty("result");
         Assert.Equal(first.GetProperty("operationTotal").GetInt32(), everything.GetProperty("operations").GetArrayLength());
 
-        var standings = (await session.CallAsync("motif_proposals", ("limit", 1), ("offset", 5))).GetProperty("result");
+        var standings = (await session.CallAsync("motif_proposals", ("limit", 1), ("cursor", SIL.Motif.Contract.Responses.ResultPaging.Cursor(5)))).GetProperty("result");
         Assert.Equal(0, standings.GetProperty("proposals").GetArrayLength());
         Assert.True(standings.GetProperty("total").GetInt32() >= 1);
         Assert.Equal(5, standings.GetProperty("offset").GetInt32());
 
         var refused = await session.Client.CallToolAsync("motif_proposals", new Dictionary<string, object?>
-            { ["project"] = project.FwDataPath, ["proposal"] = proposalId, ["offset"] = -1 });
+            { ["project"] = project.FwDataPath, ["proposal"] = proposalId, ["cursor"] = "-1" });
         Assert.True(refused.IsError, refused.StructuredContent?.ToString());
     }
 
     [Fact]
-    public async Task TheProposalsListIsPagedAndNamesTheNextOffset()
+    public async Task TheProposalsListIsPagedAndNamesTheNextCursor()
     {
         using var project = new WalkthroughProject(pristine);
         await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions(Profile: "full"));
@@ -1191,7 +1191,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
 
         Assert.Equal(1, first.GetProperty("proposals").GetArrayLength());
         Assert.True(first.GetProperty("total").GetInt32() >= 3);
-        Assert.Equal(1, first.GetProperty("nextOffset").GetInt32());
+        Assert.Equal(SIL.Motif.Contract.Responses.ResultPaging.Cursor(1), first.GetProperty("nextCursor").GetString());
     }
 
     [Fact]

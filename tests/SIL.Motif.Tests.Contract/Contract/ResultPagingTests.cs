@@ -20,13 +20,41 @@ public sealed class ResultPagingTests
     public void TheWindowRangeIsOneRuleForEveryCappedRead(int offset, int limit, bool valid) =>
         Assert.Equal(valid, ResultPaging.IsValid(offset, limit));
 
-    [Fact]
-    public void ThePageAfterTheLastRowHasNoNextOffset()
+    [Theory]
+    [InlineData(0)]
+    [InlineData(25)]
+    [InlineData(1000000)]
+    public void ACursorNamesTheOffsetItWasMadeFrom(int offset)
     {
-        Assert.Equal(25, ResultPaging.NextOffset(0, 25, 60));
-        Assert.Equal(60, ResultPaging.NextOffset(35, 25, 100));
-        Assert.Null(ResultPaging.NextOffset(50, 10, 60));
-        Assert.Null(ResultPaging.NextOffset(99, 0, 60));
+        Assert.True(ResultPaging.TryOffset(ResultPaging.Cursor(offset), out var read));
+        Assert.Equal(offset, read);
+    }
+
+    [Theory]
+    [InlineData("25")]
+    [InlineData("!!")]
+    [InlineData("cA")]
+    [InlineData("cC0x")]
+    public void ACursorTheApiDidNotIssueIsNotAnOffset(string cursor)
+    {
+        Assert.False(ResultPaging.TryOffset(cursor, out _));
+        Assert.Equal(-1, ResultPaging.OffsetOrInvalid(cursor));
+    }
+
+    [Fact]
+    public void NoCursorIsTheFirstPage()
+    {
+        Assert.True(ResultPaging.TryOffset(null, out var offset));
+        Assert.Equal(0, offset);
+    }
+
+    [Fact]
+    public void ThePageAfterTheLastRowHasNoNextCursor()
+    {
+        Assert.Equal(ResultPaging.Cursor(25), ResultPaging.NextCursor(0, 25, 60));
+        Assert.Equal(ResultPaging.Cursor(60), ResultPaging.NextCursor(35, 25, 100));
+        Assert.Null(ResultPaging.NextCursor(50, 10, 60));
+        Assert.Null(ResultPaging.NextCursor(99, 0, 60));
     }
 
     [Fact]
@@ -41,15 +69,15 @@ public sealed class ResultPagingTests
             Assert.Equal(60, page.Total);
             Assert.Equal(offset, page.Offset);
             seen.AddRange(page.Proposals.Select(item => item.ProposalId));
-            if (page.NextOffset is not { } next) break;
-            offset = next;
+            if (page.NextCursor is not { } next) break;
+            Assert.True(ResultPaging.TryOffset(next, out offset));
         }
         Assert.Equal(all.Select(item => item.ProposalId), seen);
 
         var pastEnd = list.Window(500, 25);
         Assert.Empty(pastEnd.Proposals);
         Assert.Equal(60, pastEnd.Total);
-        Assert.Null(pastEnd.NextOffset);
+        Assert.Null(pastEnd.NextCursor);
     }
 
     [Fact]
@@ -63,10 +91,10 @@ public sealed class ResultPagingTests
 
         Assert.Equal(23, page.OperationTotal);
         Assert.Equal(10, page.OperationOffset);
-        Assert.Equal(20, page.NextOffset);
+        Assert.Equal(ResultPaging.Cursor(20), page.NextCursor);
         Assert.Equal("op10", page.Operations[0].OperationId);
         Assert.Equal("proposal/one", page.ProposalId);
-        Assert.Null(detail.Window(20, 10).NextOffset);
+        Assert.Null(detail.Window(20, 10).NextCursor);
         Assert.Equal(3, detail.Window(20, 10).Operations.Count);
         Assert.Null(detail.OperationTotal);
     }
@@ -101,12 +129,12 @@ public sealed class ResultPagingTests
         Assert.Equal(10, page.Findings.Count);
         Assert.Equal(30, page.TotalCount);
         Assert.Equal(30, page.FindingsTotal);
-        Assert.Equal(10, page.NextOffset);
+        Assert.Equal(ResultPaging.Cursor(10), page.NextCursor);
         Assert.Same(byKind, page.ByKind);
         Assert.Equal(15, page.WarningCount);
         Assert.Equal(30, response.TotalCount);
-        Assert.Null(response.NextOffset);
-        Assert.Null(response.Window(30, 10).NextOffset);
+        Assert.Null(response.NextCursor);
+        Assert.Null(response.Window(30, 10).NextCursor);
         Assert.Empty(response.Window(500, 10).Findings);
     }
 
@@ -197,7 +225,7 @@ public sealed class ResultPagingTests
 
         Assert.Equal(10, page.Findings.Count);
         Assert.Equal(40, page.FindingsTotal);
-        Assert.Equal(20, page.NextOffset);
+        Assert.Equal(ResultPaging.Cursor(20), page.NextCursor);
         Assert.Equal(findings.Count(f => f.Severity == GrammarDiagnosticLevel.Error), page.ErrorTotal);
         Assert.Equal(findings.Count(f => f.Severity == GrammarDiagnosticLevel.Warning), page.WarningTotal);
         Assert.Equal(40, page.ErrorTotal + page.WarningTotal + page.InformationTotal);

@@ -107,8 +107,9 @@ public static class ProposalCommandRenderer
         var text = new StringBuilder();
         text.AppendLine($"{response.Total} source-validated record(s) in {response.AppliedProposals} Applied Proposal(s):");
         foreach (var (tier, count) in response.TierCounts) text.AppendLine($"  {tier}: {count}");
-        text.AppendLine($"Showing {response.Rows.Count} from offset {response.Offset}.");
+        text.AppendLine($"Showing {response.Rows.Count} of {response.Total}.");
         foreach (var row in response.Rows) AppendEvidenceRow(text, row);
+        if (response.NextCursor is { } next) text.AppendLine($"More: --cursor {next}");
         return text.ToString();
     }
 

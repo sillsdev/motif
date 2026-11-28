@@ -116,10 +116,14 @@ public sealed record HypothesisNeighboursRequest(
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
 /// <param name="Status">One status; leave out for all.</param>
 /// <param name="HypothesisId">One hypothesis by id; leave out for a page of them.</param>
-/// <param name="Offset">How many to skip.</param>
+/// <param name="Cursor">Opaque cursor from a previous response's nextCursor; omit for the first page.</param>
 /// <param name="Limit">The most to return, from 1 to 200.</param>
 public sealed record ListHypothesesRequest(
-    string FwDataPath, string ProductVersion, string? Status = null, string? HypothesisId = null, int Offset = 0, int Limit = 50);
+    string FwDataPath, string ProductVersion, string? Status = null, string? HypothesisId = null, string? Cursor = null, int Limit = 50)
+{
+    /// <summary>The rows to skip that <see cref="Cursor"/> names, or -1 when it is not a cursor this API issued. A method, so it is not a schema property.</summary>
+    public int CursorOffset() => SIL.Motif.Contract.Responses.ResultPaging.OffsetOrInvalid(Cursor);
+}
 
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>

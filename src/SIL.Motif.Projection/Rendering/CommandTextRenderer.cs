@@ -38,8 +38,8 @@ public static class CommandTextRenderer
         if (projection.Total is { } total && projection.Offset is { } offset)
         {
             sb.AppendLine($"Showing {offset + 1}-{offset + projection.Proposals.Count} of {total:N0}.");
-            if (projection.NextOffset is { } next)
-                sb.AppendLine("Next: " + (projection.NextStep ?? $"--offset {next} --limit {projection.Proposals.Count}"));
+            if (projection.NextCursor is { } next)
+                sb.AppendLine("Next: " + (projection.NextStep ?? $"--cursor {next} --limit {projection.Proposals.Count}"));
         }
         return sb.ToString();
     }
@@ -95,8 +95,8 @@ public static class CommandTextRenderer
             foreach (var row in records)
                 sb.AppendLine($"    {row.Path}  {row.Change}  {row.Kind}  {row.Record}  operations {row.Operations?.ToString() ?? "?"}  batchEdges {row.BatchEdges}" +
                     (row.Code is null ? "" : "  " + row.Code));
-            if (projection.NextOffset is { } nextRecord)
-                sb.AppendLine("  more records: " + (projection.NextStep ?? $"--offset {nextRecord} --limit {records.Count}") + ", or --all or --json for every record");
+            if (projection.NextCursor is { } nextRecord)
+                sb.AppendLine("  more records: " + (projection.NextStep ?? $"--cursor {nextRecord} --limit {records.Count}") + ", or --json for every record");
         }
         else
         {
@@ -121,9 +121,9 @@ public static class CommandTextRenderer
                 foreach (var current in op.Current ?? [])
                     sb.AppendLine($"      current:   {current.Field} {JsonSerializer.Serialize(current.Value)}");
         }
-        if (projection.NextOffset is { } nextOperation)
-            sb.AppendLine("  more operations: " + (projection.NextStep ?? $"--offset {nextOperation} --limit {projection.Operations.Count}") +
-                ", or --all or --json for every operation");
+        if (projection.NextCursor is { } nextOperation)
+            sb.AppendLine("  more operations: " + (projection.NextStep ?? $"--cursor {nextOperation} --limit {projection.Operations.Count}") +
+                ", or --json for every operation");
         }
         if (projection.CurrentUnavailable is not null)
             sb.AppendLine($"  currentUnavailable:  {projection.CurrentUnavailable}");

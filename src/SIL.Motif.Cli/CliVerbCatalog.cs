@@ -295,7 +295,7 @@ public static class CliVerbCatalog
             "Commands", "supersede", "supersede",
             new[] { "supersede --project <fwdata> <proposalId> <supersededByProposalId> [--json]" }),
         new CliVerbDescriptor(
-            "Commands", "show", "show", new[] { "show --project <fwdata> <proposalId|draftName> [--current | --records [--sort path|kind|batch-edges] [--refused]] [--limit <1-200>] [--offset <n> | --page <N> | --all] [--json]" }),
+            "Commands", "show", "show", new[] { "show --project <fwdata> <proposalId|draftName> [--current | --records [--sort path|kind|batch-edges] [--refused]] [--limit <1-200>] [--cursor <c>] [--json]" }),
         new CliVerbDescriptor(
             "Commands", "preflight", "preflight",
             new[] { "preflight --project <fwdata> <proposalId> [--json]" }),
@@ -334,7 +334,7 @@ public static class CliVerbCatalog
         new CliVerbDescriptor("Commands", "evidence show", "evidence show",
             new[] { "evidence show <subject> --project <fwdata> [--json]" }),
         new CliVerbDescriptor("Commands", "evidence list", "evidence list",
-            new[] { "evidence list --project <fwdata> [--tier <tier>] [--offset <n>] [--limit <n>] [--json]" }),
+            new[] { "evidence list --project <fwdata> [--tier <tier>] [--cursor <c>] [--limit <n>] [--json]" }),
         new CliVerbDescriptor("Commands", "evidence export", "evidence export",
             new[] { "evidence export --project <fwdata> [--out <path.json>] [--tier <tier>] [--page-size <n>] [--json]" }),
 
@@ -433,7 +433,7 @@ public static class CliVerbCatalog
                 "assess <project> [--texts <guid,guid>] [--all-wordforms] [--words <file>] " +
                 "[--retry-failed] [--retry-work-over <parser-work>] [--retry-source-assessment <id>] " +
                 "[--replaces <assessment-id>] [--full-object-timing] " +
-                "[--collect <name>[,<name>...]] [--time-limit-ms <ms>] [--parser-work-limit <work|unbounded>] [--max-seconds <seconds>] [--summary [--offset <n>] [--limit <n>]] [--no-background] [--json]",
+                "[--collect <name>[,<name>...]] [--time-limit-ms <ms>] [--parser-work-limit <work|unbounded>] [--max-seconds <seconds>] [--summary [--cursor <c>] [--limit <n>]] [--no-background] [--json]",
                 "The default per-word limit is 20,000,000 parser work.",
                 "--collect names the collectors for this run and wins over the project's .motif.toml collect, which wins over the built-in default; ParseTime is always collected.",
                 "Reaching the parser work limit is a stop at the work limit, the same on every computer. --time-limit-ms is the per-word limit (per-word-limit-ms in .motif.toml, perWordLimitMs in stored selections), only a safety net, in milliseconds on this computer; --max-seconds is the whole run's time budget.",
@@ -506,7 +506,7 @@ public static class CliVerbCatalog
         new CliVerbDescriptor("Commands", "proposal compare", "proposal compare",
             new[] { "proposal compare <proposalId> <proposalId> [<proposalId>...] --project <fwdata> [--at <digest>] [--job <jobId>]... [--page <N> --snapshot <token>] [--json]" }),
         new CliVerbDescriptor("Commands", "proposal trial delta", "proposal trial delta",
-            new[] { "proposal trial delta --project <fwdata> (--job <jobId> | --proposal <id>) [--classes lost,gained,changed,doubled,stopped-negative] [--group-by entry|slot] [--write-manifests <dir> [--alias-created true|false] [--keep-case]] [--expect-retired <file>] [--expect-added <file>] [--max-doubled <n>] [--max-doubled-frac <0-1>] [--write-receipt <file>] [--limit <1-200>] [--offset <n> | --page <N>] [--json]" }),
+            new[] { "proposal trial delta --project <fwdata> (--job <jobId> | --proposal <id>) [--classes lost,gained,changed,doubled,stopped-negative] [--group-by entry|slot] [--write-manifests <dir> [--alias-created true|false] [--keep-case]] [--expect-retired <file>] [--expect-added <file>] [--max-doubled <n>] [--max-doubled-frac <0-1>] [--write-receipt <file>] [--limit <1-200>] [--cursor <cursor>] [--json]" }),
         new CliVerbDescriptor("Commands", "proposal trial export", "proposal trial export",
             new[] { "proposal trial export <jobId> --project <fwdata> [--at <digest>] [--page <N>] [--json]" }),
         new CliVerbDescriptor("Commands", "proposal trial", "proposal trial",
@@ -514,7 +514,7 @@ public static class CliVerbCatalog
                 "proposal trial --project <fwdata> <proposalId> --latest [--json]" }),
         new CliVerbDescriptor(
             "Project", "warnings", "warnings",
-            new[] { "warnings --project <fwdata> [--proposal <id>] [--kind <code>] [--left-out] [--limit <1-200>] [--offset <n> | --page <N> | --all] [--json]" }),
+            new[] { "warnings --project <fwdata> [--proposal <id>] [--kind <code>] [--left-out] [--limit <1-200>] [--cursor <c>] [--json]" }),
         new CliVerbDescriptor(
             "Project", "difference", "difference produce",
             new[] { "difference produce --project <fwdata> --proposal <id> --text <guid> [--job <id>] [--reference human|source-validated] [--json]" }),
@@ -524,18 +524,18 @@ public static class CliVerbCatalog
             {
                 "difference show --project <fwdata> (--proposal <id> [--text <guid>] [--reference human|source-validated] | " +
                 "--difference <id>) [--could-be-bad] " +
-                "[--bucket <code>] [--limitation <code>] [--before <state>] [--after <state>] [--offset <n>] [--limit <n>] " +
+                "[--bucket <code>] [--limitation <code>] [--before <state>] [--after <state>] [--cursor <c>] [--limit <n>] " +
                 "[--word <word> [--occurrence-offset <n>] [--occurrence-limit <n>]] [--json]",
             }),
         new CliVerbDescriptor(
             "Project", "grammar", "grammar check",
-            new[] { "grammar check --project <fwdata> [--stored-analyses budget|all|off] [--limit <1-200>] [--offset <n> | --page <N> | --all] [--json]" }),
+            new[] { "grammar check --project <fwdata> [--stored-analyses budget|all|off] [--limit <1-200>] [--cursor <c>] [--json]" }),
         new CliVerbDescriptor(
             "Project", "grammar", "grammar read",
             new[]
             {
                 "grammar read --project <fwdata> --kind <phoneme|natural_class|environment|part_of_speech|inflection_feature|lexical_entry|phonological_rule|affix_template> " +
-                "[--id <canonicalId> | --query <text> | --exact <form>] [--morph-type <name>[,<name>]] [--at baseline|<proposalId>] [--limit <1-100>] [--offset <n> | --page <N>] [--json]",
+                "[--id <canonicalId> | --query <text> | --exact <form>] [--morph-type <name>[,<name>]] [--at baseline|<proposalId>] [--limit <1-100>] [--cursor <c>] [--json]",
             }),
         new CliVerbDescriptor(
             "Project", "lexicon", "lexicon find",
@@ -545,7 +545,7 @@ public static class CliVerbCatalog
                 "[--environment <text>] [--stem-name <name|id>] [--used-by <slot|template>] [--detail] " +
                 "[--morph-type <name>[,<name>]] [--affix [true|false]] [--category <name|id>] [--headword <prefix>] [--headword-contains <text>] " +
                 "[--has-gloss [true|false]] [--id-format canonical|guid] [--at baseline|<proposalId>] [--limit <1-200>] " +
-                "[--offset <n> | --page <N> | --all] [--json]",
+                "[--cursor <c>] [--json]",
                 "lexicon find --project <fwdata> --batch <file|-> [--at baseline|<proposalId>]",
                 "A batch file holds one JSON object per line, keyed by the flag names above (\"form-regex\", \"suffix\", \"class\", \"limit\"...); the Baseline is opened once and each line answers as one JSON line.",
             }),
@@ -735,7 +735,7 @@ public static class CliVerbCatalog
         new CliVerbDescriptor("Commands", "proposal", "proposal picture show",
             new[] { "proposal picture show <proposalId> [<pictureId> --out <path>] --project <fwdata> [--json]" }),
         new CliVerbDescriptor("Commands", "list", "list requests",
-            new[] { "list requests --project <fwdata> [--status open|answered] [--offset <n>] [--limit <n>] [--json]" }),
+            new[] { "list requests --project <fwdata> [--status open|answered] [--cursor <c>] [--limit <n>] [--json]" }),
         new CliVerbDescriptor("Commands", "hypothesis", "hypothesis add",
             new[] { "hypothesis add --project <fwdata> --file <hypothesis.json> [--json]" }),
         new CliVerbDescriptor("Commands", "hypothesis", "hypothesis test",
@@ -765,7 +765,7 @@ public static class CliVerbCatalog
         new CliVerbDescriptor("Commands", "hypothesis", "hypothesis report",
             new[] { "hypothesis report --project <fwdata> --kind decisions|questions [--json]" }),
         new CliVerbDescriptor("Commands", "list", "list hypotheses",
-            new[] { "list hypotheses --project <fwdata> [--id <H-n> | --status proposed|passed|failed|superseded] [--offset <n>] [--limit <n>] [--json]" }),
+            new[] { "list hypotheses --project <fwdata> [--id <H-n> | --status proposed|passed|failed|superseded] [--cursor <c>] [--limit <n>] [--json]" }),
         new CliVerbDescriptor("Commands", "wordform", "wordform dispose",
             new[] { "wordform dispose <form>... --project <fwdata> --as name|loan|other-language|abbreviation|numeral|non-word|misspelling " +
                 "--evidence <text> [--intended <form>] [--replace] [--by <name>] [--json]" }),

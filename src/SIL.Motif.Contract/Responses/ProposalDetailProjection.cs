@@ -183,17 +183,17 @@ public sealed record ProposalDetailProjection(
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? OperationOffset { get; init; }
 
-    /// <summary>The offset that starts the next page of operations; null at the end or when this is not a page.</summary>
+    /// <summary>The cursor that starts the next page of operations; null at the end or when this is not a page.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public int? NextOffset { get; init; }
+    public string? NextCursor { get; init; }
 
     /// <summary>The command that reads the next page with the caller's own flags; null at the end or when not set.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? NextStep { get; init; }
 
-    /// <summary>This page with the command for the next one, built from its offset; unchanged at the end.</summary>
-    public ProposalDetailProjection WithNextStep(System.Func<int, string> step) =>
-        NextOffset is { } next ? this with { NextStep = step(next) } : this;
+    /// <summary>This page with the command for the next one, built from its cursor; unchanged at the end.</summary>
+    public ProposalDetailProjection WithNextStep(System.Func<string, string> step) =>
+        NextCursor is { } next ? this with { NextStep = step(next) } : this;
 
     /// <summary>Every operation, with <see cref="OperationTotal"/> set so a reader can check the list against the count.</summary>
     public ProposalDetailProjection WithTotal() =>
@@ -208,7 +208,7 @@ public sealed record ProposalDetailProjection(
             return this with
             {
                 Records = rows, RecordTotal = Records.Count, OperationOffset = offset,
-                NextOffset = ResultPaging.NextOffset(offset, rows.Count, Records.Count),
+                NextCursor = ResultPaging.NextCursor(offset, rows.Count, Records.Count),
             };
         }
         var page = ResultPaging.Window(Operations, offset, limit);
@@ -216,7 +216,7 @@ public sealed record ProposalDetailProjection(
         {
             Operations = page, OperationTotal = Operations.Count, OperationOffset = offset,
             OperationsTruncated = page.Count < Operations.Count ? true : null,
-            NextOffset = ResultPaging.NextOffset(offset, page.Count, Operations.Count),
+            NextCursor = ResultPaging.NextCursor(offset, page.Count, Operations.Count),
         };
     }
 }

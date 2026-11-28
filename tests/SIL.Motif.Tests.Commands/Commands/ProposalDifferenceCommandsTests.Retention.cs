@@ -34,7 +34,7 @@ public sealed partial class ProposalDifferenceCommandsTests
         Assert.False(read.Value!.WordDetailKept);
         Assert.Empty(read.Value.Words);
         Assert.Equal(0, read.Value.MatchingWords);
-        Assert.Null(read.Value.NextOffset);
+        Assert.Null(read.Value.NextCursor);
         Assert.Equal(Json(produced), Json(read.Value.Summary));
     }
 
@@ -111,7 +111,7 @@ public sealed partial class ProposalDifferenceCommandsTests
         ProposalDifferenceCommands.Produce(fixture.ProduceRequest());
         new ProposalRepository(fixture.Database).SetStatus(CanonicalId.Parse(fixture.ProposalId), "withdrawn", null);
 
-        var read = ProposalDifferenceCommands.Show(fixture.ShowRequest() with { CouldBeBad = true, Offset = 5, Limit = 10 });
+        var read = ProposalDifferenceCommands.Show(fixture.ShowRequest() with { CouldBeBad = true, Cursor = SIL.Motif.Contract.Responses.ResultPaging.Cursor(5), Limit = 10 });
 
         Assert.True(read.Succeeded, read.Refusal?.Message);
         Assert.False(read.Value!.WordDetailKept);

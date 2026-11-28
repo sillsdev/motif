@@ -62,17 +62,17 @@ public sealed class GrammarLookupTests(PristineProjectFixture pristine) : IDispo
     }
 
     [Fact]
-    public void PagesCarryTheTotalAndANextOffsetUntilTheLastPage()
+    public void PagesCarryTheTotalAndANextCursorUntilTheLastPage()
     {
         AddCategories("A1", "B1", "C1");
 
         var first = GrammarReader.Page(GrammarReader.Read(_cache, "categories", null, false), 0, 2);
         Assert.Equal(2, first["returned"]!.GetValue<int>());
-        Assert.Equal(2, first["nextOffset"]!.GetValue<int>());
+        Assert.Equal(SIL.Motif.Contract.Responses.ResultPaging.Cursor(2), first["nextCursor"]!.GetValue<string>());
         Assert.True(first["total"]!.GetValue<int>() >= 3);
         var last = GrammarReader.Page(GrammarReader.Read(_cache, "categories", null, false), first["total"]!.GetValue<int>() - 1, 2);
         Assert.Equal(1, last["returned"]!.GetValue<int>());
-        Assert.False(last.ContainsKey("nextOffset"));
+        Assert.False(last.ContainsKey("nextCursor"));
     }
 
     [Fact]
@@ -87,8 +87,8 @@ public sealed class GrammarLookupTests(PristineProjectFixture pristine) : IDispo
         {
             var page = GrammarReader.Page(GrammarReader.Read(_cache, "categories", null, false), offset, 2);
             paged.AddRange(Names(page, keepOrder: true));
-            if (page["nextOffset"] is not { } next) break;
-            offset = next.GetValue<int>();
+            if (page["nextCursor"] is not { } next) break;
+            Assert.True(SIL.Motif.Contract.Responses.ResultPaging.TryOffset(next.GetValue<string>(), out offset));
         }
 
         Assert.Equal(expected, paged);

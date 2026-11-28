@@ -39,7 +39,7 @@ internal static class HypothesisRenderer
     {
         if (response.Hypotheses.Count == 0) return $"No hypotheses.{Environment.NewLine}";
         var text = new StringBuilder();
-        text.AppendLine($"Hypotheses {response.Offset + 1}-{response.Offset + response.Hypotheses.Count} of {response.Total}:");
+        text.AppendLine($"Hypotheses {response.Hypotheses.Count} of {response.Total}:");
         foreach (var h in response.Hypotheses)
             text.AppendLine($"  {h.HypothesisId}  {h.Status}  {h.Change}{Condition(h.Environment, h.HostClass, h.Slot)}  {h.Statement}");
         return text.ToString();

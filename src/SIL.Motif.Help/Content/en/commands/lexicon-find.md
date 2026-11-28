@@ -15,7 +15,7 @@ Filters combine, and every text comparison ignores case and Unicode normalizatio
 
 `--id-format canonical|guid` spells every id in the result as a canonical id (the default, the form a Proposal's intent names) or as a hyphenated guid (the form the project file stores). Both spellings are accepted by `--class` and `--category`.
 
-Pages hold 25 entries by default and at most 200; page with `--offset`, `--page` or `--limit`, or give `--all` for every match. `nextOffset` in the JSON result and the `# Next:` line name the next page.
+Pages hold 25 entries by default and at most 200; page with `--cursor` and `--limit`. `nextCursor` in the JSON result and the `# Next:` line name the next page.
 
 For many small questions, give `--batch <file|->`: one JSON object per line, keyed by the flag names (`"form-regex"`, `"suffix"`, `"class"`, `"limit"`, ...). The Baseline is opened once and each line is answered, in order, by one JSON line holding `query` and either `result` or `refusal`; a line that is not a JSON object or names an unknown key gets its own refusal and the batch goes on. `--batch -` reads standard input as UTF-8. Opening the Baseline is the cost of a call, so a batch of 200 questions costs about one.
 

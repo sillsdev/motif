@@ -200,19 +200,19 @@ public sealed class GrammarReadLookupTests(PristineProjectFixture pristine) : ID
         var root = first.RootElement;
         Assert.Equal(8, root.GetProperty("total").GetInt32());
         Assert.Equal(4, root.GetProperty("returned").GetInt32());
-        Assert.Equal(4, root.GetProperty("nextOffset").GetInt32());
+        Assert.Equal(SIL.Motif.Contract.Responses.ResultPaging.Cursor(4), root.GetProperty("nextCursor").GetString());
 
-        using var last = Read(project.FwDataPath, "lexical_entry", "--limit", "4", "--offset", "4");
+        using var last = Read(project.FwDataPath, "lexical_entry", "--limit", "4", "--cursor", SIL.Motif.Contract.Responses.ResultPaging.Cursor(4));
         Assert.Equal(4, last.RootElement.GetProperty("returned").GetInt32());
-        Assert.False(last.RootElement.TryGetProperty("nextOffset", out _));
+        Assert.False(last.RootElement.TryGetProperty("nextCursor", out _));
 
         using var defaults = Read(project.FwDataPath, "lexical_entry");
         Assert.Equal(25, defaults.RootElement.GetProperty("limit").GetInt32());
-        Assert.False(defaults.RootElement.TryGetProperty("nextOffset", out _));
+        Assert.False(defaults.RootElement.TryGetProperty("nextCursor", out _));
     }
 
     [Fact]
-    public void TextOutputNamesTheNextOffsetAndTheTotalWhenTheLastPageIsNotShown()
+    public void TextOutputNamesTheNextCursorAndTheTotalWhenTheLastPageIsNotShown()
     {
         using var project = CaptureProject();
 
@@ -220,28 +220,24 @@ public sealed class GrammarReadLookupTests(PristineProjectFixture pristine) : ID
             "grammar", "read", "--project", project.FwDataPath, "--kind", "lexical_entry", "--limit", "3");
         Assert.True(text.ExitCode == 0, text.Error);
         Assert.Contains("(3 of 8;", text.Output, StringComparison.Ordinal);
-        Assert.Contains("Next page: --offset 3 --limit 3", text.Output, StringComparison.Ordinal);
+        Assert.Contains("Next page: --cursor " + SIL.Motif.Contract.Responses.ResultPaging.Cursor(3) + " --limit 3", text.Output, StringComparison.Ordinal);
 
         var every = CliInProcess.Run(_root, null, developerCommands: true,
-            "grammar", "read", "--project", project.FwDataPath, "--kind", "lexical_entry", "--limit", "3", "--offset", "6");
+            "grammar", "read", "--project", project.FwDataPath, "--kind", "lexical_entry", "--limit", "3", "--cursor", SIL.Motif.Contract.Responses.ResultPaging.Cursor(6));
         Assert.DoesNotContain("Next page", every.Output, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void PageNumberIsAnotherWayToStateTheOffsetAndConflictsWithIt()
+    public void ACursorTheApiDidNotIssueIsRefused()
     {
         using var project = CaptureProject();
 
-        using var second = Read(project.FwDataPath, "lexical_entry", "--limit", "3", "--page", "2");
-        Assert.Equal(3, second.RootElement.GetProperty("offset").GetInt32());
-        Assert.Equal(6, second.RootElement.GetProperty("nextOffset").GetInt32());
-
-        var both = CliInProcess.Run(_root, null, developerCommands: true,
-            "grammar", "read", "--project", project.FwDataPath, "--kind", "lexical_entry", "--page", "2", "--offset", "3");
-        Assert.NotEqual(0, both.ExitCode);
-        var zero = CliInProcess.Run(_root, null, developerCommands: true,
-            "grammar", "read", "--project", project.FwDataPath, "--kind", "lexical_entry", "--page", "0");
-        Assert.NotEqual(0, zero.ExitCode);
+        var bad = CliInProcess.Run(_root, null, developerCommands: true,
+            "grammar", "read", "--project", project.FwDataPath, "--kind", "lexical_entry", "--cursor", "3");
+        Assert.NotEqual(0, bad.ExitCode);
+        var page = CliInProcess.Run(_root, null, developerCommands: true,
+            "grammar", "read", "--project", project.FwDataPath, "--kind", "lexical_entry", "--page", "2");
+        Assert.NotEqual(0, page.ExitCode);
     }
 
     [Fact]
@@ -315,12 +311,12 @@ public sealed class GrammarReadLookupTests(PristineProjectFixture pristine) : ID
         Assert.True(expected.Length >= 6);
 
         var paged = new List<string>();
-        int? offset = 0;
-        while (offset is { } next)
+        string? cursor = SIL.Motif.Contract.Responses.ResultPaging.Cursor(0);
+        while (cursor is { } next)
         {
-            using var page = Read(project.FwDataPath, "lexical_entry", "--limit", "2", "--offset", next.ToString());
+            using var page = Read(project.FwDataPath, "lexical_entry", "--limit", "2", "--cursor", next);
             paged.AddRange(page.RootElement.GetProperty("items").EnumerateArray().Select(item => item.GetProperty("id").GetString()!));
-            offset = page.RootElement.TryGetProperty("nextOffset", out var token) ? token.GetInt32() : null;
+            cursor = page.RootElement.TryGetProperty("nextCursor", out var token) ? token.GetString() : null;
         }
 
         Assert.Equal(expected, paged);
@@ -347,7 +343,7 @@ public sealed class GrammarReadLookupTests(PristineProjectFixture pristine) : ID
         Assert.Equal(["Zeta", "Alpha"], first.Select(item => item.GetProperty("name").GetString()!).ToArray());
         Assert.Equal([1, 2], first.Select(item => item.GetProperty("position").GetInt32()).ToArray());
 
-        using var rest = Read(project.FwDataPath, "phonological_rule", "--limit", "2", "--offset", "2");
+        using var rest = Read(project.FwDataPath, "phonological_rule", "--limit", "2", "--cursor", SIL.Motif.Contract.Responses.ResultPaging.Cursor(2));
         var last = Assert.Single(rest.RootElement.GetProperty("items").EnumerateArray());
         Assert.Equal("Mid", last.GetProperty("name").GetString());
         Assert.Equal(3, last.GetProperty("position").GetInt32());

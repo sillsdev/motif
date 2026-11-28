@@ -1478,8 +1478,8 @@ public static class CommandTextRenderer
                 (word["reading"] is { } reading ? " (" + reading + ")" : string.Empty) +
                 (word["stoppedBy"] is { } stoppedBy ? ", stopped by " + stoppedBy : string.Empty));
         text.AppendLine("Parser work comparison unavailable: no paired Assessment was selected.");
-        if (page["nextOffset"] is { } next)
-            text.AppendLine($"More: motif assess <project> --summary --offset {next}");
+        if (page["nextCursor"] is { } next)
+            text.AppendLine($"More: motif assess <project> --summary --cursor {next}");
         return new CommandResult(0, text.ToString());
     }
 
@@ -2003,7 +2003,7 @@ public static class CommandTextRenderer
             foreach (var item in word.Evidence!)
                 text.AppendLine($"    {word.Word}: source-validated {item.Tier} for {item.Level} {item.Subject}" +
                     (item.Agent is null ? "" : $" ({item.Agent} {item.Opinion}, not a person)"));
-        if (response.NextOffset is { } next) text.AppendLine($"  More: --offset {next}");
+        if (response.NextCursor is { } next) text.AppendLine($"  More: --cursor {next}");
         if (response.Occurrences is { } places)
         {
             text.AppendLine(places.PlacesListed < places.Total
@@ -2099,7 +2099,7 @@ public static class CommandTextRenderer
                     text.AppendLine($"    Spelling candidates; not confirmed uses of the phoneme: {WordList(spelled)}");
             }
         }
-        AppendFindingsPage(text, response.FindingsOffset, response.Findings.Count, response.FindingsTotal, response.NextOffset, response.NextStep);
+        AppendFindingsPage(text, response.FindingsOffset, response.Findings.Count, response.FindingsTotal, response.NextCursor, response.NextStep);
         return text.ToString();
     }
 
@@ -2111,14 +2111,14 @@ public static class CommandTextRenderer
             text.AppendLine($"  and {kinds - KindRowLimit:N0} more finding codes; --json lists every one.");
     }
 
-    private static void AppendFindingsPage(StringBuilder text, int? offset, int shown, int? total, int? next, string? step)
+    private static void AppendFindingsPage(StringBuilder text, int? offset, int shown, int? total, string? next, string? step)
     {
         if (offset is not { } from || total is not { } all) return;
         text.AppendLine(shown == 0
             ? $"No findings at offset {from} of {all:N0}."
             : $"Showing findings {from + 1:N0}-{from + shown:N0} of {all:N0}.");
         if (next is { } following)
-            text.AppendLine($"Next: {step ?? $"--offset {following} --limit {shown}"}, or --all for every finding.");
+            text.AppendLine($"Next: {step ?? $"--cursor {following} --limit {shown}"}.");
     }
 
     private static string TouchedLine(WarningWordsTouched touched) => touched.IsComplete
@@ -2201,7 +2201,7 @@ public static class CommandTextRenderer
         AppendMoreKinds(text, response.Summary.Count);
         foreach (var finding in response.Findings)
             text.AppendLine($"  {finding.Text}");
-        AppendFindingsPage(text, response.FindingsOffset, response.Findings.Count, response.FindingsTotal, response.NextOffset, response.NextStep);
+        AppendFindingsPage(text, response.FindingsOffset, response.Findings.Count, response.FindingsTotal, response.NextCursor, response.NextStep);
         return text.ToString();
     }
 

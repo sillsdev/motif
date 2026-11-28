@@ -61,7 +61,7 @@ public sealed partial class ProposalDifferenceCommandsTests
         var offsets = Enumerable.Range(0, ProposalDifferenceListing.MostWordsPerGroup / 200 + 1).Select(page => page * 200);
         var stored = offsets.SelectMany(offset => ProposalDifferenceCommands.Show(fixture.ShowRequest() with
         {
-            BeforeState = "no-parse", AfterState = "approved-unique", Limit = 200, Offset = offset,
+            BeforeState = "no-parse", AfterState = "approved-unique", Limit = 200, Cursor = SIL.Motif.Contract.Responses.ResultPaging.Cursor(offset),
         }).Value!.Words).Select(word => word.Word).ToArray();
         Assert.Equal(expected, stored);
         // A word that is listed keeps every one of its places.
@@ -234,9 +234,9 @@ public sealed partial class ProposalDifferenceCommandsTests
         var words = new List<string>();
         for (var offset = 0; ; offset += 200)
         {
-            var page = ProposalDifferenceCommands.Show(fixture.ShowRequest() with { DifferenceId = differenceId, Limit = 200, Offset = offset });
+            var page = ProposalDifferenceCommands.Show(fixture.ShowRequest() with { DifferenceId = differenceId, Limit = 200, Cursor = SIL.Motif.Contract.Responses.ResultPaging.Cursor(offset) });
             words.AddRange(page.Value!.Words.Select(word => word.Word));
-            if (page.Value.NextOffset is null) return [.. words];
+            if (page.Value.NextCursor is null) return [.. words];
         }
     }
 }

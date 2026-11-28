@@ -210,9 +210,9 @@ public static class ProposalDifferenceCommands
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        if (request.Offset < 0 || request.Limit is < 1 or > 200)
+        if (request.CursorOffset() < 0 || request.Limit is < 1 or > 200)
             return Refuse("difference.invalid-page", FailureReason.InvalidArgument,
-                "Offset must be zero or more and limit between 1 and 200.");
+                "The cursor must be the nextCursor a previous page returned and the limit between 1 and 200.");
         ProposalDifferenceBucket? bucket = null;
         if (request.Bucket is not null)
         {
@@ -286,7 +286,7 @@ public static class ProposalDifferenceCommands
                     .Where(item => (textFilter is null || item.TextId == textFilter) &&
                         (request.Reference is null || item.Reference == request.Reference)).ToArray());
             return Show(database, id, new ProposalDifferenceFilter(request.CouldBeBad, bucket,
-                request.BeforeState, request.AfterState, limitation, word), request.Offset, request.Limit,
+                request.BeforeState, request.AfterState, limitation, word), request.CursorOffset(), request.Limit,
                 word is null ? null : new ProposalDifferenceOccurrenceRequest(word,
                     request.OccurrenceOffset ?? 0, request.OccurrenceLimit ?? 25), cancellationToken);
         });
@@ -320,7 +320,7 @@ public static class ProposalDifferenceCommands
             cancellationToken);
         if (page is null)
             return Refuse("difference.none", FailureReason.NotFound, "There is no Difference with that id.");
-        var next = offset + page.Words.Count < page.Matching ? offset + page.Words.Count : (int?)null;
+        var next = ResultPaging.NextCursor(offset, page.Words.Count, page.Matching);
         var words = page.Words;
         IReadOnlyList<ProposalDifferenceUnreadableEvidence>? unreadable = null;
         if (page.Saved.Summary.Reference == ProposalDifferenceReferences.SourceValidated && words.Count > 0)

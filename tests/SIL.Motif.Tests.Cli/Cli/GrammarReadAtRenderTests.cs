@@ -11,7 +11,7 @@ public sealed class GrammarReadAtRenderTests
     [Fact]
     public void AReadAtAProposalNamesTheTrialCopyAndNeverCallsItTheCurrentBaseline()
     {
-        var response = new GrammarReadResponse(GrammarReadKind.lexical_entry, 0, 0, 25, [])
+        var response = new GrammarReadResponse(GrammarReadKind.lexical_entry, 0, 25, [])
         {
             At = "proposal AaHnUob1K5UlJwJZtEhh_w",
             AtLabel = "the grammar the latest Trial of this Proposal ran against (Trial job job-7), not the Baseline",

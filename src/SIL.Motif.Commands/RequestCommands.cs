@@ -88,17 +88,18 @@ public static class RequestCommands
         if (request.Status is not (null or RequestStatuses.Open or RequestStatuses.Answered))
             return Refused<RequestListResponse>(RefusalCodes.RequestInvalid, FailureReason.InvalidArgument,
                 "The status must be 'open' or 'answered'; leave it out for both.");
-        if (request.Offset < 0 || request.Limit is < 1 or > 200)
+        if (request.CursorOffset() < 0 || request.Limit is < 1 or > 200)
             return Refused<RequestListResponse>(RefusalCodes.RequestInvalid, FailureReason.InvalidArgument,
-                "The offset cannot be negative and the limit must be from 1 to 200.");
+                "The cursor must be the nextCursor a previous page returned and the limit from 1 to 200.");
         return ProjectStoreCommand.ReadExisting(request.FwDataPath,
-            CommandOutcome<RequestListResponse>.Success(new([], 0, request.Offset, 0, NoteNotice)),
+            CommandOutcome<RequestListResponse>.Success(new([], 0, 0, NoteNotice)),
             (database, _) =>
         {
             var repository = new RequestRepository(database);
-            var (page, total) = repository.List(request.Status, request.Offset, request.Limit);
+            var (page, total) = repository.List(request.Status, request.CursorOffset(), request.Limit);
             return CommandOutcome<RequestListResponse>.Success(new RequestListResponse(
-                page.Select(Item).ToArray(), total, request.Offset, repository.OpenCount(), NoteNotice));
+                page.Select(Item).ToArray(), total, repository.OpenCount(), NoteNotice,
+                ResultPaging.NextCursor(request.CursorOffset(), page.Count, total)));
         });
     }
 

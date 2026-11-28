@@ -45,12 +45,12 @@ public static partial class ProposalCommands
             return CommandOutcome<DecisionEvidenceListResponse>.Refused(new Refusal(
                 "evidence.unknown-tier", FailureReason.InvalidArgument,
                 $"'{request.Tier}' is not a tier. Use one of: {string.Join(", ", DecisionEvidence.Tiers)}."));
-        if (request.Offset < 0 || request.Limit < 1 || request.Limit > 500)
+        if (request.CursorOffset() < 0 || request.Limit < 1 || request.Limit > 500)
             return CommandOutcome<DecisionEvidenceListResponse>.Refused(new Refusal(
                 "evidence.invalid-page", FailureReason.InvalidArgument,
-                "The offset must be at least 0 and the limit between 1 and 500."));
+                "The cursor must be the nextCursor a previous page returned and the limit between 1 and 500."));
         return ProjectStoreCommand.ReadExisting(request.FwDataPath,
-            CommandOutcome<DecisionEvidenceListResponse>.Success(new(0, 0, new Dictionary<string, int>(), request.Offset, request.Limit, [])),
+            CommandOutcome<DecisionEvidenceListResponse>.Success(new(0, 0, new Dictionary<string, int>(), request.Limit, [])),
             (database, locator) =>
         {
             try
@@ -60,8 +60,9 @@ public static partial class ProposalCommands
                 var counts = matching.GroupBy(row => row.Tier).OrderBy(group => group.Key, StringComparer.Ordinal)
                     .ToDictionary(group => group.Key, group => group.Count());
                 return CommandOutcome<DecisionEvidenceListResponse>.Success(new DecisionEvidenceListResponse(
-                    applied, matching.Length, counts, request.Offset, request.Limit,
-                    matching.Skip(request.Offset).Take(request.Limit).ToArray()));
+                    applied, matching.Length, counts, request.Limit,
+                    matching.Skip(request.CursorOffset()).Take(request.Limit).ToArray(),
+                    ResultPaging.NextCursor(request.CursorOffset(), Math.Min(request.Limit, Math.Max(0, matching.Length - request.CursorOffset())), matching.Length)));
             }
             catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
             {

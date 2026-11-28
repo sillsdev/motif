@@ -10,7 +10,7 @@ internal static class RequestRenderer
         if (response.Requests.Count == 0)
             return $"No Requests.{Environment.NewLine}";
         var text = new StringBuilder();
-        text.AppendLine($"Requests {response.Offset + 1}-{response.Offset + response.Requests.Count} of {response.Total} " +
+        text.AppendLine($"Requests {response.Requests.Count} of {response.Total} " +
             $"({response.OpenCount} open):");
         foreach (var request in response.Requests)
         {

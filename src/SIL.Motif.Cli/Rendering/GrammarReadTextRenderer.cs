@@ -13,7 +13,7 @@ internal static class GrammarReadTextRenderer
     public static string Render(GrammarReadResponse response)
     {
         var text = new StringBuilder();
-        text.AppendLine($"Grammar objects: {response.Kind} ({response.Returned} of {response.Total}; offset {response.Offset}, limit {response.Limit})");
+        text.AppendLine($"Grammar objects: {response.Kind} ({response.Returned} of {response.Total}; limit {response.Limit})");
         if (response.AtLabel is null)
             text.AppendLine(response.Baseline is { } baseline
                 ? $"Baseline: {baseline.ProjectIdentity}; {(response.IsStale ? "saved since capture" : "current")}; " +
@@ -26,8 +26,8 @@ internal static class GrammarReadTextRenderer
         AppendOverflow(text, response.Items.Count);
         if (response.Items.Count == 0) text.AppendLine("No matching objects.");
         var shown = Math.Min(response.Items.Count, TextListLimit);
-        if (response.Offset + shown < response.Total)
-            text.AppendLine($"Next page: --offset {response.Offset + shown} --limit {response.Limit}");
+        if (response.NextCursor is { } next)
+            text.AppendLine($"Next page: --cursor {next} --limit {response.Limit}");
         return text.ToString();
     }
 

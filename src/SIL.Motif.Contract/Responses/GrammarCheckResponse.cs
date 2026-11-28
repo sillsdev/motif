@@ -72,17 +72,17 @@ public sealed record GrammarCheckResponse(IReadOnlyList<GrammarWarning> Findings
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? FindingsOffset { get; init; }
 
-    /// <summary>The offset that starts the next page of findings; null at the end or when this is not a page.</summary>
+    /// <summary>The cursor that starts the next page of findings; null at the end or when this is not a page.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public int? NextOffset { get; init; }
+    public string? NextCursor { get; init; }
 
     /// <summary>The command that reads the next page with the caller's own flags; null at the end or when not set.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? NextStep { get; init; }
 
-    /// <summary>This page with the command for the next one, built from its offset; unchanged at the end.</summary>
-    public GrammarCheckResponse WithNextStep(System.Func<int, string> step) =>
-        NextOffset is { } next ? this with { NextStep = step(next) } : this;
+    /// <summary>This page with the command for the next one, built from its cursor; unchanged at the end.</summary>
+    public GrammarCheckResponse WithNextStep(System.Func<string, string> step) =>
+        NextCursor is { } next ? this with { NextStep = step(next) } : this;
 
     /// <summary>One page of the findings, keeping the per-level totals of all of them.</summary>
     public GrammarCheckResponse Window(int offset, int limit)
@@ -95,7 +95,7 @@ public sealed record GrammarCheckResponse(IReadOnlyList<GrammarWarning> Findings
             ErrorTotal = Findings.Count(finding => finding.Severity == GrammarDiagnosticLevel.Error),
             WarningTotal = Findings.Count(finding => finding.Severity == GrammarDiagnosticLevel.Warning),
             InformationTotal = Findings.Count(finding => finding.Severity == GrammarDiagnosticLevel.Information),
-            NextOffset = ResultPaging.NextOffset(offset, page.Count, ordered.Count),
+            NextCursor = ResultPaging.NextCursor(offset, page.Count, ordered.Count),
         };
     }
 }

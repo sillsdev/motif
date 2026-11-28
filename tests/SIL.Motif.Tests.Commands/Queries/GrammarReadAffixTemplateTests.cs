@@ -141,7 +141,7 @@ public sealed class GrammarReadAffixTemplateTests(PristineProjectFixture pristin
     }
 
     [Fact]
-    public void ATemplatePageFillsOnlyItsOwnTemplatesAndNamesTheNextOffset()
+    public void ATemplatePageFillsOnlyItsOwnTemplatesAndNamesTheNextCursor()
     {
         var seed = Seed();
         NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
@@ -154,11 +154,11 @@ public sealed class GrammarReadAffixTemplateTests(PristineProjectFixture pristin
 
         var first = GrammarReadProjectionBuilder.Build(_cache, new GrammarReadRequest("p", GrammarReadKind.affix_template, Limit: 1));
         Assert.Equal(2, first.Total);
-        Assert.Equal(1, first.NextOffset);
+        Assert.Equal(SIL.Motif.Contract.Responses.ResultPaging.Cursor(1), first.NextCursor);
         Assert.Equal("VerbFinite", Assert.IsType<GrammarAffixTemplateRead>(Assert.Single(first.Items)).Name);
         var next = GrammarReadProjectionBuilder.Build(_cache,
-            new GrammarReadRequest("p", GrammarReadKind.affix_template, Offset: 1, Limit: 1));
-        Assert.Null(next.NextOffset);
+            new GrammarReadRequest("p", GrammarReadKind.affix_template, Cursor: first.NextCursor, Limit: 1));
+        Assert.Null(next.NextCursor);
         var shared = Assert.IsType<GrammarAffixTemplateRead>(Assert.Single(next.Items));
         Assert.Equal("ZZSecond", shared.Name);
         Assert.Equal(Id(seed.Suffix), Assert.Single(Assert.Single(shared.SuffixSlots).Affixes).EntryId);

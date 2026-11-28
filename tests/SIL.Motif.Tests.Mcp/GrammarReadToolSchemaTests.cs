@@ -16,7 +16,7 @@ public sealed class GrammarReadToolSchemaTests
             .Select(value => value!.GetValue<string>()).ToArray();
 
         Assert.Equal(Enum.GetNames<GrammarReadKind>(), kindChoices);
-        var response = new GrammarReadResponse(GrammarReadKind.natural_class, 1, 0, 25,
+        var response = new GrammarReadResponse(GrammarReadKind.natural_class, 1, 25,
         [
             new GrammarNaturalClassRead("id", "Vowels", "V", "PhNCSegments", [], []),
         ]);

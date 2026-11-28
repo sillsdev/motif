@@ -166,7 +166,7 @@ public sealed class ImportFamiliesCliTests(PristineProjectFixture pristine) : ID
         Assert.True(listed.ExitCode == 0, listed.Error);
         Assert.Equal(proposalId, Assert.Single(JsonNode.Parse(listed.Output)!["proposals"]!.AsArray())!["proposalId"]!.GetValue<string>());
 
-        var shown = Run("show", proposalId, "--project", project, "--all", "--json");
+        var shown = Run("show", proposalId, "--project", project, "--json");
         Assert.True(shown.ExitCode == 0, shown.Error + shown.Output);
         var kinds = JsonNode.Parse(shown.Output)!["operations"]!.AsArray().Select(item => item!["kind"]!.GetValue<string>())
             .Order(StringComparer.Ordinal).ToArray();

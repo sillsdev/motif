@@ -400,7 +400,7 @@ public sealed class HypothesisCommandsTests(ITestOutputHelper output) : IDisposa
                 ["proposal/new"], "GDR-8", "Examples")).Succeeded),
             Time("show one", () => HypothesisCommands.List(new ListHypothesesRequest(Project, "1.0", HypothesisId: "H-5000")).Succeeded),
             Time("decide with guard", () => Decide("H-5000", "superseded", by: "H-1").Succeeded),
-            Time("page of fifty", () => HypothesisCommands.List(new ListHypothesesRequest(Project, "1.0", Limit: 50, Offset: 5000)).Succeeded),
+            Time("page of fifty", () => HypothesisCommands.List(new ListHypothesesRequest(Project, "1.0", Limit: 50, Cursor: SIL.Motif.Contract.Responses.ResultPaging.Cursor(5000))).Succeeded),
         };
         // Loose on purpose: the plans prove the seeks, so this only catches gross slowdown on a loaded runner.
         Assert.All(timings, ms => Assert.True(ms < 10_000, $"{ms} ms"));

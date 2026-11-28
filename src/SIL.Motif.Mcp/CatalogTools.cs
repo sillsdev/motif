@@ -145,6 +145,10 @@ internal static class CatalogTools
         var schema = Schema.Object(command.RequestType.GetProperties().Where(property => !IsContext(property.Name) && !IsInternal(property))
             .Select(property => (Schema.Snake(JsonNamingPolicy.CamelCase.ConvertName(property.Name)),
                 FieldSchema(property.PropertyType), Required(command.RequestType, property))).ToArray());
+        if (command.RequestType.GetProperty("Cursor") is { } cursorProperty &&
+            schema["properties"]?["cursor"] is JsonObject cursorSchema &&
+            RequestFieldDescription(command.RequestType, cursorProperty) is { } cursorDescription)
+            cursorSchema["description"] = cursorDescription;
         if (PageLimits.TryGetValue(command.RequestType, out var page) && schema["properties"]?["limit"] is JsonObject limit)
         {
             limit["minimum"] = page.Minimum;

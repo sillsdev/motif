@@ -288,20 +288,21 @@ public static class HypothesisCommands
         var status = request.Status?.Trim().ToLowerInvariant();
         if (request.HypothesisId is null && status is not null && !HypothesisStatuses.All.Contains(status))
             return Invalid<HypothesisListResponse>("The status must be proposed, passed, failed or superseded; leave it out for all.");
-        if (request.HypothesisId is null && (request.Offset < 0 || request.Limit is < 1 or > 200))
-            return Invalid<HypothesisListResponse>("The offset cannot be negative and the limit must be from 1 to 200.");
+        if (request.HypothesisId is null && (request.CursorOffset() < 0 || request.Limit is < 1 or > 200))
+            return Invalid<HypothesisListResponse>("The cursor must be the nextCursor a previous page returned and the limit from 1 to 200.");
         return ProjectStoreCommand.ReadExisting(request.FwDataPath,
-            request.HypothesisId is not null ? NotFound<HypothesisListResponse>(request.HypothesisId) : CommandOutcome<HypothesisListResponse>.Success(new([], 0, request.Offset)),
+            request.HypothesisId is not null ? NotFound<HypothesisListResponse>(request.HypothesisId) : CommandOutcome<HypothesisListResponse>.Success(new([], 0)),
             (database, _) =>
         {
             var ledger = new HypothesisRepository(database);
             if (request.HypothesisId is not null)
                 return ledger.Get(request.HypothesisId) is { } one
-                    ? CommandOutcome<HypothesisListResponse>.Success(new HypothesisListResponse([Item(ledger, one)], 1, 0))
+                    ? CommandOutcome<HypothesisListResponse>.Success(new HypothesisListResponse([Item(ledger, one)], 1))
                     : NotFound<HypothesisListResponse>(request.HypothesisId);
-            var (page, total) = ledger.List(status, request.Offset, request.Limit);
+            var (page, total) = ledger.List(status, request.CursorOffset(), request.Limit);
             return CommandOutcome<HypothesisListResponse>.Success(
-                new HypothesisListResponse(page.Select(h => Item(ledger, h)).ToList(), total, request.Offset));
+                new HypothesisListResponse(page.Select(h => Item(ledger, h)).ToList(), total,
+                    ResultPaging.NextCursor(request.CursorOffset(), page.Count, total)));
         });
     }
 

@@ -71,11 +71,11 @@ public sealed class DecisionEvidenceToolTests
                 ToolProfile.Load(ShippedProfile()), TextWriter.Null, advancedAiModeEnabled: true);
             var tools = MotifMcpServer.Expose(ToolProfile.Load(ShippedProfile()));
 
-            var page = await Call(context, tools, project, ("offset", 1), ("limit", 2));
+            var page = await Call(context, tools, project, ("cursor", SIL.Motif.Contract.Responses.ResultPaging.Cursor(1)), ("limit", 2));
             var filtered = await Call(context, tools, project, ("tier", "ill-formed"));
             var shown = await Call(context, tools, project, ("subject", subjects[1]));
 
-            AssertSameJson(ProposalCommands.EvidenceList(new EvidenceListRequest(project, "1.0", null, 1, 2)).Value!, page);
+            AssertSameJson(ProposalCommands.EvidenceList(new EvidenceListRequest(project, "1.0", null, SIL.Motif.Contract.Responses.ResultPaging.Cursor(1), 2)).Value!, page);
             Assert.Equal(5, page.GetProperty("total").GetInt32());
             Assert.Equal(2, page.GetProperty("rows").GetArrayLength());
             Assert.Equal(3, page.GetProperty("tierCounts").GetProperty("ill-formed").GetInt32());

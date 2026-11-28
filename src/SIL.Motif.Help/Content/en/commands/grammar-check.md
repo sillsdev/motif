@@ -65,4 +65,4 @@ When the Baseline has an Assessment (`motif assess`), `grammar check` also count
 
 ## Output size
 
-`grammar check` returns the first 10 findings. The counts and per-code rows always describe every finding; `findingsTotal`, `findingsOffset` and, when more remain, `nextOffset` say which page this is. `--limit <1-200>` sets the page size, `--offset <n>` or `--page <N>` picks the page, and `--all` returns every finding (MCP `all: true`). The findings are stored in full, so [`warnings`](cmd:warnings) pages the same list later without rerunning the check. An offset or limit outside that range is refused with `paging.invalid`.
+`grammar check` returns the first 10 findings. The counts and per-code rows always describe every finding; `findingsTotal`, `findingsOffset` and, when more remain, `nextCursor` say which page this is. `--limit <1-200>` sets the page size and `--cursor <nextCursor>` picks the page (MCP `cursor` and `limit`). The findings are stored in full, so [`warnings`](cmd:warnings) pages the same list later without rerunning the check. A cursor this command did not return, or a limit outside that range, is refused with `paging.invalid`.

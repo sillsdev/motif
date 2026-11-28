@@ -49,10 +49,11 @@ public static class GrammarReadProjectionBuilder
             ? filtered.OrderBy(item => ((GrammarPhonologicalRuleRead)item).Position)
             : filtered.OrderBy(SortKey, StringComparer.OrdinalIgnoreCase).ThenBy(item => item.Id, StringComparer.Ordinal);
         var matches = ordered.ToArray();
-        var items = matches.Skip(request.Offset).Take(request.Limit)
+        var items = matches.Skip(request.CursorOffset()).Take(request.Limit)
             .Select(item => item is GrammarAffixTemplateRead template ? FillTemplate(cache, template) : item).ToArray();
-        return new GrammarReadResponse(request.Kind, matches.Length, request.Offset, request.Limit, items)
+        return new GrammarReadResponse(request.Kind, matches.Length, request.Limit, items)
         {
+            NextCursor = ResultPaging.NextCursor(request.CursorOffset(), items.Length, matches.Length),
             ExactNote = string.IsNullOrWhiteSpace(request.MorphType) ? ExactNote(request.Exact, matches) : null,
         };
     }

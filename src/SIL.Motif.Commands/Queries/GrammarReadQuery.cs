@@ -42,8 +42,8 @@ public static class GrammarReadQuery
             return Invalid("A morph type filter applies to lexical entries only.");
         if (ValidateAt(request.At, out var proposalId) is { } badAt)
             return CommandOutcome<GrammarReadResponse>.Refused(badAt);
-        if (request.Offset is < 0 or > MaximumOffset)
-            return Invalid($"The offset must be between 0 and {MaximumOffset}.");
+        if (request.CursorOffset() is < 0 or > MaximumOffset)
+            return Invalid("The cursor must be the nextCursor a previous page returned.");
         if (request.Limit is < 1 or > MaximumPageSize)
             return Invalid($"The limit must be between 1 and {MaximumPageSize}.");
 

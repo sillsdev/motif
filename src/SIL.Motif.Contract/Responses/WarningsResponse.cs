@@ -52,17 +52,17 @@ public sealed record WarningsResponse(
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public int? FindingsOffset { get; init; }
 
-    /// <summary>The offset that starts the next page of findings; null at the end or when this is not a page.</summary>
+    /// <summary>The cursor that starts the next page of findings; null at the end or when this is not a page.</summary>
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    public int? NextOffset { get; init; }
+    public string? NextCursor { get; init; }
 
     /// <summary>The command that reads the next page with the caller's own flags; null at the end or when not set.</summary>
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public string? NextStep { get; init; }
 
-    /// <summary>This page with the command for the next one, built from its offset; unchanged at the end.</summary>
-    public WarningsResponse WithNextStep(System.Func<int, string> step) =>
-        NextOffset is { } next ? this with { NextStep = step(next) } : this;
+    /// <summary>This page with the command for the next one, built from its cursor; unchanged at the end.</summary>
+    public WarningsResponse WithNextStep(System.Func<string, string> step) =>
+        NextCursor is { } next ? this with { NextStep = step(next) } : this;
 
     /// <summary>
     /// One page of the findings. The counts, the per-code rows and the word attribution still describe all of them,
@@ -74,7 +74,7 @@ public sealed record WarningsResponse(
         return this with
         {
             Findings = page, FindingsTotal = Findings.Count, FindingsOffset = offset,
-            NextOffset = ResultPaging.NextOffset(offset, page.Count, Findings.Count),
+            NextCursor = ResultPaging.NextCursor(offset, page.Count, Findings.Count),
         };
     }
 }

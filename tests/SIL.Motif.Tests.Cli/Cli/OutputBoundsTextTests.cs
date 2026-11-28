@@ -14,7 +14,7 @@ public sealed class OutputBoundsTextTests
         new(level, "label", [], [], "finding " + index) { Code = "code-" + index };
 
     [Fact]
-    public void WarningsTextShowsOnePageWithTheTotalAndTheNextOffset()
+    public void WarningsTextShowsOnePageWithTheTotalAndTheNextCursor()
     {
         var findings = Enumerable.Range(0, 5000).Select(i => Finding(i)).ToArray();
         var response = new WarningsResponse(true, true, findings, [], 5000, 0).Window(0, 10);
@@ -23,7 +23,7 @@ public sealed class OutputBoundsTextTests
 
         Assert.Contains("Grammar findings: 5,000", text, StringComparison.Ordinal);
         Assert.Contains("Showing findings 1-10 of 5,000.", text, StringComparison.Ordinal);
-        Assert.Contains("Next: --offset 10 --limit 10, or --all for every finding.", text, StringComparison.Ordinal);
+        Assert.Contains("Next: --cursor " + SIL.Motif.Contract.Responses.ResultPaging.Cursor(10) + " --limit 10.", text, StringComparison.Ordinal);
         Assert.Contains("finding 9", text, StringComparison.Ordinal);
         Assert.DoesNotContain("finding 10" + Environment.NewLine, text, StringComparison.Ordinal);
         Assert.True(text.Length < TwoKilobytes, text.Length.ToString());
@@ -79,7 +79,7 @@ public sealed class OutputBoundsTextTests
 
         Assert.Contains("Grammar findings: 900 (300 errors, 300 warnings, 300 information)", text, StringComparison.Ordinal);
         Assert.Contains("Showing findings 21-30 of 900.", text, StringComparison.Ordinal);
-        Assert.Contains("Next: --offset 30 --limit 10", text, StringComparison.Ordinal);
+        Assert.Contains("Next: --cursor " + SIL.Motif.Contract.Responses.ResultPaging.Cursor(30) + " --limit 10", text, StringComparison.Ordinal);
         Assert.True(text.Length < TwoKilobytes, text.Length.ToString());
     }
 

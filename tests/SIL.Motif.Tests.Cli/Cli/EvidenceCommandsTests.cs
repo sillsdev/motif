@@ -129,7 +129,7 @@ public sealed class EvidenceCommandsTests : IDisposable
         Assert.Equal(2, all.TierCounts["ill-formed"]);
         Assert.Equal(1, all.TierCounts["undecided"]);
         Assert.Equal(2, all.Rows.Count);
-        var second = ProposalCommands.EvidenceList(new EvidenceListRequest(_fwDataPath, Version, Offset: 2, Limit: 2)).Value!;
+        var second = ProposalCommands.EvidenceList(new EvidenceListRequest(_fwDataPath, Version, Cursor: SIL.Motif.Contract.Responses.ResultPaging.Cursor(2), Limit: 2)).Value!;
         Assert.Single(second.Rows);
         var filtered = ProposalCommands.EvidenceList(new EvidenceListRequest(_fwDataPath, Version, "undecided")).Value!;
         Assert.Equal(1, filtered.Total);
@@ -143,7 +143,7 @@ public sealed class EvidenceCommandsTests : IDisposable
     [InlineData(null, 0, 501, "evidence.invalid-page")]
     public void ListRefusesABadTierOrPage(string? tier, int offset, int limit, string code) =>
         Assert.Equal(code, ProposalCommands.EvidenceList(
-            new EvidenceListRequest(_fwDataPath, Version, tier, offset, limit)).Refusal?.Code);
+            new EvidenceListRequest(_fwDataPath, Version, tier, SIL.Motif.Contract.Responses.ResultPaging.Cursor(offset), limit)).Refusal?.Code);
 
     [Fact]
     public void ADraftWithAnEvidenceRecordWithoutEvidenceStillFinalizesAndLeavesTheDryRunToRefuseIt()

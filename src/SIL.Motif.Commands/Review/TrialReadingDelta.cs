@@ -66,7 +66,7 @@ public static class TrialReadingDelta
             return Invalid("Name one Trial job or one Proposal.");
         if (classes.Any(name => !ReadingDeltaClasses.All.Contains(name)))
             return Invalid("A class is one of " + string.Join(", ", ReadingDeltaClasses.All) + ".");
-        if (request.Offset < 0 || request.Limit is < 1 or > ResultPaging.MaxLimit)
+        if (request.CursorOffset() < 0 || request.Limit is < 1 or > ResultPaging.MaxLimit)
             return Invalid($"Use an offset of zero or more and a limit from 1 to {ResultPaging.MaxLimit}.");
         if (request.ProposalId is not null && !CanonicalId.TryParse(request.ProposalId, out _))
             return Invalid("Name the Proposal by its Proposal ID.");
@@ -124,8 +124,9 @@ public static class TrialReadingDelta
         var shown = classes.Distinct(StringComparer.Ordinal).Select(name =>
         {
             var members = forms.Where(form => form.Classes.Contains(name)).ToArray();
-            return new ReadingDeltaClass(name, members.Length, request.Offset,
-                grouped ? [] : [.. members.Skip(request.Offset).Take(request.Limit).Select(Row)]);
+            var rows = grouped ? [] : members.Skip(request.CursorOffset()).Take(request.Limit).Select(Row).ToArray();
+            return new ReadingDeltaClass(name, members.Length, rows,
+                grouped ? null : ResultPaging.NextCursor(request.CursorOffset(), rows.Length, members.Length));
         }).ToArray();
         ReadingDeltaGroups? groups = null;
         if (grouped)
@@ -140,7 +141,7 @@ public static class TrialReadingDelta
                 if (!source.HasTokens) limitations.Add("tokens-unavailable");
                 var chosen = classes.ToHashSet(StringComparer.Ordinal);
                 groups = ReadingCauseGrouping.Group(request.GroupBy!, forms.Where(form => form.Classes.Overlaps(chosen)), source,
-                    request.Offset, request.Limit);
+                    request.CursorOffset(), request.Limit);
             }
             finally { (source as IDisposable)?.Dispose(); }
         }

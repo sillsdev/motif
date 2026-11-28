@@ -4,9 +4,9 @@
   "slug": "evidence-list",
   "title": "List decision evidence",
   "description": "Lists source-validated decisions staged by Applied Proposals, with a count for each tier first and then one page of records. Filter to one tier.",
-  "helpPage": "# List decision evidence\n\n\u0060evidence list\u0060 lists the decisions programs staged from cited sources through Applied Proposals. It starts with how many records each tier holds, then shows one page of records.\n\nNarrow the list with \u0060--tier\u0060 (for example \u0060misspelled-typo\u0060). Page with \u0060--offset\u0060 and \u0060--limit\u0060; the default page holds 50 records and the maximum is 500. Each record is labelled source-validated and is never a person\u0027s decision.\n\n\u0060\u0060\u0060powershell\nmotif evidence list --project \u0022C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\u0022 --tier misspelled-typo --json\n\u0060\u0060\u0060\n",
+  "helpPage": "# List decision evidence\n\n\u0060evidence list\u0060 lists the decisions programs staged from cited sources through Applied Proposals. It starts with how many records each tier holds, then shows one page of records.\n\nNarrow the list with \u0060--tier\u0060 (for example \u0060misspelled-typo\u0060). Page with \u0060--cursor\u0060 (the \u0060nextCursor\u0060 of the previous page) and \u0060--limit\u0060; the default page holds 50 records and the maximum is 500. Each record is labelled source-validated and is never a person\u0027s decision.\n\n\u0060\u0060\u0060powershell\nmotif evidence list --project \u0022C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\u0022 --tier misspelled-typo --json\n\u0060\u0060\u0060\n",
   "usage": [
-    "Usage: motif evidence list --project \u003Cfwdata\u003E [--tier \u003Ctier\u003E] [--offset \u003Cn\u003E] [--limit \u003Cn\u003E] [--json]"
+    "Usage: motif evidence list --project \u003Cfwdata\u003E [--tier \u003Ctier\u003E] [--cursor \u003Cc\u003E] [--limit \u003Cn\u003E] [--json]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/evidence-list/"
