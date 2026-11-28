@@ -510,6 +510,8 @@ public static partial class ProposalCommands
             foreach (var kept in draft.Operations.Where(operation => operation.DependsOn.Any(bridged.ContainsKey)))
                 kept.DependsOn = BridgeDependencies(kept.DependsOn, bridged).ToList();
             IReadOnlyList<ComposeAdvisory> scratchAdvisories = [];
+            string? shadowedUnreadable = null;
+            var shadowedReport = advisories is null ? null : StoredShadowedReport(database, project, out shadowedUnreadable);
             var composed = ProjectReadCache.ReadSaved(project, (_, cache) =>
             {
                 if (retained.Any(operation => operation.DependsOn.Any(dependency =>
@@ -688,8 +690,11 @@ public static partial class ProposalCommands
                 if (expansionFailures.Count > 0) throw new ComposeStepFailures(expansionFailures);
                 // Assigned, not appended, so a retried read leaves one copy.
                 if (advisories is not null)
-                    scratchAdvisories = ScratchAdvisories(cache, steps,
-                        results.Select(result => (result.Input, result.Added)).ToArray());
+                {
+                    var composedResults = results.Select(result => (result.Input, result.Added)).ToArray();
+                    scratchAdvisories = [.. ScratchAdvisories(cache, steps, composedResults),
+                        .. ShadowedAlternateAdvisories(shadowedReport, shadowedUnreadable, steps, composedResults)];
+                }
                 writes.Complete();
                 return results;
             });

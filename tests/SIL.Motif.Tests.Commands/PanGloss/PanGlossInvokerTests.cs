@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Text;
 using Microsoft.Data.Sqlite;
 using SIL.Motif.Contract.Jobs;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Parsimony;
@@ -445,6 +446,20 @@ public sealed class PanGlossInvokerTests : IDisposable
         var unavailable = Assert.IsType<PanGlossOutcome.Unavailable>(morphology);
         Assert.Contains("batch --analyses", unavailable.Message, StringComparison.Ordinal);
         Assert.Equal(["describe", "batch"], FakeParser.Invocations(executable));
+    }
+
+    [Fact]
+    public async Task GrammarHealthAsksForTheShadowedReport()
+    {
+        var project = Project("shadowed-declared");
+        using var invoker = Invoker();
+
+        var outcome = await invoker.RunAsync(
+            new PanGlossRequest.GrammarHealth(project, "p") { Shadowed = true }, "test:shadowed-declared", CancellationToken.None);
+
+        var completed = Assert.IsType<PanGlossOutcome.Completed>(outcome);
+        Assert.Contains("--shadowed", Argv(project));
+        Assert.NotNull(GrammarHealthReportReader.ReadResponse(completed.Output, shadowedRequested: true).ShadowedAlternates);
     }
 
     [Fact]

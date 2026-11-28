@@ -506,6 +506,12 @@ public abstract record PanGlossRequest
         /// <summary>Whether facts omit the sections no Parsimony measure reads.</summary>
         public bool FactsLight { get; init; }
 
+        /// <summary>
+        /// Whether the report includes the shadowed-alternates section (<c>--shadowed</c>). The invoker drops it, rather
+        /// than refusing, when the installed PanGloss does not declare the flag.
+        /// </summary>
+        public bool Shadowed { get; init; }
+
         public override string Subcommand => "grammar-health";
         internal override bool AcceptsNonzeroExit(string standardOutput) => true;
 
@@ -543,6 +549,7 @@ public abstract record PanGlossRequest
                 StoredAnalysisComparison.All => "all",
                 _ => "off",
             });
+            if (Shadowed) startInfo.ArgumentList.Add("--shadowed");
             if (SnapshotPath is not null)
             {
                 startInfo.ArgumentList.Add("--snapshot-out");

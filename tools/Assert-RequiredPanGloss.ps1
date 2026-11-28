@@ -7,6 +7,15 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# No published PanGloss for this platform means nothing to check; a pinned one still fails strictly.
+$repoRoot = Split-Path -Parent $PSScriptRoot
+Import-Module (Join-Path $PSScriptRoot 'PanGlossRelease.psm1') -Force
+$runtime = Get-CurrentPanGlossRuntimeIdentifier
+if (-not (Test-PanGlossPinnedForRuntime -RepositoryRoot $repoRoot -RuntimeIdentifier $runtime)) {
+    Write-Host "No PanGloss pin for $runtime; required PanGloss integration results skipped." -ForegroundColor Yellow
+    return
+}
+
 $criticalTests = @(
     'SIL.Motif.Tests.Commands.AssessCommandTests.SupportedAssessmentRecordsRealTimingAndStatisticsWithOneInvocation',
     'SIL.Motif.Tests.PanGloss.PanGlossSurfaceTests.RealDescriptionContainsEveryTypedRequestAndFakeCommand',

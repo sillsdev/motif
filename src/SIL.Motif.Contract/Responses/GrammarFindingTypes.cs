@@ -102,4 +102,7 @@ public static class PanGlossFindingCodes
 
     /// <summary>The warning raised once per stored analysis the comparison could not finish.</summary>
     public const string StoredAnalysisIncomplete = "grammar.stored-analysis.incomplete";
+
+    /// <summary>The warning <c>grammar-health --shadowed</c> raises per proven shadowed alternate; Motif reads it from the shadowed report.</summary>
+    public const string AllomorphShadowed = "grammar.allomorph.shadowed";
 }

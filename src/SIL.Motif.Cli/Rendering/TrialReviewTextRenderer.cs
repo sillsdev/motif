@@ -72,6 +72,7 @@ public static class TrialReviewTextRenderer
         text.AppendLine("Paradigm cells: " + Coverage(report.Summary.ParadigmCells.Before) + " before; " + Coverage(report.Summary.ParadigmCells.After) + " after");
         if (report.Summary.Gains is { } gains) AppendGains(text, gains);
         if (report.Summary.RuleAttempts is { Groups.Count: > 0 } attempts) AppendRuleAttempts(text, attempts);
+        if (report.Summary.ShadowedAlternates is { } shadowed) AppendShadowedAlternates(text, shadowed);
         if (report.Summary.GdrSync is { InSync: false } gdr) AppendGdrSync(text, gdr);
         text.AppendLine("Parser work: " + (report.Summary.ParserWork.PercentChange is { } change
             ? change.ToString("+0.#;-0.#;0", CultureInfo.InvariantCulture) + "%" : "not comparable"));
@@ -170,6 +171,43 @@ public static class TrialReviewTextRenderer
             $"{gains.Gate.Outcome}" +
             (gains.Gate.Hold ? "; HOLD (Autonomous Apply reads this through a declared gate)" : ""));
     }
+
+    // Definite rows read as a warning and maybe rows as a note.
+    private static void AppendShadowedAlternates(StringBuilder text, SIL.Motif.Contract.Responses.ShadowedAlternatesReport report)
+    {
+        var definite = report.Definite.ToArray();
+        var maybe = report.Maybe.ToArray();
+        if (definite.Length > 0)
+        {
+            text.AppendLine($"Warning: {definite.Length} shadowed alternate{(definite.Length == 1 ? "" : "s")} can never be selected: " +
+                string.Join("; ", definite.Take(TextListLimit).Select(row =>
+                    $"{row.Label} is shadowed by {ShadowedBy(row)} ({string.Join(", ", row.Reasons)})")) +
+                (definite.Length > TextListLimit ? $"; and {definite.Length - TextListLimit:N0} more; use --json for all" : "") +
+                ". Remove the alternate or move it before the one that shadows it and narrow its environment.");
+        }
+        if (maybe.Length > 0)
+        {
+            text.AppendLine($"Note: {maybe.Length} alternate{(maybe.Length == 1 ? "" : "s")} may be shadowed (PanGloss could not prove it): " +
+                string.Join("; ", maybe.Take(TextListLimit).Select(row =>
+                    $"{row.Label} behind {ShadowedBy(row)} ({string.Join(", ", row.Reasons)})")) +
+                (maybe.Length > TextListLimit ? $"; and {maybe.Length - TextListLimit:N0} more; use --json for all" : "") + ".");
+        }
+        foreach (var tier in new[] { SIL.Motif.Contract.Responses.ShadowedAlternateTiers.Definite, SIL.Motif.Contract.Responses.ShadowedAlternateTiers.Maybe })
+        {
+            var dead = report.DeadContinuations.Where(row => row.Tier == tier).ToArray();
+            if (dead.Length == 0) continue;
+            text.AppendLine((tier == SIL.Motif.Contract.Responses.ShadowedAlternateTiers.Definite ? "Warning: " : "Note: ") +
+                $"{dead.Length} alternate{(dead.Length == 1 ? " is" : "s are")} " +
+                (tier == SIL.Motif.Contract.Responses.ShadowedAlternateTiers.Definite ? "selected but rejected by every following affix: "
+                    : "possibly selected but rejected by every following affix: ") +
+                string.Join("; ", dead.Take(TextListLimit).Select(row =>
+                    row.Label + (row.BlockedBy.Count > 0 ? $" ({string.Join(", ", row.BlockedBy)})" : ""))) +
+                (dead.Length > TextListLimit ? $"; and {dead.Length - TextListLimit:N0} more; use --json for all" : "") + ".");
+        }
+    }
+
+    private static string ShadowedBy(SIL.Motif.Contract.Responses.ShadowedAlternate row) => row.ShadowedBy.Count == 0
+        ? "an earlier alternate" : string.Join(", ", row.ShadowedBy.Select(form => $"'{form}'"));
 
     private static void AppendGdrSync(StringBuilder text, SIL.Motif.Contract.Responses.GdrCheckResponse gdr)
     {

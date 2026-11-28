@@ -83,6 +83,13 @@ public static class ComposeAdvisoryCodes
 
     /// <summary>An inflection class that a composed intent assigns and that then has exactly one stem.</summary>
     public const string OneStemInflectionClass = "compose.one-stem-inflection-class";
+
+    /// <summary>
+    /// An intent edits an allomorph, or adds an alternate to an entry, that PanGloss's shadowed-alternates report from the
+    /// Baseline's grammar check marks shadowed (a definite warning) or possibly shadowed (a softer note); it names the
+    /// earlier alternate responsible. Advisory only.
+    /// </summary>
+    public const string ShadowedAlternate = "compose.shadowed-alternate";
 }
 
 /// <summary>
