@@ -276,15 +276,15 @@ public sealed class ImportCliTests : IDisposable
         Assert.True(one.ExitCode == 0 && two.ExitCode == 0, one.Error + two.Error);
         var first = JsonNode.Parse(one.Output)!;
         var second = JsonNode.Parse(two.Output)!;
-        Assert.Equal(3, second["pageCount"]!.GetValue<int>());
+        Assert.Equal(2, second["pageCount"]!.GetValue<int>());
         Assert.Equal(2, second["page"]!.GetValue<int>());
-        Assert.Equal(3, first["operations"]!.AsArray().Count);
+        Assert.Equal(4, first["operations"]!.AsArray().Count);
         Assert.Equal(3, second["operations"]!.AsArray().Count);
-        Assert.Equal(3, first["changes"]!.AsArray().Count);
+        Assert.Equal(4, first["changes"]!.AsArray().Count);
         Assert.Equal(3, second["changes"]!.AsArray().Count);
         var ids = first["operations"]!.AsArray().Concat(second["operations"]!.AsArray()).Select(item => item!["operationId"]!.GetValue<string>());
-        Assert.Equal(6, ids.Distinct().Count());
-        var past = Run("import", "--project", project, "--file", file, "--page", "4", "--json");
+        Assert.Equal(7, ids.Distinct().Count());
+        var past = Run("import", "--project", project, "--file", file, "--page", "3", "--json");
         Assert.NotEqual(0, past.ExitCode);
         Assert.Equal(RefusalCodes.RecordImportInvalidPage, ProjectionJson.Deserialize<FailureEnvelope>(past.Error)!.Code);
     }

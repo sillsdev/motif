@@ -276,6 +276,55 @@ public sealed class RecordBatchImportTests(PristineProjectFixture pristine) : ID
         Assert.All(rows.Skip(1), row => Assert.Equal((0, false), (row.BatchEdges, row.HasBatchEdges)));
     }
 
+    [Fact]
+    public void TheSummaryLinkCountAndTheStagedBatchEdgesAgreeOnAChainOfThreeFiles()
+    {
+        // The summary counts linked objects, a row counts files depended on; one object per file keeps them equal.
+        var seed = Seeded();
+        var main = Write(seed, "c-main.fw.md", seed.Main);
+        var variant = Write(seed, "b-variant.fw.md", seed.Variant, text => Replace(text, seed.Main, main));
+        Write(seed, "a-complex.fw.md", seed.Complex, text => Replace(text, seed.Main, variant),
+            document => Ref(document)["show-complex-forms-in"] = Ref(document)["primary-lexemes"]);
+
+        var dry = RecordImportCommand.Run(Dry(seed, "chain"));
+
+        Assert.True(dry.Succeeded, dry.Refusal?.Message);
+        var rows = ProposalCommands.Show(new(seed.Project, Version, "chain", Records: new ShowRecordGrouping("batch-edges"))).Value!.Records!;
+        Assert.Equal(2, dry.Value!.Dir!.Review!.BatchEdges);
+        Assert.Equal(dry.Value.Dir.Review.BatchEdges, rows.Sum(row => row.BatchEdges));
+    }
+
+    [Fact]
+    public void ASenseThatPointsAtAnAnalysisCreatedByAnotherFileIsRefusedWholeAndTheOtherFileStillStages()
+    {
+        var seed = Seeded();
+        Write(seed, "b-main.fw.md", seed.Main);
+        var foreign = AnalysisOf(seed, "b-main.fw.md");
+        Write(seed, "a-other.fw.md", seed.Complex);
+        var own = AnalysisOf(seed, "a-other.fw.md");
+        var other = File.ReadAllText(Path.Combine(Folder, "a-other.fw.md"));
+        var lines = other.Split('\n');
+        for (var index = 0; index < lines.Length; index++)
+            if (lines[index].TrimStart().StartsWith("morpho-syntax-analysis:", StringComparison.Ordinal))
+                lines[index] = Replace(lines[index], own, foreign);
+        File.WriteAllText(Path.Combine(Folder, "a-other.fw.md"), string.Join('\n', lines));
+
+        var rows = Rows(seed);
+
+        Assert.Equal("refused", rows["a-other.fw.md"].Status);
+        Assert.False(string.IsNullOrEmpty(rows["a-other.fw.md"].Code));
+        Assert.True(rows["b-main.fw.md"].Status == "created", rows["b-main.fw.md"].Status + " " + rows["b-main.fw.md"].Code);
+    }
+
+    /// <summary>The GUID of the first grammatical-info object that a written file gives its entry.</summary>
+    private Guid AnalysisOf(Seed seed, string name)
+    {
+        using var cache = new FwDataProjectLoader().LoadCache(seed.Project);
+        var (schema, exporter) = Tools(cache);
+        var read = RecordFileReader.Read(File.ReadAllText(Path.Combine(Folder, name)), schema.Schema, exporter.CreateReadOptions());
+        return ((RecordObject)((RecordList)read.Document!.Data["morpho-syntax-analyses"]!).Items[0]).Guid!.Value;
+    }
+
     // liblcm throws on the second add: LexEntryRef.ValidateAddObjectInternal.
     [Fact]
     public void AVariantAndAComplexFormThatNameEachOtherAreRefusedAsOneLoop()

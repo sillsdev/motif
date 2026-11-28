@@ -1,0 +1,76 @@
+{
+  "mode": "dryRun",
+  "recordKind": "lexiconEntry",
+  "recordId": "-AAAAAAAAAAAAAAAAAAAAAA",
+  "baseVerdict": "fresh",
+  "changeCount": 8,
+  "operationCount": 8,
+  "refusalCount": 0,
+  "page": 1,
+  "pageCount": 2,
+  "operations": [
+    {
+      "operationId": "-BBBBBBBBBBBBBBBBBBBBB1",
+      "kind": "lexical/lexSense/setGloss",
+      "target": "-CCCCCCCCCCCCCCCCCCCCC1"
+    },
+    {
+      "operationId": "-BBBBBBBBBBBBBBBBBBBBB2",
+      "kind": "lexical/lexSense/setGloss",
+      "target": "-CCCCCCCCCCCCCCCCCCCCC2"
+    },
+    {
+      "operationId": "-BBBBBBBBBBBBBBBBBBBBB3",
+      "kind": "lexical/lexSense/setGloss",
+      "target": "-CCCCCCCCCCCCCCCCCCCCC3"
+    },
+    {
+      "operationId": "-BBBBBBBBBBBBBBBBBBBBB4",
+      "kind": "lexical/lexSense/setGloss",
+      "target": "-CCCCCCCCCCCCCCCCCCCCC4"
+    }
+  ],
+  "refusals": [],
+  "changes": [
+    {
+      "kind": "Set",
+      "class": "LexSense",
+      "field": "gloss",
+      "object": "-CCCCCCCCCCCCCCCCCCCCC1",
+      "writingSystem": "en",
+      "old": "buy",
+      "new": "purchase",
+      "status": "staged"
+    },
+    {
+      "kind": "Set",
+      "class": "LexSense",
+      "field": "gloss",
+      "object": "-CCCCCCCCCCCCCCCCCCCCC2",
+      "writingSystem": "en",
+      "old": "sell",
+      "new": "vend",
+      "status": "staged"
+    },
+    {
+      "kind": "Set",
+      "class": "LexSense",
+      "field": "gloss",
+      "object": "-CCCCCCCCCCCCCCCCCCCCC3",
+      "writingSystem": "en",
+      "old": "give",
+      "new": "grant",
+      "status": "staged"
+    },
+    {
+      "kind": "Set",
+      "class": "LexSense",
+      "field": "gloss",
+      "object": "-CCCCCCCCCCCCCCCCCCCCC4",
+      "writingSystem": "en",
+      "old": "take",
+      "new": "seize",
+      "status": "staged"
+    }
+  ]
+}
