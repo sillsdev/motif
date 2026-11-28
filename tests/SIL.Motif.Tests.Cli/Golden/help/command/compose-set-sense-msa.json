@@ -5,7 +5,7 @@
   "title": "Re-point a meaning\u0027s analysis",
   "description": "Points a meaning, top level or nested, at a different analysis of the same entry, keeping all its content; Motif stages a Draft for a person to review and Apply. If no sense would use the old analysis afterwards, LibLCM removes it, and the operation\u0027s rationale says so. It refuses an analysis of another entry, a stem analysis on an affix, an affix analysis on a stem, a meaning that already uses the analysis, and an old analysis something else still refers to.",
   "usage": [
-    "Usage: motif compose-set-sense-msa --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-set-sense-msa --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-set-sense-msa/"

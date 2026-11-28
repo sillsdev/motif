@@ -5,7 +5,7 @@
   "title": "Set entry parsing flag",
   "description": "Stages the FieldWorks do-not-parse flag on a lexical entry. The flag does not stop the entry parsing: PanGloss, FieldWorks HermitCrab and XAmple all parse a flagged entry, whole entry and not just compounds; to stop a stem parsing, retype it with compose-set-stem-part-of-speech or delete it.",
   "usage": [
-    "Usage: motif compose-set-entry-do-not-parse --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-set-entry-do-not-parse --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-set-entry-do-not-parse/"

@@ -5,7 +5,7 @@
   "title": "Author a circumfix",
   "description": "Stages a new circumfix entry as FieldWorks holds it: one entry whose prefix part and suffix part attach to a stem together, with one sense and one grammatical analysis. The parser pairs the two parts, so neither part alone attaches. Dry Run and Trial before a person Applies the Proposal. In a compose-batch file its two parts are labelled @label:prefix and @label:suffix.",
   "usage": [
-    "Usage: motif compose-author-circumfix --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-author-circumfix --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-author-circumfix/"

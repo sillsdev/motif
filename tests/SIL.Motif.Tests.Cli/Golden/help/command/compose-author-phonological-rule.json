@@ -5,7 +5,7 @@
   "title": "Author a phonological rule",
   "description": "Stages one regular phonological rule in a Draft, with one or more ordered right-hand sides, each with its own Output, contexts and rule features, and up to eight items in each Input and Output sequence. Output classes allow lexical alternatives; overlapping right-hand sides use the first applicable case, while feature changes preserve other features and alpha variables express agreement or disagreement. Only a person can Apply.",
   "usage": [
-    "Usage: motif compose-author-phonological-rule --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-author-phonological-rule --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-author-phonological-rule/"

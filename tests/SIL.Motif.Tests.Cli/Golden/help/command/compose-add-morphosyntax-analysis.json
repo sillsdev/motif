@@ -5,7 +5,7 @@
   "title": "Add a grammatical analysis",
   "description": "Stages one more grammatical info on an entry that already has one, as FieldWorks holds it: an entry owns any number of analyses, each sense points at one, and the parser loads every analysis of the entry as its own rule or stem. One suffix entry can then serve two categories. A derivational analysis can name its one From inflection class, so an entry with one analysis per class attaches to several classes. The new analysis can take existing senses of the entry, a new sense with a gloss, or neither. It refuses a stem analysis on an affix, an affix analysis on a stem, and a sense that belongs to another entry. Dry Run and Trial before a person Applies the Proposal.",
   "usage": [
-    "Usage: motif compose-add-morphosyntax-analysis --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-add-morphosyntax-analysis --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-add-morphosyntax-analysis/"

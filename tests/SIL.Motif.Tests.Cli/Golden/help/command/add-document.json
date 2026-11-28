@@ -5,7 +5,7 @@
   "title": "Add a Corpus Document",
   "description": "Reads one source file or URL into a named Corpus Document and records its origin and licence details. Use it to preserve where an individual Document came from.",
   "usage": [
-    "Usage: motif add-document --project \u003Cfwdata\u003E --corpus \u003Cid\u003E --doc \u003Cid\u003E --source \u003Cfile-or-url\u003E [--title \u003Ctext\u003E] [--licence \u003Ctext\u003E] [--may-derive true|false] [--licence-basis \u003Ctext\u003E]"
+    "Usage: motif add-document --project \u003Cfwdata\u003E --corpus \u003Cid\u003E --doc \u003Cid\u003E --source \u003Cfile-or-url\u003E [--title \u003Ctext\u003E] [--licence \u003Ctext\u003E] [--may-derive true|false] [--licence-basis \u003Ctext\u003E] [--json]"
   ],
   "surface": "Released",
   "url": "https://motif-docs.pages.dev/reference/commands/add-document/"

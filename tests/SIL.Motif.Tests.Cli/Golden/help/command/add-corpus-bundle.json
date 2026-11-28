@@ -5,7 +5,7 @@
   "title": "Load a Corpus bundle",
   "description": "Reads a bundle from a fetching tool and loads each listed source as a Document in its Corpus. The Motif store keeps the fetched text with its provenance and licence details.",
   "usage": [
-    "Usage: motif add-corpus-bundle --project \u003Cfwdata\u003E --bundle \u003Cpath\u003E   (the handoff a fetching tool writes)"
+    "Usage: motif add-corpus-bundle --project \u003Cfwdata\u003E --bundle \u003Cpath\u003E [--json]   (the handoff a fetching tool writes)"
   ],
   "surface": "Released",
   "url": "https://motif-docs.pages.dev/reference/commands/add-corpus-bundle/"

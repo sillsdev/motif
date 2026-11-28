@@ -5,7 +5,7 @@
   "title": "Edit a natural class\u0027s features",
   "description": "Stages a change to the feature values that define a feature-based natural class: set a constraint (a feature the class already constrains takes the new value in place) and clear constraints. The class must keep at least one constraint, and a segment class is refused. The response lists the environments, rules and insertions that use the class. Only a person can Apply.",
   "usage": [
-    "Usage: motif compose-edit-natural-class-features --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-edit-natural-class-features --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-edit-natural-class-features/"

@@ -5,7 +5,7 @@
   "title": "State the project\u0027s source",
   "description": "Stages one notice in the project\u0027s Description saying which source, revision and licence imported data came from, after any Description text already there. A project that already states the notice stages nothing. Only a person can Apply.",
   "usage": [
-    "Usage: motif compose-set-project-attribution --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-set-project-attribution --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "Released",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-set-project-attribution/"

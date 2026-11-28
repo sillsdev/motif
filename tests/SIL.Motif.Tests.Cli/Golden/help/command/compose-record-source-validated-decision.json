@@ -5,7 +5,7 @@
   "title": "Stage a source-validated decision",
   "description": "Stages, in a Draft, a decision a named program made from cited sources: an approval or disapproval of one existing analysis under a non-human agent, or the evidence for a wordform or analysis alone. It is never a person\u0027s decision and never sets spelling status; only a person can Apply.",
   "usage": [
-    "Usage: motif compose-record-source-validated-decision --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-record-source-validated-decision --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-record-source-validated-decision/"

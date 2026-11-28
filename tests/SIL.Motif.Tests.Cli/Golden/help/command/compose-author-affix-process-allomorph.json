@@ -5,7 +5,7 @@
   "title": "Add an affix process allomorph",
   "description": "Stages one more pattern-based form, an affix process with its own input pattern and output, on an existing affix entry whose forms may be plain allomorphs or processes. The lexeme form\u0027s morph type is copied and the form applies to all of the entry\u0027s grammatical info. It refuses a stem, a repeated pattern and a missing placement.",
   "usage": [
-    "Usage: motif compose-author-affix-process-allomorph --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-author-affix-process-allomorph --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-author-affix-process-allomorph/"

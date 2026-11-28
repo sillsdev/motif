@@ -5,7 +5,7 @@
   "title": "Make many entries variants",
   "description": "Makes many existing entries variants of their main entries or senses in one step, all with one variant type, such as cross-reference stubs that should be variants. Every link is checked against the project and the links before it, and a refusal names the link and the blocking object; Motif stages a Draft for a person to review and Apply.",
   "usage": [
-    "Usage: motif compose-make-variants-of --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-make-variants-of --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-make-variants-of/"

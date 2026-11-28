@@ -5,7 +5,7 @@
   "title": "Delete an exception feature",
   "description": "Deletes an item of the Exception Features list that nothing refers to any more. It refuses while anything still uses it and names each user. Motif stages a Draft for a person to review and Apply.",
   "usage": [
-    "Usage: motif compose-delete-exception-feature --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-delete-exception-feature --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-delete-exception-feature/"

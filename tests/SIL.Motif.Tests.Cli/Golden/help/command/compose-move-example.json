@@ -5,7 +5,7 @@
   "title": "Move an example to another sense",
   "description": "Moves one example sentence, with its translations, from its sense to another sense, which may belong to another entry, keeping its identity; Motif stages a Draft for a person to review and Apply. It refuses an example that any other object refers to, a move to the sense that already owns it, an unknown example or sense, and a neighbour that is not an example of the target sense.",
   "usage": [
-    "Usage: motif compose-move-example --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-move-example --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-move-example/"

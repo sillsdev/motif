@@ -5,7 +5,7 @@
   "title": "Author grammatical features",
   "description": "Stages an empty feature structure on an existing or earlier-staged stem, inflectional affix or derivational affix MSA (side from or to) in a Draft, refusing an occupied slot even when its structure has no selections. Inflectional affix features are word requirements; use the returned exact structure identity to author selections. Only a person can Apply.",
   "usage": [
-    "Usage: motif compose-author-feature-structure --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027{\u0022msa\u0022:...}\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-author-feature-structure --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027{\u0022msa\u0022:...}\u0027 [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-author-feature-structure/"

@@ -46,7 +46,7 @@ public sealed record FailureEnvelope
     [JsonConstructor]
     public FailureEnvelope(FailureReason reason, string message,
         IReadOnlyDictionary<string, string>? detail = null, string? code = null,
-        ParserCompileDiagnostic? parserDiagnostic = null)
+        ParserCompileDiagnostic? parserDiagnostic = null, string? next = null)
     {
         Reason = reason;
         Message = string.IsNullOrWhiteSpace(message)
@@ -55,6 +55,7 @@ public sealed record FailureEnvelope
         Detail = detail;
         Code = code;
         ParserDiagnostic = parserDiagnostic;
+        Next = next;
     }
 
     /// <summary>Always false, so a reader that captured both streams can tell them apart.</summary>
@@ -70,7 +71,12 @@ public sealed record FailureEnvelope
     /// <summary>The same wording a human sees, unchanged.</summary>
     [JsonPropertyOrder(3)] public string Message { get; }
 
+    /// <summary>What to do instead: the same steering sentence MCP returns, with any command written as a <c>motif</c> line.</summary>
     [JsonPropertyOrder(4)]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Next { get; }
+
+    [JsonPropertyOrder(5)]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyDictionary<string, string>? Detail { get; }
 
@@ -80,6 +86,9 @@ public sealed record FailureEnvelope
 
     /// <summary>The exit code of a waited Trial whose gate is <c>loss</c>; distinct from every <see cref="ExitCodeFor"/> value.</summary>
     public const int TrialLossExitCode = 6;
+
+    /// <summary>The exit code of <c>guide check</c> when a <c>motif-query</c> block's count is outside its <c>expect</c>; distinct from every <see cref="ExitCodeFor"/> value and from <see cref="TrialLossExitCode"/>.</summary>
+    public const int GuideCountMismatchExitCode = 7;
 
     /// <summary>The process exit code this reason maps to.</summary>
     /// <remarks>

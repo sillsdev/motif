@@ -5,7 +5,7 @@
   "title": "Edit a sound rule",
   "description": "Changes one existing regular phonological rule in place, keeping its identity and position. Replace its ordered rightHandSides under an expected-current guard to add, remove or reorder outcomes with their own Output, contexts and rule features; feature changes and rule-wide alpha variables are preserved. Motif stages a Draft for a person to review and Apply.",
   "usage": [
-    "Usage: motif compose-edit-phonological-rule --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-edit-phonological-rule --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-edit-phonological-rule/"

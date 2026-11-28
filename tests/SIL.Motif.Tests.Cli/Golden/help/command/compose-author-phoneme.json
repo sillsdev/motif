@@ -5,7 +5,7 @@
   "title": "Author a phoneme",
   "description": "Stages a phoneme with literal representations, including symbols such as parentheses and slash, and optional explicit feature values. Put case spellings of the same sound on that phoneme; use its created identity in natural classes or phonological rules. Only a person can Apply.",
   "usage": [
-    "Usage: motif compose-author-phoneme --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-author-phoneme --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-author-phoneme/"

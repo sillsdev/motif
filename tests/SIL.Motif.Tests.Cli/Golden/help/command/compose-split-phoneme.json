@@ -5,7 +5,7 @@
   "title": "Split a spelling into a phoneme",
   "description": "Stages the move of one spelling of a phoneme into a new phoneme of its own, which undoes a merge. The phoneme keeps its other spellings, and the new phoneme starts with no natural class and no features. It refuses a spelling an environment writes. Dry Run and Trial before a person Applies the Proposal.",
   "usage": [
-    "Usage: motif compose-split-phoneme --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-split-phoneme --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-split-phoneme/"

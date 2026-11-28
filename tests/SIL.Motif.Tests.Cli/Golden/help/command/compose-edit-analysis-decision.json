@@ -5,7 +5,7 @@
   "title": "Decide an analysis",
   "description": "Stages one human decision about an existing analysis or wordform in a Draft: approve, disapprove, return to unknown, mark the spelling incorrect with its intended form, clear that mark, or store a parser reading as an unknown analysis. It names the exact canonical identity. A person Applies it; an Autonomous run may Apply it behind the green Trial gate.",
   "usage": [
-    "Usage: motif compose-edit-analysis-decision --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-edit-analysis-decision --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-edit-analysis-decision/"

@@ -5,7 +5,7 @@
   "title": "Merge entries",
   "description": "Merges one entry into another so the two become one entry, as Merge Entry does in FieldWorks: the merged entry\u0027s senses, grammatical info and alternate forms move to the entry that stays, its lexeme form joins the other\u0027s or becomes an alternate form, and every reference to it points at the entry that stays; Motif stages a Draft for a person to review and Apply. It refuses an entry merged into itself or an id that is not an entry.",
   "usage": [
-    "Usage: motif compose-merge-lexical-entries --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-merge-lexical-entries --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-merge-lexical-entries/"

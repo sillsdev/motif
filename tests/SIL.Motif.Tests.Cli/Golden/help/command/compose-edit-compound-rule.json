@@ -5,7 +5,7 @@
   "title": "Turn a compound rule off or on",
   "description": "Stages one explicit Disabled value for an endocentric or exocentric compound rule in a Draft. FieldWorks compound rules join any two stems, so a rule that builds non-words can be switched off; the expected value guards against stale evidence, and only a person can Apply.",
   "usage": [
-    "Usage: motif compose-edit-compound-rule --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-edit-compound-rule --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-edit-compound-rule/"

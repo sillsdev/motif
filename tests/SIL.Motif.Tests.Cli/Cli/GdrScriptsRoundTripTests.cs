@@ -285,6 +285,43 @@ public sealed class GdrScriptsRoundTripTests(PristineProjectFixture pristine) : 
         Assert.DoesNotContain("fwmd.", before.Output, StringComparison.Ordinal);
     }
 
+    private string ProjectWithQueryBlock(string expect)
+    {
+        Directory.CreateDirectory(_root);
+        string path;
+        using (var cache = pristine.NewScratch())
+        {
+            SeededGdrs.Seed(cache);
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var record = SeededGdrs.Records(cache).PossibilitiesOS.Single(item => item.Abbreviation.get_String(cache.DefaultAnalWs).Text == "GDR-2");
+                record.DiscussionOA = cache.ServiceLocator.GetInstance<IStTextFactory>().Create();
+                foreach (var line in new[] { "```motif-query", "id: all", "title: All", "run: motif query forms", "expect: " + expect, "```" })
+                {
+                    var paragraph = cache.ServiceLocator.GetInstance<IStTxtParaFactory>().Create();
+                    record.DiscussionOA.ParagraphsOS.Add(paragraph);
+                    paragraph.Contents = TsStringUtils.MakeString(line, cache.DefaultAnalWs);
+                }
+            });
+            new FwDataProjectLoader().Save(cache);
+            path = cache.ProjectId.Path;
+        }
+        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), _root);
+        Assert.True(captured.Succeeded, captured.Refusal?.Message);
+        return path;
+    }
+
+    [Fact]
+    public async Task GuideCheckExitsSevenWhenAQueryBlocksCountIsOutsideItsExpectAndZeroWhenItIsInside()
+    {
+        var failing = await CliProcess.RunAsync(_root, null, true, "guide", "check", "--project", ProjectWithQueryBlock(">=1000000"), "--json", "--autonomous");
+        Assert.True(failing.ExitCode == 7, failing.FailureDetails);
+        Assert.Contains("guide.query-count-mismatch", failing.Output, StringComparison.Ordinal);
+        var passing = await CliProcess.RunAsync(_root, null, true, "guide", "check", "--project", ProjectWithQueryBlock(">=0"), "--json", "--autonomous");
+        Assert.True(passing.ExitCode == 0, passing.FailureDetails);
+        Assert.DoesNotContain("guide.query-count-mismatch", passing.Output, StringComparison.Ordinal);
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_root)) Directory.Delete(_root, recursive: true);

@@ -5,7 +5,7 @@
   "title": "Set rule features",
   "description": "Sets the exact exception features or inflection classes a phonological rewrite rule requires of a stem, and the ones it excludes, and the categories it is limited to. An empty list clears a set. Motif stages a Draft for a person to review and Apply.",
   "usage": [
-    "Usage: motif compose-edit-phonological-rule-features --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-edit-phonological-rule-features --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-edit-phonological-rule-features/"

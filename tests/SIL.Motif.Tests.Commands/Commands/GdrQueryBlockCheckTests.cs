@@ -67,6 +67,100 @@ public sealed class GdrQueryBlockCheckTests(PristineProjectFixture pristine)
         Assert.Equal(["nfd"], finding.Subjects);
     }
 
+    private static GdrQueryBlockSource Expecting(string expect)
+    {
+        var parsed = GuideQueryBlocks.Parse($"```motif-query\nid: q\ntitle: q\nrun: {Corpus}\nexpect: {expect}\n```");
+        return new GdrQueryBlockSource("GDR-1", "Forms", Assert.Single(parsed.Queries), parsed.Diagnostics);
+    }
+
+    [Theory]
+    [InlineData("2", false)]
+    [InlineData("1..3", false)]
+    [InlineData(">=1", false)]
+    [InlineData("3", true)]
+    [InlineData("5..9", true)]
+    [InlineData(">2", true)]
+    public void ACountOutsideTheExpectedCountIsATypedFindingWithExpectedAndActual(string expect, bool mismatch)
+    {
+        var folder = Directory.CreateTempSubdirectory("gdr-check-expect").FullName;
+        try
+        {
+            var recorded = RecordedIndex(folder, false);
+            var result = GdrQueryBlockCheck.Check([Expecting(expect)], Path.Combine(folder, "p.fwdata"), true, TimeSpan.FromSeconds(30), null,
+                (line, baseDirectory, token) => GuideEvidenceRunner.Evaluate(line, baseDirectory, null, token, recorded.Builder, recorded.CacheRoot));
+            var run = Assert.Single(result.Runs);
+            Assert.Equal((2L, expect), (run.Rows, run.Expected));
+            if (!mismatch) { Assert.Empty(result.Findings); return; }
+            var finding = Assert.Single(result.Findings);
+            Assert.Equal(GdrSyncCodes.QueryCountMismatch, finding.Code);
+            Assert.Contains($"expected {expect}", finding.Message, StringComparison.Ordinal);
+            Assert.Contains("found 2", finding.Message, StringComparison.Ordinal);
+            Assert.Equal(["q"], finding.Subjects);
+        }
+        finally { Directory.Delete(folder, true); }
+    }
+
+    [Theory]
+    [InlineData("5", false)]       // at least 2 of a count that may still reach 5
+    [InlineData("1..9", false)]
+    [InlineData(">=1", false)]
+    [InlineData("1", true)]        // at least 2 already passes the most allowed
+    [InlineData("<2", true)]
+    [InlineData("<=1", true)]
+    public void AnIncompleteParseIsAMismatchOnlyWhenItsLowerBoundPassesTheMostExpected(string expect, bool mismatch)
+    {
+        var folder = Directory.CreateTempSubdirectory("gdr-check-expect-capped").FullName;
+        try
+        {
+            var recorded = RecordedIndex(folder, true);
+            var result = GdrQueryBlockCheck.Check([Expecting(expect)], Path.Combine(folder, "p.fwdata"), true, TimeSpan.FromSeconds(30), null,
+                (line, baseDirectory, token) => GuideEvidenceRunner.Evaluate(line, baseDirectory, null, token, recorded.Builder, recorded.CacheRoot));
+            Assert.False(Assert.Single(result.Runs).Complete);
+            if (!mismatch) { Assert.Empty(result.Findings); return; }
+            var finding = Assert.Single(result.Findings);
+            Assert.Equal(GdrSyncCodes.QueryCountMismatch, finding.Code);
+            Assert.Contains("found at least 2", finding.Message, StringComparison.Ordinal);
+        }
+        finally { Directory.Delete(folder, true); }
+    }
+
+    [Fact]
+    public void ARefusedOrFailedBlockWithAnExpectedCountGivesItsOwnFindingAndNoMismatch()
+    {
+        var refused = GdrQueryBlockCheck.Check([Expecting("5")], "p.fwdata", true, TimeSpan.FromSeconds(5), null,
+            (_, _, _) => new GuideEvidenceResult(GuideEvidenceStatus.Refused, null, "no", "query.test", null, 0, new Dictionary<string, double>()));
+        Assert.Equal(GdrSyncCodes.QueryRefused, Assert.Single(refused.Findings).Code);
+        var failed = GdrQueryBlockCheck.Check([Expecting("5")], "p.fwdata", true, TimeSpan.FromSeconds(5), null,
+            (_, _, _) => throw new InvalidOperationException("boom"));
+        Assert.Equal(GdrSyncCodes.QueryFailed, Assert.Single(failed.Findings).Code);
+    }
+
+    [Fact]
+    public void ABadExpectPassesThroughTheCheckAsAnInvalidBlockFindingAndTheBlockStillRuns()
+    {
+        var source = Expecting("many");
+        Assert.Null(source.Query!.Expect);
+        var result = GdrQueryBlockCheck.Check([source], "p.fwdata", false, TimeSpan.FromSeconds(5), null);
+        var finding = Assert.Single(result.Findings);
+        Assert.Equal(GdrSyncCodes.QueryBlockInvalid, finding.Code);
+        Assert.Contains("expect is a count", finding.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ABlockWithNoExpectedCountHasNoExpectedOnItsRun()
+    {
+        var folder = Directory.CreateTempSubdirectory("gdr-check-noexpect").FullName;
+        try
+        {
+            var recorded = RecordedIndex(folder, false);
+            var result = GdrQueryBlockCheck.Check([Source("q", Corpus)], Path.Combine(folder, "p.fwdata"), true, TimeSpan.FromSeconds(30), null,
+                (line, baseDirectory, token) => GuideEvidenceRunner.Evaluate(line, baseDirectory, null, token, recorded.Builder, recorded.CacheRoot));
+            Assert.Null(Assert.Single(result.Runs).Expected);
+            Assert.Empty(result.Findings);
+        }
+        finally { Directory.Delete(folder, true); }
+    }
+
     [Fact]
     public void AWarmCorpusBlockIsOkWithItsRowCountAndAnIncompleteParseSaysAtLeast()
     {

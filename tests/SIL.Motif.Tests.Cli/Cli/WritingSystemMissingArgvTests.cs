@@ -146,7 +146,7 @@ public sealed class WritingSystemMissingArgvTests(PristineProjectFixture pristin
         Assert.DoesNotContain(store, failure.Message, StringComparison.Ordinal);
         Assert.Equal(store, failure.Detail!["projectWritingSystemStore"]);
         Assert.DoesNotContain("rolls back", error, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("damaged", error, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("damaged", failure.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     private string UniquelyNamedProject()

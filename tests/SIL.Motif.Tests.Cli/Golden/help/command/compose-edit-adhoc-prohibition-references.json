@@ -5,7 +5,7 @@
   "title": "Retarget a prohibition",
   "description": "Stages new allomorph or morpheme references for one ad hoc prohibition with an expected-current guard. Each occurrence stays within its original entry; first means Key Allomorph / Key Morpheme, rest means Other Allomorph(s) / Other Morpheme(s), and disabled is the inverse of Active.",
   "usage": [
-    "Usage: motif compose-edit-adhoc-prohibition-references --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-edit-adhoc-prohibition-references --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "Released",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-edit-adhoc-prohibition-references/"

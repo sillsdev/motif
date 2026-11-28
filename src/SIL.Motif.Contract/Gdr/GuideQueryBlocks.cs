@@ -24,9 +24,9 @@ public enum GuideShowKind
     List,
 }
 
-/// <summary>One <c>motif-query</c> block.</summary>
+/// <summary>One <c>motif-query</c> block; <see cref="Expect"/> is null when the block declares no count.</summary>
 public sealed record GuideQueryDefinition(string Id, string Title, string Run, IReadOnlyList<string> Columns, GuideSort? Sort,
-    GuideBlockSpan Span);
+    GuideBlockSpan Span, GuideExpectedCount? Expect = null);
 
 /// <summary>One <c>motif-show</c> block; <see cref="Limit"/> and <see cref="Columns"/> are null when the block leaves them out.</summary>
 public sealed record GuideShowDirective(string Query, GuideShowKind Show, int? Limit, IReadOnlyList<string>? Columns,
@@ -76,7 +76,7 @@ public sealed record GuideBlocks(IReadOnlyList<GuideQueryDefinition> Queries, IR
 /// <summary>Finds the <c>motif-query</c> and <c>motif-show</c> blocks of a Guide section or Proposal and never throws on bad input.</summary>
 public static class GuideQueryBlocks
 {
-    private static readonly string[] QueryKeys = ["id", "title", "run", "columns", "sort"];
+    private static readonly string[] QueryKeys = ["id", "title", "run", "columns", "sort", "expect"];
     private static readonly string[] ShowKeys = ["query", "show", "limit", "columns"];
 
     /// <summary>Parses the Markdown; a block with a problem is still returned where it has enough to place, with a diagnostic.</summary>
@@ -196,8 +196,12 @@ public static class GuideQueryBlocks
             else diagnostics.Add(new(GuideBlockDiagnosticKind.MalformedField, "sort is a column, then asc or desc.", span, LineOf("sort"), "sort"));
             if (corpus is not null && sort is not null) ReportUnknown(corpus, [sort.Column], "sort", span, LineOf("sort"), diagnostics);
         }
+        GuideExpectedCount? expect = null;
+        if (fields.ContainsKey("expect") && !GuideExpectedCount.TryParse(Value("expect"), out expect))
+            diagnostics.Add(new(GuideBlockDiagnosticKind.MalformedField,
+                "expect is a count (127), a range (100..150) or a bound (>=1, >1, <=5, <5).", span, LineOf("expect"), "expect"));
         if (id.Length > 0 || run.Length > 0)
-            queries.Add(new GuideQueryDefinition(id, Value("title"), run, Split(Value("columns")), sort, span));
+            queries.Add(new GuideQueryDefinition(id, Value("title"), run, Split(Value("columns")), sort, span, expect));
     }
 
     // A column a v2 corpus query cannot show is a diagnostic on the block, never a crash at render.

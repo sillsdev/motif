@@ -5,7 +5,7 @@
   "title": "Delete an affix process",
   "description": "Stages deletion of an affix process and its whole owned graph after every incoming reference has been explicitly moved or removed. An optional plain allomorph of the same entry replaces it, becoming the lexeme form when needed.",
   "usage": [
-    "Usage: motif compose-delete-affix-process --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-delete-affix-process --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "Released",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-delete-affix-process/"

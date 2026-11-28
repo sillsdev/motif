@@ -5,7 +5,7 @@
   "title": "Edit an allomorph form",
   "description": "Changes one writing-system alternative of a selected ordinary stem or affix alternate after checking its owner and current form. Keeps the form identity, conditions and references; stages a Draft for a person to review and Apply.",
   "usage": [
-    "Usage: motif compose-edit-allomorph-form --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-edit-allomorph-form --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-edit-allomorph-form/"

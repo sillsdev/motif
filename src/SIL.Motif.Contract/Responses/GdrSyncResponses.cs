@@ -54,6 +54,9 @@ public static class GdrSyncCodes
     /// <summary>A <c>motif-query</c> block's run line is not in NFC, the form Query matches in; Query composes it, but the block should be saved in the corpus's form.</summary>
     public const string QueryNotNormalized = "guide.query-not-normalized";
 
+    /// <summary>A <c>motif-query</c> block's row count is outside the count its <c>expect</c> key declares.</summary>
+    public const string QueryCountMismatch = "guide.query-count-mismatch";
+
     /// <summary>A <c>motif-query</c> or <c>motif-show</c> block is malformed (a bad line, key, id or value).</summary>
     public const string QueryBlockInvalid = "guide.query-block-invalid";
 }
@@ -87,10 +90,11 @@ public static class GdrQueryBlockStatus
 /// <param name="Words">For a group-by block, the word types the groups cover (<paramref name="Rows"/> then counts the groups); null otherwise.</param>
 /// <param name="Tokens">The tokens of the matching words, when the run totalled them.</param>
 /// <param name="IndexBuilt">True when this check built the parse index the block needed.</param>
+/// <param name="Expected">The block's <c>expect</c> text, when it declares one; null otherwise.</param>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record GdrQueryBlockRun(
     string Id, string? Gdr, string? Section, string Status, string? Code, string Message, long? Rows, bool? Complete, double Milliseconds,
-    string? BuildCommand = null, long? Words = null, long? Tokens = null, bool IndexBuilt = false);
+    string? BuildCommand = null, long? Words = null, long? Tokens = null, bool IndexBuilt = false, string? Expected = null);
 
 /// <summary>One thing out of sync between the Grammar Guide and the grammar.</summary>
 /// <param name="Code">A <see cref="GdrSyncCodes"/> value.</param>

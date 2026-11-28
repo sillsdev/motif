@@ -5,7 +5,7 @@
   "title": "Author a text",
   "description": "Stages a Text with Free Translation, Literal Translation and Notes in a Draft. FieldWorks writing system rules determine its segments, words and punctuation; missing exact NFD wordforms are created. Only a person can Apply.",
   "usage": [
-    "Usage: motif compose-author-text --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-author-text --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-author-text/"

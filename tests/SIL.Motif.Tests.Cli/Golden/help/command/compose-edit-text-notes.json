@@ -5,7 +5,7 @@
   "title": "Edit the Notes of existing text segments",
   "description": "Stages, in bulk, the replacement of the Notes of segments in existing Texts: each edit names a Text, a segment or a word in it, and the one Note the segment is to hold. Apply refuses a segment whose Notes, in any writing system, changed since the edit was composed. Other Notes of the segment are removed. Give one intent with many edits, or --notes-tsv, never one intent per edit. A Trial reparses nothing of the grammar. Dry Run and Trial before a person Applies the Proposal.",
   "usage": [
-    "Usage: motif compose-edit-text-notes --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027, or --notes-tsv \u003Cfile\u003E [--analysis-ws \u003Ctag\u003E] in place of --intent [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-edit-text-notes --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027, or --notes-tsv \u003Cfile\u003E [--analysis-ws \u003Ctag\u003E] in place of --intent [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-edit-text-notes/"

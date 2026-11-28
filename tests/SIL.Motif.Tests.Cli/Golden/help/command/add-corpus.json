@@ -5,7 +5,7 @@
   "title": "Describe a Corpus",
   "description": "Creates an empty Corpus and records its provenance, tokenisation, and licence capabilities. Use it before adding Documents to the Corpus.",
   "usage": [
-    "Usage: motif add-corpus --project \u003Cfwdata\u003E --id \u003Cid\u003E --description \u003Ctext\u003E --tokeniser \u003Cname\u003E --tokeniser-version \u003Cv\u003E [--uri \u003Curl\u003E] [--licence \u003Ctext\u003E] [--tokeniser-notes \u003Ctext\u003E] [--may-derive true|false] [--may-redistribute true|false] [--may-use-commercially true|false] [--requires-attribution true|false] [--licence-basis \u003Ctext\u003E]"
+    "Usage: motif add-corpus --project \u003Cfwdata\u003E --id \u003Cid\u003E --description \u003Ctext\u003E --tokeniser \u003Cname\u003E --tokeniser-version \u003Cv\u003E [--uri \u003Curl\u003E] [--licence \u003Ctext\u003E] [--tokeniser-notes \u003Ctext\u003E] [--may-derive true|false] [--may-redistribute true|false] [--may-use-commercially true|false] [--requires-attribution true|false] [--licence-basis \u003Ctext\u003E] [--json]"
   ],
   "surface": "Released",
   "url": "https://motif-docs.pages.dev/reference/commands/add-corpus/"

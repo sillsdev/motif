@@ -5,7 +5,7 @@
   "title": "Remove an alternate form",
   "description": "Removes one alternate form (allomorph) of an entry that nothing refers to; Motif stages a Draft for a person to review and Apply. It refuses the lexeme form and a form that a parser analysis or any other object refers to.",
   "usage": [
-    "Usage: motif compose-remove-alternate-form --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-remove-alternate-form --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-remove-alternate-form/"

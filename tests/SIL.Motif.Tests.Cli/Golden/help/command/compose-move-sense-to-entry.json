@@ -5,7 +5,7 @@
   "title": "Move a sense to a new entry",
   "description": "Moves one sense, with its sub-senses and examples, out of its entry into a new entry of its own, so a derived word folded into its root as a sense gets its own lexeme form and analysis; Motif stages a Draft for a person to review and Apply.",
   "usage": [
-    "Usage: motif compose-move-sense-to-entry --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-move-sense-to-entry --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-move-sense-to-entry/"

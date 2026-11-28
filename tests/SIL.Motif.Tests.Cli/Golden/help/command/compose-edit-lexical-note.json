@@ -5,7 +5,7 @@
   "title": "Edit lexical notes",
   "description": "Stages an entry Note or a named sense note, checking the current text separately in each writing system. Record example words for an affix and its allomorphs in the entry Note; only a person can Apply.",
   "usage": [
-    "Usage: motif compose-edit-lexical-note --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-edit-lexical-note --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-edit-lexical-note/"

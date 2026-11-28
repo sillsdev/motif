@@ -5,7 +5,7 @@
   "title": "Delete a natural class",
   "description": "Deletes a natural class that nothing uses: no rule or other class refers to it, and no environment string writes its name or abbreviation in square brackets. It refuses otherwise and names each user. Motif stages a Draft for a person to review and Apply.",
   "usage": [
-    "Usage: motif compose-delete-natural-class --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-delete-natural-class --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-delete-natural-class/"

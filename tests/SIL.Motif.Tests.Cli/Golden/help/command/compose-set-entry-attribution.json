@@ -5,7 +5,7 @@
   "title": "Tag entries with their source",
   "description": "Stages, for many lexical entries at once, the Attribution tag \u003Csource\u003E@\u003Crevision\u003E \u003Clicence\u003E in each entry\u0027s Bibliography, written after any Bibliography text already there. An entry that already carries the tag stages nothing, so the command is safe to run again. Give one intent with many entries, or --entries-file and --tag; only a person can Apply.",
   "usage": [
-    "Usage: motif compose-set-entry-attribution --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027, or --entries-file \u003Cfile\u003E --tag \u0027\u003Csource\u003E@\u003Crevision\u003E \u003Clicence\u003E\u0027 [--analysis-ws \u003Ctag\u003E] in place of --intent [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-set-entry-attribution --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027, or --entries-file \u003Cfile\u003E --tag \u0027\u003Csource\u003E@\u003Crevision\u003E \u003Clicence\u003E\u0027 [--analysis-ws \u003Ctag\u003E] in place of --intent [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "Released",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-set-entry-attribution/"

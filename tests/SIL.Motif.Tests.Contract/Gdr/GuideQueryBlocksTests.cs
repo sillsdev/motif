@@ -26,6 +26,51 @@ public sealed class GuideQueryBlocksTests
         Assert.Equal(("dropped-letters", GuideShowKind.Counts, 10, null), (show.Query, show.Show, show.Limit, show.Columns));
     }
 
+    [Theory]
+    [InlineData("127", 127, true)]
+    [InlineData("127", 126, false)]
+    [InlineData("100..150", 100, true)]
+    [InlineData("100..150", 150, true)]
+    [InlineData("100..150", 151, false)]
+    [InlineData(">=1", 0, false)]
+    [InlineData(">=1", 1, true)]
+    [InlineData(">1", 1, false)]
+    [InlineData("<=5", 5, true)]
+    [InlineData("<5", 5, false)]
+    public void AnExpectedCountIsAnExactNumberARangeOrABound(string expect, long count, bool inside)
+    {
+        var blocks = GuideQueryBlocks.Parse(Query.Replace("sort:", "expect: " + expect + "\nsort:", StringComparison.Ordinal));
+        Assert.Empty(blocks.Diagnostics);
+        var query = Assert.Single(blocks.Queries);
+        Assert.Equal(expect, query.Expect!.ToString());
+        Assert.Equal(inside, query.Expect.Contains(count));
+    }
+
+    [Theory]
+    [InlineData("many")]
+    [InlineData("150..100")]
+    [InlineData("-1")]
+    [InlineData(">=")]
+    public void AMalformedExpectedCountIsAFieldDiagnostic(string expect)
+    {
+        var blocks = GuideQueryBlocks.Parse(Query.Replace("sort:", "expect: " + expect + "\nsort:", StringComparison.Ordinal));
+        var diagnostic = Assert.Single(blocks.Diagnostics);
+        Assert.Equal((GuideBlockDiagnosticKind.MalformedField, "expect"), (diagnostic.Kind, diagnostic.Field));
+        Assert.Null(Assert.Single(blocks.Queries).Expect);
+    }
+
+    [Fact]
+    public void ADuplicateExpectKeepsTheFirstValueAndIsADiagnostic()
+    {
+        var blocks = GuideQueryBlocks.Parse(Query.Replace("sort:", "expect: 5\nexpect: 6\nsort:", StringComparison.Ordinal));
+        var diagnostic = Assert.Single(blocks.Diagnostics);
+        Assert.Equal((GuideBlockDiagnosticKind.DuplicateField, "expect"), (diagnostic.Kind, diagnostic.Field));
+        Assert.Equal("5", Assert.Single(blocks.Queries).Expect!.Text);
+    }
+
+    [Fact]
+    public void ABlockWithoutExpectHasNone() => Assert.Null(Assert.Single(GuideQueryBlocks.Parse(Query).Queries).Expect);
+
     [Fact]
     public void ASpanCoversTheFencesAndNamesItsLines()
     {

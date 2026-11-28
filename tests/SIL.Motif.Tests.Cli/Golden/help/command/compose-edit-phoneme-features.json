@@ -5,7 +5,7 @@
   "title": "Set a phoneme\u0027s features",
   "description": "Stages feature values on an existing phoneme: set a value (a feature the phoneme already has takes the new value in place, one it lacks gains it) and clear features. A phoneme with no feature structure gets one. It refuses a value that does not belong to its feature, a feature both set and cleared, a clear of an absent feature and a change that alters nothing. Only a person can Apply.",
   "usage": [
-    "Usage: motif compose-edit-phoneme-features --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-edit-phoneme-features --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-edit-phoneme-features/"

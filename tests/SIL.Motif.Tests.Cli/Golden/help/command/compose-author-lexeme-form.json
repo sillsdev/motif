@@ -5,7 +5,7 @@
   "title": "Author a lexeme form",
   "description": "Stages a lexeme form with explicitly authored spelling, writing system and morph type in a Draft. Dry Run and Trial the Draft before Finalize; only a person can Apply.",
   "usage": [
-    "Usage: motif compose-author-lexeme-form --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027{\u0022entry\u0022:...,\u0022morphType\u0022:...,\u0022ws\u0022:...,\u0022text\u0022:...}\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-author-lexeme-form --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027{\u0022entry\u0022:...,\u0022morphType\u0022:...,\u0022ws\u0022:...,\u0022text\u0022:...}\u0027 [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-author-lexeme-form/"

@@ -5,7 +5,7 @@
   "title": "Make an entry a variant",
   "description": "Makes an existing entry, or one created earlier in the Draft, a variant of another entry or sense by creating its variant reference with a variant type, as Add Variant does in FieldWorks. Self-links, cycles and a second link to the same component are refused; Motif stages a Draft for a person to review and Apply.",
   "usage": [
-    "Usage: motif compose-make-variant-of --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-make-variant-of --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-make-variant-of/"

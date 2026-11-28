@@ -5,7 +5,7 @@
   "title": "Set a sense gloss",
   "description": "Stages the explicitly authored gloss of one sense in one writing system in a Draft. Dry Run and Trial the Draft before Finalize; only a person can Apply.",
   "usage": [
-    "Usage: motif add-set-gloss --project \u003Cfwdata\u003E --draft \u003Cname\u003E --target \u003CcanonicalId\u003E --ws \u003CwsTag\u003E --text \u003Ctext\u003E [--depends-on \u003CopId\u003E[,\u003CopId\u003E...]] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif add-set-gloss --project \u003Cfwdata\u003E --draft \u003Cname\u003E --target \u003CcanonicalId\u003E --ws \u003CwsTag\u003E --text \u003Ctext\u003E [--depends-on \u003CopId\u003E[,\u003CopId\u003E...]] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]] [--json]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/add-set-gloss/"

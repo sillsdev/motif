@@ -5,7 +5,7 @@
   "title": "Edit an ad hoc prohibition",
   "description": "Stages one explicit Disabled value for a flat allomorph or morpheme prohibition in a Draft. The expected value guards against stale evidence; Motif never Applies this change automatically. Only a person can Apply.",
   "usage": [
-    "Usage: motif compose-edit-adhoc-prohibition --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-edit-adhoc-prohibition --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-edit-adhoc-prohibition/"

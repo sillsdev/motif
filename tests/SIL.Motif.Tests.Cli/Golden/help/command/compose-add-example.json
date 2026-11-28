@@ -5,7 +5,7 @@
   "title": "Add an example to a sense",
   "description": "Adds one new example sentence to a sense, with its text in one or more writing systems and optional translations; Motif stages a Draft for a person to review and Apply. It refuses an unknown sense, a writing system the project does not have, empty or repeated text, and a neighbour that is not an example of the sense.",
   "usage": [
-    "Usage: motif compose-add-example --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-add-example --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-add-example/"

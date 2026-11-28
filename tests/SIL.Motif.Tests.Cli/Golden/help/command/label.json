@@ -5,7 +5,7 @@
   "title": "Label a Draft",
   "description": "Sets or replaces the short label that identifies a Draft in lists and review. The label does not change its operations, and only a person can Apply the Proposal.",
   "usage": [
-    "Usage: motif label --project \u003Cfwdata\u003E --draft \u003Cname\u003E \u003Ctext\u003E"
+    "Usage: motif label --project \u003Cfwdata\u003E --draft \u003Cname\u003E \u003Ctext\u003E [--json]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/label/"

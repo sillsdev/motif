@@ -5,7 +5,7 @@
   "title": "Author an alternate form",
   "description": "Stages one more stem or affix form on an existing or earlier-staged entry, with its own environments and, when the entry has inflectional grammatical info, inflection classes. Use compose-edit-derivational-affix-restriction for a derivational analysis. It adds no entry, sense or grammatical info and copies no condition from the lexeme form.",
   "usage": [
-    "Usage: motif compose-author-alternate-form --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-author-alternate-form --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-author-alternate-form/"

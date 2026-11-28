@@ -5,7 +5,7 @@
   "title": "Tag stems by query",
   "description": "Gives one exception feature to every stem a query selects (category, final letters, an existing feature, a gloss), reporting how many match and how many are tagged first. For a rule gate it tags whichever of the matching or the other stems is fewer; an affix gate can only require the feature. Motif stages a Draft for a person to review and Apply.",
   "usage": [
-    "Usage: motif compose-tag-stems-by-query --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-tag-stems-by-query --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-tag-stems-by-query/"

@@ -5,7 +5,7 @@
   "title": "Set a stem allomorph\u0027s name",
   "description": "Sets or clears the stem name of one stem allomorph after checking the expected current stem name. The name must belong to a stem category of the entry or an ancestor; Motif stages a Draft for a person to review and Apply.",
   "usage": [
-    "Usage: motif compose-edit-stem-allomorph-stem-name --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-edit-stem-allomorph-stem-name --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-edit-stem-allomorph-stem-name/"
