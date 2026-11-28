@@ -34,7 +34,7 @@ public sealed class SourceToolTests(PristineProjectFixture pristine) : IDisposab
 
     private static ServerContext Context(string project) => new(project, "1.0",
         new NoRunnerLauncher(new JobRunnerLaunchOptions(SIL.Motif.Worker.RunnerOptions.ResolveRoot(), null)),
-        new ActivityLog(null), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
+        new ActivityLog(), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
 
     [Fact]
     public void TheTwoReadToolsHaveHelpDescriptionsAndFieldLinesAndAreInTheDefaultAndPhonologyProfiles()

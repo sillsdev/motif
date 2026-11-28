@@ -604,7 +604,7 @@ public sealed class ToolSurfaceTests
     {
         var tool = AgentTools.All.Single(tool => tool.Name == "motif_stats");
         var context = new ServerContext("unused.fwdata", "1.0", new SIL.Motif.Commands.NoRunnerLauncher(
-            new SIL.Motif.Commands.JobRunnerLaunchOptions("root", null)), new ActivityLog(null), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
+            new SIL.Motif.Commands.JobRunnerLaunchOptions("root", null)), new ActivityLog(), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
         Assert.DoesNotContain(tool.InputSchema["required"]!.AsArray(), value => value!.GetValue<string>() == "assessmentId");
         var arguments = new JsonObject { ["output"] = "JsonRows",
             ["forwardedArguments"] = new JsonArray("--format", "jsonl") };
@@ -723,7 +723,7 @@ public sealed class DetailedNaturalClassMemberToolTests(PristineProjectFixture p
 
         var defaultProfile = ToolProfile.Load("default");
         var context = new ServerContext(project.FwDataPath, "1.0",
-            new NoRunnerLauncher(new JobRunnerLaunchOptions(managedRoot, null)), new ActivityLog(null),
+            new NoRunnerLauncher(new JobRunnerLaunchOptions(managedRoot, null)), new ActivityLog(),
             defaultProfile, TextWriter.Null, advancedAiModeEnabled: true);
         var grammarTools = MotifMcpServer.Expose(defaultProfile);
         var grammar = await MotifMcpServer.CallAsync(context, grammarTools, "motif_grammar",
@@ -761,7 +761,7 @@ public sealed class DetailedNaturalClassMemberToolTests(PristineProjectFixture p
 
         var experimental = ToolProfile.Load("parsimony-experimental");
         var editContext = new ServerContext(project.FwDataPath, "1.0",
-            new NoRunnerLauncher(new JobRunnerLaunchOptions(managedRoot, null)), new ActivityLog(null),
+            new NoRunnerLauncher(new JobRunnerLaunchOptions(managedRoot, null)), new ActivityLog(),
             experimental, TextWriter.Null, advancedAiModeEnabled: true);
         var experimentalTools = MotifMcpServer.Expose(experimental);
         var started = await MotifMcpServer.CallAsync(editContext, experimentalTools, "motif_start_proposal",

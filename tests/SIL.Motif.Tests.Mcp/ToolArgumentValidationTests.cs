@@ -18,7 +18,7 @@ public sealed class ToolArgumentValidationTests
     public async Task InvalidProposalLimitIsRefusedAndRecordedBeforeTheToolRuns()
     {
         using var project = new RegisteredProject();
-        var activity = new ActivityLog(Path.Combine(project.Directory, "activity.jsonl"));
+        var activity = new ActivityLog();
         var context = project.Context(activity);
         var arguments = new Dictionary<string, JsonElement>
         {
@@ -42,7 +42,7 @@ public sealed class ToolArgumentValidationTests
     public async Task UndeclaredDetailIsRefusedAndRecordedBeforeTheToolRuns()
     {
         using var project = new RegisteredProject();
-        var activity = new ActivityLog(Path.Combine(project.Directory, "activity.jsonl"));
+        var activity = new ActivityLog();
         var context = project.Context(activity);
         var arguments = new Dictionary<string, JsonElement>
         {
@@ -72,7 +72,7 @@ public sealed class ToolArgumentValidationTests
         };
         var profile = ToolProfile.Load("parsimony-experimental");
 
-        var result = await MotifMcpServer.CallAsync(project.Context(new ActivityLog(null), profile),
+        var result = await MotifMcpServer.CallAsync(project.Context(new ActivityLog(), profile),
             MotifMcpServer.Expose(profile), "motif_edit_inflectional_affix", arguments,
             CancellationToken.None);
 
@@ -92,7 +92,7 @@ public sealed class ToolArgumentValidationTests
             ["words"] = JsonSerializer.SerializeToElement("foo"),
         };
 
-        var result = await MotifMcpServer.CallAsync(project.Context(new ActivityLog(null)),
+        var result = await MotifMcpServer.CallAsync(project.Context(new ActivityLog()),
             MotifMcpServer.Expose(ToolProfile.Builtin), "motif_trial", arguments, CancellationToken.None);
 
         Assert.True(result.IsError);

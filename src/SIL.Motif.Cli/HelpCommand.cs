@@ -286,7 +286,7 @@ public static class HelpCommand
     {
         output.WriteLine("Start the MCP server");
         output.WriteLine("Starts Motif's MCP server over standard input and output for an assistant connection.");
-        output.WriteLine("Usage: motif mcp [--profile <file | shipped name>] [--activity-log <file.jsonl>]");
+        output.WriteLine("Usage: motif mcp [--profile <file | shipped name>]");
         output.WriteLine("Advanced AI mode is read when the server starts.");
         output.WriteLine("Read the current mode with 'motif settings advanced-ai'; use 'on' or 'off' to change it.");
         output.WriteLine("Expanded help: motif help mcp --full");

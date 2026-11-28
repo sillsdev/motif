@@ -95,7 +95,7 @@ public sealed class TwinSet
             throw Refuse(RefusalCodes.QueryTwinRegexAmbiguous,
                 "--twin needs exactly one `form ~` or `form matches` pattern, and not under `or`, so every row has the twin of the same regex; split the query in two.");
         var leaf = found[0].Field;
-        var pattern = (string)leaf.Value;
+        var pattern = PatternNormalization.Pattern((string)leaf.Value);
         if (pattern.Length > FormQuery.MaximumRegexLength) throw new ArgumentException("Regular expression is too long.");
         Regex regex;
         try
@@ -182,6 +182,7 @@ public sealed class TwinSet
     /// <summary>The rewrite of a word by each template, null where the regex does not match it.</summary>
     public IReadOnlyList<string>? Forms(string word)
     {
+        word = PatternNormalization.Value(word);
         var match = _regex.Match(word);
         if (!match.Success) return null;
         return [.. _templates.Select(parts =>

@@ -21,7 +21,7 @@ public sealed class DispositionToolTests(PristineProjectFixture pristine)
         KnownProjectTestSetup.AssignUniqueTag(RunnerOptions.ResolveRoot(), path, "disposition-tools");
         var profile = new ToolProfile("dispositions", null, null, "concise", [], AllTools: true);
         var context = new ServerContext(path, "1.0", new NoRunnerLauncher(new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)),
-            new ActivityLog(null), profile, TextWriter.Null, advancedAiModeEnabled: true);
+            new ActivityLog(), profile, TextWriter.Null, advancedAiModeEnabled: true);
         var tools = MotifMcpServer.Expose(profile);
         Assert.True(WordTypeDispositionCommands.Record(new DisposeWordFormsRequest(path, "1.0", ["Nairobi", "Mombasa"], "name",
             "towns", RecordedBy: "ana")).Succeeded);

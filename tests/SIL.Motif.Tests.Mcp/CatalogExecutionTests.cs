@@ -108,7 +108,7 @@ public sealed class CatalogExecutionTests
     public async Task CatalogHandlerArgumentExceptionKeepsItsOriginalMessage()
     {
         var context = new ServerContext("", "1.0", new NoRunnerLauncher(
-            new JobRunnerLaunchOptions("root", null)), new ActivityLog(null), ToolProfile.Builtin,
+            new JobRunnerLaunchOptions("root", null)), new ActivityLog(), ToolProfile.Builtin,
             TextWriter.Null, advancedAiModeEnabled: true);
         var command = CommandCatalog.All.Single(item => item.Name == "setup skip");
         var arguments = new ToolArgs(new JsonObject(), []);
@@ -125,7 +125,7 @@ public sealed class CatalogExecutionTests
     public async Task AnUnexpectedExceptionInsideAToolIsAToolFailureNotTheCallersFault()
     {
         var context = new ServerContext("unused.fwdata", "1.0", new NoRunnerLauncher(
-            new JobRunnerLaunchOptions("root", null)), new ActivityLog(null), ToolProfile.Builtin,
+            new JobRunnerLaunchOptions("root", null)), new ActivityLog(), ToolProfile.Builtin,
             TextWriter.Null, advancedAiModeEnabled: true);
         var agent = new AgentTool("motif_throwing_catalog_handler", "", AgentClass.Read,
             new JsonObject { ["type"] = "object", ["properties"] = new JsonObject() }, true, true,
@@ -149,7 +149,7 @@ public sealed class CatalogExecutionTests
     public async Task AnOutOfMemoryInsideAToolIsARefusalWithAnOutOfMemoryCodeNotABusyToolFailure()
     {
         var context = new ServerContext("unused.fwdata", "1.0", new NoRunnerLauncher(
-            new JobRunnerLaunchOptions("root", null)), new ActivityLog(null), ToolProfile.Builtin,
+            new JobRunnerLaunchOptions("root", null)), new ActivityLog(), ToolProfile.Builtin,
             TextWriter.Null, advancedAiModeEnabled: true);
         var agent = new AgentTool("motif_memory_hungry_handler", "", AgentClass.Read,
             new JsonObject { ["type"] = "object", ["properties"] = new JsonObject() }, true, true,
@@ -183,7 +183,7 @@ public sealed class CatalogExecutionTests
             Assert.True(expected.Succeeded);
             var expectedJson = JsonNode.Parse(ProjectionJson.Serialize(expected.Value!));
             var context = new ServerContext(projectPath, "1.0", new NoRunnerLauncher(
-                new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(null),
+                new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(),
                 ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
             var arguments = new JsonObject { ["jobId"] = "job-1" };
             var command = CommandCatalog.All.Single(item => item.Name == "jobs show");
@@ -215,7 +215,7 @@ public sealed class CatalogExecutionTests
         try
         {
             var runner = new RecordingRunner(root);
-            var context = new ServerContext(project, "1.0", runner, new ActivityLog(null),
+            var context = new ServerContext(project, "1.0", runner, new ActivityLog(),
                 ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
             var tool = AgentTools.All.Single(tool => tool.Name == "motif_baseline_refresh");
 
@@ -267,7 +267,7 @@ public sealed class CatalogExecutionTests
         try
         {
             var context = new ServerContext(project, "1.0", new NoRunnerLauncher(
-                new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(null),
+                new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(),
                 ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
             var tool = AgentTools.All.Single(item => item.Name == "motif_coverage");
             ToolArgs Args(string ledgerPath) => new(new JsonObject

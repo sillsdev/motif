@@ -46,7 +46,7 @@ public sealed class MultipleOutcomeRuleAcceptanceTests(PristineProjectFixture pr
         var hash = SHA256.HashData(File.ReadAllBytes(path));
         Assert.True(ProposalCommands.New(new(path, "1.0", "outcomes", "Context-dependent outcomes")).Succeeded);
         var context = new ServerContext(path, "1.0", new NoRunnerLauncher(new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)),
-            new ActivityLog(null), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
+            new ActivityLog(), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
         var tools = MotifMcpServer.Expose(ToolProfile.Builtin);
         var outcomes = JsonSerializer.SerializeToNode(new[]
         {

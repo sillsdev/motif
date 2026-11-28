@@ -33,7 +33,7 @@ public sealed class EffectSummaryWarningTests
         value.Remove("effects");
         value.Remove("operations");
         var context = new ServerContext("unused.fwdata", "1.0", new NoRunnerLauncher(
-            new JobRunnerLaunchOptions("root", null)), new ActivityLog(null), ToolProfile.Builtin,
+            new JobRunnerLaunchOptions("root", null)), new ActivityLog(), ToolProfile.Builtin,
             TextWriter.Null, advancedAiModeEnabled: true);
         var tool = new AgentTool("motif_dry_run", "", AgentClass.Read,
             new JsonObject { ["type"] = "object", ["properties"] = new JsonObject() }, true, true,

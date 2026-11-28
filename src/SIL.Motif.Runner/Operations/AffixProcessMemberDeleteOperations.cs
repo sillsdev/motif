@@ -95,7 +95,8 @@ internal sealed class AffixProcessMemberDeleteHandler(string kind, string field)
         {
             var user = member.ReferringObjects.FirstOrDefault();
             if (user is not null)
-                throw new InvalidOperationException($"'{kind}': '{id.Value}' is still used by a {user.ClassName} ({user.Guid:D}).");
+                throw new PhonologicalRuleContextInUseRefusal($"'{kind}': '{id.Value}' is still used by a {user.ClassName} ({user.Guid:D}).",
+                    id.Value, member.Guid, user.Guid);
         }
         if (requireUnreferenced && IsInput)
         {

@@ -44,6 +44,14 @@ Motif also warns, with code `grammar.allomorph-repeats-environment-material`, ab
 
 Motif also reports lexicon hygiene as warnings, with three codes. It only reports; it changes nothing, and it includes entries marked do-not-parse, which FieldWorks still parses. `lexicon.stem-typed-as-content-word` names each stem whose part of speech is a Noun, Verb or Adjective (or a sub-category of one) and whose form is a single letter or whose gloss begins with `=`, `see:`, `see also` or `see under` (a cross-reference stub), begins with `letter`, or names a function word (`marker`, `particle`, `interjection`, `conjunction`, `preposition`, `determiner`, `linker`, `pause word`). Such a stem takes that category's inflection and derivation, so it lets short unrelated readings parse. `lexicon.duplicate-entry` names entries that share a lexeme form, a first gloss, a morph type and a category. `lexicon.affix-hyphen-on-wrong-side` names a prefix, proclitic or prefixing-interfix form written `-i` and a suffix, enclitic or suffixing-interfix form written `i-`; the hyphen belongs on the side that touches the stem. When there are more than 20 findings of one kind, one finding gives the total and a sample of five. To fix the first kind in bulk, put `compose-set-stem-part-of-speech` intents in one [`compose-batch`](cmd:compose-batch) file.
 
+## Advisories over the whole grammar
+
+`grammar check` also sweeps every object of the Baseline for the patterns `compose-batch` advises on, read-only, and lists them under `advisories` with the same codes. Each carries `code`, `message` and `objects` (one `id` and `text` per object it is about). An advisory never changes the findings, the exit code or the Baseline's readiness; read each and either change the model or keep it. The codes are stable:
+
+- `compose.whole-word-environment`: an environment with a word boundary on both sides and only literal sounds between, so it fits one word. `text` is its pattern.
+- `compose.one-stem-inflection-class`: an inflection class that exactly one stem analysis uses, counting its subclasses. `text` is the class name.
+- `grammar.orphan-environment`: an environment that no allomorph references. `text` is its pattern; delete it or give it to the forms it was written for.
+
 ## Related commands
 
 - [Read grammar warnings](cmd:warnings) filters and displays stored findings.

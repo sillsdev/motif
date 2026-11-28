@@ -53,7 +53,7 @@ public sealed class ProposalCompareJobsTests
         });
         Assert.True(staged.Succeeded, staged.Refusal?.Message);
         var context = new ServerContext(fixture.Project, "1.0", new NoRunnerLauncher(
-            new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(null), ToolProfile.Builtin,
+            new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(), ToolProfile.Builtin,
             TextWriter.Null, advancedAiModeEnabled: true);
         var tools = MotifMcpServer.Expose(ToolProfile.Builtin);
         async Task<(bool Error, JsonElement Content)> Call(JsonObject arguments)

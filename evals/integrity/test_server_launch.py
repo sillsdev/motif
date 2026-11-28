@@ -55,7 +55,7 @@ class ServerLaunchTests(unittest.TestCase):
                 f'$registered = Invoke-ABProcess {quote(MOTIF)} (Get-ABProjectRegistrationArguments {quote(fwdata)}) '
                 f'{quote(root)} @{{}} 300000',
                 "if ($registered.ExitCode -or $registered.Stderr -match 'could not be recorded') { throw $registered.Stderr }",
-                f'$session = New-ABMcpSession {quote(MOTIF)} (Get-ABServerArguments default $null) {quote(root)} @{{}} '
+                f'$session = New-ABMcpSession {quote(MOTIF)} (Get-ABServerArguments default) {quote(root)} @{{}} '
                 f'{quote(root / "transcript.jsonl")}',
                 "try { $listed = Invoke-ABMcpTool $session 'motif_list_projects' @{}",
                 '@{ tools = @($session.Tools | ForEach-Object { $_.name }); projects = $listed.result.content[0].text;'

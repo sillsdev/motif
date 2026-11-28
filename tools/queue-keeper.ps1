@@ -50,7 +50,8 @@ try {
     $q = Invoke-Graphql @'
 query($o:String!,$n:String!){repository(owner:$o,name:$n){
   mergeQueue(branch:"main"){entries(first:100){nodes{position state pullRequest{number}}}}
-  pullRequests(states:OPEN,first:100){nodes{id number headRefName
+  pullRequests(states:OPEN,first:100){nodes{id number headRefName baseRefName isDraft state mergeable
+    commits(last:1){nodes{commit{committedDate}}}
     timelineItems(last:40,itemTypes:[REMOVED_FROM_MERGE_QUEUE_EVENT,ADDED_TO_MERGE_QUEUE_EVENT]){nodes{__typename
       ... on RemovedFromMergeQueueEvent{createdAt reason} ... on AddedToMergeQueueEvent{createdAt}}}}}}}
 '@ @{ o = $owner; n = $name }
@@ -89,10 +90,41 @@ query($o:String!,$n:String!){repository(owner:$o,name:$n){
     foreach ($pr in $prs) {
         $number = [int]$pr.number
         if ($inQueue.ContainsKey($number)) { continue }
-        $reason = Get-LatestEvictionReason -Events @($pr.timelineItems.nodes)
-        if (-not $reason) { continue }
-        if ($reason -ne 'failed_checks') { Log "- #$number left alone: evicted for $reason"; continue }
+        $eviction = Get-LatestEviction -Events @($pr.timelineItems.nodes)
+        if (-not $eviction) { continue }
+        $reason = [string]$eviction.reason
+        if (-not (Test-RequeueableEvictionReason -Reason $reason)) { Log "- #$number left alone: evicted for $reason"; continue }
         try {
+            # A push after the eviction supersedes the failure; push time is the head commit's committedDate.
+            $headDate = $null
+            $lastCommit = @($pr.commits.nodes | Select-Object -Last 1)
+            if ($lastCommit.Count -gt 0) { $headDate = $lastCommit[0].commit.committedDate }
+            $pushArgs = @{ State = [string]$pr.state; IsDraft = [bool]$pr.isDraft; BaseRef = [string]$pr.baseRefName
+                EvictedAt = $eviction.createdAt; HeadCommittedAt = $headDate; Mergeable = [string]$pr.mergeable }
+            $pushed = Get-PushedSinceEvictionDecision @pushArgs
+            if ($pushed.Action -eq 'NeedChecks') {
+                $errFile = [System.IO.Path]::GetTempFileName()
+                try {
+                    $c = & gh pr checks $number -R $Repo --required --json name,bucket 2>$errFile
+                    $code = $LASTEXITCODE
+                } finally { Remove-Item -LiteralPath $errFile -ErrorAction SilentlyContinue }
+                $parsed = ConvertFrom-RequiredChecksResult -ExitCode $code -Stdout ($c | Out-String)
+                if (-not $parsed.Ok) { throw $parsed.Error }
+                $pushed = Get-PushedSinceEvictionDecision @pushArgs -CheckBuckets $parsed.Buckets
+            }
+            if ($pushed.Action -eq 'Wait') { Log "- #$number $($pushed.Reason) (evicted for $reason, pushed since)"; continue }
+            if ($pushed.Action -eq 'Requeue') {
+                $markerTimes = Get-Lines (Invoke-Api @("repos/$Repo/issues/$number/comments", '--paginate', '--jq', '.[] | select(.body | contains("queue-keeper:requeue")) | .created_at'))
+                $todayCount = @($markerTimes | Where-Object { ([datetime]$_).ToUniversalTime().Date -eq $today }).Count
+                if ($todayCount -ge $MaxRequeuesPerDay) { Log "- #$number left alone: already requeued $todayCount time(s) today"; continue }
+                if ($DryRun) { Log "- #$number would be requeued: $($pushed.Reason) (evicted for $reason)"; continue }
+                # Marker first, so the cap can be counted; enqueue directly, as eviction drops auto-merge.
+                Invoke-Api @('-X', 'POST', "repos/$Repo/issues/$number/comments", '-f', "body=$marker`nQueue keeper is requeueing this PR after a $reason eviction: $($pushed.Reason).") | Out-Null
+                Invoke-Graphql 'mutation($id:ID!){enqueuePullRequest(input:{pullRequestId:$id}){mergeQueueEntry{position}}}' @{ id = $pr.id } | Out-Null
+                Log "- #$number requeued: $($pushed.Reason) (evicted for $reason)"
+                continue
+            }
+            if ($reason -eq 'merge_conflict') { Log "- #$number left alone: evicted for merge_conflict ($($pushed.Reason))"; continue }
             if ($null -eq $mergeGroupRuns) { $mergeGroupRuns = @(Get-RunPages 'event=merge_group&status=failure') }
             $failed = @($mergeGroupRuns | Where-Object { $_.head_branch -like "gh-readonly-queue/main/pr-$number-*" } | Sort-Object created_at -Descending)
             if ($failed.Count -eq 0) { Log "- #$number left alone: no failed queue-group run found"; continue }

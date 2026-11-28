@@ -128,7 +128,7 @@ public sealed class ReadonlyAuxiliaryStoreTests(PristineProjectFixture pristine)
     }
 
     private static ServerContext Context(string projectPath, string root) => new(projectPath, "1.0",
-        new NoRunnerLauncher(new JobRunnerLaunchOptions(root, null)), new ActivityLog(null), ToolProfile.Builtin,
+        new NoRunnerLauncher(new JobRunnerLaunchOptions(root, null)), new ActivityLog(), ToolProfile.Builtin,
         TextWriter.Null, advancedAiModeEnabled: true);
 
     private static Dictionary<string, byte[]> RemoveLeaseAndSnapshot(string projectPath)
