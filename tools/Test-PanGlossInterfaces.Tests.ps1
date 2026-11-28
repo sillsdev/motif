@@ -7,6 +7,20 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
+Import-Module (Join-Path $PSScriptRoot 'PanGlossRelease.psm1') -Force
+$missingRidGate = Join-Path $PSScriptRoot 'Test-PanGlossInterfaces.ps1'
+$skipOutput = & $missingRidGate -RepositoryRoot $repoRoot -Configuration Release -RequireParser `
+    -RuntimeIdentifier 'osx-arm64' 6>&1 | Out-String
+if (Test-PanGlossPinnedForRuntime -RepositoryRoot $repoRoot -RuntimeIdentifier 'osx-arm64') {
+    throw 'This check needs a runtime identifier with no PanGloss pin; osx-arm64 is now pinned, so choose another.'
+}
+if (-not $skipOutput.Contains('No PanGloss pin for osx-arm64; interface gate skipped.', [StringComparison]::Ordinal)) {
+    throw "An unpinned runtime identifier did not skip the gate; got '$skipOutput'."
+}
+if (-not (Test-PanGlossPinnedForRuntime -RepositoryRoot $repoRoot)) {
+    Write-Host 'No PanGloss pin for this platform; the staged-binary gate checks are skipped.' -ForegroundColor Yellow
+    return
+}
 $fakeSource = Join-Path $repoRoot "bin/$Configuration/tests/fake-pangloss"
 $fakeName = if ($IsWindows) { 'pangloss.exe' } else { 'pangloss' }
 $fakePath = Join-Path $fakeSource $fakeName

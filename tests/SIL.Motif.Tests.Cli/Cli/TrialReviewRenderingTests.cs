@@ -1,6 +1,8 @@
 using System.Reflection;
 using SIL.Motif.Cli.Rendering;
 using SIL.Motif.Contract.Baselines;
+using SIL.Motif.Contract.Responses;
+using WordRow = SIL.Motif.Contract.Review.WordRow;
 using SIL.Motif.Contract.Review;
 using Xunit;
 
@@ -40,6 +42,37 @@ public sealed class TrialReviewRenderingTests
         var heldText = TrialReviewTextRenderer.Render(new AvailableTrialResult(report with
             { Summary = report.Summary with { Flags = [], Gains = held } }));
         Assert.Contains("HOLD (Autonomous Apply reads this through a declared gate)", heldText, StringComparison.Ordinal);
+    }
+
+    private static ShadowedAlternate Row(string tier, string form, string by, params string[] reasons) =>
+        new(tier, "entry", "eA", form, [by], reasons, ["g-" + form], tier == "definite" ? ["g-" + form] : []);
+
+    [Fact]
+    public void ShadowedAlternatesShowDefiniteAsAWarningAndMaybeAsASofterNote()
+    {
+        var report = (ReportView)Create(typeof(ReportView));
+        var shadowed = new ShadowedAlternatesReport(true,
+            [Row("definite", "ba", "bal", "unconstrained_earlier"), Row("maybe", "bo", "bu", "lhs_subsumption_undecided")],
+            [new DeadContinuationAlternate("definite", "eB", "tal", ["environment_needs_neighbour"], ["required_mpr VC-B"], ["g-tal"])]);
+
+        var text = TrialReviewTextRenderer.Render(new AvailableTrialResult(report with
+            { Summary = report.Summary with { Flags = [], ShadowedAlternates = shadowed } }));
+
+        Assert.Contains("Warning: 1 shadowed alternate can never be selected: entry eA 'ba' is shadowed by 'bal' (unconstrained_earlier)", text, StringComparison.Ordinal);
+        Assert.Contains("Note: 1 alternate may be shadowed (PanGloss could not prove it): entry eA 'bo' behind 'bu' (lhs_subsumption_undecided)", text, StringComparison.Ordinal);
+        Assert.Contains("Warning: 1 alternate is selected but rejected by every following affix: entry eB 'tal' (required_mpr VC-B)", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("not checked", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ANoShadowedAlternatesReportPrintsNothing()
+    {
+        var report = (ReportView)Create(typeof(ReportView));
+        var empty = new ShadowedAlternatesReport(true, [], []);
+        var clean = TrialReviewTextRenderer.Render(new AvailableTrialResult(report with
+            { Summary = report.Summary with { Flags = [], ShadowedAlternates = empty } }));
+        Assert.DoesNotContain("hadowed", clean, StringComparison.Ordinal);
+
     }
 
     [Fact]

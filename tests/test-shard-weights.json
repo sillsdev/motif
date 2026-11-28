@@ -630,6 +630,7 @@
   "SIL.Motif.Tests.Cli.AnalysisContextRenderingTests": 0.0,
   "SIL.Motif.Tests.Cli.ApplyMessageValidationTests": 0.9,
   "SIL.Motif.Tests.Cli.ApplyPromotionGatingAndSweepTests": 64.6,
+  "SIL.Motif.Tests.Cli.ApplyPromotionGatingRealParserTests": 10.0,
   "SIL.Motif.Tests.Cli.ArtifactInventoryArgvTests": 10.1,
   "SIL.Motif.Tests.Cli.AssessArgvTests": 13.4,
   "SIL.Motif.Tests.Cli.AssessmentCostPresentationTests": 0.0,

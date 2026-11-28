@@ -9,21 +9,29 @@ namespace SIL.Motif.Host.PanGloss;
 public static class GrammarHealthReportReader
 {
     /// <summary>Validates and converts one grammar-health JSON report.</summary>
-    public static GrammarCheckResponse ReadResponse(string output)
+    /// <param name="output">The report JSON.</param>
+    /// <param name="shadowedRequested">
+    /// Whether the run asked for <c>--shadowed</c>. A grammar that did not compile has no <c>shadowed_alternates</c>, and the response then carries none.
+    /// </param>
+    public static GrammarCheckResponse ReadResponse(string output, bool shadowedRequested = false)
     {
         var report = ReadReport(output);
+        var shadowed = shadowedRequested ? ShadowedAlternatesReader.Read(output) : null;
         var locale = report.Locale!;
         var findings = (report.Diagnostics ?? throw new JsonException("The grammar-health report is incomplete."))
+            // Kept in the shadowed report instead, so a Trial does not count them as new against an unflagged Baseline.
+            .Where(diagnostic => shadowed is null || diagnostic?.Code != PanGlossFindingCodes.AllomorphShadowed)
             .Select(diagnostic => ToGrammarWarning(diagnostic ?? throw new JsonException("A diagnostic is incomplete."), locale))
             .ToArray();
         var summary = (report.Summary ?? throw new JsonException("The grammar-health report is incomplete."))
+            .Where(row => shadowed is null || row?.Code != PanGlossFindingCodes.AllomorphShadowed)
             .Select(row =>
             {
                 var item = row ?? throw new JsonException("A summary row is incomplete or invalid.");
                 return new GrammarWarningSummary(item.Code!, item.GroupName, item.Level, item.Count)
                 { BlocksFst = item.BlocksFst, FstReason = item.FstReason };
             }).ToArray();
-        return new GrammarCheckResponse(findings, HasBaseline: true) { Summary = summary, Locale = locale, FstChecked = report.FstChecked, FstCheckError = report.FstCheckError };
+        return new GrammarCheckResponse(findings, HasBaseline: true) { Summary = summary, Locale = locale, FstChecked = report.FstChecked, FstCheckError = report.FstCheckError, ShadowedAlternates = shadowed };
     }
 
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };

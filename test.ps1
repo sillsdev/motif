@@ -9,7 +9,7 @@
 
   The suite needs no project or checkout from outside this repo: every LibLCM project it exercises is
   built at run time by `NewLangProjFixture` and seeded by `SeededProject`. The one external dependency
-  that remains is the `pangloss` executable, a separate Rust build gated by `RealParserFactAttribute`
+  that remains is the `pangloss` executable, a separate Rust build gated by `RealParserFactAttribute` and `RealParserTheoryAttribute`
   -- those tests skip, rather than fail, when it is not built.
 
   Each test project runs in one or more separate processes, with concurrent processes capped at 0.6 of the
@@ -669,7 +669,7 @@ foreach ($outcome in $outcomes) {
                 'NotExecuted' {
                     $counters.notExecuted++
                     $skipText = $result.OuterXml
-                    $skipCategory = if ($skipText -match '(?i)pangloss not found|RealParserFactAttribute') { 'parser-absent' }
+                    $skipCategory = if ($skipText -match '(?i)pangloss not found|RealParserFactAttribute|RealParserTheoryAttribute') { 'parser-absent' }
                     elseif ($skipText -match '(?i)screen.?shot|walkthrough capture|MOTIF_(?:SCREENSHOTS|WALKTHROUGH)') { 'capture' }
                     elseif ($skipText -match '(?i)not available on (?:Windows|Linux|macOS)|only available on (?:Windows|Linux|macOS)|requires Administrator elevation') { 'platform' }
                     elseif ($skipText -match '(?i)No Python 3 interpreter|helper.*(?:missing|not found)|tool.*not installed') { 'harness' }

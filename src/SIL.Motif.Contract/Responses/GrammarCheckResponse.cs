@@ -31,6 +31,13 @@ public sealed record GrammarCheckResponse(IReadOnlyList<GrammarWarning> Findings
     /// <summary>Motif advisories about the checked Baseline, separate from PanGloss findings.</summary>
     public IReadOnlyList<GrammarCheckAdvisory> Advisories { get; init; } = [];
 
+    /// <summary>
+    /// PanGloss's shadowed-alternates report for this grammar, or null when it was not asked for. When it was asked for but
+    /// the installed PanGloss cannot produce it, the report says so instead of the check failing.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ShadowedAlternatesReport? ShadowedAlternates { get; init; }
+
     /// <summary>The parser's per-code summary rows, used to group findings for display.</summary>
     public IReadOnlyList<GrammarWarningSummary> Summary { get; init; } = [];
 

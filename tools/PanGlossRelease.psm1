@@ -18,6 +18,22 @@ function Get-CurrentPanGlossRuntimeIdentifier {
     throw "Cannot select a supported PanGloss RID for $([System.Runtime.InteropServices.RuntimeInformation]::OSDescription) $architecture."
 }
 
+function Test-PanGlossPinnedForRuntime {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $RepositoryRoot,
+
+        [string] $RuntimeIdentifier
+    )
+
+    if ([string]::IsNullOrWhiteSpace($RuntimeIdentifier)) {
+        $RuntimeIdentifier = Get-CurrentPanGlossRuntimeIdentifier
+    }
+    $pin = Get-Content -LiteralPath (Join-Path $RepositoryRoot 'pangloss-release.json') -Raw | ConvertFrom-Json
+    return $null -ne $pin.assets.PSObject.Properties[$RuntimeIdentifier]
+}
+
 function Get-PinnedPanGlossArtifact {
     [CmdletBinding()]
     param(
@@ -115,4 +131,4 @@ function Get-PinnedPanGlossArtifact {
     }
 }
 
-Export-ModuleMember -Function Get-CurrentPanGlossRuntimeIdentifier, Get-PinnedPanGlossArtifact
+Export-ModuleMember -Function Get-CurrentPanGlossRuntimeIdentifier, Get-PinnedPanGlossArtifact, Test-PanGlossPinnedForRuntime

@@ -15,6 +15,7 @@ public static class RejectionTraceSentences
         ["excluded_stem_name"] = "The stem name the rule excludes was the root's.",
         ["root_not_viable"] = "The root candidate could not start a valid analysis.",
         ["required_slot_unfilled"] = "A required template slot was left unfilled.",
+        ["required_slot_uncoverable"] = "This template can't produce this word: its required slot holds no rule for any of the word's affixes.",
         ["applicable_templates_not_applied"] = "An applicable affix template was not applied.",
         ["nonfinal_template_last"] = "A template that is not final came last in the word.",
         ["remaining_rules_in_stratum"] = "Morphology did not complete the rules the stratum still required.",

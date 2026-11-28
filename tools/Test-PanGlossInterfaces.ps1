@@ -11,7 +11,9 @@ param(
 
     [string] $Configuration = 'Debug',
 
-    [switch] $RequireParser
+    [switch] $RequireParser,
+
+    [string] $RuntimeIdentifier
 )
 
 Set-StrictMode -Version Latest
@@ -22,6 +24,14 @@ $pinPath = Join-Path $RepositoryRoot 'pangloss-release.json'
 $pin = Get-Content -LiteralPath $pinPath -Raw | ConvertFrom-Json
 $interfaces = $pin.interfaces
 if ($null -eq $interfaces) { throw 'pangloss-release.json has no interfaces object.' }
+
+# A platform with no published PanGloss is a gap, not a missing pin; a pinned RID still fails strictly.
+Import-Module (Join-Path $RepositoryRoot 'tools/PanGlossRelease.psm1') -Force
+if ([string]::IsNullOrWhiteSpace($RuntimeIdentifier)) { $RuntimeIdentifier = Get-CurrentPanGlossRuntimeIdentifier }
+if (-not (Test-PanGlossPinnedForRuntime -RepositoryRoot $RepositoryRoot -RuntimeIdentifier $RuntimeIdentifier)) {
+    Write-Host "No PanGloss pin for $RuntimeIdentifier; interface gate skipped." -ForegroundColor Yellow
+    return
+}
 
 if ([string]::IsNullOrWhiteSpace($PinnedParserPath)) {
     $PinnedParserPath = Join-Path $RepositoryRoot "bin/$Configuration/$(if ($IsWindows) { 'pangloss.exe' } else { 'pangloss' })"
