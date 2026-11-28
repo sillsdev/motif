@@ -851,7 +851,8 @@ public sealed class TrialsTests : IDisposable
         }
 
         public void RecordAssessment(SavedProposal proposal, string assessmentId, string kind,
-            string outcome = "analysed", string? projectStanding = null, BatchInvocationEvidence? invocation = null)
+            string outcome = "analysed", string? projectStanding = null, BatchInvocationEvidence? invocation = null,
+            IReadOnlyList<AssessedWord>? words = null)
         {
             _assessments.Record(new NewAssessmentRecord(
             AssessmentId: assessmentId,
@@ -869,7 +870,7 @@ public sealed class TrialsTests : IDisposable
             ModelFingerprint: "fingerprint",
             Pipeline: "pipeline",
             DiagnosticCount: 0,
-            Material: new AssessmentRecordMaterial.Words([new AssessedWord("cat", outcome, []) { ProjectStanding = projectStanding }], null, null, [])
+            Material: new AssessmentRecordMaterial.Words(words ?? [new AssessedWord("cat", outcome, []) { ProjectStanding = projectStanding }], null, null, [])
                 { Invocation = invocation },
             SavedUtc: "2026-09-24T11:00:00Z"
         ));

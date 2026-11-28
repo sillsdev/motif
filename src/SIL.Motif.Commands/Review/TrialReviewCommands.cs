@@ -376,14 +376,16 @@ public sealed class TrialReviewCommands(MotifDatabase database, string? parserPa
     }
 
     internal Freshness EvidenceFreshness(JobRecord job, string proposal, JobRecord? newest = null,
-        Func<string, string?>? currentIntent = null, Func<BaselineToken?>? currentBaseline = null)
+        Func<string, string?>? currentIntent = null, Func<BaselineToken?>? currentBaseline = null,
+        Func<string, AssessmentRecord>? readBefore = null)
     {
         if (LatestReport(job.ProjectKey, proposal, job.JobId) is { } identity)
         {
             var saved = new ReviewReportRepository(_database).ReadManifest(new ReviewReportId(identity.Id));
             if (saved is not null) return Freshness(saved.Summary.Pins, newest, currentIntent, currentBaseline);
         }
-        var pins = TrialJobPins.ReadPins(job, TrialJobInput.Parse(job.InputJson), new AssessmentRepository(_database));
+        var pins = TrialJobPins.ReadPins(job, TrialJobInput.Parse(job.InputJson), new AssessmentRepository(_database),
+            readBefore);
         return pins is null ? new Freshness(FreshnessRelation.Unknown, ["freshness-unavailable"])
             : Freshness(pins, newest, currentIntent, currentBaseline);
     }

@@ -236,12 +236,12 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
     }
 
     internal static CheckpointPin Checkpoint(AssessmentRepository repository, Side side, IReadOnlyList<string> ids,
-        TrialJobInput input, string? scopeDigest = null)
+        TrialJobInput input, string? scopeDigest = null, Func<string, AssessmentRecord>? read = null)
     {
         var records = new List<AssessmentRecord>();
         foreach (var id in ids)
         {
-            try { records.Add(repository.Get(id)); }
+            try { records.Add(read is null ? repository.Get(id) : read(id)); }
             catch (KeyNotFoundException) { }
         }
         string? Common(IEnumerable<string?> values)
