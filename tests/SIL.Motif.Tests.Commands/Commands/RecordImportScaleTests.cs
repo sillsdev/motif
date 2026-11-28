@@ -17,7 +17,10 @@ using Xunit.Abstractions;
 
 namespace SIL.Motif.Tests.Commands;
 
-/// <summary>Opt-in measurement of a 5000-entry folder; set MOTIF_RECORD_SCALE=1 to run it.</summary>
+/// <summary>
+/// Opt-in measurement of a 5000-entry folder; set MOTIF_RECORD_SCALE=1 to run it. The peak working set it logs is the whole
+/// test host's, which includes generating the folder; <c>allocatedBytes</c> is what the import call itself allocated.
+/// </summary>
 [Collection(LcmCacheParallelCollections.Group2)]
 public sealed partial class RecordImportScaleTests(PristineProjectFixture pristine, ITestOutputHelper output) : IDisposable
 {
@@ -140,23 +143,25 @@ public sealed partial class RecordImportScaleTests(PristineProjectFixture pristi
         process.Refresh();
         Log($"RECORD_SCALE workingBeforeBytes={process.WorkingSet64}");
 
+        var dryAllocated = GC.GetTotalAllocatedBytes(precise: true);
         var dry = Stopwatch.StartNew();
         var preview = RecordImportCommand.Run(new(project, null, DirPath: folder));
         dry.Stop();
         Assert.True(preview.Succeeded, preview.Refusal?.Message);
         process.Refresh();
         Log($"RECORD_SCALE dryRun ms={dry.ElapsedMilliseconds} operations={preview.Value!.OperationCount} " +
-            $"created={preview.Value.Dir!.Created} refused={preview.Value.Dir.Refused} peakWorkingBytes={process.PeakWorkingSet64}");
+            $"created={preview.Value.Dir!.Created} refused={preview.Value.Dir.Refused} hostPeakWorkingBytes={process.PeakWorkingSet64} allocatedBytes={GC.GetTotalAllocatedBytes(precise: true) - dryAllocated}");
         Assert.Equal(files, preview.Value.Dir.Files);
         Assert.Equal(files, preview.Value.Dir.Created);
         Assert.True(SIL.Motif.Contract.Responses.ProjectionJson.ToUtf8Bytes(preview.Value).Length <= RecordImportPaging.SummaryBytes);
 
+        var stageAllocated = GC.GetTotalAllocatedBytes(precise: true);
         var stage = Stopwatch.StartNew();
         var staged = RecordImportCommand.Run(new(project, null, "scale", DirPath: folder));
         stage.Stop();
         Assert.True(staged.Succeeded, staged.Refusal?.Message);
         process.Refresh();
-        Log($"RECORD_SCALE stage ms={stage.ElapsedMilliseconds} operations={staged.Value!.OperationCount} peakWorkingBytes={process.PeakWorkingSet64}");
+        Log($"RECORD_SCALE stage ms={stage.ElapsedMilliseconds} operations={staged.Value!.OperationCount} hostPeakWorkingBytes={process.PeakWorkingSet64} allocatedBytes={GC.GetTotalAllocatedBytes(precise: true) - stageAllocated}");
         using var database = ProjectMotifDatabase.Open(project);
         var draftJson = new ProposalRepository(database).GetDraft("scale").ProposalJson!;
         var proposalJson = ProposalCommands.BuildProposalJson(ProposalCommands.DeserializeDraft(draftJson));
