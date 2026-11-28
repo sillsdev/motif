@@ -138,7 +138,7 @@ not weeks, without weakening those requirements. Test inputs follow
 
 ### D9. Responses have consistent names and actionable refusals
 
-Tools use `motif_<verb>` or `motif_<verb>_<noun>` and camelCase arguments; `proposal` and `project` mean the
+Tools use `motif_<verb>` or `motif_<verb>_<noun>` and snake_case arguments; `proposal` and `project` mean the
 same thing everywhere. Return IDs exactly with prefixes; `detail` is concise by default or detailed.
 Responses above about 4000 tokens page instead of inlining. Proposal label, Rationale, Comments and
 operation citations follow [ADR 0007](0007-a-proposal-has-one-lifecycle-a-conversation-citations-and-one-apply-path.md).

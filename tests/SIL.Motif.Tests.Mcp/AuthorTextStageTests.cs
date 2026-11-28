@@ -48,6 +48,8 @@ public sealed class AuthorTextStageTests(PristineProjectFixture pristine)
             new ActivityLog(), profile, TextWriter.Null, advancedAiModeEnabled: true);
         var tools = MotifMcpServer.Expose(profile);
         var args = intent.DeepClone().AsObject();
+        args["analysis_ws"] = args["analysisWs"]!.DeepClone();
+        args.Remove("analysisWs");
         args["draft"] = "text-mcp";
         args["project"] = path;
         var staged = await MotifMcpServer.CallAsync(context, tools, "motif_add_text", Arguments(args), CancellationToken.None);

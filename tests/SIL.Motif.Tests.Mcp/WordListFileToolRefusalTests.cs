@@ -51,7 +51,7 @@ public sealed class WordListFileToolRefusalTests : IDisposable
         var arguments = new Dictionary<string, JsonElement>
         {
             ["project"] = JsonSerializer.SerializeToElement(project),
-            ["wordsFile"] = JsonSerializer.SerializeToElement(words),
+            ["words_file"] = JsonSerializer.SerializeToElement(words),
         };
         if (tool == "motif_trial") arguments["proposal"] = JsonSerializer.SerializeToElement("proposal/unused");
 

@@ -59,7 +59,7 @@ public sealed class ProposalCompareJobsTests
         async Task<(bool Error, JsonElement Content)> Call(JsonObject arguments)
         {
             arguments["project"] = fixture.Project;
-            arguments["proposalIds"] = new JsonArray(ids.Select(id => (JsonNode)id).ToArray());
+            arguments["proposal_ids"] = new JsonArray(ids.Select(id => (JsonNode)id).ToArray());
             var result = await MotifMcpServer.CallAsync(context, tools, "motif_proposal_compare",
                 arguments.ToDictionary(pair => pair.Key, pair => JsonSerializer.SerializeToElement(pair.Value)), CancellationToken.None);
             return (result.IsError == true, result.StructuredContent!.Value);

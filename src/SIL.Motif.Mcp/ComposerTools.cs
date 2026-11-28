@@ -62,12 +62,12 @@ internal static class ComposerTools
     {
         var entry = Help.Find(HelpEntryKind.Command, composer.Verb)
             ?? throw new InvalidOperationException($"Composer '{composer.Verb}' needs shared Help text.");
-        var shape = composer.Schema();
+        var shape = SnakeCaseNames(composer.Schema());
         var properties = new JsonObject
         {
             [DraftArgument] = Schema.String(FieldText(composer, entry, DraftArgument)),
         };
-        foreach (var (name, schema) in Described(composer, shape)) properties[name] = schema?.DeepClone();
+        foreach (var (name, schema) in Described(composer, shape, snake: true)) properties[name] = schema?.DeepClone();
         var required = new JsonArray { DraftArgument };
         if (shape["required"] is JsonArray fields)
             foreach (var field in fields) required.Add(field!.DeepClone());
@@ -88,7 +88,35 @@ internal static class ComposerTools
         { ComposerVerb = verb };
     }
 
-    private static JsonObject Described(ComposerDescriptor composer, JsonObject shape)
+    /// <summary>The intent shape with top-level names in snake_case; nested names stay camelCase.</summary>
+    private static JsonObject SnakeCaseNames(JsonObject shape)
+    {
+        var result = shape.DeepClone().AsObject();
+        var properties = new JsonObject();
+        foreach (var (name, schema) in shape["properties"]!.AsObject()) properties[Schema.Snake(name)] = schema?.DeepClone();
+        result["properties"] = properties;
+        if (shape["required"] is JsonArray required)
+            result["required"] = new JsonArray(required.Select(name => (JsonNode)Schema.Snake(name!.GetValue<string>())).ToArray());
+        if (shape["dependentRequired"] is JsonObject dependent)
+        {
+            var renamed = new JsonObject();
+            foreach (var (name, others) in dependent)
+                renamed[Schema.Snake(name)] = new JsonArray(others!.AsArray()
+                    .Select(other => (JsonNode)Schema.Snake(other!.GetValue<string>())).ToArray());
+            result["dependentRequired"] = renamed;
+        }
+        if (shape["allOf"] is JsonArray exclusions)
+            result["allOf"] = new JsonArray(exclusions.Select(exclusion =>
+            {
+                var copy = exclusion!.DeepClone().AsObject();
+                if (copy["not"]?["required"] is JsonArray pair)
+                    copy["not"]!["required"] = new JsonArray(pair.Select(name => (JsonNode)Schema.Snake(name!.GetValue<string>())).ToArray());
+                return (JsonNode)copy;
+            }).ToArray());
+        return result;
+    }
+
+    private static JsonObject Described(ComposerDescriptor composer, JsonObject shape, bool snake = false)
     {
         var entry = Help.Find(HelpEntryKind.Command, composer.Verb)
             ?? throw new InvalidOperationException($"Composer '{composer.Verb}' needs shared Help text.");
@@ -96,7 +124,11 @@ internal static class ComposerTools
         foreach (var (name, schema) in shape["properties"]!.AsObject())
         {
             var described = schema!.DeepClone().AsObject();
-            described["description"] = FieldText(composer, entry, name);
+            var text = FieldText(composer, entry, snake ? Schema.Camel(name) : name);
+            if (snake)
+                foreach (var field in composer.FieldNames.Where(field => Schema.Snake(field) != field))
+                    text = System.Text.RegularExpressions.Regex.Replace(text, $@"\b{field}\b", Schema.Snake(field));
+            described["description"] = text;
             properties[name] = described;
         }
         return properties;

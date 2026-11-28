@@ -177,12 +177,12 @@ internal static class AgentTools
             Schema.Object([("query", Schema.String("Text the headword, a gloss or a form contains."), false),
                 ("exact", Schema.String("Only entries whose headword or a form equals this text, ignoring case; " +
                     "a bare 'zi' also finds the affix 'zi-' and exactNote says so, while 'zi-' finds only that prefix."), false),
-                ("morphType", Schema.StringArray("Only entries of these morph types, such as 'stem', 'root', 'prefix' or 'suffix'."), false),
+                ("morph_type", Schema.StringArray("Only entries of these morph types, such as 'stem', 'root', 'prefix' or 'suffix'."), false),
                 ("affix", Schema.Boolean("True keeps affix entries (prefix, suffix, infix, circumfix and the like); false keeps the rest."), false),
                 ("category", Schema.String("Only entries with an analysis in this category, by exact name or id."), false),
                 ("headword", Schema.String("Only entries whose headword starts with this text."), false),
-                ("headwordContains", Schema.String("Only entries whose headword contains this text."), false),
-                ("hasGloss", Schema.Boolean("True keeps entries with a gloss; false keeps those without one."), false),
+                ("headword_contains", Schema.String("Only entries whose headword contains this text."), false),
+                ("has_gloss", Schema.Boolean("True keeps entries with a gloss; false keeps those without one."), false),
                 ("offset", Schema.Integer("Entries to skip; a result's nextOffset is the value for the next page.", 0, 100000), false),
                 ("at", Schema.String("What to read: 'baseline' (default) for the current Baseline, or a Proposal id for the grammar its latest Trial ran against, with the Proposal's edits applied. " +
                     "The result returns at, and for a Proposal also atLabel: the Trial's copy of the grammar, not the Baseline."), false),
@@ -228,7 +228,7 @@ internal static class AgentTools
                 ("detail", Schema.String("Return the summary or a page of Passages.", "summary", "passages"), false),
                 ("limit", Schema.Integer("Maximum Passage rows in a page; default 50.", 1, 200), false),
                 ("cursor", Schema.String("Continuation from the same Progress revision and scope."), false),
-                ("sinceRevision", Schema.String("Optional changed-reading checkpoint."), false)),
+                ("since_revision", Schema.String("Optional changed-reading checkpoint."), false)),
             true, true, false, true,
             (c, a, ct) => Task.FromResult(ReadProgress(c.ProjectPath, a)))
             { Requests = [typeof(ProgressRequest)], OutputSchema = ProgressToolSchema.Output },
@@ -277,7 +277,7 @@ internal static class AgentTools
                 ("dir", Schema.String("A folder of *.fw.md record files, imported as one Proposal. Give this or file."), false),
                 ("draft", Schema.String("A new Draft name to stage the operations in. Leave it out for a dry run that writes nothing."), false),
                 ("page", Schema.Integer("Page of changes, operations and refusals to list. For dir, it lists that page of file rows, 200 to a page. Default 1.", 1, 100000), false),
-                ("refusedOnly", Schema.Boolean("With dir and page: list only the refused files."), false),
+                ("refused_only", Schema.Boolean("With dir and page: list only the refused files."), false),
                 ("source", Schema.String("With dir: where the records came from, kept with the Proposal."), false),
                 ("revision", Schema.String("With dir: the revision of the source."), false),
                 ("licence", Schema.String("With dir: the licence of the source."), false),
@@ -293,7 +293,7 @@ internal static class AgentTools
             FieldNames = new Dictionary<string, string?>
             {
                 ["FilePath"] = "file", ["DirPath"] = "dir", ["DraftName"] = "draft", ["Page"] = "page", ["Strict"] = "strict",
-                ["RefusedOnly"] = "refusedOnly", ["Source"] = "source", ["Revision"] = "revision", ["Licence"] = "licence", ["Rows"] = null, ["ReportPath"] = null,
+                ["RefusedOnly"] = "refused_only", ["Source"] = "source", ["Revision"] = "revision", ["Licence"] = "licence", ["Rows"] = null, ["ReportPath"] = null,
             },
         },
 
@@ -301,7 +301,7 @@ internal static class AgentTools
             string.Empty,
             AgentClass.Read,
             Schema.Object([("out", Schema.String("Where to write: the file for one record, or the folder for all of them. Under the project's folder or the working directory; an existing file is not replaced."), true),
-                ("recordId", Schema.String("The GUID of the one record to export. Leave it out with all."), false),
+                ("record_id", Schema.String("The GUID of the one record to export. Leave it out with all."), false),
                 ("kind", Schema.String("The record kind. Default lexicon/entry.", "lexicon/entry", "notebook/record", "lists/item"), false),
                 ("all", Schema.Boolean("Export every root record of the kind, one file each."), false)]),
             false,
@@ -313,7 +313,7 @@ internal static class AgentTools
             Requests = [typeof(RecordExportRequest)],
             FieldNames = new Dictionary<string, string?>
             {
-                ["OutPath"] = "out", ["RecordId"] = "recordId", ["Kind"] = "kind", ["All"] = "all",
+                ["OutPath"] = "out", ["RecordId"] = "record_id", ["Kind"] = "kind", ["All"] = "all",
             },
         },
 
@@ -400,7 +400,7 @@ internal static class AgentTools
             Schema.Object(
                 ("draft", Schema.String("Draft name from motif_start_proposal."), true),
                 ("target", Schema.String("Canonical id, exact natural class name or abbreviation; names use NFD and ordinal case-insensitive equality, without trimming."), true),
-                ("expectedMembers", Schema.StringArray("Exact current phoneme ids in the class; copy all members[].id " +
+                ("expected_members", Schema.StringArray("Exact current phoneme ids in the class; copy all members[].id " +
                     "from a detailed motif_grammar natural_classes listing."), true),
                 ("members", Schema.StringArray("Requested distinct phoneme ids; the class must remain nonempty."), true)),
             false,
@@ -419,12 +419,12 @@ internal static class AgentTools
                 ("draft", Schema.String("Draft name from motif_start_proposal."), true),
                 ("source", Schema.String("Canonical id, exact name or abbreviation of the class users currently reference; names use NFD and ordinal case-insensitive equality, without trimming."), true),
                 ("replacement", Schema.String("Canonical id, exact name or abbreviation of the replacement class; names use NFD and ordinal case-insensitive equality, without trimming."), true),
-                ("replacementCreationOperation", Schema.String("Operation id returned by the class create earlier in this Draft."), true),
+                ("replacement_creation_operation", Schema.String("Operation id returned by the class create earlier in this Draft."), true),
                 ("environments", Schema.Array("Explicit environment users and their exact current typed contexts.",
                     Schema.Object(("target", Schema.String("Environment id or unique exact name; names use NFD and ordinal case-insensitive equality, without trimming."), true),
                         ("expectedLeft", NaturalClassRelinkContexts(), true),
                         ("expectedRight", NaturalClassRelinkContexts(), true))), true),
-                ("ruleContexts", Schema.StringArray("Explicit rewrite-rule context object ids using the source class."), true)),
+                ("rule_contexts", Schema.StringArray("Explicit rewrite-rule context object ids using the source class."), true)),
             false,
             false,
             false,
@@ -550,12 +550,12 @@ internal static class AgentTools
             Schema.Object(
                 ("draft", Schema.String("The draft name from motif_start_proposal."), true),
                 ("form", Schema.String("The lexeme form, without affix hyphens."), true),
-                ("formWs", Schema.String("Vernacular writing system tag of the form."), true),
-                ("morphType", Schema.String("Canonical id of the morph type, such as stem, root, prefix or suffix."), true),
+                ("form_ws", Schema.String("Vernacular writing system tag of the form."), true),
+                ("morph_type", Schema.String("Canonical id of the morph type, such as stem, root, prefix or suffix."), true),
                 ("gloss", Schema.String("The sense's gloss."), true),
-                ("analysisWs", Schema.String("Analysis writing system tag of the gloss and definition."), true),
+                ("analysis_ws", Schema.String("Analysis writing system tag of the gloss and definition."), true),
                 ("definition", Schema.String("Optional definition of the sense."), false),
-                ("inflectionClasses", Schema.StringArray("Affix only: canonical ids of the inflection classes of the stems this form attaches to; omit for no restriction."), false),
+                ("inflection_classes", Schema.StringArray("Affix only: canonical ids of the inflection classes of the stems this form attaches to; omit for no restriction."), false),
                 ("environments", Schema.StringArray("Canonical ids of the phonological environments this form occurs in; omit for any."), false),
                 ("msa", Schema.Object(
                     ("kind", Schema.String("Grammatical info (MSA) kind; must match the morph type.",
@@ -582,10 +582,10 @@ internal static class AgentTools
                 ("draft", Schema.String("The draft name from motif_start_proposal."), true),
                 ("entry", Schema.String("Canonical id of an existing entry, or one added earlier in this Draft."), true),
                 ("form", Schema.String("The alternate form, without affix hyphens."), true),
-                ("formWs", Schema.String("Vernacular writing system tag of the form."), true),
-                ("morphType", Schema.String("Canonical id of the morph type; stem-like for a stem entry, affix-like for an affix entry."), true),
+                ("form_ws", Schema.String("Vernacular writing system tag of the form."), true),
+                ("morph_type", Schema.String("Canonical id of the morph type; stem-like for a stem entry, affix-like for an affix entry."), true),
                 ("environments", Schema.StringArray("Canonical ids of the phonological environments this form occurs in; omit for any."), false),
-                ("inflectionClasses", Schema.StringArray("Affix entries only: canonical ids of the inflection classes of the stems this form attaches to; omit for no restriction."), false),
+                ("inflection_classes", Schema.StringArray("Affix entries only: canonical ids of the inflection classes of the stems this form attaches to; omit for no restriction."), false),
                 ("placement", Schema.Object(
                     ("after", Schema.String("Existing alternate form before the insertion gap."), false),
                     ("before", Schema.String("Existing alternate form after the insertion gap."), false)), false)),
@@ -707,8 +707,8 @@ internal static class AgentTools
                 ("target", Schema.String("Canonical id of the existing affix slot."), true),
                 ("expected_optional", Schema.Boolean("The optionality the project must currently have. Give with optional."), false),
                 ("optional", Schema.Boolean("The requested optionality. Give with expected_optional."), false),
-                ("writingSystem", Schema.String("Writing system of the slot name. Give with expectedName and name to rename."), false),
-                ("expectedName", Schema.String("The slot name the project must currently have."), false),
+                ("writing_system", Schema.String("Writing system of the slot name. Give with expected_name and name to rename."), false),
+                ("expected_name", Schema.String("The slot name the project must currently have."), false),
                 ("name", Schema.String("The requested slot name."), false)),
             false,
             false,
@@ -756,7 +756,7 @@ internal static class AgentTools
                 ("draft", Schema.String("The draft name from motif_start_proposal."), true),
                 ("target", Schema.String("Canonical id of the existing stem or affix allomorph."), true),
                 ("field", Schema.String("LibLCM condition field.", "phoneEnv", "position"), true),
-                ("expectedEnvironments", Schema.StringArray("Current environment ids; order matters only for position."), true),
+                ("expected_environments", Schema.StringArray("Current environment ids; order matters only for position."), true),
                 ("environments", Schema.StringArray("Requested environment ids; order matters only for position."), true)),
             false,
             false,
@@ -772,7 +772,7 @@ internal static class AgentTools
             Schema.Object(
                 ("draft", Schema.String("The draft name from motif_start_proposal."), true),
                 ("target", Schema.String("Canonical id of the owning lexical entry."), true),
-                ("expectedAlternates", Schema.StringArray("Current alternate-form ids in project order."), true),
+                ("expected_alternates", Schema.StringArray("Current alternate-form ids in project order."), true),
                 ("alternates", Schema.StringArray("Requested order of those same alternate forms."), true)),
             false,
             false,
@@ -789,7 +789,7 @@ internal static class AgentTools
                 ("draft", Schema.String("The draft name from motif_start_proposal."), true),
                 ("title", Schema.String("The Text's title, in NFD."), true),
                 ("ws", Schema.String("Writing system tag of the title, the paragraphs and every wordform form."), true),
-                ("analysisWs", Schema.String("Analysis writing system for Free Translation, Literal Translation and Notes; omitted uses the project's default."), false),
+                ("analysis_ws", Schema.String("Analysis writing system for Free Translation, Literal Translation and Notes; omitted uses the project's default."), false),
                 ("paragraphs", Schema.Array("Paragraphs in order; LibLCM determines segment and word boundaries from their text.",
                     Schema.Object(("segments", Schema.Array("Baseline pieces in reading order. Annotated pieces must each be exactly one FieldWorks segment.",
                         TextSegmentSchema()), true))), true)),
@@ -808,7 +808,7 @@ internal static class AgentTools
                 ("decision", Schema.String("The decision to record.", "approve", "disapprove", "unknown", "misspelled", "clear-misspelled", "add-reading"), true),
                 ("analysis", Schema.String("Id of a stored analysis; required for approve, disapprove and unknown."), false),
                 ("wordform", Schema.String("Id of a wordform; required for misspelled, clear-misspelled and add-reading."), false),
-                ("intendedForm", Schema.Object(
+                ("intended_form", Schema.Object(
                     ("form", Schema.String("The intended spelling."), true),
                     ("writingSystem", Schema.String("BCP 47 tag of the writing system the form is in."), true)), false),
                 ("note", Schema.String("Evidence note for misspelled and clear-misspelled."), false),
@@ -913,7 +913,7 @@ internal static class AgentTools
             AgentClass.Evaluate,
             Schema.Object([("action", Schema.String("Run, read or explicitly refresh a report.", "run", "read", "refresh-report"), false),
                 ("words", Schema.StringArray("Words to parse."), false),
-                ("wordsFile", Schema.String("Path to a UTF-8 word list."), false),
+                ("words_file", Schema.String("Path to a UTF-8 word list."), false),
                 ("negative_words", Schema.StringArray("Attested counterexamples that should not parse."), false),
                 ("review_sets", Schema.StringArray("Named review sets to include."), false),
                 ("expect_loss", Schema.StringArray("Words the change intends to lose, frozen when the Trial is queued. They are reported in the saved gate and do not make it a loss; any other lost word does. A resumed Trial cannot change them."), false),
@@ -967,7 +967,7 @@ internal static class AgentTools
                 RejectionTraceQuery.Parse(new ParseTraceRequest(c.ProjectPath, a.Required("word"), a.Optional("at"),
                     a.OptionalInt("max_paths")), c.ParserPath, ct),
                 _ => "A path with attribution 'unknown' has no recorded stop; do not guess one. Fix the first named stop, then call motif_try_word.")))
-            { Requests = [typeof(ParseTraceRequest)], FieldNames = new Dictionary<string, string?> { ["Word"] = "word", ["At"] = "at", ["TimeoutMs"] = "timeoutMs", ["MaxWork"] = "maxWork", ["MaxPaths"] = "max_paths", ["ProjectPath"] = null } },
+            { Requests = [typeof(ParseTraceRequest)], FieldNames = new Dictionary<string, string?> { ["Word"] = "word", ["At"] = "at", ["TimeoutMs"] = "timeout_ms", ["MaxWork"] = "max_work", ["MaxPaths"] = "max_paths", ["ProjectPath"] = null } },
 
         new("motif_why_not",
             string.Empty,
@@ -996,18 +996,18 @@ internal static class AgentTools
                 ("with", Schema.StringArray("Morphemes to generate with the root, in order, each named like the root. Only with morpheme."), false),
                 ("word", Schema.String("A word to parse; each of its analyses is generated from its own morphemes. Give this or morpheme."), false),
                 ("at", Schema.String("'baseline' (default) for the current Baseline, or a proposal id for that Draft or Proposal's latest Trial copy."), false),
-                ("timeoutMs", Schema.Integer("Deadline for each generate request in milliseconds, 1 to 240000; default 30000. Past it the result is incomplete with stopReason 'deadline'.", 1, 240000), false),
-                ("maxWork", Schema.Integer("Lowers PanGloss's generation work cap for each request; omitted leaves PanGloss's own cap. Past it the result is incomplete with stopReason 'work_limit'.", 1, int.MaxValue), false)]),
+                ("timeout_ms", Schema.Integer("Deadline for each generate request in milliseconds, 1 to 240000; default 30000. Past it the result is incomplete with stopReason 'deadline'.", 1, 240000), false),
+                ("max_work", Schema.Integer("Lowers PanGloss's generation work cap for each request; omitted leaves PanGloss's own cap. Past it the result is incomplete with stopReason 'work_limit'.", 1, int.MaxValue), false)]),
             true,
             true,
             false,
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(
                 FormsExplainQuery.Explain(new FormsExplainRequest(c.ProjectPath, a.Optional("morpheme"), a.List("with"),
-                    a.Optional("word"), a.Optional("at"), a.OptionalInt("timeoutMs"), a.OptionalInt("maxWork")), c.ParserPath, ct),
+                    a.Optional("word"), a.Optional("at"), a.OptionalInt("timeout_ms"), a.OptionalInt("max_work")), c.ParserPath, ct),
                 _ => "complete:false means PanGloss stopped at stopReason, so a missing form is not an impossible one; " +
                     "do not claim a form cannot occur from an incomplete result.")))
-            { Requests = [typeof(FormsExplainRequest)], FieldNames = new Dictionary<string, string?> { ["Morpheme"] = "morpheme", ["With"] = "with", ["Word"] = "word", ["At"] = "at", ["TimeoutMs"] = "timeoutMs", ["MaxWork"] = "maxWork", ["ProjectPath"] = null } },
+            { Requests = [typeof(FormsExplainRequest)], FieldNames = new Dictionary<string, string?> { ["Morpheme"] = "morpheme", ["With"] = "with", ["Word"] = "word", ["At"] = "at", ["TimeoutMs"] = "timeout_ms", ["MaxWork"] = "max_work", ["ProjectPath"] = null } },
 
         new("motif_why_lost",
             string.Empty,
@@ -1148,7 +1148,7 @@ internal static class AgentTools
             { NeedsProject = false },
         new("motif_assess", string.Empty, AgentClass.Evaluate,
             Schema.Object([("words", Schema.StringArray("Words to assess; omit for the Default Selection."), false),
-                ("wordsFile", Schema.String("Path to a UTF-8 file with one word per line, or word, a tab, then a count, instead of words; counts are used only when the file is saved with the Selection."), false),
+                ("words_file", Schema.String("Path to a UTF-8 file with one word per line, or word, a tab, then a count, instead of words; counts are used only when the file is saved with the Selection."), false),
                 ("assessment", Schema.String(
                     "A stored Assessment id from an earlier result: page its words instead of measuring again."), false),
                 ("offset", Schema.Integer("Words to skip when paging. Default 0.", 0, 10000000), false),
@@ -1263,12 +1263,12 @@ internal static class AgentTools
             throw new ToolArgumentException("tool.invalid-argument", "Scope must contain valid fields and no unknown fields.");
         }
         if (scope is null) throw new ToolArgumentException("tool.invalid-argument", "A Progress scope is required.");
-        if (scope.Kind == "source" && scope.Source is not null && scope.Texts is null && arguments.Optional("sinceRevision") is null)
+        if (scope.Kind == "source" && scope.Source is not null && scope.Texts is null && arguments.Optional("since_revision") is null)
             return ToolOutcome.From(SourceProgressQuery.Query(project, scope.Source, arguments.Optional("detail") ?? "summary",
                 arguments.Int("limit", 50), arguments.Optional("cursor")));
         return ToolOutcome.From(ProgressQuery.Query(new ProgressRequest(project, scope,
             arguments.Optional("detail") ?? "summary", arguments.Int("limit", 50), arguments.Optional("cursor"),
-            arguments.Optional("sinceRevision"))));
+            arguments.Optional("since_revision"))));
     }
 
     private static string FeatureStructureIntent(ToolArgs a)
@@ -1304,10 +1304,10 @@ internal static class AgentTools
             ("direction", Schema.String("Rule scan direction or application mode.",
                 "left-to-right", "right-to-left", "simultaneous"), true),
             ("left", contexts.DeepClone().AsObject(), false),
-            ("leftSwitch", Switch("The phoneme or natural class that moves to the right switch position."), true),
+            ("left_switch", Switch("The phoneme or natural class that moves to the right switch position."), true),
             ("middle", Switch("The optional context between the switches, which stays in place."), false),
-            ("middleWith", Schema.String("Whether the middle belongs to the left or right switch; defaults to left.", "left", "right"), false),
-            ("rightSwitch", Switch("The phoneme or natural class that moves to the left switch position."), true),
+            ("middle_with", Schema.String("Whether the middle belongs to the left or right switch; defaults to left.", "left", "right"), false),
+            ("right_switch", Switch("The phoneme or natural class that moves to the left switch position."), true),
             ("right", contexts.DeepClone().AsObject(), false),
             ("placement", placement, false));
     }
@@ -1351,17 +1351,17 @@ internal static class AgentTools
                 "left-to-right", "right-to-left", "simultaneous"), true),
             ("input", changedItems.DeepClone().AsObject(), true),
             ("output", outputItems, false),
-            ("rightHandSides", outcomes, false),
+            ("right_hand_sides", outcomes, false),
             ("left", contexts.DeepClone().AsObject(), false),
             ("right", contexts.DeepClone().AsObject(), false),
-            ("inputCategories", Schema.Array("Single-outcome shorthand only: part-of-speech ids (with their subcategories) the rule applies to, Black 6.1.2.2.1; FieldWorks stores required categories only. Use inputCategories inside rightHandSides for several outcomes.", Schema.String("Category id.")), false),
+            ("input_categories", Schema.Array("Single-outcome shorthand only: part-of-speech ids (with their subcategories) the rule applies to, Black 6.1.2.2.1; FieldWorks stores required categories only. Use inputCategories inside rightHandSides for several outcomes.", Schema.String("Category id.")), false),
             ("placement", Schema.Object(("after", Schema.String("Adjacent existing rule before the insertion gap."), false),
                 ("before", Schema.String("Adjacent existing rule after the insertion gap."), false)), false));
         schema["oneOf"] = new JsonArray(
-            new JsonObject { ["required"] = new JsonArray("output"), ["not"] = new JsonObject { ["required"] = new JsonArray("rightHandSides") } },
-            new JsonObject { ["required"] = new JsonArray("rightHandSides"), ["not"] = new JsonObject
+            new JsonObject { ["required"] = new JsonArray("output"), ["not"] = new JsonObject { ["required"] = new JsonArray("right_hand_sides") } },
+            new JsonObject { ["required"] = new JsonArray("right_hand_sides"), ["not"] = new JsonObject
                 { ["anyOf"] = new JsonArray(new JsonObject { ["required"] = new JsonArray("output") },
-                    new JsonObject { ["required"] = new JsonArray("left") }, new JsonObject { ["required"] = new JsonArray("right") }, new JsonObject { ["required"] = new JsonArray("inputCategories") }) } });
+                    new JsonObject { ["required"] = new JsonArray("left") }, new JsonObject { ["required"] = new JsonArray("right") }, new JsonObject { ["required"] = new JsonArray("input_categories") }) } });
         return schema;
     }
 
@@ -1440,7 +1440,7 @@ internal static class AgentTools
             ["oneOf"] = branches,
         };
         return Schema.Object(
-            ("proposal", Schema.String("Name of the Draft from motif_start_proposal."), true),
+            ("draft", Schema.String("Name of the Draft from motif_start_proposal."), true),
             ("steps", Schema.Array("Composing steps, applied in order; each sees the project as the earlier ones left it. " +
                 "One step and many are the same call.", step), true),
             ("remove", Schema.Array("Operation ids to remove from the Draft first, in the same all-or-nothing save.",
@@ -1465,7 +1465,7 @@ internal static class AgentTools
             throw new ToolArgumentException("tool.invalid-argument",
                 "Every step must use one of the ordinary grammar composer verbs. " + string.Join(" ", refusals));
         foreach (var step in steps)
-            if (SourceAiGuard.Check(arguments.Required("proposal"), step!["verb"]!.GetValue<string>()) is { } needsProposal)
+            if (SourceAiGuard.Check(arguments.Required("draft"), step!["verb"]!.GetValue<string>()) is { } needsProposal)
                 return ToolOutcome.Refused(needsProposal);
         IReadOnlyList<ComposeStepRequest> parsed;
         try
@@ -1477,7 +1477,7 @@ internal static class AgentTools
             throw new ToolArgumentException("tool.invalid-argument", exception.Message);
         }
         return ToolOutcome.From(ProposalCommands.Compose(new(context.ProjectPath, context.ProductVersion,
-                arguments.Required("proposal"), parsed, arguments.List("remove"))),
+                arguments.Required("draft"), parsed, arguments.List("remove"))),
             result => $"Draft now has {result.OperationCount} changes from {result.Intents.Count} steps. " +
                 AdvisoryNote(result) + "Dry Run the Draft, then Finalize for a person to Apply.");
     }
@@ -1574,9 +1574,19 @@ internal static class AgentTools
             canonical["required"] = new JsonArray(required.Select(value =>
                 (JsonNode?)JsonValue.Create(CanonicalIntentName(value!.GetValue<string>()))).ToArray());
         if (canonical["items"] is JsonObject items) canonical["items"] = CanonicalizeSchema(items);
-        if (canonical["oneOf"] is JsonArray oneOf)
-            canonical["oneOf"] = new JsonArray(oneOf.Select(value =>
-                (JsonNode?)CanonicalizeSchema(value!.AsObject())).ToArray());
+        foreach (var keyword in new[] { "oneOf", "anyOf", "allOf" })
+            if (canonical[keyword] is JsonArray branches)
+                canonical[keyword] = new JsonArray(branches.Select(value =>
+                    (JsonNode?)CanonicalizeSchema(value!.AsObject())).ToArray());
+        if (canonical["not"] is JsonObject not) canonical["not"] = CanonicalizeSchema(not);
+        if (canonical["dependentRequired"] is JsonObject dependent)
+        {
+            var renamed = new JsonObject();
+            foreach (var (name, others) in dependent)
+                renamed[CanonicalIntentName(name)] = new JsonArray(others!.AsArray()
+                    .Select(other => (JsonNode)CanonicalIntentName(other!.GetValue<string>())).ToArray());
+            canonical["dependentRequired"] = renamed;
+        }
         return canonical;
     }
 
@@ -1610,7 +1620,7 @@ internal static class AgentTools
         if (RecordImportCommand.RefuseOutsideAgentRoots(context.ProjectPath, path, Directory.GetCurrentDirectory(), forWrite: true) is { } refusal)
             return ToolOutcome.Refused(refusal);
         return ToolOutcome.From(RecordExportCommand.Run(new RecordExportRequest(
-            context.ProjectPath, path, args.Optional("recordId"), args.Optional("kind"), args.OptionalBoolean("all") ?? false)));
+            context.ProjectPath, path, args.Optional("record_id"), args.Optional("kind"), args.OptionalBoolean("all") ?? false)));
     }
 
     private static ToolOutcome ImportRecord(ServerContext context, ToolArgs args)
@@ -1626,7 +1636,7 @@ internal static class AgentTools
         return ToolOutcome.From(RecordImportCommand.Run(new RecordImportRequest(
             context.ProjectPath, file, args.Optional("draft"), page ?? 1,
             args.OptionalBoolean("strict") ?? false, dir, dir is not null && page is not null ? true : null,
-            args.OptionalBoolean("refusedOnly") == true ? true : null, null, args.Optional("source"),
+            args.OptionalBoolean("refused_only") == true ? true : null, null, args.Optional("source"),
             args.Optional("revision"), args.Optional("licence"))));
     }
 
@@ -1748,9 +1758,9 @@ internal static class AgentTools
     private static ToolOutcome ReadLexicon(ServerContext context, ToolArgs args)
     {
         var detailed = args.Optional("detail") == "detailed";
-        var filter = new LexiconFilter(args.Optional("query"), args.List("morphType"), args.OptionalBoolean("affix"),
-            args.Optional("category"), args.Optional("headword"), args.Optional("headwordContains"),
-            args.OptionalBoolean("hasGloss"), args.Optional("exact"));
+        var filter = new LexiconFilter(args.Optional("query"), args.List("morph_type"), args.OptionalBoolean("affix"),
+            args.Optional("category"), args.Optional("headword"), args.Optional("headword_contains"),
+            args.OptionalBoolean("has_gloss"), args.Optional("exact"));
         var outcome = BaselineReads.ReadLexicon(context.ProjectPath, filter, args.Int("limit", 25), args.Int("offset", 0), detailed,
             args.Optional("at"));
         return ToolOutcome.From(outcome, "Narrow with morphType, affix, category or headword, or page on with offset. " +
@@ -1790,7 +1800,7 @@ internal static class AgentTools
         if (args.OptionalBoolean("expected_optional") is { } expectedOptional) intent["expectedOptional"] = expectedOptional;
         if (args.OptionalBoolean("optional") is { } optional) intent["optional"] = optional;
         foreach (var field in new[] { "writingSystem", "expectedName", "name" })
-            if (args.Optional(field) is { } text) intent[field] = text;
+            if (args.Optional(Schema.Snake(field)) is { } text) intent[field] = text;
         return intent.ToJsonString();
     }
 
@@ -1868,7 +1878,7 @@ internal static class AgentTools
         var offset = args.Int("offset", 0);
         var limit = args.Int("limit", 25);
         var stored = args.Optional("assessment");
-        var named = WordListFile.Resolve(args.List("words"), args.Optional("wordsFile"));
+        var named = WordListFile.Resolve(args.List("words"), args.Optional("words_file"));
         if (!named.Succeeded) return ToolOutcome.Refused(named.Refusal!);
         if (stored is not null)
         {
@@ -1927,13 +1937,13 @@ internal static class AgentTools
         var waitForTerminal = args.Flag("wait_terminal");
         var wait = TimeSpan.FromSeconds(Math.Clamp(args.Int("wait_seconds", 40), 1, 300));
         var job = args.Optional("job");
-        if (job is not null && (args.Has("words") || args.Has("wordsFile") || args.Has("negative_words") || args.Has("review_sets") || args.Has("expect_loss") || args.Has("no_background") || args.Has("no_base_sample") || args.Has("touched")))
+        if (job is not null && (args.Has("words") || args.Has("words_file") || args.Has("negative_words") || args.Has("review_sets") || args.Has("expect_loss") || args.Has("no_background") || args.Has("no_base_sample") || args.Has("touched")))
             return ToolOutcome.Refused("tool.invalid-argument", FailureReason.InvalidArgument, "A resumed Trial cannot change its inputs.");
         TouchedWords? touched = null;
         if (job is null)
         {
             var negatives = args.List("negative_words");
-            var named = WordListFile.Resolve(args.List("words"), args.Optional("wordsFile"));
+            var named = WordListFile.Resolve(args.List("words"), args.Optional("words_file"));
             if (!named.Succeeded) return ToolOutcome.Refused(named.Refusal!);
             var noBaseSample = args.Flag("no_base_sample");
             if (noBaseSample && negatives.Count > 0)

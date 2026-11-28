@@ -144,7 +144,7 @@
           "type": "string",
           "description": "Only entries whose headword or a form equals this text, ignoring case; a bare \u0027zi\u0027 also finds the affix \u0027zi-\u0027 and exactNote says so, while \u0027zi-\u0027 finds only that prefix."
         },
-        "morphType": {
+        "morph_type": {
           "type": "array",
           "items": {
             "type": "string"
@@ -163,11 +163,11 @@
           "type": "string",
           "description": "Only entries whose headword starts with this text."
         },
-        "headwordContains": {
+        "headword_contains": {
           "type": "string",
           "description": "Only entries whose headword contains this text."
         },
-        "hasGloss": {
+        "has_gloss": {
           "type": "boolean",
           "description": "True keeps entries with a gloss; false keeps those without one."
         },
@@ -846,7 +846,7 @@
           "description": "Up to eight ordered phoneme or natural-class items; empty means insertion or deletion.",
           "maxItems": 8
         },
-        "rightHandSides": {
+        "right_hand_sides": {
           "type": "array",
           "items": {
             "type": "object",
@@ -1263,7 +1263,7 @@
           "description": "Context items in linguistic order, from the outer left to outer right. Each names exactly one reference.",
           "maxItems": 8
         },
-        "inputCategories": {
+        "input_categories": {
           "type": "array",
           "items": {
             "type": "string",
@@ -1305,13 +1305,13 @@
           ],
           "not": {
             "required": [
-              "rightHandSides"
+              "right_hand_sides"
             ]
           }
         },
         {
           "required": [
-            "rightHandSides"
+            "right_hand_sides"
           ],
           "not": {
             "anyOf": [
@@ -1332,7 +1332,7 @@
               },
               {
                 "required": [
-                  "inputCategories"
+                  "input_categories"
                 ]
               }
             ]
@@ -1538,11 +1538,11 @@
           "type": "string",
           "description": "The lexeme form, without affix hyphens."
         },
-        "formWs": {
+        "form_ws": {
           "type": "string",
           "description": "Vernacular writing system tag of the form."
         },
-        "morphType": {
+        "morph_type": {
           "type": "string",
           "description": "Canonical id of the morph type, such as stem, root, prefix or suffix."
         },
@@ -1550,7 +1550,7 @@
           "type": "string",
           "description": "The sense\u0027s gloss."
         },
-        "analysisWs": {
+        "analysis_ws": {
           "type": "string",
           "description": "Analysis writing system tag of the gloss and definition."
         },
@@ -1558,7 +1558,7 @@
           "type": "string",
           "description": "Optional definition of the sense."
         },
-        "inflectionClasses": {
+        "inflection_classes": {
           "type": "array",
           "items": {
             "type": "string"
@@ -1626,10 +1626,10 @@
       "required": [
         "draft",
         "form",
-        "formWs",
-        "morphType",
+        "form_ws",
+        "morph_type",
         "gloss",
-        "analysisWs",
+        "analysis_ws",
         "msa",
         "project"
       ],
@@ -1657,11 +1657,11 @@
           "type": "string",
           "description": "The alternate form, without affix hyphens."
         },
-        "formWs": {
+        "form_ws": {
           "type": "string",
           "description": "Vernacular writing system tag of the form."
         },
-        "morphType": {
+        "morph_type": {
           "type": "string",
           "description": "Canonical id of the morph type; stem-like for a stem entry, affix-like for an affix entry."
         },
@@ -1672,7 +1672,7 @@
           },
           "description": "Canonical ids of the phonological environments this form occurs in; omit for any."
         },
-        "inflectionClasses": {
+        "inflection_classes": {
           "type": "array",
           "items": {
             "type": "string"
@@ -1702,8 +1702,8 @@
         "draft",
         "entry",
         "form",
-        "formWs",
-        "morphType",
+        "form_ws",
+        "morph_type",
         "project"
       ],
       "additionalProperties": false
@@ -1878,7 +1878,7 @@
           },
           "description": "Words to parse."
         },
-        "wordsFile": {
+        "words_file": {
           "type": "string",
           "description": "Path to a UTF-8 word list."
         },
@@ -2211,7 +2211,7 @@
           "type": "string",
           "description": "Value for the request field."
         },
-        "expectedBaseline": {
+        "expected_baseline": {
           "type": "object",
           "properties": {
             "projectIdentity": {
@@ -2262,7 +2262,7 @@
           },
           "additionalProperties": false
         },
-        "asOf": {
+        "as_of": {
           "type": "string",
           "description": "Value for the request field."
         },
@@ -2300,7 +2300,7 @@
           "type": "string",
           "description": "Draft name."
         },
-        "morphType": {
+        "morph_type": {
           "type": "string",
           "description": "Id of an affix morph type such as prefix, suffix or infix."
         },
@@ -2308,7 +2308,7 @@
           "type": "string",
           "description": "The sense\u0027s gloss."
         },
-        "analysisWs": {
+        "analysis_ws": {
           "type": "string",
           "description": "Analysis writing system tag for the gloss and definition."
         },
@@ -2318,9 +2318,9 @@
         },
         "form": {
           "type": "string",
-          "description": "Optional headword shown for the entry, in the vernacular writing system formWs, without the hyphens FieldWorks shows on affixes (for example in for the infix -in-). Give it with formWs."
+          "description": "Optional headword shown for the entry, in the vernacular writing system form_ws, without the hyphens FieldWorks shows on affixes (for example in for the infix -in-). Give it with form_ws."
         },
-        "formWs": {
+        "form_ws": {
           "type": "string",
           "description": "Vernacular writing system tag for form."
         },
@@ -2415,9 +2415,9 @@
       },
       "required": [
         "draft",
-        "morphType",
+        "morph_type",
         "gloss",
-        "analysisWs",
+        "analysis_ws",
         "msa",
         "input",
         "output",
@@ -2496,7 +2496,7 @@
           },
           "description": "Ordered realization, each item exactly one of: copy of a named input part; insert of phoneme ids; insertClass, the id of a natural class one of whose segments is inserted (a class of several segments leaves the choice of member to the parser); modify, the name of an input part (a phoneme, a natural class or the remaining stem), with features, the id of a feature natural class laid over the copied part. An input part left out of the output is deleted."
         },
-        "inflectionClasses": {
+        "inflection_classes": {
           "type": "array",
           "items": {
             "type": "string"
@@ -2544,7 +2544,7 @@
           "type": "string",
           "description": "Draft name."
         },
-        "featStruc": {
+        "feat_struc": {
           "type": "string",
           "description": "Feature structure id."
         },
@@ -2563,7 +2563,7 @@
       },
       "required": [
         "draft",
-        "featStruc",
+        "feat_struc",
         "feature",
         "project"
       ],
@@ -2613,7 +2613,7 @@
           "type": "string",
           "description": "Draft name."
         },
-        "featStruc": {
+        "feat_struc": {
           "type": "string",
           "description": "Id of the feature structure on a stem, inflectional affix or derivational affix."
         },
@@ -2628,7 +2628,7 @@
       },
       "required": [
         "draft",
-        "featStruc",
+        "feat_struc",
         "feature",
         "project"
       ],
@@ -2661,7 +2661,7 @@
           ],
           "description": "New kind: inflectional, derivational or unclassified."
         },
-        "toCategory": {
+        "to_category": {
           "type": "string",
           "description": "For derivational only: id of the category of the word it makes; the attaching category when absent."
         },
@@ -3051,39 +3051,39 @@
           "type": "string",
           "description": "Id of the derivational grammatical info of an existing affix entry."
         },
-        "fromInflectionClass": {
+        "from_inflection_class": {
           "type": "string",
           "description": "Optional id of an inflection class owned by the From category or an ancestor; omission leaves the current link unchanged."
         },
-        "clearFromInflectionClass": {
+        "clear_from_inflection_class": {
           "type": "boolean",
           "const": true,
-          "description": "Set true to remove the current From Inflection Class; do not combine with fromInflectionClass."
+          "description": "Set true to remove the current From Inflection Class; do not combine with from_inflection_class."
         },
-        "fromExceptionFeatures": {
+        "from_exception_features": {
           "type": "array",
           "items": {
             "type": "string"
           },
           "description": "Optional exact set of valid From Exception Features; an empty list removes them all, and omission leaves the current set unchanged."
         },
-        "toInflectionClass": {
+        "to_inflection_class": {
           "type": "string",
           "description": "Optional id of an inflection class owned by the To category or an ancestor; derived stems get this class. Omission leaves the current link unchanged."
         },
-        "clearToInflectionClass": {
+        "clear_to_inflection_class": {
           "type": "boolean",
           "const": true,
-          "description": "Set true to remove the current To Inflection Class; do not combine with toInflectionClass."
+          "description": "Set true to remove the current To Inflection Class; do not combine with to_inflection_class."
         },
-        "toExceptionFeatures": {
+        "to_exception_features": {
           "type": "array",
           "items": {
             "type": "string"
           },
           "description": "Optional exact set of To Exception Features, which the derived stem receives; an empty list removes them all, and omission leaves the current set unchanged."
         },
-        "alsoMsas": {
+        "also_msas": {
           "type": "array",
           "items": {
             "type": "string"
@@ -3105,16 +3105,16 @@
         {
           "not": {
             "required": [
-              "fromInflectionClass",
-              "clearFromInflectionClass"
+              "from_inflection_class",
+              "clear_from_inflection_class"
             ]
           }
         },
         {
           "not": {
             "required": [
-              "toInflectionClass",
-              "clearToInflectionClass"
+              "to_inflection_class",
+              "clear_to_inflection_class"
             ]
           }
         }
@@ -3177,7 +3177,7 @@
           "type": "string",
           "description": "Id of the grammatical info of a stem, clitic or inflectional affix entry."
         },
-        "exceptionFeatures": {
+        "exception_features": {
           "type": "array",
           "items": {
             "type": "string"
@@ -3192,7 +3192,7 @@
       "required": [
         "draft",
         "msa",
-        "exceptionFeatures",
+        "exception_features",
         "project"
       ],
       "additionalProperties": false
@@ -3215,21 +3215,21 @@
           "type": "string",
           "description": "Id of an existing regular rule with one right-hand side; for several, use compose-edit-phonological-rule with rightHandSides."
         },
-        "requiredFeatures": {
+        "required_features": {
           "type": "array",
           "items": {
             "type": "string"
           },
           "description": "Exact set of exception feature or inflection class ids a stem must all carry; an empty list clears it."
         },
-        "excludedFeatures": {
+        "excluded_features": {
           "type": "array",
           "items": {
             "type": "string"
           },
           "description": "Exact set of ids a stem must carry none of; an empty list clears it."
         },
-        "inputCategories": {
+        "input_categories": {
           "type": "array",
           "items": {
             "type": "string"

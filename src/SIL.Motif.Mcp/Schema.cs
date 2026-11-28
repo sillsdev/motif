@@ -5,6 +5,22 @@ namespace SIL.Motif.Mcp;
 /// <summary>Builds the small JSON Schema objects a tool's input is declared with.</summary>
 internal static class Schema
 {
+    /// <summary>The snake_case argument name of a camelCase request or intent field: <c>analysisWs</c> is <c>analysis_ws</c>.</summary>
+    public static string Snake(string name) =>
+        System.Text.RegularExpressions.Regex.Replace(name, "(?<=[a-z0-9])([A-Z])", "_$1").ToLowerInvariant();
+
+    /// <summary>The camelCase request or intent field of a snake_case argument name: <c>analysis_ws</c> is <c>analysisWs</c>.</summary>
+    public static string Camel(string name) =>
+        System.Text.RegularExpressions.Regex.Replace(name, "_([a-z0-9])", match => match.Groups[1].Value.ToUpperInvariant());
+
+    /// <summary>A copy of <paramref name="arguments"/> with each top-level name in the camelCase a request or intent record reads.</summary>
+    public static JsonObject CamelKeys(JsonObject arguments)
+    {
+        var result = new JsonObject();
+        foreach (var (name, value) in arguments) result[Camel(name)] = value?.DeepClone();
+        return result;
+    }
+
     public static JsonObject Object(params (string Name, JsonObject Schema, bool Required)[] properties)
     {
         var props = new JsonObject();

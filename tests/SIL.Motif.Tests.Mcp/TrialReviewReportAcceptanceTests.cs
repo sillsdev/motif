@@ -33,7 +33,7 @@ public sealed class TrialReviewReportAcceptanceTests
         var args = new Dictionary<string, JsonElement>
         {
             ["project"] = JsonSerializer.SerializeToElement(fixture.Project),
-            ["jobId"] = JsonSerializer.SerializeToElement(receipt.JobId),
+            ["job_id"] = JsonSerializer.SerializeToElement(receipt.JobId),
         };
         var mcp = await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Load("full")),
             "motif_proposal_trial_export", args, CancellationToken.None);

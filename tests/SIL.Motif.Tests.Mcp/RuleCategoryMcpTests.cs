@@ -26,9 +26,9 @@ public sealed class RuleCategoryMcpTests(PristineProjectFixture pristine)
     public void TheAddRuleSchemaListsTheShorthandAndTheMetathesisSchemaDoesNot()
     {
         var add = AgentTools.All.Single(tool => tool.Name == "motif_add_phonological_rule");
-        Assert.Contains("inputCategories", add.ArgumentNames);
+        Assert.Contains("input_categories", add.ArgumentNames);
         var metathesis = AgentTools.All.Single(tool => tool.Name == "motif_add_metathesis_rule");
-        Assert.DoesNotContain("inputCategories", metathesis.ArgumentNames);
+        Assert.DoesNotContain("input_categories", metathesis.ArgumentNames);
     }
 
     [Fact]
@@ -55,11 +55,11 @@ public sealed class RuleCategoryMcpTests(PristineProjectFixture pristine)
         {
             ["project"] = path, ["draft"] = "category", ["name"] = "u becomes i on verbs", ["direction"] = "simultaneous",
             ["input"] = JsonSerializer.SerializeToNode(new[] { new { phoneme = ids["u"] } }),
-            ["inputCategories"] = new JsonArray(verb),
+            ["input_categories"] = new JsonArray(verb),
         };
 
         var mixed = Rule();
-        mixed["rightHandSides"] = JsonSerializer.SerializeToNode(new[] { new { output = new[] { new { phoneme = ids["i"] } } } });
+        mixed["right_hand_sides"] = JsonSerializer.SerializeToNode(new[] { new { output = new[] { new { phoneme = ids["i"] } } } });
         var refused = await MotifMcpServer.CallAsync(context, tools, "motif_add_phonological_rule", Arguments(mixed), CancellationToken.None);
         Assert.True(refused.IsError);
         Assert.Equal(RefusalCodes.DraftInvalid, refused.StructuredContent!.Value.GetProperty("code").GetString());

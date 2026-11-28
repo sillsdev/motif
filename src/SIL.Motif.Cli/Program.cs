@@ -590,11 +590,11 @@ try
             break;
 
         case "compose":
-            if (!flags.TryGetValue("proposal", out var callComposeProposal) ||
+            if (!flags.TryGetValue("draft", out var callComposeProposal) ||
                 !flags.TryGetValue("project", out var callComposeProject) ||
                 !flags.TryGetValue("steps", out var callComposeStepsJson) || positionals.Count != 0)
-                return Usage("Usage: motif compose --proposal <name> --project <fwdata> --steps '<json array>' " +
-                    "[--remove <id>[,<id>...]] [--json]  (--proposal names a Draft or a Proposal)", asJson);
+                return Usage("Usage: motif compose --draft <name> --project <fwdata> --steps '<json array>' " +
+                    "[--remove <id>[,<id>...]] [--json]  (--draft names a Draft or a Proposal)", asJson);
             IReadOnlyList<ComposeStepRequest> callComposeSteps;
             try
             {

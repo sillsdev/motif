@@ -108,7 +108,7 @@ public sealed class SourceToolTests(PristineProjectFixture pristine) : IDisposab
         {
             await generated.Run(context, Args(generated, new JsonObject { ["draft"] = draft, ["id"] = "WEB", ["name"] = "n",
                 ["versification"] = "English", ["context"] = "MAT" }), default),
-            await compose.Run(context, Args(compose, new JsonObject { ["proposal"] = draft, ["steps"] = new JsonArray(new JsonObject
+            await compose.Run(context, Args(compose, new JsonObject { ["draft"] = draft, ["steps"] = new JsonArray(new JsonObject
                 { ["verb"] = "compose-add-source", ["intent"] = intent.DeepClone() }) }), default),
             await batch.Run(context, Args(batch, new JsonObject { ["draft"] = draft, ["intents"] = new JsonArray(new JsonObject
                 { ["verb"] = "compose-set-source-status", ["intent"] = new JsonObject { ["source"] = "WEB", ["status"] = "Removed" } }) }), default),
