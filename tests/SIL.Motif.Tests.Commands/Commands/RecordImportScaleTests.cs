@@ -24,8 +24,8 @@ namespace SIL.Motif.Tests.Commands;
 [Collection(LcmCacheParallelCollections.Group2)]
 public sealed partial class RecordImportScaleTests(PristineProjectFixture pristine, ITestOutputHelper output) : IDisposable
 {
-    private const int Entries = 5000;
-    private const int Variants = 500;
+    private static readonly int Entries = int.Parse(Environment.GetEnvironmentVariable("MOTIF_RECORD_ENTRIES") ?? "5000");
+    private static readonly int Variants = Entries / 10;
     private const int FilesPerFolder = 1000;
     private static readonly Guid Namespace = new("5f1d8c1e-3b8a-4f0e-9c52-0d6a7b2e41aa");
     private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-record-scale-" + Guid.NewGuid().ToString("N"));
@@ -144,6 +144,7 @@ public sealed partial class RecordImportScaleTests(PristineProjectFixture pristi
         Log($"RECORD_SCALE workingBeforeBytes={process.WorkingSet64}");
 
         var dryAllocated = GC.GetTotalAllocatedBytes(precise: true);
+        using var listener = new AllocListener();
         var dry = Stopwatch.StartNew();
         var preview = RecordImportCommand.Run(new(project, null, DirPath: folder));
         dry.Stop();
@@ -156,12 +157,16 @@ public sealed partial class RecordImportScaleTests(PristineProjectFixture pristi
         Assert.True(SIL.Motif.Contract.Responses.ProjectionJson.ToUtf8Bytes(preview.Value).Length <= RecordImportPaging.SummaryBytes);
 
         var stageAllocated = GC.GetTotalAllocatedBytes(precise: true);
+        Thread.Sleep(3000);
+        File.WriteAllText("/tmp/claude-1000/types-dry.txt", listener.Top()); listener.Types.Clear();
         var stage = Stopwatch.StartNew();
         var staged = RecordImportCommand.Run(new(project, null, "scale", DirPath: folder));
         stage.Stop();
         Assert.True(staged.Succeeded, staged.Refusal?.Message);
         process.Refresh();
         Log($"RECORD_SCALE stage ms={stage.ElapsedMilliseconds} operations={staged.Value!.OperationCount} hostPeakWorkingBytes={process.PeakWorkingSet64} allocatedBytes={GC.GetTotalAllocatedBytes(precise: true) - stageAllocated}");
+        Thread.Sleep(3000);
+        File.WriteAllText("/tmp/claude-1000/types-stage.txt", listener.Top());
         using var database = ProjectMotifDatabase.Open(project);
         var draftJson = new ProposalRepository(database).GetDraft("scale").ProposalJson!;
         var proposalJson = ProposalCommands.BuildProposalJson(ProposalCommands.DeserializeDraft(draftJson));
@@ -177,4 +182,21 @@ public sealed class RecordScaleFactAttribute : FactAttribute
     {
         if (Environment.GetEnvironmentVariable("MOTIF_RECORD_SCALE") != "1") Skip = "Set MOTIF_RECORD_SCALE=1 to measure a 5500-file record import.";
     }
+}
+
+public sealed class AllocListener : System.Diagnostics.Tracing.EventListener
+{
+    public readonly System.Collections.Concurrent.ConcurrentDictionary<string, long> Types = new();
+    protected override void OnEventSourceCreated(System.Diagnostics.Tracing.EventSource source)
+    {
+        if (source.Name == "Microsoft-Windows-DotNETRuntime") EnableEvents(source, System.Diagnostics.Tracing.EventLevel.Verbose, (System.Diagnostics.Tracing.EventKeywords)1);
+    }
+    protected override void OnEventWritten(System.Diagnostics.Tracing.EventWrittenEventArgs e)
+    {
+        if (e.EventName?.StartsWith("GCAllocationTick") != true) return;
+        var name = (string)e.Payload![e.PayloadNames!.IndexOf("TypeName")]!;
+        var amount = Convert.ToInt64(e.Payload[e.PayloadNames.IndexOf("AllocationAmount64")]);
+        Types.AddOrUpdate(name, amount, (_, old) => old + amount);
+    }
+    public string Top() => string.Join("\n", Types.OrderByDescending(p => p.Value).Take(25).Select(p => "TYPE " + p.Value / 1048576 + " MB " + p.Key));
 }

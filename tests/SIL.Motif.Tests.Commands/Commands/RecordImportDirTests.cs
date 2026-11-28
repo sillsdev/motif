@@ -532,4 +532,56 @@ public sealed class RecordImportDirTests(PristineProjectFixture pristine) : IDis
 
         Assert.Equal((1, 1), (outcome.Value!.Dir!.Files, outcome.Value.Dir.Ignored));
     }
+
+    private static void ChangeGloss(string project, Guid entry, string gloss)
+    {
+        using var cache = new FwDataProjectLoader().LoadScratchCache(project);
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            cache.ServiceLocator.GetInstance<ILexEntryRepository>().GetObject(entry).SensesOS[0].Gloss
+                .set_String(cache.DefaultAnalWs, gloss));
+        new FwDataProjectLoader().Save(cache);
+    }
+
+    [Fact]
+    public void AStageOfAnUnchangedProjectComparesTheDigestWithoutPlanningTheFolderAgain()
+    {
+        var seed = Seeded(3);
+        WriteFile(seed, seed.Entries[0], "create0.fw.md", asNew: true);
+        WriteFile(seed, seed.Entries[1], "update1.fw.md", Regloss);
+        var before = RecordImportCommand.DigestReplans;
+
+        var staged = RecordImportCommand.Run(Dry(seed, "dir-same"));
+
+        Assert.True(staged.Succeeded, staged.Refusal?.Message);
+        Assert.Equal(before, RecordImportCommand.DigestReplans);
+        Assert.True(staged.Value!.OperationCount > 0);
+    }
+
+    [Fact]
+    public void AProjectFileChangedBetweenThePreviewAndTheStageIsRefusedAndLeavesNoDraft()
+    {
+        var seed = Seeded(3);
+        WriteFile(seed, seed.Entries[1], "update1.fw.md", Regloss);
+        RecordImportCommand.BeforeStage = () => ChangeGloss(seed.Project, seed.Entries[1], "changedlater");
+
+        var outcome = RecordImportCommand.Run(Dry(seed, "dir-raced"));
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal(RefusalCodes.RecordImportChangedSincePreview, outcome.Refusal!.Code);
+        Assert.Equal(0, ProposalCommands.List(new(seed.Project, Version)).Value?.Proposals.Count ?? 0);
+    }
+
+    [Fact]
+    public void AProjectChangeThePlanDoesNotReadStillStagesAfterAFullComparison()
+    {
+        var seed = Seeded(3);
+        WriteFile(seed, seed.Entries[1], "update1.fw.md", Regloss);
+        RecordImportCommand.BeforeStage = () => ChangeGloss(seed.Project, seed.Entries[2], "elsewhere");
+        var before = RecordImportCommand.DigestReplans;
+
+        var outcome = RecordImportCommand.Run(Dry(seed, "dir-elsewhere"));
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        Assert.Equal(before + 1, RecordImportCommand.DigestReplans);
+    }
 }

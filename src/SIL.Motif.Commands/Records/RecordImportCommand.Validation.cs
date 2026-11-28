@@ -95,6 +95,7 @@ public static partial class RecordImportCommand
             operation.EntityId, operation.Target, operation.After, operation.Placement,
             operation.DependsOn.Where(dependency => owner.ContainsKey(dependency.OperationId)).ToArray(),
             rationale: operation.Rationale)).ToArray();
+        var withinByUnit = within.ToLookup(operation => owner[operation.OperationId].Unit);
         var handler = cache.ServiceLocator.GetInstance<IActionHandler>();
         using var unitOfWork = new NonUndoableUnitOfWorkHelper(handler);
         unitOfWork.RollBack = false;
@@ -104,7 +105,7 @@ public static partial class RecordImportCommand
         {
             for (var unit = 0; unit < units.Count; unit++)
             {
-                try { OperationExecutionOrder.Sort(within.Where(operation => owner[operation.OperationId].Unit == unit).ToArray()); }
+                try { OperationExecutionOrder.Sort(withinByUnit[unit].ToArray()); }
                 catch (Exception exception) when (IsRefusalOfOneChange(exception)) { throw new RecordImportScratchException(exception, unit); }
             }
             order = OperationExecutionOrder.Sort(contained);
@@ -151,11 +152,9 @@ public static partial class RecordImportCommand
                 failed[change] = "The operations together could not be written: " + exception.Message;
         }
         review?.After(cache);
-        for (var unit = 0; unit < units.Count; unit++)
-        {
-            var mine = failed.Where(pair => pair.Key.Unit == unit).ToDictionary(pair => pair.Key.Change, pair => pair.Value);
-            if (mine.Count > 0) results[unit] = WithoutFailed(units[unit].Plan, units[unit].Full, mine);
-        }
+        foreach (var group in failed.GroupBy(pair => pair.Key.Unit))
+            results[group.Key] = WithoutFailed(units[group.Key].Plan, units[group.Key].Full,
+                group.ToDictionary(pair => pair.Key.Change, pair => pair.Value));
         return results;
     }
 

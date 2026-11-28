@@ -73,7 +73,7 @@ public static partial class ProposalCommands
     /// </summary>
     internal static CommandOutcome<RecordImportStaged> StageRecordImport(string projectPath, string draftName,
         string recordFile, Func<LcmCache, RecordLowering> lower, bool lexicon) =>
-        StageRecordImport(projectPath, draftName, JsonSerializer.SerializeToElement(new { recordFile }), lower,
+        StageRecordImport(projectPath, draftName, JsonSerializer.SerializeToElement(new { recordFile }), (cache, _) => lower(cache),
             // The count travels with the Draft so a partial stage never reads as a plain success.
             lowering => JsonSerializer.SerializeToElement(new
             {
@@ -82,17 +82,18 @@ public static partial class ProposalCommands
 
     /// <summary>Stages with the Draft's recorded input and authored form chosen by the caller, as a folder import records its manifest.</summary>
     internal static CommandOutcome<RecordImportStaged> StageRecordImport(string projectPath, string draftName,
-        JsonElement authored, Func<LcmCache, RecordLowering> lower, Func<RecordLowering, JsonElement> input) =>
+        JsonElement authored, Func<LcmCache, bool, RecordLowering> lower, Func<RecordLowering, JsonElement> input) =>
         ProjectStoreCommand.Run(projectPath, MotifProductVersion.CurrentText, (database, project) =>
         {
             RecordLowering? lowering = null;
             try
             {
+                var untouched = TryLoadDraft(new SIL.Motif.Worker.Store.ProposalRepository(database), draftName, out var existing, out _) && existing.Operations.Count == 0;
                 var steps = new List<ComposeStep>
                 {
                     new(null, RecordImportProvenance.ComposerName, (cache, _) =>
                     {
-                        lowering = lower(cache);
+                        lowering = lower(cache, untouched);
                         return (input(lowering), lowering.Operations);
                     }, Authored: authored),
                     // The empty step makes the batch validate the last operation against the scratch project.
