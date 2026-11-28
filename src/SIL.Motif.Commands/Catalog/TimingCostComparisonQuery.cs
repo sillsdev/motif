@@ -13,7 +13,8 @@ public static class TimingCostComparisonQuery
 {
     /// <summary>Reads an exact retained pair; absent or ambiguous evidence remains unavailable.</summary>
     public static TimingCostComparison Read(MotifDatabase database, string? jobId, AssessmentRecord after,
-        IReadOnlyList<string> words, bool hasReplacements, string by = "rule")
+        IReadOnlyList<string> words, bool hasReplacements, string by = "rule",
+        Func<string, AssessmentRecord>? read = null)
     {
         if (jobId is null || hasReplacements)
             return TimingCostComparison.Unavailable("No single paired Trial Assessment was selected.");
@@ -29,7 +30,7 @@ public static class TimingCostComparisonQuery
         foreach (var id in ids)
         {
             AssessmentRecord before;
-            try { before = repository.Get(id); }
+            try { before = read is null ? repository.Get(id) : read(id); }
             catch (KeyNotFoundException) { continue; }
             if (before.Kind != "ParseTime" || before.ProposalId is not null || !TrialWorkComparison.AreCompatible(before, after)) continue;
             var available = (before.Words ?? []).Select(row => row.Word).ToHashSet(StringComparer.Ordinal);

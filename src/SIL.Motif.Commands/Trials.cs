@@ -73,15 +73,26 @@ public static class Trials
     /// Reads every Proposal's chosen Trial in one pass over the project's Trial jobs, keyed by Proposal id. A
     /// Proposal with no readable Trial is absent; <see cref="TrialStanding.Of"/> reads that as not tried.
     /// </summary>
+    /// <param name="database">The project's store.</param>
+    /// <param name="project">The project.</param>
+    /// <param name="parserPath">The parser whose bytes decide freshness.</param>
     public static IReadOnlyDictionary<string, TrialRecord> LatestForAll(MotifDatabase database,
-        ProjectLocator project, string? parserPath = null)
+        ProjectLocator project, string? parserPath = null) => LatestForAll(database, project, parserPath, null, null);
+
+    /// <summary>
+    /// <see cref="LatestForAll(MotifDatabase, ProjectLocator, string?)"/> for the Proposals <paramref name="wanted"/> names,
+    /// reading Assessments through <paramref name="shared"/> so a Baseline the caller also reads is loaded once.
+    /// </summary>
+    internal static IReadOnlyDictionary<string, TrialRecord> LatestForAll(MotifDatabase database,
+        ProjectLocator project, string? parserPath, Func<string, bool>? wanted, SharedAssessmentReads? shared)
     {
         ArgumentNullException.ThrowIfNull(database);
         ArgumentNullException.ThrowIfNull(project);
-        var context = CreateReadContext(database, project, parserPath);
+        var context = CreateReadContext(database, project, parserPath, shared);
         var latest = new Dictionary<string, TrialRecord>(StringComparer.Ordinal);
         foreach (var group in IdentifyJobs(context.Jobs, proposalId: null, requireIdentity: true).GroupBy(candidate => candidate.ProposalId))
         {
+            if (wanted is not null && !wanted(group.Key.Value)) continue;
             context.LoadProposals();
             // A Proposal whose own content cannot be read has no standing; the Proposals listing reports it.
             try { _ = context.CurrentIntentDigest(group.Key); }
@@ -196,14 +207,15 @@ public static class Trials
         return record;
     }
 
-    private static TrialReadContext CreateReadContext(MotifDatabase database, ProjectLocator project, string? parserPath = null)
+    private static TrialReadContext CreateReadContext(MotifDatabase database, ProjectLocator project, string? parserPath = null,
+        SharedAssessmentReads? shared = null)
     {
         OperationRegistryBootstrap.Initialize();
         var workspaceKey = ProjectWorkspaceKey.Compute(project);
         var proposals = new ProposalRepository(database);
         return new TrialReadContext(database,
             () => new BaselineRepository(database).GetCurrentEvidence(workspaceKey), proposals,
-            new AssessmentRepository(database), OrderedJobs(database, workspaceKey), parserPath);
+            new AssessmentRepository(database), OrderedJobs(database, workspaceKey), parserPath, shared);
     }
 
     private static IReadOnlyList<JobRecord> OrderedJobs(MotifDatabase database, string projectKey) =>
@@ -323,7 +335,7 @@ public static class Trials
         var freshness = !completed
             ? TrialFreshness.Incomplete
             : ToTrialFreshness(context.Review.EvidenceFreshness(job, proposalId, newest, context.ReadIntentDigest,
-                () => current?.Baseline.Token));
+                () => current?.Baseline.Token, context.GetSharedAssessment));
         DateTimeOffset? completedUtc = JobStateMachine.IsTerminal(job.Status)
             ? DateTimeOffset.Parse(job.UpdatedUtc, System.Globalization.CultureInfo.InvariantCulture)
             : null;
@@ -331,7 +343,7 @@ public static class Trials
         var tokenJson = JsonSerializer.Serialize(sourceBaseline, MotifJson.CreateOptions());
         var rootAssessmentId = assessmentIds.GetValueOrDefault(AssessmentKinds.ParseTime);
         var trialAssessment = rootAssessmentId is null ? null : assessments.GetSelected(rootAssessmentId);
-        var baselineAssessment = (input.BaselineAssessmentIds ?? []).Select(assessments.GetSelected)
+        var baselineAssessment = (input.BaselineAssessmentIds ?? []).Select(context.GetBaselineAssessment)
             .FirstOrDefault(record => record.Kind == AssessmentKinds.ParseTime && trialAssessment is not null &&
                 record.Assessor == trialAssessment.Assessor && Assess.BeforeAssessmentReuse.MatchesBaseline(database, record, trialAssessment));
         // Each word's Baseline-side work rides beside the Proposal's, only when the two Assessments are comparable.
@@ -439,8 +451,10 @@ public static class Trials
 
     // Each Proposal's current content is digested at most once per read, from one listing of the Proposals.
     private sealed class TrialReadContext(MotifDatabase database, Func<CurrentBaselineEvidence?> current,
-        ProposalRepository proposals, AssessmentRepository assessments, IReadOnlyList<JobRecord> jobs, string? parserPath)
+        ProposalRepository proposals, AssessmentRepository assessments, IReadOnlyList<JobRecord> jobs, string? parserPath,
+        SharedAssessmentReads? shared)
     {
+        public SharedAssessmentReads Shared { get; } = shared ?? new SharedAssessmentReads(database);
         private Dictionary<CanonicalId, ProposalRecord>? _records;
         private readonly Dictionary<CanonicalId, string?> _digests = [];
 
@@ -453,6 +467,16 @@ public static class Trials
         public ProposalRepository Proposals { get; } = proposals;
         public AssessmentRepository Assessments { get; } = assessments;
         public IReadOnlyList<JobRecord> Jobs { get; } = jobs;
+
+        /// <summary>Reads a Baseline Assessment once per read: every Trial of a project usually shares the same one.</summary>
+        public AssessmentRecord GetBaselineAssessment(string assessmentId)
+        {
+            try { return GetSharedAssessment(assessmentId); }
+            catch (KeyNotFoundException) { throw new AssessmentExpiredException(assessmentId); }
+        }
+
+        /// <exception cref="KeyNotFoundException">No Assessment is recorded under this id.</exception>
+        public AssessmentRecord GetSharedAssessment(string assessmentId) => Shared.Get(assessmentId);
 
         public void LoadProposals() => _records ??= Proposals.List(new ProposalListFilter(IncludeArchived: true))
             .GroupBy(record => record.ProposalId).ToDictionary(group => group.Key, group => group.First());
