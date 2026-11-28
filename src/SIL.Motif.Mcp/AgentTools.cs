@@ -1138,13 +1138,18 @@ internal static class AgentTools
             Schema.Object([("proposal", Schema.String("A Draft name or Proposal id to show in full. Omit to list."), false),
                 ("include_set_aside", Schema.Boolean("Also list applied, rejected, superseded and deferred."), false),
                 ("current", Schema.Boolean("With proposal: also read the value each change's field holds in the saved project now, before any Trial."), false),
+                ("records", Schema.Boolean("With proposal: list a record import's files, one row each (path, record, kind, create or update, operations, batch edges), instead of its operations."), false),
+                ("sort", Schema.String("With records: order the rows by path (the default), kind or batch-edges."), false),
+                ("refused", Schema.Boolean("With records: list only the files the import refused."), false),
                 ..Schema.Paging(), ..Schema.Verbosity()]),
             true,
             true,
             true,
             true,
             (c, a, ct) => Task.FromResult(a.Optional("proposal") is { } id
-                ? ToolOutcome.From(ProposalCommands.Show(new ShowProposalRequest(c.ProjectPath, c.ProductVersion, id, a.Flag("current")))
+                ? ToolOutcome.From(ProposalCommands.Show(new ShowProposalRequest(c.ProjectPath, c.ProductVersion, id, a.Flag("current"),
+                    a.Flag("records") || a.Optional("sort") is not null || a.Flag("refused")
+                        ? new ShowRecordGrouping(a.Optional("sort") ?? "path", a.Flag("refused")) : null))
                     .Map(detail => a.HasPaging ? a.Page(detail, detail.Window) : detail.WithTotal()))
                 : ToolOutcome.From(ProposalStandingsCommand.Read(
                     new ProposalStandingsRequest(c.ProjectPath, a.Flag("include_set_aside")), c.JobParserPath)

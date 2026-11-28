@@ -49,6 +49,8 @@ public static partial class RecordImportCommand
         public string? Reason { get; set; }
         public int Changes { get; set; }
         public int RefusedChanges { get; set; }
+        /// <summary>Paths of the other files of the folder this file refers to or depends on.</summary>
+        public SortedSet<string> DependsOn { get; } = new(StringComparer.Ordinal);
         public int Operations => Status is CreatedStatus or UpdatedStatus ? Lowering?.Operations.Count ?? 0 : 0;
 
         public void Refuse(Refusal refusal) => Refuse(refusal.Code, refusal.Message);
@@ -242,7 +244,12 @@ public static partial class RecordImportCommand
             if (file.Record is { } record) entry["record"] = CanonicalId.FromGuid(record).Value;
             if (file.Base is not null) entry["base"] = file.Base;
             if (file.Code is not null) entry["code"] = file.Code;
-            if (file.Status is CreatedStatus or UpdatedStatus) entry["text"] = file.Input.Text;
+            if (file.DependsOn.Count > 0) entry["dependsOn"] = new JsonArray(file.DependsOn.Select(path => (JsonNode?)JsonValue.Create(path)).ToArray());
+            if (file.Status is CreatedStatus or UpdatedStatus)
+            {
+                entry["text"] = file.Input.Text;
+                entry["operations"] = file.Operations;
+            }
             entries.Add(entry);
         }
         var node = new JsonObject
@@ -324,7 +331,19 @@ public static partial class RecordImportCommand
             if (file.Lowering.Operations.Count == 0 && file.RefusedChanges > 0) RefuseWithFirst(file);
         }
         RefuseReferencesToNewRecords(files);
+        RecordOperationEdges(files);
         return result;
+    }
+
+    /// <summary>Notes each file whose operations wait on another file's operations.</summary>
+    private static void RecordOperationEdges(IReadOnlyList<DirFile> files)
+    {
+        var owner = new Dictionary<CanonicalId, DirFile>();
+        foreach (var file in files.Where(file => file.Status is CreatedStatus or UpdatedStatus && file.Lowering is not null))
+            foreach (var operation in file.Lowering!.Operations) owner[operation.OperationId] = file;
+        foreach (var file in files.Where(file => file.Status is CreatedStatus or UpdatedStatus && file.Lowering is not null))
+            foreach (var dependency in file.Lowering!.Operations.SelectMany(operation => operation.DependsOn))
+                if (owner.TryGetValue(dependency.OperationId, out var other) && other != file) file.DependsOn.Add(other.Input.Path);
     }
 
     private static void Classify(DirFile file)
@@ -435,9 +454,11 @@ public static partial class RecordImportCommand
         {
             var mine = owned.TryGetValue(file, out var set) ? set : [];
             var linked = LinkedGuid.Matches(file.Input.Text!).Select(m => m.Groups[1].Value.ToLowerInvariant()).Distinct();
-            var hit = linked.Where(guid => !mine.Contains(guid) && owners.TryGetValue(guid, out var other) && other != file)
-                .Select(guid => (Guid: guid, Creator: owners[guid])).FirstOrDefault();
-            if (hit.Creator is null) continue;
+            var hits = linked.Where(guid => !mine.Contains(guid) && owners.TryGetValue(guid, out var other) && other != file)
+                .Select(guid => (Guid: guid, Creator: owners[guid])).ToList();
+            foreach (var edge in hits) file.DependsOn.Add(edge.Creator.Input.Path);
+            if (hits.Count == 0) continue;
+            var hit = hits[0];
             var reason = "This file refers to " + hit.Guid + ", which " + hit.Creator.Input.Path +
                 " creates in this folder. References between new records are not imported yet: apply " + hit.Creator.Input.Path + " first, then import this file.";
             var lowering = file.Lowering ?? file.Planned!.Lowering;

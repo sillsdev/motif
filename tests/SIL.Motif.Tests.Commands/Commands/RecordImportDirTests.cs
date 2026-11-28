@@ -4,6 +4,7 @@ using SIL.LCModel.DomainServices;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Records;
+using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -367,6 +368,27 @@ public sealed class RecordImportDirTests(PristineProjectFixture pristine) : IDis
     }
 
     [Fact]
+    public void ShowByRecordCountsTheBatchEdgesBetweenFilesOfAStagedFolder()
+    {
+        var seed = Seeded(3);
+        var main = WriteFile(seed, seed.Entries[0], "main.fw.md", asNew: true);
+        var newMsa = new Regex("guid: \"([0-9a-f-]{36})\"\\s+class: \"MoStemMsa\"").Match(File.ReadAllText(main)).Groups[1].Value;
+        var other = WriteFile(seed, seed.Entries[1], "other.fw.md", asNew: true);
+        var otherText = File.ReadAllText(other);
+        var own = new Regex("morpho-syntax-analysis: \"\\[zznoun\\]\\(/objects/([0-9a-f-]{36})\\)").Match(otherText).Groups[1].Value;
+        File.WriteAllText(other, string.Join('\n', otherText.Split('\n').Select(line =>
+            line.Contains("morpho-syntax-analysis: \"[") ? line.Replace(own, newMsa, StringComparison.OrdinalIgnoreCase) : line)));
+        WriteFile(seed, seed.Entries[2], "lone.fw.md", asNew: true);
+        Assert.True(RecordImportCommand.Run(Dry(seed, "edges")).Succeeded);
+
+        var rows = ProposalCommands.Show(new(seed.Project, Version, "edges", Records: new ShowRecordGrouping("batch-edges"))).Value!.Records!;
+
+        Assert.Equal(["other.fw.md", "lone.fw.md", "main.fw.md"], rows.Select(row => row.Path));
+        Assert.Equal((1, true), (rows[0].BatchEdges, rows[0].HasBatchEdges));
+        Assert.All(rows.Skip(1), row => Assert.Equal((0, false), (row.BatchEdges, row.HasBatchEdges)));
+    }
+
+    [Fact]
     public void RowPagesAreBoundedAndARefusedOnlyPageListsJustTheRefusedRows()
     {
         var seed = MixedFolder();
@@ -426,6 +448,49 @@ public sealed class RecordImportDirTests(PristineProjectFixture pristine) : IDis
         var text = System.Text.Json.JsonSerializer.Serialize(json);
         Assert.Contains("zzedited", text, StringComparison.Ordinal);
         Assert.Contains("synthetic", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ShowGroupsAStagedFolderByRecordWithSortAndRefusedFilter()
+    {
+        var seed = MixedFolder();
+        Assert.True(RecordImportCommand.Run(Dry(seed, "grouped")).Succeeded);
+
+        var plain = ProposalCommands.Show(new(seed.Project, Version, "grouped")).Value!;
+        var grouped = ProposalCommands.Show(new(seed.Project, Version, "grouped", Records: new ShowRecordGrouping())).Value!;
+
+        Assert.Empty(grouped.Operations);
+        Assert.Null(grouped.ExtensionsJson);
+        Assert.Equal(plain.Operations.Count, grouped.OperationTotal);
+        Assert.Equal(9, grouped.Records!.Count);
+        Assert.Equal((3, 2, 1, 3), (grouped.Records.Count(row => row.Change == "create"), grouped.Records.Count(row => row.Change == "update"),
+            grouped.Records.Count(row => row.Change == "unchanged"), grouped.Records.Count(row => row.Change == "refused")));
+        Assert.Equal(plain.Operations.Count, grouped.Records.Sum(row => row.Operations ?? 0));
+        Assert.All(grouped.Records.Where(row => row.Change is "create" or "update"), row => Assert.True(row.Operations > 0));
+        Assert.All(grouped.Records, row => Assert.False(row.HasBatchEdges));
+        Assert.Equal(grouped.Records.Count(row => row.Change == "refused"),
+            ProposalCommands.Show(new(seed.Project, Version, "grouped", Records: new ShowRecordGrouping("path", true))).Value!.Records!.Count);
+        var byKind = ProposalCommands.Show(new(seed.Project, Version, "grouped", Records: new ShowRecordGrouping("kind"))).Value!.Records!;
+        Assert.Equal(byKind.OrderBy(row => row.Kind, StringComparer.Ordinal).Select(row => row.Kind), byKind.Select(row => row.Kind));
+        var page = grouped.Window(0, 4);
+        Assert.Equal((4, 9, 4), (page.Records!.Count, page.RecordTotal, page.NextOffset));
+    }
+
+    [Fact]
+    public void ShowByRecordRefusesAProposalThatIsNotARecordImportAndAnUnknownOrder()
+    {
+        var seed = MixedFolder();
+        Assert.True(RecordImportCommand.Run(Dry(seed, "grouped")).Succeeded);
+        Assert.True(ProposalCommands.New(new(seed.Project, Version, "plain", "Not an import")).Succeeded);
+
+        var plain = ProposalCommands.Show(new(seed.Project, Version, "plain", Records: new ShowRecordGrouping()));
+        var order = ProposalCommands.Show(new(seed.Project, Version, "grouped", Records: new ShowRecordGrouping("headword")));
+
+        Assert.Equal(RefusalCodes.ProposalNoRecordImport, plain.Refusal!.Code);
+        Assert.Equal(RefusalCodes.ProposalRecordSortUnknown, order.Refusal!.Code);
+        var ungrouped = ProposalCommands.Show(new(seed.Project, Version, "plain")).Value!;
+        Assert.Null(ungrouped.Records);
+        Assert.DoesNotContain("\"records\"", ProjectionJson.Serialize(ungrouped), StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

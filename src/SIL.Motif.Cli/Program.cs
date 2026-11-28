@@ -946,7 +946,10 @@ try
             }
             result = RenderProposal(
                 ProposalCommands.Show(new ShowProposalRequest(showProject, CliProductVersion(), positionals[0],
-                    flags.ContainsKey("current"))).Map(detail => showWindow.All
+                    flags.ContainsKey("current"),
+                    flags.ContainsKey("records") || flags.ContainsKey("sort") || flags.ContainsKey("refused")
+                        ? new ShowRecordGrouping(flags.GetValueOrDefault("sort", "path"), flags.ContainsKey("refused")) : null))
+                .Map(detail => showWindow.All
                     ? (asJson ? detail.WithTotal() : detail)
                     : asJson && !flags.ContainsKey("offset") && !flags.ContainsKey("limit") && !flags.ContainsKey("page")
                     ? detail.WithTotal() : detail.Window(showWindow.Offset, showWindow.Limit).WithNextStep(

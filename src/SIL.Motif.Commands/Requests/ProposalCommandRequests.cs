@@ -507,7 +507,14 @@ public sealed record ListProposalsRequest(string FwDataPath, string ProductVersi
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
 /// <param name="ProposalId">A Draft name or the exact canonical identity of a Draft or finalized Proposal.</param>
 /// <param name="WithCurrent">Also reads, from the saved project, the value each change's field holds now, with no Trial.</param>
-public sealed record ShowProposalRequest(string FwDataPath, string ProductVersion, string ProposalId, bool WithCurrent = false);
+/// <param name="Records">Lists a record import's files, one row each, instead of its operations.</param>
+public sealed record ShowProposalRequest(string FwDataPath, string ProductVersion, string ProposalId, bool WithCurrent = false,
+    ShowRecordGrouping? Records = null);
+
+/// <summary>Asks <c>show</c> to list the record files of a record import instead of the operations.</summary>
+/// <param name="Sort"><c>path</c> (the manifest order), <c>kind</c> or <c>batch-edges</c>.</param>
+/// <param name="RefusedOnly">Whether to list only the files the import refused.</param>
+public sealed record ShowRecordGrouping(string Sort = "path", bool RefusedOnly = false);
 
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>

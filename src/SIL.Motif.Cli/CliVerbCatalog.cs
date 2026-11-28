@@ -296,7 +296,7 @@ public static class CliVerbCatalog
         new CliVerbDescriptor(
             "Commands", "list", "list", new[] { "list --project <fwdata> [--all | --status <status>] [--limit <1-200>] [--offset <n> | --page <N>] [--json]" }),
         new CliVerbDescriptor(
-            "Commands", "show", "show", new[] { "show --project <fwdata> <proposalId|draftName> [--current] [--limit <1-200>] [--offset <n> | --page <N> | --all] [--json]" }),
+            "Commands", "show", "show", new[] { "show --project <fwdata> <proposalId|draftName> [--current | --records [--sort path|kind|batch-edges] [--refused]] [--limit <1-200>] [--offset <n> | --page <N> | --all] [--json]" }),
         new CliVerbDescriptor(
             "Commands", "preflight", "preflight",
             new[] { "preflight --project <fwdata> <proposalId> [--json]" }),
