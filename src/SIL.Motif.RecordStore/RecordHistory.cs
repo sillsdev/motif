@@ -63,7 +63,6 @@ public sealed partial class RecordStore
             try
             {
                 await CopyDatabaseAsync(stagedPath, path);
-                RefreshFormat(path);
                 content.Load(await database.Set<ContentRow>().AsNoTracking().ToArrayAsync());
             }
             catch

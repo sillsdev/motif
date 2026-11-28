@@ -1613,7 +1613,6 @@
   "SIL.Motif.Tests.RecordStore.DeletionSafetyTests": 200.7,
   "SIL.Motif.Tests.RecordStore.DerivedTablesGenericTests": 23.2,
   "SIL.Motif.Tests.RecordStore.DerivedTablesIndonesianTests": 0.0,
-  "SIL.Motif.Tests.RecordStore.DerivedTablesMeasurementTests": 0.0,
   "SIL.Motif.Tests.RecordStore.DirectorReviewTests": 4.7,
   "SIL.Motif.Tests.RecordStore.HandAnalyses.HandAnalysisAdapterConformanceTests": 0.0,
   "SIL.Motif.Tests.RecordStore.HandAnalyses.HandAnalysisCebuanoLexicalTimingTests": 0.0,

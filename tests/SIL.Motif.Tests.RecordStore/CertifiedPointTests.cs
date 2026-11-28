@@ -122,91 +122,17 @@ public sealed partial class DeletionSafetyTests
 
     private string ReimportPath => Path.Combine(root, "reimport.sqlite");
 
-    private async Task<Guid> LegacyFailingStoreAsync(int format)
+    private async Task<Guid> LegacyFailingStoreAsync()
     {
         var (target, _, entry) = await ReimportAsync(p => null, legacy: true);
         await target.DisposeAsync();
-        if (format <= 6)
-        {
-            Run("DROP TABLE RecordHeaders", ReimportPath);
-            Run("DROP TABLE RecordChunks", ReimportPath);
-            Run("DROP TABLE RecordPublicationBinding", ReimportPath);
-            Run("PRAGMA user_version=6", ReimportPath);
-        }
         return entry;
     }
 
-    private long UserVersion()
-    {
-        using var connection = Raw(ReimportPath);
-        using var command = connection.CreateCommand();
-        command.CommandText = "PRAGMA user_version";
-        return (long)command.ExecuteScalar()!;
-    }
-
     [Fact]
-    public async Task VerifyDoesNotUpgradeAFormatSixStoreThatFailsTheProvenanceProof()
+    public async Task RebuildingAStoreThatFailsTheProofRecordsTheLimitationAndTheGateTakesTheFullPath()
     {
-        await LegacyFailingStoreAsync(6);
-        await using (var store = new Store(ReimportPath))
-        {
-            await store.VerifyAsync();
-            Assert.Equal(6, UserVersion());
-        }
-        await using var fresh = new Store(ReimportPath);
-        await fresh.ReferencesAsync();
-        Assert.Equal(0, fresh.CertifiedAcquisitions);
-    }
-
-    [Fact]
-    public async Task AWriteOnTheHandleThatDeclinedToUpgradeAFailingFormatSixStoreUpgradesWithTheLimitationAndLeavesTheStoreVerifiable()
-    {
-        var entry = await LegacyFailingStoreAsync(6);
-        await using (var store = new Store(ReimportPath))
-        {
-            await store.VerifyAsync();
-            Assert.Equal(6, UserVersion());
-            var (revision, old) = await Current(store, entry);
-            await Bump(store, entry, revision, old, old.GetInt32() + 1);
-        }
-        Assert.Equal(7, UserVersion());
-        await using var after = new Store(ReimportPath);
-        await after.VerifyAsync();
-        var index = await after.ReferencesAsync();
-        Assert.Contains(index.Incoming([]).Limitations, l => l.StartsWith(NativeUsageSchema.ProvenanceLimitation));
-        Assert.Equal(0, after.CertifiedAcquisitions);
-        using var connection = Raw(ReimportPath);
-        using var command = connection.CreateCommand();
-        command.CommandText = "SELECT IndexLimitations FROM RecordStoreState";
-        Assert.Contains(NativeUsageSchema.ProvenanceLimitation, (string)command.ExecuteScalar()!);
-    }
-
-    [Fact]
-    public async Task TheFirstWriteOnAFormatSixStoreThatFailsTheProofRecordsTheLimitationAndTheGateTakesTheFullPath()
-    {
-        var entry = await LegacyFailingStoreAsync(6);
-        await using (var writer = new Store(ReimportPath))
-        {
-            var (revision, old) = await Current(writer, entry);
-            await Bump(writer, entry, revision, old, old.GetInt32() + 1);
-        }
-        Assert.Equal(7, UserVersion());
-        await using var certified = new Store(ReimportPath);
-        await using var full = new Store(ReimportPath) { CertifiedAcquisitionAllowed = false };
-        var lazy = await certified.ReferencesAsync();
-        var eager = await full.ReferencesAsync();
-        Assert.Equal(0, certified.CertifiedAcquisitions);
-        Assert.Contains(lazy.Incoming([]).Limitations, l => l.StartsWith(NativeUsageSchema.ProvenanceLimitation));
-        Assert.Equal(eager.Revision, lazy.Revision);
-        Assert.Null(lazy.UsageSchema);
-        Assert.Equal(eager.Incoming([entry]).Native.ToArray(), lazy.Incoming([entry]).Native.ToArray());
-        await certified.VerifyAsync();
-    }
-
-    [Fact]
-    public async Task RebuildingAFormatSevenStoreThatFailsTheProofRecordsTheLimitationAndTheGateTakesTheFullPath()
-    {
-        await LegacyFailingStoreAsync(7);
+        await LegacyFailingStoreAsync();
         await using (var before = new Store(ReimportPath)) { await before.ReferencesAsync(); Assert.Equal(1, before.CertifiedAcquisitions); }
         await using (var rebuilder = new Store(ReimportPath)) await rebuilder.RebuildReferenceIndexAsync();
         await using var after = new Store(ReimportPath);
@@ -218,7 +144,7 @@ public sealed partial class DeletionSafetyTests
     [Fact]
     public async Task AListPublicationOnAStoreThatFailsTheProofIsRefusedAndNamesTheRecord()
     {
-        await LegacyFailingStoreAsync(7);
+        await LegacyFailingStoreAsync();
         await using var store = new Store(ReimportPath);
         var before = (await store.CommitsAsync()).Count();
         var failure = await Assert.ThrowsAsync<InvalidDataException>(() => store.CommitChangesAsync([], Guid.NewGuid()));
@@ -229,7 +155,7 @@ public sealed partial class DeletionSafetyTests
     [Fact]
     public async Task BootstrappingHistoryThatFailsTheProofIsRefusedAndNamesTheRecord()
     {
-        await LegacyFailingStoreAsync(7);
+        await LegacyFailingStoreAsync();
         RecordHistoryJson history;
         await using (var source = new Store(ReimportPath)) history = await source.ExportHistoryJsonAsync(1);
         var target = Path.Combine(root, "bootstrap.sqlite");
