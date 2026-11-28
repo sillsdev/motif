@@ -82,6 +82,9 @@ public static partial class RecordImportCommand
     /// <summary>The plan of a whole folder: each file's row and the digest a stage compares.</summary>
     private sealed record BatchPlan(IReadOnlyList<DirFile> Files, string Digest)
     {
+        /// <summary>The saved project files the plan was made against; a stage that finds them byte for byte the same need not plan again.</summary>
+        public string? ProjectFingerprint { get; init; }
+
         /// <summary>The existing entries the new ones renumber or point at; null for a plan that was not tried on a scratch copy or creates no entry.</summary>
         public RecordImportReview? Review { get; init; }
 
@@ -133,7 +136,9 @@ public static partial class RecordImportCommand
             {
                 try
                 {
-                    return CommandOutcome<BatchPlan>.Success(PlanBatch(cache, inputs, validate: true, excluded));
+                    var fingerprint = FingerprintOf(cache);
+                    return CommandOutcome<BatchPlan>.Success(
+                        PlanBatch(cache, inputs, validate: true, excluded) with { ProjectFingerprint = fingerprint });
                 }
                 catch (RecordImportScratchFileException exception)
                 {
@@ -237,10 +242,16 @@ public static partial class RecordImportCommand
         var lexicon = written.Count > 0 && written.All(file => file.Kind == RecordImportProvenance.LexiconKind);
         var summary = ManifestJson(request, found);
         var authored = JsonSerializer.SerializeToElement(new JsonObject { ["recordImport"] = JsonNode.Parse(summary.GetRawText()) });
-        var outcome = ProposalCommands.StageRecordImport(request.ProjectPath, draftName, authored, cache =>
+        var outcome = ProposalCommands.StageRecordImport(request.ProjectPath, draftName, authored, (cache, untouched) =>
         {
-            if (PlanBatch(cache, inputs, validate: false).Digest != found.Digest)
-                throw new RecordImportChangedException();
+            // Same inputs on the same saved files plan to the same digest, so plan again only when they differ.
+            var same = untouched && found.ProjectFingerprint is { } preview && FingerprintOf(cache) == preview;
+            if (!same)
+            {
+                DigestReplans++;
+                if (PlanBatch(cache, inputs, validate: false).Digest != found.Digest)
+                    throw new RecordImportChangedException();
+            }
             return lowering;
         }, _ => JsonSerializer.SerializeToElement(new JsonObject
         {
@@ -298,6 +309,31 @@ public static partial class RecordImportCommand
         if (request.Revision is not null) node["revision"] = request.Revision;
         if (request.Licence is not null) node["licence"] = request.Licence;
         return JsonSerializer.SerializeToElement(node);
+    }
+
+    /// <summary>How many stages planned the folder again to compare its digest; tests read it to see that an unchanged project does not.</summary>
+    internal static int DigestReplans;
+
+    /// <summary>A hash of the saved project files a plan reads: data, writing systems, shared settings.</summary>
+    private static string FingerprintOf(LcmCache cache)
+    {
+        var data = cache.ProjectId.Path;
+        var root = Path.GetDirectoryName(data)!;
+        var files = new List<string> { data };
+        foreach (var folder in new[] { "WritingSystemStore", "SharedSettings" })
+            if (Directory.Exists(Path.Combine(root, folder)))
+                files.AddRange(Directory.EnumerateFiles(Path.Combine(root, folder), "*", SearchOption.AllDirectories));
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        foreach (var file in files.OrderBy(item => Path.GetRelativePath(root, item), StringComparer.Ordinal))
+        {
+            hash.AppendData(Encoding.UTF8.GetBytes(Path.GetRelativePath(root, file) + "\n"));
+            using var stream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, 1 << 16);
+            var buffer = new byte[1 << 16];
+            int read;
+            while ((read = stream.Read(buffer, 0, buffer.Length)) > 0) hash.AppendData(buffer, 0, read);
+            hash.AppendData([0]);
+        }
+        return Convert.ToHexString(hash.GetHashAndReset());
     }
 
     private static string Manifest(BatchPlan plan)

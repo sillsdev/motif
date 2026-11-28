@@ -74,6 +74,11 @@ Measured 2026-11-28 (Release, WSL2, 20 processors, load average about 30 from ot
 | Allocated by the import call alone | 19.3 GB | 39.4 GB |
 | Test host peak working set (includes generating the folder; not the import's own peak) | 421 MB | 990 MB |
 
+After the #653 fix (Debug build, load average 15 to 21, one run) the same fixture allocated 3.2 GB in the dry run and
+4.9 GB in the stage, taking 19.7 s and 30.0 s. The cost had been the lexicon-entry create, which read every entry of the
+project several times per operation and so grew with the square of the folder. `MOTIF_RECORD_ENTRIES` runs a smaller
+fixture, with a tenth as many variants.
+
 Generating the folder took 1.6 s. The Draft is 34.3 MB and the Proposal JSON 29.2 MB. That is 10.6 operations per
 entry and about 500 bytes per operation, inside the design's estimates (40,000 to 75,000 operations, 15 to 40 MB), and
 well under the caps of 10,000 files and 250,000 operations. Allocation is cumulative, not resident: the working set

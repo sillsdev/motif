@@ -33,7 +33,9 @@ public static class LexDbEntriesOperationKinds
                 if (owner != cache.LangProject.LexDbOA)
                     throw new InvalidOperationException("Entries are created only in this project's lexicon.");
                 cache.ServiceLocator.GetInstance<ILexEntryFactory>().Create(guid, owner);
-            }, false, false, Array.Empty<string>(), "LexEntry"));
+            }, false, false, Array.Empty<string>(), "LexEntry",
+            contains: (owner, guid) => owner.Cache.ServiceLocator.GetInstance<ICmObjectRepository>()
+                .TryGetObject(guid, out var found) && found is ILexEntry && found.Owner == owner));
         OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.LexDbEntries, false);
     }
 #pragma warning restore CA2255

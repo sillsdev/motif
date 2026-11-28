@@ -16,7 +16,8 @@ namespace SIL.Motif.Runner.Operations;
 internal sealed class OwningCreateHandler<TOwner>(
     string kind, string field, Func<TOwner, ICmObject[]> members,
     Action<LcmCache, TOwner, Guid, int, string?> create,
-    bool sequence, bool atomic, string[] concreteClasses, string expectedClass, bool positionMatters = true) : IOperationHandler where TOwner : class, ICmObject
+    bool sequence, bool atomic, string[] concreteClasses, string expectedClass, bool positionMatters = true,
+    Func<TOwner, Guid, bool>? contains = null) : IOperationHandler where TOwner : class, ICmObject
 {
     internal FieldWriteCapability FieldWrite(string declaringClass, string modelField, string? ownerClass = null) =>
         new(declaringClass, modelField, RecordWriteVerb.AddObject,
@@ -49,7 +50,7 @@ internal sealed class OwningCreateHandler<TOwner>(
                 throw new InvalidOperationException($"'{kind}': class must be {string.Join(" or ", concreteClasses)}.");
         }
         var (id, owner) = TargetResolution.Resolve<TOwner>(cache, operation, kind);
-        var existing = members(owner);
+        var existing = sequence || atomic ? members(owner) : [];
         var repository = cache.ServiceLocator.GetInstance<ICmObjectRepository>();
         if (repository.IsValidObjectId(entityId.ToGuid()))
         {
@@ -87,6 +88,14 @@ internal sealed class OwningCreateHandler<TOwner>(
     private Dictionary<string, string> Read(LcmCache cache, TOwner owner, CanonicalId entityId)
     {
         var result = new Dictionary<string, string>(StringComparer.Ordinal);
+        var repository = cache.ServiceLocator.GetInstance<ICmObjectRepository>();
+        if (!sequence && !atomic && contains is not null)
+        {
+            var member = contains(owner, entityId.ToGuid());
+            if (member) result["ref"] = entityId.Value;
+            else if (repository.IsValidObjectId(entityId.ToGuid())) result["collision"] = entityId.Value;
+            return result;
+        }
         var list = members(owner);
         if (sequence && !positionMatters)
         {
@@ -103,7 +112,7 @@ internal sealed class OwningCreateHandler<TOwner>(
                 result[i.ToString(System.Globalization.CultureInfo.InvariantCulture)] = CanonicalId.FromGuid(list[i].Guid).Value;
         }
         else if (list.Any(m => m.Guid == entityId.ToGuid())) result["ref"] = entityId.Value;
-        if (cache.ServiceLocator.GetInstance<ICmObjectRepository>().IsValidObjectId(entityId.ToGuid()) &&
+        if (repository.IsValidObjectId(entityId.ToGuid()) &&
             !list.Any(m => m.Guid == entityId.ToGuid())) result["collision"] = entityId.Value;
         return result;
     }

@@ -18,14 +18,14 @@ using Xunit.Abstractions;
 namespace SIL.Motif.Tests.Commands;
 
 /// <summary>
-/// Opt-in measurement of a 5000-entry folder; set MOTIF_RECORD_SCALE=1 to run it. The peak working set it logs is the whole
-/// test host's, which includes generating the folder; <c>allocatedBytes</c> is what the import call itself allocated.
+/// Opt-in measurement of a 5000-entry folder; set MOTIF_RECORD_SCALE=1 to run it, and MOTIF_RECORD_ENTRIES to use fewer
+/// entries. The peak working set it logs is the whole test host's, which includes generating the folder; <c>allocatedBytes</c> is what the import call itself allocated.
 /// </summary>
 [Collection(LcmCacheParallelCollections.Group2)]
 public sealed partial class RecordImportScaleTests(PristineProjectFixture pristine, ITestOutputHelper output) : IDisposable
 {
-    private const int Entries = 5000;
-    private const int Variants = 500;
+    private static readonly int Entries = int.Parse(Environment.GetEnvironmentVariable("MOTIF_RECORD_ENTRIES") ?? "5000");
+    private static readonly int Variants = Entries / 10;
     private const int FilesPerFolder = 1000;
     private static readonly Guid Namespace = new("5f1d8c1e-3b8a-4f0e-9c52-0d6a7b2e41aa");
     private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-record-scale-" + Guid.NewGuid().ToString("N"));
