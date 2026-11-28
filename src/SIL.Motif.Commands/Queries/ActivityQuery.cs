@@ -2,13 +2,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.Commands.Queries;
 
-/// <summary>The one field an activity read needs: the JSON Lines log a <c>motif mcp</c> session wrote.</summary>
-/// <param name="LogPath">The file named by <c>motif mcp --activity-log</c>.</param>
+/// <summary>The one field an activity read needs: a call-log file or the folder of them.</summary>
+/// <param name="LogPath">A <c>calls-YYYY-MM-DD.jsonl</c> file, or the folder that holds them.</param>
 public sealed record ActivityRequest(string LogPath);
 
 /// <summary>The part of one logged tool call that the summary counts.</summary>
@@ -17,7 +18,7 @@ public sealed record ActivityRequest(string LogPath);
 /// <param name="Code">The refusal code, or null when the call succeeded.</param>
 /// <param name="FollowedNext">
 /// Whether the previous call's <c>next</c> advice named this call's tool; arguments are not compared.
-/// Null for a session's first call and for lines written before the field existed.
+/// Null for a session's first call.
 /// </param>
 public sealed record ActivityCall(string Tool, bool IsError, string? Code, bool? FollowedNext);
 
@@ -38,8 +39,6 @@ public sealed record ActivitySummary(
 /// </summary>
 public static class ActivityQuery
 {
-    private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web);
-
     /// <summary>Counts calls by tool, errors, refusals by code, and calls that followed or ignored <c>next</c>.</summary>
     public static ActivitySummary Summarize(IEnumerable<ActivityCall> calls)
     {
@@ -53,29 +52,36 @@ public static class ActivityQuery
             all.Count(call => call.FollowedNext == false));
     }
 
-    /// <summary>Reads a log file; a line that is not a JSON object with a tool is skipped, as the server does.</summary>
+    /// <summary>
+    /// Reads a call-log day file, or every <c>calls-*.jsonl</c> in a folder; a line that is not a JSON object with a
+    /// tool is skipped.
+    /// </summary>
     public static CommandOutcome<ActivitySummary> Read(ActivityRequest request)
     {
-        if (!File.Exists(request.LogPath))
+        var isFolder = Directory.Exists(request.LogPath);
+        if (!isFolder && !File.Exists(request.LogPath))
             return CommandOutcome<ActivitySummary>.Refused(new Refusal("activity.log-unreadable", FailureReason.NotFound,
-                $"There is no activity log at '{Path.GetFileName(request.LogPath)}'. Start the server with motif mcp --activity-log <file>.",
+                $"There is no call log at '{Path.GetFileName(request.LogPath)}'. Motif writes one under its worker root in a calls folder.",
                 new Dictionary<string, string> { ["logPath"] = request.LogPath }));
         var calls = new List<ActivityCall>();
         try
         {
-            foreach (var line in File.ReadLines(request.LogPath).Where(line => line.Length > 0))
+            var files = isFolder ? Directory.GetFiles(request.LogPath, "calls-*.jsonl").Order().ToArray() : [request.LogPath];
+            foreach (var line in files.SelectMany(File.ReadLines).Where(line => line.Length > 0))
             {
                 try
                 {
-                    if (JsonSerializer.Deserialize<ActivityCall>(line, Options) is { Tool: not null } call) calls.Add(call);
+                    if (JsonNode.Parse(line) is JsonObject { } entry && entry["tool"]?.GetValue<string>() is { } tool)
+                        calls.Add(new ActivityCall(tool, entry["outcome"]?.GetValue<string>() is not (null or "ok"),
+                            entry["code"]?.GetValue<string>(), entry["followedPrev"]?.GetValue<bool>()));
                 }
-                catch (JsonException) { }
+                catch (Exception exception) when (exception is JsonException or InvalidOperationException or FormatException) { }
             }
         }
         catch (IOException exception)
         {
             return CommandOutcome<ActivitySummary>.Refused(new Refusal("activity.log-unreadable", FailureReason.NotFound,
-                $"The activity log at '{Path.GetFileName(request.LogPath)}' could not be read.",
+                $"The call log at '{Path.GetFileName(request.LogPath)}' could not be read.",
                 new Dictionary<string, string> { ["logPath"] = request.LogPath, ["exceptionDetail"] = exception.Message }));
         }
         return CommandOutcome<ActivitySummary>.Success(Summarize(calls));

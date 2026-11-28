@@ -95,6 +95,7 @@ public static class CommandTextRenderer
             PhonologyResultsPageResponse r => RenderPhonologyResultsPage(r),
             PhonologyExampleResultResponse r => RenderPhonologyExampleResult(r),
             ReportKindListResponse r => RenderReportKindList(r),
+            IdConvertResponse r => RenderIdConvert(r),
             ReportResponse r => RenderReport(r),
             ParsimonyReportResponse r => RenderParsimonyReport(r),
             ParsimonyReportSetResponse r => RenderParsimonyReportSet(r),
@@ -1210,6 +1211,17 @@ public static class CommandTextRenderer
         sb.AppendLine();
         sb.AppendLine(r.AccuracyClaimsNote);
         return sb.ToString();
+    }
+
+    private static string RenderIdConvert(IdConvertResponse response)
+    {
+        var text = new StringBuilder();
+        foreach (var item in response)
+        {
+            if (item.Code is null) text.AppendLine($"{item.Input}  guid {item.Guid}  canonical {item.Canonical}");
+            else text.AppendLine($"{item.Input}  {item.Code}: {item.Message}");
+        }
+        return text.ToString();
     }
 
     private static string RenderReportKindList(ReportKindListResponse response)

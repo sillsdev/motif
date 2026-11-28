@@ -16,6 +16,7 @@ public static partial class RefusalCatalog
         Spec(RefusalCodes.QueryRealizesIdUnknown, FailureReason.InvalidArgument),
         Spec(RefusalCodes.QueryBaselineSameGrammar, FailureReason.InvalidArgument),
         Spec(RefusalCodes.QueryTwinNeedsRegex, FailureReason.InvalidArgument),
+        Spec(RefusalCodes.QueryPatternNotNormalizable, FailureReason.InvalidArgument),
         Spec(RefusalCodes.QueryTwinGroupUnknown, FailureReason.InvalidArgument),
         Spec(RefusalCodes.QueryTwinRegexAmbiguous, FailureReason.InvalidArgument),
         Spec(RefusalCodes.QueryRealizesIndexFailed, FailureReason.Refused),

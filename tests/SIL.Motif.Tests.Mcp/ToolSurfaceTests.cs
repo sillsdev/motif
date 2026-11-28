@@ -175,6 +175,7 @@ public sealed class ToolSurfaceTests
             "compose-add-exception-features",
             "compose-delete-environment",
             "compose-delete-exception-feature",
+            "compose-delete-inflection-class",
             "compose-delete-lexical-entry",
             "compose-delete-natural-class",
             "compose-delete-sense",
@@ -235,9 +236,9 @@ public sealed class ToolSurfaceTests
                 "compose-retire-boundary-marker" or "compose-retire-affix-slot" or "compose-add-exception-features" or
                 "compose-merge-boundary-markers" or "compose-edit-text-notes" or
                 "compose-delete-environment" or "compose-edit-environment" or "compose-delete-exception-feature" or
-                "compose-delete-natural-class" or "compose-delete-text-segment-note" or
+                "compose-delete-natural-class" or "compose-delete-text-segment-note" or "compose-delete-inflection-class" or
                 "compose-tag-stems-by-query" or "compose-remove-exception-feature").ToArray();
-        Assert.Equal(24, numeralEditors.Length);
+        Assert.Equal(25, numeralEditors.Length);
         Assert.All(numeralEditors, command =>
         {
             Assert.Equal(CommandSurface.AdvancedAi, command.Surface);
@@ -603,7 +604,7 @@ public sealed class ToolSurfaceTests
     {
         var tool = AgentTools.All.Single(tool => tool.Name == "motif_stats");
         var context = new ServerContext("unused.fwdata", "1.0", new SIL.Motif.Commands.NoRunnerLauncher(
-            new SIL.Motif.Commands.JobRunnerLaunchOptions("root", null)), new ActivityLog(null), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
+            new SIL.Motif.Commands.JobRunnerLaunchOptions("root", null)), new ActivityLog(), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
         Assert.DoesNotContain(tool.InputSchema["required"]!.AsArray(), value => value!.GetValue<string>() == "assessmentId");
         var arguments = new JsonObject { ["output"] = "JsonRows",
             ["forwardedArguments"] = new JsonArray("--format", "jsonl") };
@@ -722,7 +723,7 @@ public sealed class DetailedNaturalClassMemberToolTests(PristineProjectFixture p
 
         var defaultProfile = ToolProfile.Load("default");
         var context = new ServerContext(project.FwDataPath, "1.0",
-            new NoRunnerLauncher(new JobRunnerLaunchOptions(managedRoot, null)), new ActivityLog(null),
+            new NoRunnerLauncher(new JobRunnerLaunchOptions(managedRoot, null)), new ActivityLog(),
             defaultProfile, TextWriter.Null, advancedAiModeEnabled: true);
         var grammarTools = MotifMcpServer.Expose(defaultProfile);
         var grammar = await MotifMcpServer.CallAsync(context, grammarTools, "motif_grammar",
@@ -760,7 +761,7 @@ public sealed class DetailedNaturalClassMemberToolTests(PristineProjectFixture p
 
         var experimental = ToolProfile.Load("parsimony-experimental");
         var editContext = new ServerContext(project.FwDataPath, "1.0",
-            new NoRunnerLauncher(new JobRunnerLaunchOptions(managedRoot, null)), new ActivityLog(null),
+            new NoRunnerLauncher(new JobRunnerLaunchOptions(managedRoot, null)), new ActivityLog(),
             experimental, TextWriter.Null, advancedAiModeEnabled: true);
         var experimentalTools = MotifMcpServer.Expose(experimental);
         var started = await MotifMcpServer.CallAsync(editContext, experimentalTools, "motif_start_proposal",

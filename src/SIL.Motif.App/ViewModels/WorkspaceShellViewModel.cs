@@ -787,7 +787,14 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
             if (Baseline.ShownRefusal is not null) return;
             await _reloadAfterRefresh.ConfigureAwait(true);
             if (!IsCurrentRefresh(generation, projectPath) || projectPath is null) return;
-            if (!ProjectReconciliationMarker.Exists(projectPath) || ProjectReconciliationMarker.Clear(projectPath))
+            if (ProjectReconciliationMarker.Exists(projectPath))
+            {
+                // Records saved but unrecorded Applies, then clears the marker.
+                await Task.Run(() => ProposalCommands.RecordUnrecordedApplies(
+                    projectPath, SIL.Motif.Host.MotifProductVersion.CurrentText)).ConfigureAwait(true);
+                if (!IsCurrentRefresh(generation, projectPath)) return;
+            }
+            if (!ProjectReconciliationMarker.Exists(projectPath))
                 Context.ProposalApply.ClearReconciliationNeeded();
             _refreshed = true;
             publishSetupAfterRefresh = true;

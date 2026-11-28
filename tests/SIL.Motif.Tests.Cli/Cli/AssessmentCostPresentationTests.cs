@@ -35,6 +35,11 @@ public sealed class AssessmentCostPresentationTests
             Assert.DoesNotContain("elapsedMs", output, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("attempts", output, StringComparison.OrdinalIgnoreCase);
             Assert.Contains("costComparison", output, StringComparison.Ordinal);
+            // A lone word is the whole run's work, shown as a share and never as a count (#482).
+            Assert.DoesNotContain("workUnits", output, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("9876", output, StringComparison.Ordinal);
+            Assert.Contains(100d, new[] { (double)System.Text.Json.Nodes.JsonNode.Parse(output)!["words"]![0]!["workSharePercent"]! });
+            Assert.DoesNotContain("baselineWorkSharePercent", output, StringComparison.Ordinal);
         }
     }
 
@@ -50,11 +55,88 @@ public sealed class AssessmentCostPresentationTests
         };
         var json = CommandTextRenderer.Render(CommandOutcome<TrialRecord>.Success(trial), true).Output;
         var text = CommandTextRenderer.Render(CommandOutcome<TrialRecord>.Success(trial), false).Output;
-        Assert.DoesNotContain("baselineWork", json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("\"baselineWork\"", json, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("elapsedMs", json, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("parserWork", json, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("5% more", text, StringComparison.Ordinal);
         Assert.DoesNotContain("Warning", text, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(" ms", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TrialWordsCarryBothSidesPercentOfTotalWorkAndThePointsDeltaButNoCounts()
+    {
+        var trial = new TrialRecord("job", "proposal", "digest", Token(), null, new Dictionary<string, string>(),
+            ["word", "other"], false, null, JobStatus.Completed, null, TrialFreshness.Current)
+        {
+            WordResults =
+            [
+                Word() with { ParserWork = 750, BaselineWorkUnits = 500 },
+                Word() with { ParserWork = 250, BaselineWorkUnits = 500 },
+            ],
+        };
+        var output = CommandTextRenderer.Render(CommandOutcome<TrialRecord>.Success(trial), true).Output;
+        var words = System.Text.Json.Nodes.JsonNode.Parse(output)!["wordResults"]!.AsArray();
+        Assert.Equal(75d, (double)words[0]!["workSharePercent"]!);
+        Assert.Equal(50d, (double)words[0]!["baselineWorkSharePercent"]!);
+        Assert.Equal(25d, (double)words[0]!["workSharePointsDelta"]!);
+        Assert.Equal(25d, (double)words[1]!["workSharePercent"]!);
+        Assert.Equal(-25d, (double)words[1]!["workSharePointsDelta"]!);
+        Assert.DoesNotContain("workUnits", output, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("750", output, StringComparison.Ordinal);
+    }
+
+    private static AssessCommandResponse Run(params long?[] work) =>
+        new(new BaselineCaptureResponse(Token(), "project", DateTimeOffset.UtcNow, false, true),
+            new SelectionProjection(["word"], []), ["assessment"], "complete")
+        { Words = work.Select((count, index) => Word() with { ParserWork = count }).ToArray() };
+
+    [Fact]
+    public void ASecondPageUsesTheWholeRunsTotalNotThePages()
+    {
+        var page = AssessSummary.Page(Run(100, 100, 200, 600), 2, 2, detailed: false);
+        var words = page["words"]!.AsArray();
+        Assert.Equal(20d, (double)words[0]!["workSharePercent"]!);
+        Assert.Equal(60d, (double)words[1]!["workSharePercent"]!);
+    }
+
+    [Fact]
+    public void SharesAreOmittedForTheWholeRunWhenAnyWordHasNoCount()
+    {
+        var response = Run(100, null, 300);
+        var detail = AssessSummary.Page(response, 0, 10, detailed: true).ToJsonString();
+        var concise = AssessSummary.Page(response, 0, 10, detailed: false).ToJsonString();
+        var full = AssessSummary.Full(response).ToJsonString();
+        foreach (var output in new[] { detail, concise, full })
+            Assert.DoesNotContain("workSharePercent", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ANonComparableTrialRendersOnlyTheProposalSidePercent()
+    {
+        var trial = new TrialRecord("job", "proposal", "digest", Token(), null, new Dictionary<string, string>(),
+            ["word", "other"], false, null, JobStatus.Completed, null, TrialFreshness.Current)
+        {
+            WordResults = [Word() with { ParserWork = 300 }, Word() with { ParserWork = 100 }],
+        };
+        var output = CommandTextRenderer.Render(CommandOutcome<TrialRecord>.Success(trial), true).Output;
+        var words = System.Text.Json.Nodes.JsonNode.Parse(output)!["wordResults"]!.AsArray();
+        Assert.Equal(75d, (double)words[0]!["workSharePercent"]!);
+        Assert.DoesNotContain("baselineWorkSharePercent", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("workSharePointsDelta", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ATrialWithAMissingBaselineCountOmitsTheBaselineSideAndDelta()
+    {
+        var trial = new TrialRecord("job", "proposal", "digest", Token(), null, new Dictionary<string, string>(),
+            ["word", "other"], false, null, JobStatus.Completed, null, TrialFreshness.Current)
+        {
+            WordResults = [Word() with { ParserWork = 300, BaselineWorkUnits = 100 }, Word() with { ParserWork = 100 }],
+        };
+        var output = CommandTextRenderer.Render(CommandOutcome<TrialRecord>.Success(trial), true).Output;
+        Assert.Contains("workSharePercent", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("baselineWorkSharePercent", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("workSharePointsDelta", output, StringComparison.Ordinal);
     }
 }

@@ -110,3 +110,66 @@ function Get-LatestEvictionReason {
     if ($last -and $last.__typename -eq 'RemovedFromMergeQueueEvent') { return [string]$last.reason }
     return $null
 }
+
+# The latest queue event when it is a removal (the PR was evicted and nobody has requeued it since); else $null.
+function Get-LatestEviction {
+    [CmdletBinding()]
+    param([object[]] $Events = @())
+
+    $last = $Events | Select-Object -Last 1
+    if ($last -and $last.__typename -eq 'RemovedFromMergeQueueEvent') { return $last }
+    return $null
+}
+
+# Decides whether a PR evicted for merge_conflict or failed_checks may be requeued because it was pushed to since.
+# Returns Action (Requeue, Wait, Skip or NeedChecks) and Reason. Requires: open, not a draft, base main, head committed after the
+# eviction, mergeable MERGEABLE, and every required check on the head green (Buckets from `gh pr checks --required`).
+function Get-PushedSinceEvictionDecision {
+    [CmdletBinding()]
+    param(
+        [string] $State = 'OPEN',
+        [bool] $IsDraft = $false,
+        [string] $BaseRef = 'main',
+        $EvictedAt,
+        $HeadCommittedAt,
+        [string] $Mergeable = 'UNKNOWN',
+        # $null means the checks have not been fetched yet: the cheap tests run first and NeedChecks asks for them.
+        $CheckBuckets = $null
+    )
+
+    function Skip([string] $Why) { [pscustomobject]@{ Action = 'Skip'; Reason = $Why } }
+    if ($State -ne 'OPEN') { return Skip "state is $State" }
+    if ($IsDraft) { return Skip 'it is a draft' }
+    if ($BaseRef -ne 'main') { return Skip "base is $BaseRef, not main" }
+    if ($null -eq $HeadCommittedAt -or $null -eq $EvictedAt -or ([datetime]$HeadCommittedAt) -le ([datetime]$EvictedAt)) { return Skip 'head is not newer than the eviction' }
+    if ($Mergeable -ne 'MERGEABLE') { return Skip "mergeable is $Mergeable" }
+    if ($null -eq $CheckBuckets) { return [pscustomobject]@{ Action = 'NeedChecks'; Reason = 'cheap tests passed; required checks not fetched' } }
+    $buckets = @($CheckBuckets)
+    $bad = @($buckets | Where-Object { $_ -notin 'pass', 'skipping', 'pending' })
+    if ($bad.Count -gt 0) { return Skip "required checks not green ($($bad -join ', '))" }
+    if (@($buckets | Where-Object { $_ -eq 'pending' }).Count -gt 0) { return [pscustomobject]@{ Action = 'Wait'; Reason = 'waiting for checks' } }
+    if ($buckets.Count -eq 0) { return [pscustomobject]@{ Action = 'Wait'; Reason = 'waiting for checks (none reported yet)' } }
+    [pscustomobject]@{ Action = 'Requeue'; Reason = 'pushed since the eviction, mergeable, required checks green' }
+}
+
+# Reads the result of `gh pr checks --required --json name,bucket`, which exits 0 (all pass), 1 (a failure, or none
+# required) or 8 (pending) and still prints JSON on stdout. Pass stdout only: stderr warnings stay out of it, and any
+# text before the JSON array is ignored. Returns Ok, Buckets and Error.
+function ConvertFrom-RequiredChecksResult {
+    [CmdletBinding()]
+    param([int] $ExitCode, [string] $Stdout)
+
+    if ($ExitCode -notin 0, 1, 8) { return [pscustomobject]@{ Ok = $false; Buckets = @(); Error = "gh pr checks exited $ExitCode" } }
+    $start = ([string]$Stdout).IndexOf('[')
+    if ($start -lt 0) { return [pscustomobject]@{ Ok = $false; Buckets = @(); Error = 'gh pr checks printed no JSON' } }
+    try { $items = @(([string]$Stdout).Substring($start) | ConvertFrom-Json) }
+    catch { return [pscustomobject]@{ Ok = $false; Buckets = @(); Error = "gh pr checks JSON did not parse: $($_.Exception.Message)" } }
+    [pscustomobject]@{ Ok = $true; Buckets = @($items | ForEach-Object { [string]$_.bucket }); Error = $null }
+}
+
+# Only these evictions are the keeper's to undo; a manual dequeue (or any other reason) is never requeued.
+function Test-RequeueableEvictionReason {
+    [CmdletBinding()]
+    param([string] $Reason)
+    $Reason -in 'failed_checks', 'merge_conflict'
+}

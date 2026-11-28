@@ -1,2 +1,1 @@
-# <test project name> | <dotnet test --filter expression>; empty filter runs the whole project.
-SIL.Motif.Tests.App | FullyQualifiedName~AnalyzeTextsLayoutTests.EachLineHasAWordFieldWorksPanGlossGutterAlignedWithItsStrips
+# Projects to run in full, with process-memory cases in clean test hosts. None while the GUI is paused.

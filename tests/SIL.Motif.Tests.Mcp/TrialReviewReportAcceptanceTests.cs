@@ -29,7 +29,7 @@ public sealed class TrialReviewReportAcceptanceTests
         using (var machine = MachineDatabase.Open(managedRoot))
             new KnownProjectRegistry(machine).Record(fixture.ProjectKey, fixture.Project, DateTimeOffset.UtcNow);
         var context = new ServerContext(fixture.Project, "1.0", new NoRunnerLauncher(new JobRunnerLaunchOptions(managedRoot, null)),
-            new ActivityLog(null), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
+            new ActivityLog(), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
         var args = new Dictionary<string, JsonElement>
         {
             ["project"] = JsonSerializer.SerializeToElement(fixture.Project),
@@ -79,7 +79,7 @@ public sealed class TrialReviewReportAcceptanceTests
             using (var machine = MachineDatabase.Open(managedRoot))
                 new KnownProjectRegistry(machine).Record(fixture.ProjectKey, fixture.Project, DateTimeOffset.UtcNow);
             var context = new ServerContext(fixture.Project, "1.0", new NoRunnerLauncher(new JobRunnerLaunchOptions(managedRoot, null)),
-                new ActivityLog(null), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
+                new ActivityLog(), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
             async Task<JsonElement> Read(string detail, string? cursor = null)
             {
                 var args = new Dictionary<string, JsonElement> {

@@ -90,7 +90,7 @@ internal sealed class PhonologicalRuleOutcomeDeleteHandler : ICompoundOperationH
 
 internal sealed class PhonologicalRuleConstraintCollectionHandler : IOperationHandler
 {
-    internal const string Kind = "grammar/phRegularRule/collectUnusedFeatConstraints";
+    internal const string Kind = PhonologicalRuleDeleteOperationKinds.CollectUnusedFeatConstraints;
     private const string Field = "grammar/phRegularRule/retiredConstraints";
 
     internal static CanonicalId[] Constraints(OperationEnvelope operation)

@@ -38,6 +38,9 @@ internal sealed class MotifSqliteStoreDescriptor
     /// </summary>
     public Action<SqliteConnection>? BeforeOpen { get; init; }
 
+    /// <summary>Runs on a writable open of an existing, validated store, before it is shared.</summary>
+    public Action<SqliteConnection>? OnWritableOpen { get; init; }
+
     /// <summary>
     /// Keeps closed connections pooled for the store's lifetime instead of closing their files.
     /// </summary>
@@ -183,6 +186,7 @@ internal sealed class MotifSqliteStore : IDisposable
             else
             {
                 ValidateExisting(connection, descriptor);
+                descriptor.OnWritableOpen?.Invoke(connection);
             }
 
             SqliteConnections.EnableWal(connection);

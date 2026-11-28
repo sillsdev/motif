@@ -7,6 +7,23 @@ When a Proposal changes a grammar object, read the relevant Guide section and re
 evidence, decisions and uncertainty alongside the change. Consult [black-guidance.md](black-guidance.md),
 [mechanism-ladder.md](mechanism-ladder.md).
 
+**Outline (required).** File each decision under the object it changes, never under a hypothesis ID. Parts
+(`#`), in order:
+
+1. Orthography and segments
+2. Phonological rules
+3. Word classes and inflection classes
+4. Templates and slots
+5. Derivation and extensions
+6. Clitics
+7. Irregular forms (stem names, exception features, variants)
+8. Ad hoc rules
+9. Records (measurement policy, sources, process)
+
+Each section carries a paradigm or interlinear example. A `decide` that changes the mechanism rewrites **How it
+works** in the same Proposal; only **Decisions** keeps history. Process notes go under Records. An existing Guide restructures once, in one Guide-only Proposal, keeping GDR
+numbers and moving process records under Records.
+
 A section has **How it works**, **Examples**, **Grouping commands**, **Exceptions**, **Decisions**, **Open questions**
 and **In the grammar**, in that order. A part uses `#`, a section `##`, and template parts `###`. Generated
 content is a view; the importer ignores its marked blocks. Use FieldWorks Markdown and preserve object links

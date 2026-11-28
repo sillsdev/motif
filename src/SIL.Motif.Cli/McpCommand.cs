@@ -1,5 +1,6 @@
 using SIL.Motif.Mcp;
 using SIL.Motif.Commands.Preferences;
+using SIL.Motif.Host;
 using SIL.Motif.Worker;
 
 namespace SIL.Motif.Cli;
@@ -12,12 +13,11 @@ namespace SIL.Motif.Cli;
 internal static class McpCommand
 {
     private const string Usage =
-        "Usage: motif mcp [--profile <file | shipped name>] " +
-        "[--activity-log <file.jsonl>]";
+        "Usage: motif mcp [--profile <file | shipped name>]";
 
     public static int Run(string[] args, TextWriter error)
     {
-        string? profile = null, activity = null;
+        string? profile = null;
         for (var index = 0; index < args.Length; index++)
         {
             var flag = args[index];
@@ -25,7 +25,6 @@ internal static class McpCommand
             switch (flag)
             {
                 case "--profile" when value is not null: profile = value; index++; break;
-                case "--activity-log" when value is not null: activity = value; index++; break;
                 default:
                     error.WriteLine(Usage);
                     return 1;
@@ -35,8 +34,9 @@ internal static class McpCommand
         {
             using var cancellation = new CancellationTokenSource();
             Console.CancelKeyPress += (_, eventArgs) => { eventArgs.Cancel = true; cancellation.Cancel(); };
-            MotifMcpServer.RunAsync(new McpLaunchOptions(profile, activity, AdvancedAiModeEnabled:
-                FileAdvancedAiModePreferenceStore.ForInstallation().IsEnabled),
+            var calls = CallLog.FromEnvironment(AmbientEnvironment.Get, RunnerOptions.ResolveRoot());
+            MotifMcpServer.RunAsync(new McpLaunchOptions(profile, AdvancedAiModeEnabled:
+                FileAdvancedAiModePreferenceStore.ForInstallation().IsEnabled, Calls: calls),
                 Console.OpenStandardInput(),
                 Console.OpenStandardOutput(), error, cancellation.Token).GetAwaiter().GetResult();
             return 0;

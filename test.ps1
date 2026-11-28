@@ -207,11 +207,24 @@ if ($BuildMap) {
 }
 $levelSelection = if ($All -or $Changed) { 'All' } elseif ($System) { 'System' } else { 'Unit,Integration' }
 
+$solutionProjectPaths = @{}
+foreach ($line in Get-Content $solution) {
+    if ($line -match '^Project\("[^"]+"\)\s*=\s*"[^"]+",\s*"([^"]+\.csproj)"') {
+        $relativePath = $Matches[1].Replace('\', [IO.Path]::DirectorySeparatorChar)
+        $projectPath = [IO.Path]::GetFullPath((Join-Path $repoRoot $relativePath))
+        if ($projectPath.StartsWith($testsRoot, [StringComparison]::OrdinalIgnoreCase)) {
+            $solutionProjectPaths[$projectPath] = $true
+        }
+    }
+}
+
 # A quarantined test carries [Trait("Quarantine", "#NNN")]; every run but -Quarantined filters those out.
 $quarantineIssues = @{}
 $quarantineProjects = @{}
+$solutionTestDirs = @($solutionProjectPaths.Keys | ForEach-Object { $_.Substring($testsRoot.Length).Split([char[]]@('\', '/'))[0] })
 foreach ($sourceFile in Get-ChildItem -LiteralPath $testsRoot -Filter '*.cs' -File -Recurse |
-    Where-Object { $_.FullName -notmatch '[\\/](obj|bin)[\\/]' }) {
+    Where-Object { $_.FullName -notmatch '[\\/](obj|bin)[\\/]' -and
+        $solutionTestDirs -contains $_.FullName.Substring($testsRoot.Length).Split([char[]]@('\', '/'))[0] }) {
     foreach ($m in [regex]::Matches([IO.File]::ReadAllText($sourceFile.FullName), 'Trait\(\s*"Quarantine"\s*,\s*"([^"]*)"')) {
         if ($m.Groups[1].Value -notmatch '\A#[0-9]+\z') {
             throw "Quarantine trait '$($m.Groups[1].Value)' in $($sourceFile.FullName) must be the open issue, like [Trait(""Quarantine"", ""#123"")]."
@@ -309,17 +322,6 @@ if (-not $Project -and -not $changedClasses) {
     )
     if ($All) {
         $regressions += @{ Name = 'capture screen regression'; Title = 'capture screenshot tooling regression'; Script = 'Capture-Screens.Tests.ps1' }
-    }
-}
-
-$solutionProjectPaths = @{}
-foreach ($line in Get-Content $solution) {
-    if ($line -match '^Project\("[^"]+"\)\s*=\s*"[^"]+",\s*"([^"]+\.csproj)"') {
-        $relativePath = $Matches[1].Replace('\', [IO.Path]::DirectorySeparatorChar)
-        $projectPath = [IO.Path]::GetFullPath((Join-Path $repoRoot $relativePath))
-        if ($projectPath.StartsWith($testsRoot, [StringComparison]::OrdinalIgnoreCase)) {
-            $solutionProjectPaths[$projectPath] = $true
-        }
     }
 }
 
@@ -594,12 +596,6 @@ $jobs = foreach ($run in $testRuns) {
         $arguments += @('--environment', ('"MOTIF_TEST_LEVELS={0}"' -f $levels))
         if ($mapDirectory) { $arguments += @('--environment', ('"MOTIF_TEST_COVERAGE_MAP_DIR={0}"' -f $mapDirectory)) }
         if ($classSelectionFile) { $arguments += @('--environment', ('"MOTIF_TEST_CLASS_SELECTION={0}"' -f $classSelectionFile)) }
-        # Avalonia code stays unoptimized without call counting, so the App project turns it on.
-        if ($name -like 'SIL.Motif.Tests.App*') {
-            $arguments += @('--environment', 'DOTNET_TC_CallCounting=1')
-            # Layout allocates short-lived objects: no background GC thread saves CPU.
-            $arguments += @('--environment', 'DOTNET_gcConcurrent=0')
-        }
         $arguments += @('--environment', ('"TESTINGPLATFORM_TELEMETRY_OPTOUT={0}"' -f $env:TESTINGPLATFORM_TELEMETRY_OPTOUT))
         $arguments += @('--environment', ('"MOTIF_TEST_STDIN_TOKEN={0}"' -f $inputToken))
         # RunSettings arguments follow a literal -- and must come last; xUnit hands them to the sharded framework.

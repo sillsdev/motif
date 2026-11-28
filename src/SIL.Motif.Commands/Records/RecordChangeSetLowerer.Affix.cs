@@ -223,8 +223,11 @@ public sealed partial class RecordChangeSetLowerer
                 return false;
             if (bracket.NamedClass is { } named)
                 return held.Guid == named.Guid;
-            if (held is not IPhNCFeatures { FeaturesOA: { } structure })
+            if (held is not IPhNCFeatures features)
                 return false;
+            var structure = features.FeaturesOA;
+            if (structure is null)
+                return bracket.Features.Count == 0 && string.IsNullOrEmpty(held.Abbreviation.BestAnalysisAlternative.Text);
             var abbreviation = held.Abbreviation.BestAnalysisAlternative.Text;
             if (!string.IsNullOrEmpty(abbreviation) && !abbreviation.StartsWith("***", StringComparison.Ordinal))
                 return false;
@@ -248,6 +251,7 @@ public sealed partial class RecordChangeSetLowerer
                     if (!SameClass(((IPhSimpleContextNC)context).FeatureStructureRA, naturalClass))
                         Add(Operation(Id($"{role}:class:{n}"), PhSimpleContextNCFeatureStructureOperationKinds.SetFeatureStructure, id,
                             new { @ref = classes.Resolve(item, naturalClass, role + ":in" + n).Value }), item.Index);
+                    _book?.Reconcile(item, $"{role}:in{n}", (IPhSimpleContextNC)context, id, naturalClass);
                     break;
                 case RuleGroup group:
                     SequenceInPlace(item, role, n, (IPhSequenceContext)context, group, classes);
@@ -314,6 +318,7 @@ public sealed partial class RecordChangeSetLowerer
                     new { @class = "PhSimpleContextNC" }, entity: member), item.Index);
                 Add(Operation(Id(memberRole + ":class"), PhSimpleContextNCFeatureStructureOperationKinds.SetFeatureStructure, member,
                     new { @ref = classes.Resolve(item, (RuleClass)node, memberRole).Value }), item.Index);
+                _book?.Reconcile(item, memberRole, null, member, (RuleClass)node);
             }
             return member;
         }
@@ -338,6 +343,7 @@ public sealed partial class RecordChangeSetLowerer
                 case RuleClass naturalClass:
                     Add(Operation(Id($"{role}:class:{n}"), PhSimpleContextNCFeatureStructureOperationKinds.SetFeatureStructure, entity,
                         new { @ref = classes.Resolve(item, naturalClass, role + ":in" + n).Value }), item.Index);
+                    _book?.Reconcile(item, $"{role}:in{n}", null, entity, naturalClass);
                     break;
                 case RuleGroup group:
                     CanonicalId? previous = null;
@@ -474,7 +480,7 @@ public sealed partial class RecordChangeSetLowerer
             {
                 if (bracket.NamedClass is { } named)
                     return CanonicalId.FromGuid(named.Guid);
-                if (bracket.Features.Count == 0)
+                if (bracket.Features.Count == 0 && bracket.Alphas.Count == 0)
                     throw Refuse(RuleNotation.Syntax, item.Change, "An empty class [] names no feature.");
                 var signature = string.Join(",", bracket.Features.OrderBy(s => s.Feature.Guid).Select(s => s.Feature.Guid.ToString("N") + "=" + s.Value.Guid.ToString("N")));
                 var id = run.Id(role + ":featureclass:" + signature);

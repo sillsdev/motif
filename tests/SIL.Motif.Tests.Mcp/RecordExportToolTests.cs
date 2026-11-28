@@ -47,7 +47,7 @@ public sealed class RecordExportToolTests(PristineProjectFixture pristine) : IDi
 
     private static ServerContext Context(string path, ToolProfile profile) =>
         new(path, "0.1.0", new NoRunnerLauncher(new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)),
-            new ActivityLog(null), profile, TextWriter.Null, advancedAiModeEnabled: true);
+            new ActivityLog(), profile, TextWriter.Null, advancedAiModeEnabled: true);
 
     private static Dictionary<string, JsonElement> Args(params (string Name, object Value)[] arguments) =>
         arguments.ToDictionary(item => item.Name, item => JsonSerializer.SerializeToElement(item.Value));

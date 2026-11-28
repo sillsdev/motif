@@ -4,13 +4,13 @@ namespace SIL.Motif.Host.Store;
 
 /// <summary>Owns the single, current SQLite schema for Motif's machine store.</summary>
 /// <remarks>
-/// The machine store is a second, unrelated database: it holds <c>KnownProjects</c> and <c>Usage</c>, and
+/// The machine store is a second, unrelated database: it holds <c>KnownProjects</c> and
 /// nothing about any one project. Its schema, DDL and <see cref="ApplicationId"/> are entirely separate
 /// from <see cref="MotifSchema"/>'s so the two files can never be mistaken for one another, pinned by
 /// <c>OpeningAProjectDatabaseAsAMachineDatabaseIsRefused</c> and
 /// <c>OpeningAMachineDatabaseAsAProjectDatabaseIsRefused</c>. Like <see cref="MotifSchema"/>, an existing
 /// database at an older schema is not migrated: ADR 0023 rebuilds it after a backup, carrying <c>KnownProjects</c>
-/// (its <c>ProjectTag</c> is chosen by a person) and dropping <c>Usage</c>, which is recomputed.
+/// (its <c>ProjectTag</c> is chosen by a person).
 /// </remarks>
 public static class MachineSchema
 {
@@ -18,7 +18,7 @@ public static class MachineSchema
     public const int ApplicationId = 0x4D414348;
 
     /// <summary>The schema this assembly creates and requires.</summary>
-    public const int CurrentSchema = 2;
+    public const int CurrentSchema = 3;
 
     /// <summary>Builds every table this store needs, in one step.</summary>
     internal static void Create(SqliteConnection connection, SqliteTransaction? transaction)
@@ -31,7 +31,7 @@ public static class MachineSchema
 
     internal static void ValidateSchema(SqliteConnection connection, SqliteTransaction? transaction = null)
     {
-        var expectedTables = new HashSet<string>(StringComparer.Ordinal) { "KnownProjects", "Usage" };
+        var expectedTables = new HashSet<string>(StringComparer.Ordinal) { "KnownProjects" };
 
         using (var objects = connection.CreateCommand())
         {
@@ -85,9 +85,6 @@ public static class MachineSchema
         "KnownProjects" =>
         [C("WorkspaceKey", "TEXT", false, 1), C("FullFwDataPath", "TEXT", true), C("LastSeenUtc", "TEXT", true),
             C("ProjectTag", "TEXT")],
-        "Usage" =>
-        [C("Id", "INTEGER", false, 1), C("TimestampUtc", "TEXT", true), C("Command", "TEXT", true),
-            C("ArgumentShapeJson", "TEXT", true)],
         _ => throw new InvalidDataException($"Machine table {table} is not registered.")
     };
 
@@ -110,13 +107,6 @@ public static class MachineSchema
             FullFwDataPath TEXT NOT NULL,
             LastSeenUtc TEXT NOT NULL,
             ProjectTag TEXT UNIQUE
-        );
-
-        CREATE TABLE IF NOT EXISTS Usage (
-            Id INTEGER PRIMARY KEY AUTOINCREMENT,
-            TimestampUtc TEXT NOT NULL,
-            Command TEXT NOT NULL,
-            ArgumentShapeJson TEXT NOT NULL
         );
         """;
 }

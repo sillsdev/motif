@@ -247,6 +247,11 @@ are the only escapes. A `}`, a space or an `=` inside quotes is text.
 
 - The writer leaves out `custom-style=` for the `Hyperlink` style on a link, because a link implies it. `.nostyle` marks a link with no
   character style.
+- A host may name a character style for code spans (`MarkdownStyleNames.Code`, null by default). Then `` `x` `` is a run of that style in the
+  default analysis writing system, with the content literal (`_`, `*` and `[` need no escape, and a longer fence holds a backtick). The writer
+  writes a run with only that style as a code span when its text reads back the same inside backticks (no space or backtick at either end, no
+  double space, no control or invisible character, no `|` in a table); any other run of the style keeps `[x]{custom-style=...}`. With no code
+  style a code span is `fwmd.syntax.unsupported-markup`; escape the backtick as `` \` ``.
 - The paragraph styles of the block syntax default to the names a new FieldWorks project has (`MarkdownStyleNames`):
 
 | Markdown | Paragraph style |
@@ -528,7 +533,7 @@ line.
 Pandoc reads these, and FieldWorks text has no counterpart. Each is `fwmd.syntax.unsupported-markup`. Where an escape keeps the text,
 the finding's fix is that escape.
 
-- Raw HTML, code spans, thematic breaks (`***`) and link reference definitions.
+- Raw HTML, thematic breaks (`***`) and link reference definitions. A code span is also refused unless the host names a code style (below).
 - Nested lists, and a div inside a div.
 - Math (`$x$`), citations (`@doe`), inline notes (`^[note]`), strikeout (`~~x~~`) and an empty subscript (`~~`).
 - Heading attributes (`# Title {#id}`).

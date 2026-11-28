@@ -207,7 +207,6 @@ public sealed class PhonologicalRuleFormulaImportTests(PristineProjectFixture pr
         Refused(RefusalCodes.RuleNotationContextNotAllowed, document => Rhs(document).Set("right-context", new RecordScalar("+{0,1}")));
         Refused(RefusalCodes.RuleNotationContextNotAllowed, document => Rhs(document).Set("right-context", new RecordScalar("(+)")));
         Refused(RefusalCodes.RuleNotationLimitExceeded, document => Rhs(document).Set("right-context", new RecordScalar("a a a a a a a a a")));
-        Refused(RefusalCodes.RuleNotationReadOnly, document => Rhs(document).Set("left-context", new RecordScalar("[V voi:α]")));
         var sibling = PhonologicalRuleRecordImportTests.Lower(cache, ruleId, document =>
         {
             document.Data.Set("struc-desc", new RecordScalar("t"));
@@ -337,8 +336,9 @@ public sealed class PhonologicalRuleFormulaImportTests(PristineProjectFixture pr
         var delete = lowering.Operations.Single(operation => operation.Kind == PhonologicalRuleDeleteOperationKinds.DeleteContexts);
         var member = RightSequence(cache, ruleId).MembersRS[1];
         NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () => AlsoUsedBy(cache, member));
-        var refused = Assert.ThrowsAny<Exception>(() => NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
-            OperationHandlerRegistry.Resolve(delete.Kind, "apply-time guard test").ApplyAndCaptureEffect(cache, delete, [])));
+        var refused = Assert.IsAssignableFrom<SIL.Motif.Runner.Execution.ProposalRefusalException>(Record.Exception(() => NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            OperationHandlerRegistry.Resolve(delete.Kind, "apply-time guard test").ApplyAndCaptureEffect(cache, delete, []))));
+        Assert.Equal(RefusalCodes.RuleNotationContextInUse, refused.Code);
         Assert.Contains("still used", refused.Message);
         Assert.NotNull(cache.ServiceLocator.GetObject(member.Guid));
         Assert.Equal(2, RightSequence(cache, ruleId).MembersRS.Count);

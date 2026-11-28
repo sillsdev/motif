@@ -619,6 +619,28 @@ public sealed class WarmPanGlossPool : IDisposable
             }
         }
 
+        /// <summary>Each fatal probe outcome keeps its own code: a ceiling stop is memory-ceiling, as in serve.</summary>
+        internal static string ProbeFailureCode(PanGlossOutcome failure) => failure switch
+        {
+            PanGlossOutcome.MemoryLimit => "memory-ceiling",
+            PanGlossOutcome.Refused refused => JobFailureCategoryJson.ToWire(refused.FailureCategory),
+            _ => JobFailureCategoryJson.ToWire(JobFailureCategory.Infrastructure),
+        };
+
+        /// <summary>The probe's message with its outcome type, exit code, signal and first stderr lines, for a CI log.</summary>
+        internal static string ProbeFailureDetail(PanGlossOutcome failure)
+        {
+            var detail = new System.Text.StringBuilder(failure.Message).Append(" [probe outcome ").Append(failure.GetType().Name);
+            if (failure is PanGlossOutcome.Refused refused)
+            {
+                detail.Append(", exit ").Append(refused.ExitCode);
+                if (refused.TerminationSignal is { } signal) detail.Append(", signal ").Append(signal);
+                var lines = refused.StandardError.Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+                if (lines.Length > 0) detail.Append(", stderr: ").Append(string.Join(" | ", lines.Take(3)));
+            }
+            return detail.Append(']').ToString();
+        }
+
         private async Task<bool> StartAndAwaitReadyAsync(CancellationToken token)
         {
             var executable = pool._executable!;
@@ -635,9 +657,7 @@ public sealed class WarmPanGlossPool : IDisposable
             }
             if (surface.Failure is { } probeFailure)
             {
-                var category = probeFailure is PanGlossOutcome.Refused refused
-                    ? refused.FailureCategory : JobFailureCategory.OutOfMemory;
-                Fail(JobFailureCategoryJson.ToWire(category), probeFailure.Message, probeFailure);
+                Fail(ProbeFailureCode(probeFailure), ProbeFailureDetail(probeFailure), probeFailure);
                 return false;
             }
             if (!surface.IsValid)

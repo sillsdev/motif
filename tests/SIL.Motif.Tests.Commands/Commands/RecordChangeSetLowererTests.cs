@@ -511,7 +511,7 @@ public sealed class RecordChangeSetLowererTests : IDisposable
 
     // Why liblcm cannot make an owned class generically: rules about classes, not pairs.
     /// <summary>Remove and Move on references whose target class is abstract with no standalone subclass.</summary>
-    private const int UnexercisedAbstractReferencePairs = 26;
+    private const int UnexercisedAbstractReferencePairs = 24;
     private const string AbstractClass = "the class is abstract and no concrete subclass stands alone in the fixture";
     private const string NoOwnerChain = "no owning field leads from an object the project holds to the class";
     private const string CreationRefused = "only the class's own composer creates it, or no create kind does, so the fixture holds none";

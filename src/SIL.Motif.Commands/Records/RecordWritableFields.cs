@@ -100,7 +100,8 @@ public sealed class RecordWritableFields : IWritableFields
     internal static bool IsFormulaOwned(string declaringClass, string field) => (declaringClass, field) is
         ("MoCopyFromInput", "Content") or ("MoModifyFromInput", "Content") or ("MoModifyFromInput", "Modification") or
         ("MoInsertPhones", "Content") or ("MoInsertNC", "Content") or ("PhSequenceContext", "Members") or
-        ("PhSimpleContextSeg", "FeatureStructure") or ("PhSimpleContextNC", "FeatureStructure") or ("PhSimpleContextBdry", "FeatureStructure");
+        ("PhSimpleContextSeg", "FeatureStructure") or ("PhSimpleContextNC", "FeatureStructure") or ("PhSimpleContextBdry", "FeatureStructure") or
+        ("PhSimpleContextNC", "PlusConstr") or ("PhSimpleContextNC", "MinusConstr");
 
     private static string[] RuleFormulaChildren(string field) => field switch
     {

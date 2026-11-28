@@ -165,6 +165,7 @@ public sealed class ProcessRunnerLauncherTests(PristineProjectFixture pristine)
         }
     }
 
+    [Trait("Quarantine", "#576")]
     [Fact]
     public void ALaunchedRunnerDoesNotInheritALockTheCallerHolds()
     {

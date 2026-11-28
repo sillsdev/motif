@@ -647,4 +647,168 @@ public sealed class TrialReadingDeltaTests
 
         Assert.Equal(RefusalCodes.ApplyReceiptInvalid, applied.Refusal?.Code);
     }
+
+    private sealed class FakeCauses(Dictionary<string, long> tokens, Dictionary<string, string> entries,
+        Dictionary<string, (string Id, string Name)[]> slots, bool canNameSlots = true) : IReadingCauseSource
+    {
+        public bool HasTokens => tokens.Count > 0;
+        public bool CanNameSlots => canNameSlots;
+        public long Tokens(string word) => tokens.GetValueOrDefault(word.ToLowerInvariant());
+        public string? EntryLabel(string entryId) => entries.GetValueOrDefault(entryId);
+        public IReadOnlyList<(string Id, string? Name)>? Slots(string msaId) =>
+            slots.TryGetValue(msaId, out var found) ? [.. found.Select(slot => (slot.Id, (string?)slot.Name))] : null;
+    }
+
+    private static FakeCauses Causes(Dictionary<string, long>? tokens = null, Dictionary<string, string>? entries = null,
+        Dictionary<string, (string Id, string Name)[]>? slots = null, bool canNameSlots = true) =>
+        new(tokens ?? [], entries ?? [], slots ?? [], canNameSlots);
+
+    [Fact]
+    public void GroupByEntryCountsRetiredAddedWordsTokensAndSamplesPerEntryMostFrequentFirst()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        // Entry 1 loses on a and b and gains on c; entry 2 changes on d; entry 3 is unchanged.
+        var proposal = Publish(fixture.Project, Form("a", [1], []), Form("b", [1], []), Form("c", [], [1]),
+            Form("d", [2], [3]), Form("same", [9], [9]));
+        var causes = Causes(new() { ["a"] = 5, ["b"] = 7, ["c"] = 1, ["d"] = 20 },
+            new() { [Id(1)] = "walk", [Id(2)] = "run" });
+
+        var delta = TrialReadingDelta.Read(new ReadTrialDeltaRequest(fixture.Project, ProposalId: proposal, GroupBy: "entry"), causes).Value!;
+
+        var groups = delta.Groups!;
+        Assert.Equal("entry", groups.By);
+        Assert.Equal(3, groups.Total);
+        Assert.Equal([Id(2), Id(3), Id(1)], groups.Rows.Select(row => row.Key));
+        var walk = groups.Rows.Single(row => row.Key == Id(1));
+        Assert.Equal("walk", walk.Label);
+        Assert.Equal((2, 1, 3, 13), (walk.Retired, walk.Added, walk.Words, walk.Tokens));
+        Assert.Equal(["b", "a", "c"], walk.SampleWords);
+        var run = groups.Rows[0];
+        Assert.Equal((1, 0, 1, 20), (run.Retired, run.Added, run.Words, run.Tokens));
+        Assert.Equal((0, 1, 1, 20), (groups.Rows[1].Retired, groups.Rows[1].Added, groups.Rows[1].Words, groups.Rows[1].Tokens));
+        Assert.All(delta.Classes, group => Assert.Empty(group.Rows));
+        Assert.Equal(2, delta.Classes.Single(item => item.Class == "lost").Total);
+    }
+
+    [Fact]
+    public void GroupByEntryKeepsAtMostFiveSampleWordsAndTiesBreakByKey()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var words = "abcdefg".Select(letter => Form(letter.ToString(), [1], [])).Concat([Form("z", [2], [])]).ToArray();
+        var proposal = Publish(fixture.Project, words);
+
+        var delta = TrialReadingDelta.Read(new ReadTrialDeltaRequest(fixture.Project, ProposalId: proposal, GroupBy: "entry"), Causes()).Value!;
+
+        Assert.Equal(["a", "b", "c", "d", "e"], delta.Groups!.Rows.Single(row => row.Key == Id(1)).SampleWords);
+        Assert.Equal([Id(1), Id(2)], delta.Groups.Rows.Select(row => row.Key));
+        Assert.Contains("tokens-unavailable", delta.Limitations);
+    }
+
+    [Fact]
+    public void GroupByEntryHonoursClassesAndPaging()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var proposal = Publish(fixture.Project, Form("lost", [1], []), Form("gained", [], [2]), Form("changed", [3], [4]));
+        var causes = Causes(new() { ["lost"] = 3, ["gained"] = 2, ["changed"] = 1 });
+
+        var lostOnly = TrialReadingDelta.Read(new ReadTrialDeltaRequest(fixture.Project, ProposalId: proposal,
+            Classes: ["lost"], GroupBy: "entry"), causes).Value!.Groups!;
+        var paged = TrialReadingDelta.Read(new ReadTrialDeltaRequest(fixture.Project, ProposalId: proposal,
+            Offset: 1, Limit: 2, GroupBy: "entry"), causes).Value!.Groups!;
+
+        Assert.Equal([Id(1)], lostOnly.Rows.Select(row => row.Key));
+        Assert.Equal(4, paged.Total);
+        Assert.Equal([Id(2), Id(3)], paged.Rows.Select(row => row.Key));
+        Assert.Equal(1, paged.Offset);
+    }
+
+    [Fact]
+    public void GroupBySlotUsesAffixMorphemesSlotsAndNoneForSlotlessAffixes()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        static ProposalCompareExports.FormSpec Affixed(string form, int[] before, int[] after) =>
+            new(form, [], []) { BeforeSignatures = [.. before.Select(item => Sig(item, stem: false))], AfterSignatures = [.. after.Select(item => Sig(item, stem: false))] };
+        var proposal = Publish(fixture.Project, Affixed("a", [1], []), Affixed("b", [2], []), Affixed("c", [], [3]), Form("stem", [4], []),
+            Affixed("d", [5], []), Affixed("e", [6], []));
+        var causes = Causes(new() { ["a"] = 4, ["b"] = 9, ["c"] = 1, ["d"] = 2, ["e"] = 3 }, slots: new()
+        {
+            [Id(101)] = [(Id(500), "Number")],
+            [Id(102)] = [],
+            [Id(103)] = [(Id(500), "Number"), (Id(501), "Case")],
+            [Id(105)] = [("(derivational)", "")],
+        });
+
+        var groups = TrialReadingDelta.Read(new ReadTrialDeltaRequest(fixture.Project, ProposalId: proposal, GroupBy: "slot"), causes)
+            .Value!.Groups!;
+
+        Assert.Equal(["(no slot)", Id(500), "(unknown msa)", "(derivational)", Id(501)], groups.Rows.Select(row => row.Key));
+        Assert.Equal((1, 0, 1, 9), (groups.Rows[0].Retired, groups.Rows[0].Added, groups.Rows[0].Words, groups.Rows[0].Tokens));
+        var number = groups.Rows[1];
+        Assert.Equal("Number", number.Label);
+        Assert.Equal((1, 1, 2, 5), (number.Retired, number.Added, number.Words, number.Tokens));
+        Assert.Equal((0, 1), (groups.Rows[4].Retired, groups.Rows[4].Added));
+    }
+
+    [Fact]
+    public void GroupByEntryCountsAWordOnceWhenItsSpellingsDifferOnlyInCase()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var proposal = Publish(fixture.Project, Form("Walk", [1], []), Form("walk", [1], []));
+        var causes = Causes(new() { ["walk"] = 6 });
+
+        var group = TrialReadingDelta.Read(new ReadTrialDeltaRequest(fixture.Project, ProposalId: proposal, GroupBy: "entry"), causes)
+            .Value!.Groups!.Rows.Single();
+
+        Assert.Equal((2, 1, 6), (group.Retired, group.Words, group.Tokens));
+        Assert.Single(group.SampleWords);
+    }
+
+    [Fact]
+    public void GroupByRuleIsRefusedBecauseAReadingNamesNoRule()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var proposal = Publish(fixture.Project, Form("a", [1], []));
+
+        var result = TrialReadingDelta.Read(new ReadTrialDeltaRequest(fixture.Project, ProposalId: proposal, GroupBy: "rule"));
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(RefusalCodes.TrialDeltaGroupUnsupported, result.Refusal!.Code);
+    }
+
+    [Fact]
+    public void GroupByAnythingElseIsAnInvalidRequest()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var proposal = Publish(fixture.Project, Form("a", [1], []));
+
+        var result = TrialReadingDelta.Read(new ReadTrialDeltaRequest(fixture.Project, ProposalId: proposal, GroupBy: "word"));
+
+        Assert.Equal(RefusalCodes.TrialDeltaRequestInvalid, result.Refusal!.Code);
+    }
+
+    [Fact]
+    public void GroupBySlotIsRefusedWhenTheBaselineProjectCannotBeRead()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var proposal = Publish(fixture.Project, Form("a", [1], []));
+
+        var result = TrialReadingDelta.Read(new ReadTrialDeltaRequest(fixture.Project, ProposalId: proposal, GroupBy: "slot"),
+            Causes(canNameSlots: false));
+
+        Assert.Equal(RefusalCodes.TrialDeltaGroupUnsupported, result.Refusal!.Code);
+    }
+
+    [Fact]
+    public void GroupByEntryFromTheRealBaselineWorksWithoutNamesWhenTheBaselineHasNoProject()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var proposal = Publish(fixture.Project, Form("a", [1], []));
+
+        var result = TrialReadingDelta.Read(new ReadTrialDeltaRequest(fixture.Project, ProposalId: proposal, GroupBy: "entry"));
+
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        var group = result.Value!.Groups!.Rows.Single();
+        Assert.Equal((Id(1), null, 1, 1, 0), (group.Key, group.Label, group.Retired, group.Words, group.Tokens));
+        Assert.Contains("tokens-unavailable", result.Value.Limitations);
+    }
 }

@@ -32,4 +32,6 @@ public static partial class RefusalCodes
     public const string RuleNotationSharedClass = "rule-notation.shared-class";
     /// <summary>The rule-formula text would delete a context that has a name or description, which the file cannot show.</summary>
     public const string RuleNotationContextHasData = "rule-notation.context-has-data";
+    /// <summary>When an operation applies, a context it would delete is referred to by an object outside what it deletes, so it is kept.</summary>
+    public const string RuleNotationContextInUse = "rule-notation.context-in-use";
 }

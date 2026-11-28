@@ -93,7 +93,7 @@ internal static class CliCommandNames
             return "project tag --set";
         if (verb == "current" && positionals.SequenceEqual(new[] { "set" }) && flags.ContainsKey("clear"))
             return "current set --clear";
-        if (verb is "hand-analysis" or "config" or "baseline" or "guide" or "source" or "current" or "grammar" or "jobs" or "project" or "selection" or "texts" or "setup" or "store" or "word" or "difference" or "evidence" or "worker")
+        if (verb is "hand-analysis" or "config" or "baseline" or "guide" or "source" or "current" or "grammar" or "jobs" or "project" or "selection" or "texts" or "setup" or "store" or "word" or "difference" or "evidence" or "worker" or "id")
         {
             var candidate = positionals.Count > 0 ? verb + " " + positionals[0] : verb;
             if (CommandCatalog.All.Any(command => command.Name == candidate)) return candidate;

@@ -62,7 +62,7 @@ indentation is malformed, because Pandoc refuses it".
 
 ### Unsupported markup in detail
 
-`fwmd.syntax.unsupported-markup` covers raw HTML, a code span, a thematic break, a reference definition, a nested list, a div in a div,
+`fwmd.syntax.unsupported-markup` covers raw HTML, a code span (when the host names no code style), a thematic break, a reference definition, a nested list, a div in a div,
 an unescaped block marker in a styled div, math, a citation, an inline note, strikeout, heading attributes, fancy list markers, line
 blocks, grid tables, definition lines, a table caption, a `:::` line straight after a paragraph line (the fix adds a blank line), a
 `[]{.empty}` that is not the whole paragraph, and a pipe table when the host names no table styles. Raw HTML, code and a thematic break
