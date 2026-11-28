@@ -762,34 +762,6 @@ public sealed class TrialReviewCommandsTests : IDisposable
     }
 
     [Fact]
-    public void LegacyTrialNamesMissingCapabilities()
-    {
-        var digest = "sha256:" + new string('a', 64);
-        var baseline = new BaselineToken("project", digest, "v1", "2026-01-01T00:00:00Z", digest);
-        var proposalJson = JsonSerializer.Serialize(new { contractVersions = new Dictionary<string, string>(), proposalId = _proposal.Value, operations = Array.Empty<object>() });
-        var input = new TrialJobInput(proposalJson, null);
-        var jobs = new JobRepository(_database);
-        jobs.Create(Job, "project", "trial", JsonSerializer.Serialize(input, MotifJson.CreateOptions()), "2026-01-01T00:00:00Z");
-        using (var connection = _database.OpenConnection())
-        using (var command = connection.CreateCommand())
-        {
-            command.CommandText = "UPDATE Jobs SET Status='completed', ArchivedUtc=UpdatedUtc, ResultJson=$result WHERE JobId=$id;";
-            command.Parameters.AddWithValue("$result", JsonSerializer.Serialize(new { baselineToken = baseline, assessmentIds = Array.Empty<string>() }, MotifJson.CreateOptions()));
-            command.Parameters.AddWithValue("$id", Job);
-            command.ExecuteNonQuery();
-        }
-        var report = Assert.IsType<AvailableTrialResult>(new TrialReviewCommands(_database)
-            .Read(new ReviewReadRequest("project", _proposal.Value)).Value).Report;
-        Assert.Contains(report.Limitations, item => item.Code == "legacy-review-inputs-missing");
-        Assert.Equal(DetailAvailability.Unavailable, report.DetailAvailability);
-        Assert.All(report.FlagEvidence, item => Assert.Equal(EvidenceState.Unavailable, item.State));
-        var reread = Assert.IsType<AvailableTrialResult>(new TrialReviewCommands(_database)
-            .Read(new ReviewReadRequest("project", _proposal.Value, ReportId: report.ReportId)).Value).Report;
-        Assert.Equal(report.ReportDigest, reread.ReportDigest);
-        _ = JsonSerializer.Serialize(reread, ReviewJson.Options);
-    }
-
-    [Fact]
     public async Task RefreshBindsLaterEvidenceOnlyInNewReport()
     {
         CreateInterrupted();

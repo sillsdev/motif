@@ -48,10 +48,10 @@ internal static class TryWordSummary
             result["deepestRule"] = Named(reading.Refs.Where(r => r.Label == response.DeepestRule).ToArray() is [var only] ? only : null, response.DeepestRule);
 
         var readings = new JsonArray();
-        foreach (var analysis in reading.Analyses.DistinctBy(a => a.Signature ?? a.LegacyMorphemes).Take(MaxReadings))
+        foreach (var analysis in reading.Analyses.DistinctBy(a => a.Signature).Take(MaxReadings))
             readings.Add(new JsonObject
             {
-                ["reading"] = analysis.Signature ?? analysis.LegacyMorphemes,
+                ["reading"] = analysis.Signature,
                 ["morphs"] = new JsonArray(analysis.Morphs.Select(m => (JsonNode)new JsonObject
                 {
                     ["form"] = m.Form,
@@ -59,7 +59,7 @@ internal static class TryWordSummary
                     ["category"] = m.Category,
                 }).ToArray()),
             });
-        var readingCount = reading.Analyses.DistinctBy(a => a.Signature ?? a.LegacyMorphemes).Count();
+        var readingCount = reading.Analyses.DistinctBy(a => a.Signature).Count();
         result["readingCount"] = readingCount;
         result["readings"] = readings;
         if (readingCount > MaxReadings)

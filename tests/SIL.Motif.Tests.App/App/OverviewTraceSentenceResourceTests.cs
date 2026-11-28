@@ -164,8 +164,6 @@ public sealed class OverviewTraceSentenceResourceTests
         { "TraceFocusThisWord", "Focus this word" },
         { "TraceSurfaceNotRecorded", "Surface not recorded" },
         { "TraceAvailabilityNotRecorded", "availability not recorded" },
-        { "TraceMorphemesFormat", "Morphemes: {0}" },
-        { "TraceParserMorphemesTipFormat", "The parser's morphemes: {0}" },
         { "TraceAnalysisNumberFormat", "Analysis {0}" },
         { "TraceRecordedAnalysis", "Recorded analysis" },
         { "TraceProjectionErrorText", "The parser found this analysis, but can't match its morphemes to FieldWorks entries." },

@@ -77,6 +77,13 @@ public static class GdrMarkdownImport
             if (read.HasErrors) continue;
             var original = GdrMarkdownView.ProjectParagraphs(field.Response);
             var readParagraphs = field.Inline ? read.Paragraphs : GdrQueryBlockMarkdown.RestoreParagraphs(read.Paragraphs, lifted.Blocks);
+            // A saved table is not authored text (ADR 0005): each block keeps the table the project holds for it.
+            if (!field.Inline)
+            {
+                var tableWarnings = new List<string>();
+                readParagraphs = GdrSavedTables.Pin(held is null ? original : GdrMarkdownView.ProjectParagraphs(held.Response), readParagraphs, tableWarnings);
+                warnings.AddRange(tableWarnings.Select(item => $"{field.Name}: {item}"));
+            }
             if (field.Inline)
             {
                 if (original.Length == readParagraphs.Count && original.Zip(readParagraphs).All(pair => form.AreEquivalent(pair.First, pair.Second)))
@@ -108,6 +115,17 @@ public static class GdrMarkdownImport
             errors, warnings, changed);
 
         GdrMarkdownImportResult Fail(params string[] findings) => new(null, findings, warnings, []);
+    }
+
+    /// <summary>
+    /// The edits that turn <paramref name="shown"/>'s Discussion into <paramref name="paragraphs"/>; null when they are the same.
+    /// </summary>
+    internal static GdrMarkdownEdits? FromParagraphs(GdrShowResponse shown, string? projectName, IReadOnlyList<Paragraph> paragraphs)
+    {
+        var form = new FieldWorksMarkdownSourceForm(GdrMarkdownOptions.For(shown, projectName));
+        var edit = Paragraphs(shown, form, GdrMarkdownView.ProjectParagraphs(shown), paragraphs);
+        return edit is null ? null : new GdrMarkdownEdits(shown.Record.Id, [], edit,
+            new GdrMarkdownIdentity(shown.Record.Abbreviation, shown.Record.ParentId, shown.Position));
     }
 
     // Derived from the Baseline: it keeps a Baseline paragraph and none the Draft added.

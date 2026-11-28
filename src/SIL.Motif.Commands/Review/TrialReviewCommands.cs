@@ -41,15 +41,6 @@ public sealed class TrialReviewCommands(MotifDatabase database, string? parserPa
             return trace.Succeeded ? CommandOutcome<TrialReviewResult>.Success(new AvailableTrialResult(
                 available.Report with { Trace = traced }) { Gate = available.Gate }) : CommandOutcome<TrialReviewResult>.Refused(trace.Refusal!);
         }
-        if (request.ReportId?.StartsWith("legacy/", StringComparison.Ordinal) == true)
-        {
-            var legacyJob = SelectJob(request.ProjectKey, request.ProposalId, request.ReportId[7..]);
-            var projection = legacyJob is null ? null : LegacyTrialReviewProjection.Read(legacyJob, new AssessmentRepository(_database));
-            return projection is null ? Refused(RefusalCodes.DifferenceNoTrial, FailureReason.NotFound,
-                "The legacy Trial was not found for this Proposal.") :
-                CommandOutcome<TrialReviewResult>.Success(new AvailableTrialResult(projection with
-                { Detail = request.EffectiveDetail, Freshness = Freshness(projection.Pins) }));
-        }
         var job = request.ReportId is null ? SelectJob(request.ProjectKey, request.ProposalId, request.JobId) : null;
         if (request.ReportId is null && job is null)
             return request.Latest ? BoundLatest(NoTrial(request.ProposalId))
@@ -65,10 +56,6 @@ public sealed class TrialReviewCommands(MotifDatabase database, string? parserPa
         var reportId = request.ReportId ?? LatestReport(request.ProjectKey, request.ProposalId, job!.JobId)?.Id;
         if (reportId is null)
         {
-            var legacy = LegacyTrialReviewProjection.Read(job!, new AssessmentRepository(_database));
-            if (legacy is not null)
-                return CommandOutcome<TrialReviewResult>.Success(new AvailableTrialResult(legacy with
-                { Detail = request.EffectiveDetail, Freshness = Freshness(legacy.Pins, request.JobId is null ? job : null) }));
             return CommandOutcome<TrialReviewResult>.Success(new TrialJobResult(
                 request.ProposalId, job!.JobId, job.Status, null, null));
         }
@@ -396,7 +383,7 @@ public sealed class TrialReviewCommands(MotifDatabase database, string? parserPa
             var saved = new ReviewReportRepository(_database).ReadManifest(new ReviewReportId(identity.Id));
             if (saved is not null) return Freshness(saved.Summary.Pins, newest, currentIntent, currentBaseline);
         }
-        var pins = LegacyTrialReviewProjection.ReadPins(job, TrialJobInput.Parse(job.InputJson), new AssessmentRepository(_database));
+        var pins = TrialJobPins.ReadPins(job, TrialJobInput.Parse(job.InputJson), new AssessmentRepository(_database));
         return pins is null ? new Freshness(FreshnessRelation.Unknown, ["freshness-unavailable"])
             : Freshness(pins, newest, currentIntent, currentBaseline);
     }

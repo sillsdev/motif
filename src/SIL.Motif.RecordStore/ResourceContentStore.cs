@@ -12,7 +12,8 @@ public sealed class ResourceContentStore(string storePath)
         var hash = Convert.ToHexStringLower(SHA256.HashData(bytes));
         Directory.CreateDirectory(root);
         var target = Path.Combine(root, hash);
-        if (!File.Exists(target))
+        // A leftover blob that fails verification is rewritten from the correct bytes.
+        if (!File.Exists(target) || !Verifies(target, hash))
         {
             var temporary = target + "." + Guid.NewGuid().ToString("N") + ".tmp";
             try
@@ -23,14 +24,20 @@ public sealed class ResourceContentStore(string storePath)
                     file.Write(bytes);
                     file.Flush(flushToDisk: true);
                 }
-                try { File.Move(temporary, target); }
-                catch (IOException) when (File.Exists(target)) { }
+                try { File.Move(temporary, target, overwrite: true); }
+                catch (IOException) when (Verifies(target, hash)) { }
                 SyncDirectory(root);
             }
             finally { File.Delete(temporary); }
         }
         Read(hash);
         return hash;
+    }
+
+    private static bool Verifies(string target, string hash)
+    {
+        try { return Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(target))) == hash; }
+        catch (IOException) { return false; }
     }
 
     // The new name must survive a power cut too; Windows has no directory handle to flush.

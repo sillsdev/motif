@@ -55,7 +55,7 @@ public static class CorpusQueryCommand
         CancellationToken cancellationToken,
         IRealizesIndexBuilder? indexBuilder = null, string? cacheRoot = null, Action<string>? notice = null, MorphCatalog? catalog = null,
         IRealizesGrammar? realizesGrammar = null, Func<MorphItem, string?>? entryOfForm = null, bool allowIndexBuild = true,
-        IDictionary<string, double>? phases = null)
+        IDictionary<string, double>? phases = null, ProjectSession? session = null)
     {
         ArgumentNullException.ThrowIfNull(request);
         if (!allowIndexBuild)
@@ -213,7 +213,7 @@ public static class CorpusQueryCommand
                     {
                         foreach (var item in seqItems.Where(item => item.NeedsLexiconForm))
                             formEntries[item.Kind + ":" + item.Value] = RealizesQuery.Resolve(cache, item.Value, item.Kind == "root" ? true : false).EntryGuid;
-                    });
+                    }, session);
                 Phase("project", projectStart);
                 if (loaded is null && seqItems.FirstOrDefault(item => item.NeedsProject) is { } needy) throw MorphSeqRefusals.NeedsProject(needy, catalogFailure);
                 if (wantsCauses && loaded is null) throw ReadingsIdRefusals.CausesNeedProject(catalogFailure);

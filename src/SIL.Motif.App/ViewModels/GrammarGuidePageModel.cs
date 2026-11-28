@@ -36,6 +36,10 @@ public sealed partial class GrammarGuidePageModel : PageModel
             (request, token) => Context.Commands.RunGuideQueryAsync(request, token), word => Context.OpenWord(word))
         {
             EvidenceRun = (project, line, token) => Context.Commands.RunGuideEvidenceAsync(project, line, token),
+            SaveTable = (queryId, token) => CanEdit && Context.ProjectPath is { } project && SelectedRecord is { } record
+                ? Context.Commands.RefreshGuideTablesAsync(new GdrRefreshTablesRequest(project, record.Id, null, queryId), token)
+                : Task.FromResult(CommandOutcome<GdrRefreshTablesResponse>.Refused(new Refusal(RefusalCodes.GdrListNotWritable, FailureReason.Refused,
+                    MotifAppStrings.GuideNoProject))),
         };
     }
 

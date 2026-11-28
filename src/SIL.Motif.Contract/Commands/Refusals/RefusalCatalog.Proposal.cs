@@ -33,6 +33,8 @@ public static partial class RefusalCatalog
             Command("proposal rationale", Caller("project"), ("proposal", NextArg.Fact("proposalId")))),
         Spec(RefusalCodes.ProposalRationaleStale, FailureReason.Refused, NextStep.Repeat()),
         Spec(RefusalCodes.ProposalRationaleUnchecked, FailureReason.Refused, NextStep.Repeat()),
+        Spec(RefusalCodes.ProposalNoRecordImport, FailureReason.InvalidArgument),
+        Spec(RefusalCodes.ProposalRecordSortUnknown, FailureReason.InvalidArgument),
         Spec(RefusalCodes.ProposalRetainedByExampleSet, FailureReason.Refused),
         Spec(RefusalCodes.ProposalSplitDuplicateOperation, FailureReason.Refused),
         Spec(RefusalCodes.ProposalSupersedeSelf, FailureReason.InvalidArgument),

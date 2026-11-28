@@ -6,6 +6,7 @@ using SIL.LCModel.DomainServices;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Records;
+using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -214,6 +215,22 @@ public sealed class RecordBatchImportTests(PristineProjectFixture pristine) : ID
             document => Ref(document)["show-complex-forms-in"] = Ref(document)["primary-lexemes"]);
 
         RoundTrips(seed, ("a-complex.fw.md", complex), ("b-variant.fw.md", variant), ("c-main.fw.md", main));
+    }
+
+    [Fact]
+    public void ShowByRecordCountsTheBatchEdgesBetweenFilesOfAStagedFolder()
+    {
+        var seed = Seeded();
+        var main = Write(seed, "b-main.fw.md", seed.Main);
+        Write(seed, "z-variant.fw.md", seed.Variant, text => Replace(text, seed.Main, main));
+        Write(seed, "c-lone.fw.md", seed.Complex);
+        Assert.True(RecordImportCommand.Run(Dry(seed, "edges")).Succeeded);
+
+        var rows = ProposalCommands.Show(new(seed.Project, Version, "edges", Records: new ShowRecordGrouping("batch-edges"))).Value!.Records!;
+
+        Assert.Equal(["z-variant.fw.md", "b-main.fw.md", "c-lone.fw.md"], rows.Select(row => row.Path));
+        Assert.Equal((1, true), (rows[0].BatchEdges, rows[0].HasBatchEdges));
+        Assert.All(rows.Skip(1), row => Assert.Equal((0, false), (row.BatchEdges, row.HasBatchEdges)));
     }
 
     // liblcm throws on the second add: LexEntryRef.ValidateAddObjectInternal.

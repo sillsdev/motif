@@ -45,6 +45,8 @@ public static class CliVerbCatalog
             new[] { "guide edit --project <fwdata> <GDR-n> --from-file <file.md | -> [--draft <name>] [--json]" }),
         new CliVerbDescriptor("Project", "guide", "guide add",
             new[] { "guide add --project <fwdata> --title <text> [--parent <GDR-n>] [--after <GDR-n>] [--from-file <file.md | ->] [--ws <tag>] [--draft <name>] [--json]" }),
+        new CliVerbDescriptor("Project", "guide", "guide refresh-tables",
+            new[] { "guide refresh-tables --project <fwdata> [<GDR-n>] [--query <id>] [--draft <name>] [--json]" }),
         new CliVerbDescriptor("Project", "guide", "guide decide",
             new[] { "guide decide --project <fwdata> <GDR-n> --choosing <A> --over <B> --because <reason> [--draft <name>] [--json]" }),
         new CliVerbDescriptor("Project", "guide", "guide check",
@@ -294,7 +296,7 @@ public static class CliVerbCatalog
         new CliVerbDescriptor(
             "Commands", "list", "list", new[] { "list --project <fwdata> [--all | --status <status>] [--limit <1-200>] [--offset <n> | --page <N>] [--json]" }),
         new CliVerbDescriptor(
-            "Commands", "show", "show", new[] { "show --project <fwdata> <proposalId|draftName> [--current] [--limit <1-200>] [--offset <n> | --page <N> | --all] [--json]" }),
+            "Commands", "show", "show", new[] { "show --project <fwdata> <proposalId|draftName> [--current | --records [--sort path|kind|batch-edges] [--refused]] [--limit <1-200>] [--offset <n> | --page <N> | --all] [--json]" }),
         new CliVerbDescriptor(
             "Commands", "preflight", "preflight",
             new[] { "preflight --project <fwdata> <proposalId> [--json]" }),

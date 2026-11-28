@@ -175,6 +175,7 @@ public static class CommandTextRenderer
             GdrCheckResponse r => RenderGdrCheck(r),
             GdrEditResponse r => RenderGdrEdit(r),
             GdrAddResponse r => RenderGdrAdd(r),
+            GdrRefreshTablesResponse r => RenderGdrRefresh(r),
             SourcePassageResponse r => SourceTextRenderer.RenderPassage(r),
             SourceListResponse r => SourceTextRenderer.RenderList(r),
             SourceShowResponse r => SourceTextRenderer.RenderShow(r),
@@ -1741,6 +1742,24 @@ public static class CommandTextRenderer
         foreach (var warning in response.Warnings) text.AppendLine("warning: " + warning);
         if (response.Fields.Count > 0)
             text.AppendLine($"Preview it with 'guide show {response.Abbreviation} --as-of {response.DraftName}'; Apply it with the rest of {response.DraftName}.");
+        return text.ToString();
+    }
+
+    private static string RenderGdrRefresh(GdrRefreshTablesResponse response)
+    {
+        var text = new StringBuilder();
+        foreach (var section in response.Sections)
+            foreach (var table in section.Tables)
+                text.AppendLine(table.Outcome == "saved"
+                    ? $"{section.Abbreviation} {table.QueryId}: saved {table.RowsSaved} of {table.RowsInAll:N0} row(s) ({table.Message})."
+                    : $"{section.Abbreviation} {table.QueryId}: {table.Outcome}, {table.Message}");
+        if (response.Sections.Count == 0) text.AppendLine("No section has a query block, so there is no table to save.");
+        if (response.StylesCreated.Count > 0)
+            text.AppendLine($"Also creates the FieldWorks standard style(s) the project lacks: {string.Join(", ", response.StylesCreated)}.");
+        foreach (var warning in response.Warnings) text.AppendLine("warning: " + warning);
+        text.AppendLine(response.DraftName is null
+            ? "Nothing was staged."
+            : $"Staged {response.OperationCount} operation(s) in {response.DraftName}; Apply it with the rest of {response.DraftName}.");
         return text.ToString();
     }
 

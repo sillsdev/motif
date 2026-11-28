@@ -266,7 +266,6 @@ public sealed record TraceAnalysis(
 {
     /// <summary>This record’s display rendering; equal renderings do not establish morphology equality.</summary>
     public string? Signature { get; init; }
-    public string? LegacyMorphemes { get; init; }
     public string? ProjectionStatus { get; init; }
     public string? ProjectionError { get; init; }
     public string? ProjectionErrorCode { get; init; }

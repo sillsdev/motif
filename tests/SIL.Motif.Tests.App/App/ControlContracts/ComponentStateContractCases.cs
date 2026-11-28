@@ -787,11 +787,6 @@ internal static class TooltipOwners
         {
             Pending = "the recorded step's notation is trimmed only when wider than its column; screenshot states capture it",
         },
-        new("parser's morphemes", "Views/TraceAnalysesView.axaml", "{Binding LegacyMorphemesTip}", TooltipScene.TryAWordRecordedDetails,
-            control => control is CopyableTextBlock { DataContext: TraceAnalysisViewModel analysis } text && text.Text == analysis.Surface)
-        {
-            Pending = "Try a Word's compact results replace the recorded-analyses view this scene used to show",
-        },
         new("repeated records", "Views/TraceAnalysesView.axaml", "The trace recorded this result more than once; distinct derivations are not established.",
             TooltipScene.TryAWordRepeatedRecords,
             control => control is CopyableTextBlock { DataContext: TraceAnalysisViewModel analysis } text && text.Text == analysis.RecordedCountText)

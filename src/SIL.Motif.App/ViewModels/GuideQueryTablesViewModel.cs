@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using SIL.Motif.App.GuideQueries;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -38,6 +39,9 @@ public sealed partial class GuideQueryTablesViewModel : ObservableObject
 
     /// <summary>Stages a query's new body in the section's pending changes (query id, body); returns why not, or null.</summary>
     public Func<string, string, Task<string?>>? SaveBody { get; set; }
+
+    /// <summary>Stages a block's saved table in the section's pending changes (query id); null leaves blocks without Save table.</summary>
+    public Func<string, CancellationToken, Task<CommandOutcome<GdrRefreshTablesResponse>>>? SaveTable { get; set; }
 
     /// <summary>What a block says when it cannot be saved here, or null for the Guide's own wording.</summary>
     public string? SaveUnavailableReason { get; set; }
@@ -74,7 +78,7 @@ public sealed partial class GuideQueryTablesViewModel : ObservableObject
         foreach (var query in blocks.Queries)
             Blocks.Add(new GuideQueryBlockViewModel(query.Id, query.Title, document.BodyOf(query.Span),
                 blocks.Shows.Where(show => show.Query == query.Id).ToArray(), _context, _projectPath, _run, SaveBody is null ? null : Save, _openWord, query.Sort,
-                SaveUnavailableReason, EvidenceRun));
+                SaveUnavailableReason, EvidenceRun, SaveTable));
         ProblemsText = string.Join("\n", blocks.Diagnostics.Select(item =>
             string.Format(CultureInfo.CurrentCulture, MotifAppStrings.GuideQueryProblemFormat, item.Line, item.Message)));
         HasBlocks = Blocks.Count > 0;

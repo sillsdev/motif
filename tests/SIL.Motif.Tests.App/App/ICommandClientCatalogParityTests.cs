@@ -58,6 +58,7 @@ public sealed class ICommandClientCatalogParityTests
             [nameof(ICommandClient.TraceWordAsync)] = "trace",
             [nameof(ICommandClient.ReadWordContextAsync)] = "word-context",
             [nameof(ICommandClient.InspectAsync)] = "inspect",
+            [nameof(ICommandClient.RefreshGuideTablesAsync)] = "guide refresh-tables",
             [nameof(ICommandClient.ReadParsimonyViewAsync)] = "parsimony view",
             [nameof(ICommandClient.ListNotebookRecordTypesAsync)] = "parsimony record-types",
             [nameof(ICommandClient.RecordParsimonyDispositionAsync)] = "parsimony dispose",
@@ -89,6 +90,7 @@ public sealed class ICommandClientCatalogParityTests
     {
         nameof(ICommandClient.ListGrammarGuideAsync),
         nameof(ICommandClient.RunGuideEvidenceAsync),
+        nameof(ICommandClient.ReleaseGuideSession),
         nameof(ICommandClient.RunGuideQueryAsync),
         nameof(ICommandClient.ShowGrammarGuideAsync),
         // W11a: a path lookup reads the Baseline; the edit store stages in the Draft.

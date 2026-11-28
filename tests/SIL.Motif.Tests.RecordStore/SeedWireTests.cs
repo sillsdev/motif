@@ -25,15 +25,6 @@ public sealed class SeedWireTests : IDisposable
         var refused = await Assert.ThrowsAsync<InvalidDataException>(() => source.ExportHistoryJsonAsync(0));
         Assert.Contains("model version 1", refused.Message);
         var history = await source.ExportHistoryJsonAsync(1);
-        var path = PathFor("version-zero");
-        await using (var empty = new Store(path)) { }
-        Execute(path, "PRAGMA user_version=4");
-        await using var legacy = new Store(path);
-        refused = await Assert.ThrowsAsync<InvalidDataException>(() => legacy.BootstrapHistoryJsonAsync(history));
-        Assert.Contains("model version 1", refused.Message);
-        Assert.Empty(await legacy.CommitsAsync());
-        await Assert.ThrowsAsync<InvalidOperationException>(legacy.ReadAsync);
-
         var server = JsonSerializer.Deserialize<ServerCommit[]>(history.Commits)!;
         server[0].ChangeEntities[0].AuthoredModelVersion = 0;
         await using var current = new Store(PathFor("mislabeled"));

@@ -14,8 +14,8 @@ public sealed class ExposurePolicyTests
     public void GdrShowIsAReleasedReadGdrEditAndAddStageInAdvancedAiAndTheOtherGdrCommandsAreAutonomousOnly()
     {
         var commands = CommandCatalog.All.Where(command => command.Name.StartsWith("guide ", StringComparison.Ordinal)).ToArray();
-        Assert.Equal(["guide add", "guide check", "guide decide", "guide edit", "guide list", "guide show"], commands.Select(command => command.Name).Order(StringComparer.Ordinal));
-        string[] agentTools = ["guide show", "guide edit", "guide add"];
+        Assert.Equal(["guide add", "guide check", "guide decide", "guide edit", "guide list", "guide refresh-tables", "guide show"], commands.Select(command => command.Name).Order(StringComparer.Ordinal));
+        string[] agentTools = ["guide show", "guide edit", "guide add", "guide refresh-tables"];
         foreach (var command in commands)
         {
             Assert.Equal(command.Name == "guide show" ? CommandSurface.Released : agentTools.Contains(command.Name) ? CommandSurface.AdvancedAi : CommandSurface.Autonomous, command.Surface);
