@@ -57,6 +57,7 @@ public sealed record GrammarReadResponse(
 [JsonDerivedType(typeof(GrammarInflectionFeatureRead), "inflection_feature")]
 [JsonDerivedType(typeof(GrammarLexicalEntryRead), "lexical_entry")]
 [JsonDerivedType(typeof(GrammarPhonologicalRuleRead), "phonological_rule")]
+[JsonDerivedType(typeof(GrammarAffixTemplateRead), "affix_template")]
 public abstract record GrammarReadItem(string Id);
 
 /// <summary>A phoneme and the writing-system representations authored for it.</summary>
@@ -145,7 +146,54 @@ public sealed record GrammarLexicalEntryRead(
     string? MorphTypeId,
     GrammarFormRead? LexemeForm,
     IReadOnlyList<GrammarSenseRead> Senses,
-    IReadOnlyList<GrammarFormRead> AlternateForms) : GrammarReadItem(Id);
+    IReadOnlyList<GrammarFormRead> AlternateForms) : GrammarReadItem(Id)
+{
+    /// <summary>
+    /// Every morpho-syntactic analysis of the entry, whether or not a sense uses it; present only when one entry is
+    /// read by id.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<GrammarGrammaticalInfoRead>? Msas { get; init; }
+}
+
+/// <summary>An inflectional affix template: its category, finality and slots in order from the stem outward.</summary>
+/// <param name="Id">The template's canonical id.</param>
+/// <param name="Name">The template's name.</param>
+/// <param name="PartOfSpeech">The category that owns the template.</param>
+/// <param name="Final">Whether a word may end after this template.</param>
+/// <param name="PrefixSlots">The prefix slots, in template order.</param>
+/// <param name="SuffixSlots">The suffix slots, in template order.</param>
+public sealed record GrammarAffixTemplateRead(
+    string Id,
+    string? Name,
+    GrammarNamedObjectRead? PartOfSpeech,
+    bool Final,
+    IReadOnlyList<GrammarAffixSlotRead> PrefixSlots,
+    IReadOnlyList<GrammarAffixSlotRead> SuffixSlots) : GrammarReadItem(Id);
+
+/// <summary>One slot of a template and the affix analyses that name it.</summary>
+/// <param name="Id">The slot's canonical id.</param>
+/// <param name="Name">The slot's name.</param>
+/// <param name="Optional">Whether a word may leave the slot empty.</param>
+/// <param name="Affixes">The inflectional affix analyses that fill the slot.</param>
+public sealed record GrammarAffixSlotRead(
+    string Id,
+    string? Name,
+    bool Optional,
+    IReadOnlyList<GrammarSlotAffixRead> Affixes);
+
+/// <summary>An inflectional affix analysis that fills a slot, with its entry.</summary>
+/// <param name="EntryId">The entry's canonical id.</param>
+/// <param name="Headword">The entry's headword.</param>
+/// <param name="MorphType">The lexeme form's morph type.</param>
+/// <param name="MsaId">The analysis's canonical id.</param>
+/// <param name="PartOfSpeech">The analysis's part of speech, when present.</param>
+public sealed record GrammarSlotAffixRead(
+    string EntryId,
+    string? Headword,
+    string? MorphType,
+    string MsaId,
+    GrammarNamedObjectRead? PartOfSpeech);
 
 /// <summary>A form and the authored environments that constrain it.</summary>
 /// <param name="Id">The form's canonical id.</param>
@@ -194,7 +242,15 @@ public sealed record GrammarGrammaticalInfoRead(
     string Id,
     string Kind,
     GrammarNamedObjectRead? PartOfSpeech,
-    GrammarNamedObjectRead? ResultPartOfSpeech);
+    GrammarNamedObjectRead? ResultPartOfSpeech)
+{
+    /// <summary>The inflection class a stem analysis belongs to, when it names one.</summary>
+    public GrammarNamedObjectRead? InflectionClass { get; init; }
+
+    /// <summary>The affix slots an inflectional affix analysis fills; absent when it fills none.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<GrammarNamedObjectRead>? Slots { get; init; }
+}
 
 /// <summary>A phonological rule and the authoring intent its edit guard copies.</summary>
 /// <param name="Id">The rule's canonical id.</param>
