@@ -17,19 +17,23 @@ public static class GdrQueryBlockCheck
 {
     /// <summary>Runs (or lists as skipped) <paramref name="sources"/>; the runs come in Guide order and the findings follow them.</summary>
     public static (IReadOnlyList<GdrQueryBlockRun> Runs, IReadOnlyList<GdrSyncFinding> Findings) Check(
-        IReadOnlyList<GdrQueryBlockSource> sources, string projectPath, bool run, TimeSpan timeout, string? parserPath, bool buildIndex = false) =>
-        Check(sources, projectPath, run, timeout, parserPath, (Seams?)null, buildIndex);
+        IReadOnlyList<GdrQueryBlockSource> sources, string projectPath, bool run, TimeSpan timeout, string? parserPath,
+        IDictionary<string, GuideEvidenceResult>? evidence = null, bool buildIndex = false) =>
+        Check(sources, projectPath, run, timeout, parserPath, (Seams?)null, evidence, buildIndex);
+
+    /// <summary>The key a block's corpus run is kept under in the evidence a caller passes.</summary>
+    public static string EvidenceKey(string gdr, string queryId) => gdr + "|" + queryId;
 
     /// <summary>As the public overload, with only the corpus evaluator stood in.</summary>
     internal static (IReadOnlyList<GdrQueryBlockRun> Runs, IReadOnlyList<GdrSyncFinding> Findings) Check(
         IReadOnlyList<GdrQueryBlockSource> sources, string projectPath, bool run, TimeSpan timeout, string? parserPath,
-        Func<string, string, CancellationToken, GuideEvidenceResult> corpusEvaluator) =>
-        Check(sources, projectPath, run, timeout, parserPath, new Seams(corpusEvaluator));
+        Func<string, string, CancellationToken, GuideEvidenceResult> corpusEvaluator, IDictionary<string, GuideEvidenceResult>? evidence = null) =>
+        Check(sources, projectPath, run, timeout, parserPath, new Seams(corpusEvaluator), evidence);
 
     /// <summary>As the public overload; <paramref name="seams"/> stand in for the evaluators in tests.</summary>
     internal static (IReadOnlyList<GdrQueryBlockRun> Runs, IReadOnlyList<GdrSyncFinding> Findings) Check(
         IReadOnlyList<GdrQueryBlockSource> sources, string projectPath, bool run, TimeSpan timeout, string? parserPath,
-        Seams? seams, bool buildIndex = false)
+        Seams? seams, IDictionary<string, GuideEvidenceResult>? evidence = null, bool buildIndex = false)
     {
         ArgumentNullException.ThrowIfNull(sources);
         ArgumentNullException.ThrowIfNull(projectPath);
@@ -43,7 +47,11 @@ public static class GdrQueryBlockCheck
                     $"{Place(source.Gdr, source.Section)}: {diagnostic.Message} (line {diagnostic.Line}). Fix the block; it is advisory and nothing was blocked.",
                     source.Gdr, source.Section, null, 1, [source.Query?.Id ?? "(no id)"]));
             if (source.Query is not { } query) continue;
-            var result = Describe(source, query, run, timeout, parserPath, projectPath, seams, abandoned, buildIndex);
+            if (!PatternNormalization.IsNormal(query.Run))
+                findings.Add(new GdrSyncFinding(GdrSyncCodes.QueryNotNormalized,
+                    $"{Place(source.Gdr, source.Section)}, query {query.Id}: the run line is not in NFC, the form Query matches in. Query composes the pattern and each corpus form to NFC before matching, so the count is the same, but a pattern that is decomposed (such as a Tamil two-part vowel sign as two code points) can be refused when it cannot be composed safely. Save the line composed (NFC).",
+                    source.Gdr, source.Section, null, 1, [query.Id]));
+            var result = Describe(source, query, run, timeout, parserPath, projectPath, seams, abandoned, evidence, buildIndex);
             runs.Add(result);
             if (result.Status is GdrQueryBlockStatus.Ok or GdrQueryBlockStatus.Skipped) continue;
             var code = result.Status switch
@@ -64,7 +72,7 @@ public static class GdrQueryBlockCheck
     private static readonly TimeSpan AbandonedGrace = TimeSpan.FromSeconds(5);
 
     private static GdrQueryBlockRun Describe(GdrQueryBlockSource source, GuideQueryDefinition query, bool run, TimeSpan timeout, string? parserPath, string projectPath,
-        Seams? seams, List<Task> abandoned, bool buildIndex)
+        Seams? seams, List<Task> abandoned, IDictionary<string, GuideEvidenceResult>? evidence, bool buildIndex)
     {
         GdrQueryBlockRun Made(string status, string? code, string message, long? rows = null, bool? complete = null, double ms = 0, string? build = null,
             long? words = null, long? tokens = null, bool built = false) =>
@@ -77,7 +85,12 @@ public static class GdrQueryBlockCheck
         if (RefusedBeforeRunning(query) is { } early) return Made(early.Status, early.Code, early.Message);
         var clock = System.Diagnostics.Stopwatch.StartNew();
         using var cancellation = new CancellationTokenSource();
-        var work = Task.Run(() => Evaluate(query, projectPath, parserPath, cancellation.Token, seams), CancellationToken.None);
+        void Keep(GuideEvidenceResult shaped)
+        {
+            if (evidence is null) return;
+            lock (evidence) evidence[EvidenceKey(source.Gdr, query.Id)] = shaped;
+        }
+        var work = Task.Run(() => Evaluate(query, projectPath, parserPath, cancellation.Token, seams, Keep), CancellationToken.None);
         bool finished;
         try { finished = work.Wait(timeout); }
         catch (AggregateException exception)
@@ -90,6 +103,7 @@ public static class GdrQueryBlockCheck
         {
             // The evaluator watches the token between phases; a phase already running is left to end on its own.
             cancellation.Cancel();
+            if (evidence is not null) lock (evidence) evidence.Remove(EvidenceKey(source.Gdr, query.Id));
             abandoned.Add(work);
             return Made(GdrQueryBlockStatus.Failed, null, $"timed out after {timeout.TotalSeconds:0.#} s (--timeout)", ms: elapsed);
         }
@@ -98,7 +112,7 @@ public static class GdrQueryBlockCheck
         if (buildIndex && outcome.Status == GdrQueryBlockStatus.NotBuilt)
         {
             // The build is the CLI line's own; the timeout bounds queries, not it.
-            try { outcome = Evaluate(query, projectPath, parserPath, CancellationToken.None, seams, build: true); built = true; }
+            try { outcome = Evaluate(query, projectPath, parserPath, CancellationToken.None, seams, Keep, build: true); built = true; }
             catch (Exception exception)
             {
                 return Made(GdrQueryBlockStatus.Failed, null, "building the parse index failed: " + exception.GetType().Name + ": " + exception.Message,
@@ -132,7 +146,7 @@ public static class GdrQueryBlockCheck
     }
 
     private static Outcome Evaluate(GuideQueryDefinition query, string projectPath, string? parserPath, CancellationToken cancellationToken,
-        Seams? seams, bool build = false)
+        Seams? seams, Action<GuideEvidenceResult> keep, bool build = false)
     {
         if (!QueryRunLine.TryParseRun(query.Run, out var line, out var refusal))
             return new Outcome(GdrQueryBlockStatus.Refused, refusal.Code, refusal.Message);
@@ -142,6 +156,7 @@ public static class GdrQueryBlockCheck
             var evidence = (standIn?.Invoke(query.Run, BaseDirectory(projectPath), cancellationToken) ??
                     GuideEvidenceRunner.Evaluate(query.Run, BaseDirectory(projectPath), parserPath, cancellationToken, projectPath, buildIndex: build))
                 .Shaped(query.Columns, query.Sort, null);
+            if (!cancellationToken.IsCancellationRequested) keep(evidence);
             return evidence.Status switch
             {
                 // A group-by table lists groups: its rows are the groups, its evidence size the words and tokens.

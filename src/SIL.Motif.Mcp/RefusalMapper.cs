@@ -20,6 +20,8 @@ internal static class RefusalMapper
     private static readonly HelpCatalog Help = HelpCatalog.Load();
     private static readonly Lazy<ExposurePolicy> DefaultPolicy = new(() => ExposurePolicy.ForExposed(
         MotifMcpServer.Expose(ToolProfile.Builtin)));
+    private static readonly Lazy<ExposurePolicy> FullPolicy = new(() => ExposurePolicy.ForExposed(
+        MotifMcpServer.Expose(ToolProfile.Load("full"))));
 
     private static readonly IReadOnlyDictionary<FailureReason, string> ReasonHints = new Dictionary<FailureReason, string>
     {
@@ -51,7 +53,7 @@ internal static class RefusalMapper
         return hint;
     }
 
-    // A command with no tool in the active profile is the person's to run, never a bare CLI line for the agent.
+    // A tool only in the full profile gets the CLI verb and the switch; a command no tool reaches is the person's.
     internal static string RenderStep(NextStep step, Refusal refusal, ExposurePolicy policy, JsonObject? callerArgs)
     {
         if (step.Command == NextStep.AskPerson) return string.Empty;
@@ -63,6 +65,9 @@ internal static class RefusalMapper
         if (policy.Resolve(step.Command) is CommandExposure.Tool tool)
             return " Call `" + tool.ToolName + "`" + SetClauses(values, tool.Selector) + ".";
         var flags = string.Concat(values.Select(pair => " --" + pair.Key.Replace('_', '-') + " " + (pair.Value ?? "<" + pair.Key + ">")));
+        if (FullPolicy.Value.Resolve(step.Command) is CommandExposure.Tool hidden)
+            return " Run `motif " + step.Command + flags + "`, or restart with `motif mcp --profile full` to call `" +
+                hidden.ToolName + "`, which the active profile does not load.";
         return " Ask the person to run `motif " + step.Command + flags + "`.";
     }
 

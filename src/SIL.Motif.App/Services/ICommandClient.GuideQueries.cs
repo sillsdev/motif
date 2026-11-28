@@ -1,6 +1,8 @@
 using SIL.Motif.App.GuideQueries;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Requests;
+using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.App.Services;
 
@@ -14,4 +16,13 @@ public partial interface ICommandClient
     /// project's folder. The answer is a table or a message, never stored.
     /// </summary>
     Task<GuideEvidenceResult> RunGuideEvidenceAsync(string projectPath, string line, CancellationToken cancellationToken);
+
+    /// <summary>Closes the project the Guide's evidence blocks keep open and deletes its private copy; the next block loads it again.</summary>
+    void ReleaseGuideSession();
+
+    /// <summary>
+    /// Stages the saved table of one query block of a Guide section in the pending changes, from a live run (the same stage as
+    /// <c>guide refresh-tables</c>); it is the only way the window writes a table.
+    /// </summary>
+    Task<CommandOutcome<GdrRefreshTablesResponse>> RefreshGuideTablesAsync(GdrRefreshTablesRequest request, CancellationToken cancellationToken);
 }

@@ -29,7 +29,6 @@ public sealed partial class RecordStore
     private async Task<(string? Finding, SetDigest Snapshot)> CheckDerivedAsync(StoreState state, CancellationToken ct)
     {
         if (derivedChecked is { } done && done.State.SamePoint(state)) return (null, done.Snapshot);
-        if (format < DerivedFormat) return ("tables: absent. A read-write operation upgrades this store to format 7.", default);
         try
         {
             var binding = await ReadBindingAsync(ct);

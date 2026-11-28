@@ -24,10 +24,9 @@ public sealed class PhonologyCheckJobHandler(MotifDatabase database, BaselineRep
 
     private static readonly JsonSerializerOptions JsonOptions = MotifJson.CreateOptions();
 
-    /// <summary>Reads a queued job's input, tolerating the step members of jobs queued before 0.14.0.</summary>
+    /// <summary>Reads a queued job's input.</summary>
     public static PhonologyCheckJobInput ReadInput(string inputJson) =>
-        JsonSerializer.Deserialize<PhonologyCheckJobInput>(
-            PhonologyStoredJson.DropRemovedStepMembers(inputJson), JsonOptions)
+        JsonSerializer.Deserialize<PhonologyCheckJobInput>(inputJson, JsonOptions)
         ?? throw new InvalidDataException("The phonology check job has no input.");
 
     /// <summary>Runs the check and records its Assessment, or fails the job with a categorized reason.</summary>

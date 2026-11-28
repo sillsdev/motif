@@ -4427,6 +4427,7 @@
         "within-threshold",
         "under-threshold",
         "rule-added",
+        "record-import",
         "no-objects-added",
         "incomplete",
         "not-evaluated"

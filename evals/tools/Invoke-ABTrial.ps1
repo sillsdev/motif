@@ -97,7 +97,7 @@ $taskTools = @(Get-ABTaskTools $repoRoot $task)
 if ($taskTools.Count) {
     $defaultTools = @()
     if (-not $serverProfile.Contains('tools') -or $null -eq $serverProfile.tools) {
-        $defaultSession = New-ABMcpSession $motifExe (Get-ABServerArguments $serverProfilePath $null) $controlRoot @{} (Join-Path $controlRoot 'defaults.jsonl')
+        $defaultSession = New-ABMcpSession $motifExe (Get-ABServerArguments $serverProfilePath) $controlRoot @{ MOTIF_CALL_LOG = 'off' } (Join-Path $controlRoot 'defaults.jsonl')
         try { $defaultTools = @($defaultSession.Tools | ForEach-Object { [string]$_.name }) }
         finally { [void](Close-ABMcpSession $defaultSession) }
     }
@@ -143,7 +143,7 @@ if ($manifest.validationMode -eq 'empty') {
     Write-ABJson (Join-Path $inputRoot 'session.json') $inside
 } elseif ($manifest.arm.host -eq 'fake') { Copy-Item $fakeScript (Join-Path $inputRoot 'actions.jsonl') }
 
-$listSession = New-ABMcpSession $motifExe (Get-ABServerArguments $serverProfilePath $null) $controlRoot @{} (Join-Path $controlRoot 'listing.jsonl')
+$listSession = New-ABMcpSession $motifExe (Get-ABServerArguments $serverProfilePath) $controlRoot @{ MOTIF_CALL_LOG = 'off' } (Join-Path $controlRoot 'listing.jsonl')
 try { $allowed = @($listSession.Tools | ForEach-Object { [string]$_.name }) }
 finally { [void](Close-ABMcpSession $listSession) }
 $profile.tools = @(Get-ABServedToolClasses $allowed @($profile.tools) @($taskTools))

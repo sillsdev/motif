@@ -71,7 +71,16 @@ public static class RejectionTraceQuery
 
     /// <summary>The response with a note saying which work limit the parser ran under.</summary>
     internal static RejectionTraceResponse WithLimitNote(RejectionTraceResponse response, ResolvedWorkLimit workLimit) =>
-        response with { Notes = [.. response.Notes, "Traced under " + workLimit.Describe() + "."] };
+        response with { Notes = [.. response.Notes, .. WorkUsedNote(response, workLimit), "Traced under " + workLimit.Describe() + "."] };
+
+    /// <summary>The percent of the work limit a finished word used.</summary>
+    private static IEnumerable<string> WorkUsedNote(RejectionTraceResponse response, ResolvedWorkLimit workLimit)
+    {
+        if (response.Search.WorkLimitReached || response.Search.WorkUnits is not { } used ||
+            workLimit.Limit.Work is not { } limit || limit <= 0) yield break;
+        var percent = Math.Round((decimal)used * 100m / limit, 2);
+        yield return "Traced: used " + percent.ToString("0.##", CultureInfo.InvariantCulture) + "% of the work limit.";
+    }
 
     /// <summary>Runs the capture on an exact grammar and projects it; the seam the tests drive without a project.</summary>
     internal static CommandOutcome<RejectionTraceResponse> Run(

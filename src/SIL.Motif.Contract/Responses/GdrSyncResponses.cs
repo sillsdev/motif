@@ -36,6 +36,9 @@ public static class GdrSyncCodes
     /// <summary>A word a section shows as not parsing now parses.</summary>
     public const string ExampleNowParses = "guide.example-now-parses";
 
+    /// <summary>A query block's saved table was made from another Baseline, or its rows differ from a live run of the query.</summary>
+    public const string SavedTableOutOfDate = "guide.saved-table-out-of-date";
+
     /// <summary>No stored Trial or Assessment row settles the word, so the example cannot be checked.</summary>
     public const string ExampleUnverified = "guide.example-unverified";
 
@@ -47,6 +50,9 @@ public static class GdrSyncCodes
 
     /// <summary>A <c>motif-query</c> block started and did not finish: it threw, or ran past the per-block timeout.</summary>
     public const string QueryFailed = "guide.query-failed";
+
+    /// <summary>A <c>motif-query</c> block's run line is not in NFC, the form Query matches in; Query composes it, but the block should be saved in the corpus's form.</summary>
+    public const string QueryNotNormalized = "guide.query-not-normalized";
 
     /// <summary>A <c>motif-query</c> or <c>motif-show</c> block is malformed (a bad line, key, id or value).</summary>
     public const string QueryBlockInvalid = "guide.query-block-invalid";

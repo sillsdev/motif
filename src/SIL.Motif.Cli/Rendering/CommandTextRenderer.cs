@@ -95,6 +95,7 @@ public static class CommandTextRenderer
             PhonologyResultsPageResponse r => RenderPhonologyResultsPage(r),
             PhonologyExampleResultResponse r => RenderPhonologyExampleResult(r),
             ReportKindListResponse r => RenderReportKindList(r),
+            IdConvertResponse r => RenderIdConvert(r),
             ReportResponse r => RenderReport(r),
             ParsimonyReportResponse r => RenderParsimonyReport(r),
             ParsimonyReportSetResponse r => RenderParsimonyReportSet(r),
@@ -174,6 +175,7 @@ public static class CommandTextRenderer
             GdrCheckResponse r => RenderGdrCheck(r),
             GdrEditResponse r => RenderGdrEdit(r),
             GdrAddResponse r => RenderGdrAdd(r),
+            GdrRefreshTablesResponse r => RenderGdrRefresh(r),
             SourcePassageResponse r => SourceTextRenderer.RenderPassage(r),
             SourceListResponse r => SourceTextRenderer.RenderList(r),
             SourceShowResponse r => SourceTextRenderer.RenderShow(r),
@@ -1212,6 +1214,17 @@ public static class CommandTextRenderer
         return sb.ToString();
     }
 
+    private static string RenderIdConvert(IdConvertResponse response)
+    {
+        var text = new StringBuilder();
+        foreach (var item in response)
+        {
+            if (item.Code is null) text.AppendLine($"{item.Input}  guid {item.Guid}  canonical {item.Canonical}");
+            else text.AppendLine($"{item.Input}  {item.Code}: {item.Message}");
+        }
+        return text.ToString();
+    }
+
     private static string RenderReportKindList(ReportKindListResponse response)
     {
         var text = new StringBuilder();
@@ -1667,6 +1680,14 @@ public static class CommandTextRenderer
         text.AppendLine($"  manifest: {d.Manifest}; row pages: {r.PageCount}");
         if (d.Source is not null || d.Revision is not null || d.Licence is not null)
             text.AppendLine($"  source: {d.Source}; revision: {d.Revision}; licence: {d.Licence}");
+        if (d.Review is { } review)
+        {
+            text.AppendLine($"  review: {review.HomographsRenumbered:N0} existing entr(ies) renumbered; {review.BackReferenced:N0} existing entr(ies) gain back-references; {review.BatchEdges:N0} link(s) between files");
+            foreach (var row in review.FirstHomographs)
+                text.AppendLine($"  homograph {row.Entry}: {row.Before} -> {row.After}");
+            foreach (var row in review.FirstBackReferences)
+                text.AppendLine($"  back-reference {row.Entry}: {row.Variants} variant(s), {row.ComplexForms} complex form(s)");
+        }
         foreach (var row in d.FirstRefused)
             text.AppendLine($"  refused {row.Path}  {row.Code}: {row.Reason}");
         if (r.Files is { } rows)
@@ -1729,6 +1750,24 @@ public static class CommandTextRenderer
         foreach (var warning in response.Warnings) text.AppendLine("warning: " + warning);
         if (response.Fields.Count > 0)
             text.AppendLine($"Preview it with 'guide show {response.Abbreviation} --as-of {response.DraftName}'; Apply it with the rest of {response.DraftName}.");
+        return text.ToString();
+    }
+
+    private static string RenderGdrRefresh(GdrRefreshTablesResponse response)
+    {
+        var text = new StringBuilder();
+        foreach (var section in response.Sections)
+            foreach (var table in section.Tables)
+                text.AppendLine(table.Outcome == "saved"
+                    ? $"{section.Abbreviation} {table.QueryId}: saved {table.RowsSaved} of {table.RowsInAll:N0} row(s) ({table.Message})."
+                    : $"{section.Abbreviation} {table.QueryId}: {table.Outcome}, {table.Message}");
+        if (response.Sections.Count == 0) text.AppendLine("No section has a query block, so there is no table to save.");
+        if (response.StylesCreated.Count > 0)
+            text.AppendLine($"Also creates the FieldWorks standard style(s) the project lacks: {string.Join(", ", response.StylesCreated)}.");
+        foreach (var warning in response.Warnings) text.AppendLine("warning: " + warning);
+        text.AppendLine(response.DraftName is null
+            ? "Nothing was staged."
+            : $"Staged {response.OperationCount} operation(s) in {response.DraftName}; Apply it with the rest of {response.DraftName}.");
         return text.ToString();
     }
 

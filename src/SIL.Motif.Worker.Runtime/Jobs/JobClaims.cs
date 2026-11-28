@@ -31,7 +31,7 @@ public sealed class JobClaims : IJobClaimProtocol
     private const string QueuedAndDue = "(Status = 'queued' AND (NotBeforeUtc IS NULL OR NotBeforeUtc <= $now))";
     private const string RunningAndExpired = "(Status = 'running' AND (LeaseUntilUtc IS NULL OR LeaseUntilUtc <= $now))";
 
-    // A pinned job is claimable only by a Worker whose parser key equals the pin; an unpinned (legacy) job by any.
+    // Pinned: only a Worker with that parser key. Unpinned (parserless kinds): any.
     private const string ParserMatches =
         "(CASE WHEN json_valid(InputJson) THEN json_extract(InputJson, '" + JobParserPin.KeyPath + "') END IS NULL " +
         "OR json_extract(InputJson, '" + JobParserPin.KeyPath + "') = $parser)";

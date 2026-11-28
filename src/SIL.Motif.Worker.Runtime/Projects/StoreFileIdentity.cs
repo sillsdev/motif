@@ -10,29 +10,34 @@ namespace SIL.Motif.Worker.Projects;
 /// Windows, plus the file system's own birth time where it reports one. A freed inode number is handed out again to the
 /// next file created, so a store deleted and recreated while nothing held the old file open can come back with the
 /// same device and inode; the birth time then tells the two files apart. The birth time is only compared when both
-/// sides have a real one, so a file system without it never reports a false replacement.
+/// sides have a real one, so a file system without it never reports a false replacement. Where the file system keeps
+/// no birth time either (tmpfs, 9p, some network shares), the store id written in the database tells two stores at
+/// one inode apart; it is compared only when both sides read one.
 /// </summary>
-internal readonly record struct StoreFileIdentity(ulong Volume, ulong File, long CreatedTicks, long BirthTicks = 0)
+internal readonly record struct StoreFileIdentity(ulong Volume, ulong File, long CreatedTicks, long BirthTicks = 0,
+    string? StoreId = null)
 {
-    /// <summary>Reads the identity of the file at a path, or null when it does not exist.</summary>
-    public static StoreFileIdentity? Read(string path)
+    /// <summary>Reads the identity of the file at a path, or null when it does not exist. Reading the store id costs a short database open.</summary>
+    public static StoreFileIdentity? Read(string path, bool readStoreId = true)
     {
         if (!System.IO.File.Exists(path)) return null;
         var created = System.IO.File.GetCreationTimeUtc(path).Ticks;
+        var storeId = readStoreId ? Host.Store.MotifDatabase.TryReadStoreId(path) : null;
         try
         {
             var (volume, file, birth) = ReadPhysical(path);
-            return new StoreFileIdentity(volume, file, created, birth);
+            return new StoreFileIdentity(volume, file, created, birth, storeId);
         }
         catch (Exception exception) when (exception is PlatformNotSupportedException or IOException or
             Win32Exception or EntryPointNotFoundException or DllNotFoundException)
         {
-            return new StoreFileIdentity(0, 0, created);
+            return new StoreFileIdentity(0, 0, created, StoreId: storeId);
         }
     }
 
     /// <summary>Whether the file now at a path is not the one this identity was read from.</summary>
     public bool IsReplacedBy(StoreFileIdentity? current) => current is not { } now ||
+        (StoreId is not null && now.StoreId is not null && now.StoreId != StoreId) ||
         (File != 0 && now.File != 0
             ? now.Volume != Volume || now.File != File || (BirthTicks != 0 && now.BirthTicks != 0 && now.BirthTicks != BirthTicks)
             : now.CreatedTicks != CreatedTicks);

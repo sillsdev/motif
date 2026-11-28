@@ -38,6 +38,9 @@ public static class RecordImportPaging
     /// <summary>The refused rows a folder import's summary lists.</summary>
     public const int SummaryRefusedRows = 5;
 
+    /// <summary>The renumbered entries, and separately the back-referenced entries, a folder summary lists.</summary>
+    public const int SummaryReviewRows = 3;
+
     /// <summary>The most files one folder import takes.</summary>
     public const int MaxFiles = 10_000;
 

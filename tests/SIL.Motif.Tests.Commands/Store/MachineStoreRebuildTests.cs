@@ -41,7 +41,8 @@ public sealed class MachineStoreRebuildTests : IDisposable
         using var raw = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = Db, Pooling = false }.ToString());
         raw.Open();
         using var command = raw.CreateCommand();
-        command.CommandText = $"PRAGMA user_version = {schema};";
+        command.CommandText = $"PRAGMA user_version = {schema};" +
+            "CREATE TABLE Usage (Id INTEGER PRIMARY KEY AUTOINCREMENT, TimestampUtc TEXT NOT NULL, Command TEXT NOT NULL, ArgumentShapeJson TEXT NOT NULL);";
         command.ExecuteNonQuery();
     }
 
@@ -111,7 +112,7 @@ public sealed class MachineStoreRebuildTests : IDisposable
             using var tag = connection.CreateCommand();
             tag.CommandText = "SELECT ProjectTag || '|' || FullFwDataPath || '|' || LastSeenUtc FROM KnownProjects WHERE WorkspaceKey = 'k';";
             Assert.Equal("mine|/p/a.fwdata|2026-01-01T00:00:00Z", tag.ExecuteScalar());
-            Assert.Equal(0, Scalar(connection, "SELECT COUNT(*) FROM Usage;"));
+            Assert.Equal(0, Scalar(connection, "SELECT COUNT(*) FROM sqlite_master WHERE name = 'Usage';"));
             notices.AddRange(scope.Notices);
         }
         var notice = Assert.Single(notices);

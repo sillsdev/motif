@@ -62,7 +62,7 @@ public static class ProposalDetailProjectionBuilder
         foreach (var entry in composers.EnumerateArray())
         {
             if (entry.ValueKind != System.Text.Json.JsonValueKind.Object ||
-                !entry.TryGetProperty("composer", out var name) || name.GetString() != "RecordImport" ||
+                !entry.TryGetProperty("composer", out var name) || name.GetString() != RecordImportProvenance.ComposerName ||
                 !entry.TryGetProperty("input", out var input) || input.ValueKind != System.Text.Json.JsonValueKind.Object)
                 continue;
             total = (total ?? 0) + (input.TryGetProperty("refusedChanges", out var count) && count.TryGetInt32(out var number) ? number : 0);

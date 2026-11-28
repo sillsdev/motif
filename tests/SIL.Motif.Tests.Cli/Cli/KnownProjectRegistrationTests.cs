@@ -106,7 +106,7 @@ public sealed class KnownProjectRegistrationTests : IDisposable
     public void RunningTheSameProjectTwiceUpdatesLastSeenRatherThanDuplicating()
     {
         Assert.Equal(0, Run($"new --project \"{_fwDataPath}\" --draft d").ExitCode);
-        Assert.Equal(0, Run($"list --project \"{_fwDataPath}\"").ExitCode);
+        Assert.Equal(0, Run($"proposals --project \"{_fwDataPath}\"").ExitCode);
 
         using var machine = MachineDatabase.Open(_workerRoot);
         Assert.Single(new KnownProjectRegistry(machine).List());

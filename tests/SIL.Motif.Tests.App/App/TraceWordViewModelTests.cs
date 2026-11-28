@@ -843,7 +843,6 @@ public sealed class TraceWordViewModelTests
         Assert.Equal(json, trace.DiagnosticJson);
         var analysis = Assert.Single(trace.Analyses);
         Assert.Equal("say", Assert.Single(analysis.Morphs).Headword);
-        Assert.Equal("root", analysis.LegacyMorphemes);
         Assert.Equal(1234, trace.Result!.HostCapture!.WallElapsedMs);
         Assert.Contains("ar", trace.WritingSystemSummary, StringComparison.Ordinal);
         Assert.Contains("project-a", trace.CaptureDetails, StringComparison.Ordinal);
@@ -924,7 +923,8 @@ public sealed class TraceWordViewModelTests
     public void AnalysesWithoutIdentityEvidenceRemainSeparateInSourceOrder()
     {
         static TraceAnalysis Analysis(int index, string morphemes) =>
-            new($"analysis-{index}", index, "kitabu", "available", []) { LegacyMorphemes = morphemes };
+            new($"analysis-{index}", index, "kitabu", "available",
+                morphemes.Split('+').Select(form => new TraceMorph(null, form, null, null, null, null, null, null, null, null)).ToArray());
         var trace = new TraceWordViewModel
         {
             Result = new WordTraceResponse(

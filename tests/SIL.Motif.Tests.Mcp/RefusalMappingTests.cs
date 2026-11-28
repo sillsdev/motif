@@ -40,7 +40,7 @@ public sealed class RefusalMappingTests
         var refusal = new Refusal("job.wait-timeout", FailureReason.Busy, "Timed out.",
             new Dictionary<string, string> { ["jobId"] = "job/abc" });
 
-        Assert.Contains("job set to job/abc", RefusalMapper.NextFor(refusal));
+        Assert.Contains("job set to job/abc", RefusalMapper.NextFor(refusal, MotifMcpServer.Expose(ToolProfile.Load("full"))));
     }
 
     [Theory]
@@ -77,7 +77,7 @@ public sealed class RefusalMappingTests
     {
         var refusal = new Refusal("baseline.missing", FailureReason.NotFound, "None yet.");
 
-        Assert.Contains("motif_capture_baseline", RefusalMapper.NextFor(refusal));
+        Assert.Contains("motif_capture_baseline", RefusalMapper.NextFor(refusal, MotifMcpServer.Expose(ToolProfile.Load("full"))));
     }
 
     [Fact]
@@ -93,8 +93,8 @@ public sealed class RefusalMappingTests
     public async Task AnUnknownToolIsAnErrorTheModelCanReadNotAProtocolFailure()
     {
         var context = new ServerContext("absent.fwdata", "1.0", new SIL.Motif.Commands.NoRunnerLauncher(
-            new SIL.Motif.Commands.JobRunnerLaunchOptions("root", null)), new ActivityLog(null), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
-        var tools = MotifMcpServer.Expose(ToolProfile.Builtin);
+            new SIL.Motif.Commands.JobRunnerLaunchOptions("root", null)), new ActivityLog(), ToolProfile.Load("full"), TextWriter.Null, advancedAiModeEnabled: true);
+        var tools = MotifMcpServer.Expose(ToolProfile.Load("full"));
 
         var result = await MotifMcpServer.CallAsync(context, tools, "motif_apply", null, CancellationToken.None);
 
@@ -106,8 +106,8 @@ public sealed class RefusalMappingTests
     public async Task AnArgumentTheToolDoesNotHaveIsRefusedWithAHint()
     {
         var context = new ServerContext("absent.fwdata", "1.0", new SIL.Motif.Commands.NoRunnerLauncher(
-            new SIL.Motif.Commands.JobRunnerLaunchOptions("root", null)), new ActivityLog(null), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
-        var tools = MotifMcpServer.Expose(ToolProfile.Builtin);
+            new SIL.Motif.Commands.JobRunnerLaunchOptions("root", null)), new ActivityLog(), ToolProfile.Load("full"), TextWriter.Null, advancedAiModeEnabled: true);
+        var tools = MotifMcpServer.Expose(ToolProfile.Load("full"));
         var arguments = new Dictionary<string, JsonElement> { ["force"] = JsonSerializer.SerializeToElement(true) };
 
         var result = await MotifMcpServer.CallAsync(context, tools, "motif_overview", arguments, CancellationToken.None);
@@ -121,8 +121,8 @@ public sealed class RefusalMappingTests
     {
         var context = new ServerContext(Path.Combine(Path.GetTempPath(), "no-such-motif-project.fwdata"), "1.0",
             new SIL.Motif.Commands.NoRunnerLauncher(new SIL.Motif.Commands.JobRunnerLaunchOptions("root", null)),
-            new ActivityLog(null), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
-        var tools = MotifMcpServer.Expose(ToolProfile.Builtin);
+            new ActivityLog(), ToolProfile.Load("full"), TextWriter.Null, advancedAiModeEnabled: true);
+        var tools = MotifMcpServer.Expose(ToolProfile.Load("full"));
 
         var result = await MotifMcpServer.CallAsync(context, tools, "motif_proposals", new Dictionary<string, JsonElement>
             { ["project"] = JsonSerializer.SerializeToElement(context.ProjectPath) }, CancellationToken.None);
@@ -154,7 +154,7 @@ public sealed class RefusalNextStepTests
     {
         var help = SIL.Motif.Help.HelpCatalog.Load(System.Globalization.CultureInfo.InvariantCulture);
         var commands = SIL.Motif.Commands.Catalog.CommandCatalog.All.Select(command => command.Name).ToHashSet();
-        var defaults = MotifMcpServer.Expose(ToolProfile.Builtin);
+        var defaults = MotifMcpServer.Expose(ToolProfile.Load("full"));
 
         Assert.Equal(22, HintedCodes.Distinct().Count());
         foreach (var code in HintedCodes)
@@ -174,16 +174,30 @@ public sealed class RefusalNextStepTests
     }
 
     [Fact]
-    public void ANextStepToAToolHiddenInTheActiveProfileIsAPersonsStep()
+    public void UnderTheDefaultProfileAHiddenNextToolNamesTheCliVerbAndTheFullProfile()
+    {
+        var refusal = new Refusal(RefusalCodes.BaselineMissing, FailureReason.NotFound, "None yet.");
+
+        var text = RefusalMapper.NextFor(refusal, MotifMcpServer.Expose(ToolProfile.Load("default")));
+
+        Assert.Contains("Run `motif baseline capture", text);
+        Assert.Contains("restart with `motif mcp --profile full` to call `motif_capture_baseline`", text);
+        Assert.DoesNotContain("Ask the person", text);
+    }
+
+    [Fact]
+    public void ANextStepToAToolHiddenInTheActiveProfileNamesTheCliVerbAndTheFullProfile()
     {
         var lean = new ToolProfile("lean", null, null, "concise", [new ToolSelection("motif_overview", null, null, null)]);
         var refusal = new Refusal(RefusalCodes.BaselineMissing, FailureReason.NotFound, "None yet.");
 
         var hidden = RefusalMapper.NextFor(refusal, MotifMcpServer.Expose(lean));
-        var shown = RefusalMapper.NextFor(refusal, MotifMcpServer.Expose(ToolProfile.Builtin));
+        var shown = RefusalMapper.NextFor(refusal, MotifMcpServer.Expose(ToolProfile.Load("full")));
 
-        Assert.Contains("Ask the person to run `motif baseline capture", hidden);
-        Assert.DoesNotContain("motif_capture_baseline", hidden);
+        Assert.Contains("Run `motif baseline capture", hidden);
+        Assert.Contains("--profile full", hidden);
+        Assert.DoesNotContain("Ask the person", hidden);
+        Assert.DoesNotContain("Call `motif_capture_baseline`", hidden);
         Assert.Contains("`motif_capture_baseline`", shown);
         Assert.DoesNotContain("Ask the person", shown);
     }
@@ -194,7 +208,7 @@ public sealed class RefusalNextStepTests
         var refusal = new Refusal(RefusalCodes.BaselineMissing, FailureReason.NotFound, "None yet.");
         var caller = new System.Text.Json.Nodes.JsonObject { ["project"] = "indonesian" };
 
-        var text = RefusalMapper.NextFor(refusal, MotifMcpServer.Expose(ToolProfile.Builtin), caller);
+        var text = RefusalMapper.NextFor(refusal, MotifMcpServer.Expose(ToolProfile.Load("full")), caller);
 
         Assert.Contains("project set to indonesian", text);
     }

@@ -26,7 +26,7 @@ evidence, its limits, and the linguist's decision connected throughout the revie
 
 - **Fix:** only use an update action named by the recipe and available as a typed semantic composer.
   Start a Draft with `motif_start_proposal`, stage the named operation, then run `motif_dry_run` and
-  `motif_trial` when the recipe calls for them. Read the Trial summary and page through its Difference
+  `motif_trial` when the recipe calls for them. Read the Trial summary and page through its report
   with `motif_difference`. Check every stated Approved reading, negative, control, and completeness
   condition. Keep the update and its `fix` ruling bound to the finding's evidence. A person
   decides whether to Apply.
@@ -37,11 +37,11 @@ evidence, its limits, and the linguist's decision connected throughout the revie
 - **Defer:** use when attribution, identity, or an update capability is missing, or when a parser case
   stays incomplete after a rerun. Name the missing evidence or action and do not invent a substitute.
 
-An incomplete parser case is missing evidence, not a decision. First rerun the same words with `motif_assess` and a longer
-`perWordLimitMs`; defer only if a case is still incomplete.
+An incomplete parser case is missing evidence, not a decision. First rerun the same words: `motif_try_word` with `detail: detailed` for one word, or the CLI
+`motif assess <project> --words <file> --time-limit-ms <ms>` (or `--parser-work-limit <work|unbounded>`) for a longer per-word
+limit, which `motif_assess` does not take; defer only if a case is still incomplete.
 
-Stage a decision with `motif_dispose_parsimony_finding` or the typed
-`motif_record_parsimony_disposition` tool. `ask` requires a question. Run `motif_dry_run` on the Draft
+Stage a decision with `motif_dispose_parsimony_finding`. `ask` requires a question. Run `motif_dry_run` on the Draft
 and `motif_trial` when the recipe requires parser checks. Finalize only when the Draft is ready for a
 person to review. A pending ruling does not suppress a live finding; it takes effect after a
 person Applies the Proposal and Motif later refreshes the project.

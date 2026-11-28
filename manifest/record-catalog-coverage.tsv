@@ -146,7 +146,6 @@ Covered	LexEntry	do-not-show-main-entry-in	LexEntry.DoNotShowMainEntryIn	AddRefe
 Covered	LexEntry	do-not-show-main-entry-in	LexEntry.DoNotShowMainEntryIn	RemoveReference	lexical/lexEntry/removeRefDoNotShowMainEntryIn	-	-
 Covered	LexEntry	do-not-use-for-parsing	LexEntry.DoNotUseForParsing	Set	lexical/lexEntry/setDoNotUseForParsing	-	-
 Covered	LexEntry	do-not-use-for-parsing	LexEntry.DoNotUseForParsing	Clear	lexical/lexEntry/clearDoNotUseForParsing	-	-
-Covered	LexEntry	entry-refs	LexEntry.EntryRefs	AddObject	lexical/lexEntry/createVariantRef	-	-
 Covered	LexEntry	lexeme-form	LexEntry.LexemeForm	AddObject	lexical/lexEntry/createLexemeForm	-	-
 Covered	LexEntry	literal-meaning	LexEntry.LiteralMeaning	SetPlainRich	lexical/lexEntry/setLiteralMeaning	-	-
 Covered	LexEntry	literal-meaning	LexEntry.LiteralMeaning	SetRich	text/setRichString	-	-
@@ -521,10 +520,10 @@ Covered	PhSimpleContextBdry	feature-structure	PhSimpleContextBdry.FeatureStructu
 Covered	PhSimpleContextNC	description	PhPhonContext.Description	SetRich	text/setParagraphs	-	-
 Covered	PhSimpleContextNC	description	PhPhonContext.Description	ClearRich	text/setParagraphs	-	-
 Covered	PhSimpleContextNC	feature-structure	PhSimpleContextNC.FeatureStructure	Set	grammar/phSimpleContextNC/setFeatureStructure	written-by-input	-
-Covered	PhSimpleContextNC	minus-constr	PhSimpleContextNC.MinusConstr	AddReference	grammar/phSimpleContextNC/addRefMinusConstr	-	-
-Covered	PhSimpleContextNC	minus-constr	PhSimpleContextNC.MinusConstr	RemoveReference	grammar/phSimpleContextNC/removeRefMinusConstr	-	-
-Covered	PhSimpleContextNC	plus-constr	PhSimpleContextNC.PlusConstr	AddReference	grammar/phSimpleContextNC/addRefPlusConstr	-	-
-Covered	PhSimpleContextNC	plus-constr	PhSimpleContextNC.PlusConstr	RemoveReference	grammar/phSimpleContextNC/removeRefPlusConstr	-	-
+Covered	PhSimpleContextNC	minus-constr	PhSimpleContextNC.MinusConstr	AddReference	grammar/phSimpleContextNC/addRefMinusConstr	written-by-input	-
+Covered	PhSimpleContextNC	minus-constr	PhSimpleContextNC.MinusConstr	RemoveReference	grammar/phSimpleContextNC/removeRefMinusConstr	written-by-input	-
+Covered	PhSimpleContextNC	plus-constr	PhSimpleContextNC.PlusConstr	AddReference	grammar/phSimpleContextNC/addRefPlusConstr	written-by-input	-
+Covered	PhSimpleContextNC	plus-constr	PhSimpleContextNC.PlusConstr	RemoveReference	grammar/phSimpleContextNC/removeRefPlusConstr	written-by-input	-
 Covered	PhSimpleContextSeg	description	PhPhonContext.Description	SetRich	text/setParagraphs	-	-
 Covered	PhSimpleContextSeg	description	PhPhonContext.Description	ClearRich	text/setParagraphs	-	-
 Covered	PhSimpleContextSeg	feature-structure	PhSimpleContextSeg.FeatureStructure	Set	grammar/phSimpleContextSeg/setFeatureStructure	written-by-input	-
@@ -910,6 +909,7 @@ OtherFields	FsOpenValue	value	FsOpenValue.Value	SetAlternative	none	NoOperationK
 OtherFields	FsOpenValue	value	FsOpenValue.Value	ClearAlternative	none	NoOperationKind	-
 OtherFields	FsSharedValue	value	FsSharedValue.Value	Set	none	NoOperationKind	-
 OtherFields	FsSharedValue	value	FsSharedValue.Value	Clear	none	NoOperationKind	-
+OtherFields	LexEntry	entry-refs	LexEntry.EntryRefs	AddObject	none	AmbiguousOperationKind	-
 OtherFields	LexEntry	entry-refs	LexEntry.EntryRefs	RemoveObject	none	NoOperationKind	-
 OtherFields	LexEntry	entry-refs	LexEntry.EntryRefs	MoveObject	none	NoOperationKind	-
 OtherFields	LexEntry	etymology	LexEntry.Etymology	AddObject	none	NoOperationKind	-
@@ -1304,11 +1304,11 @@ OtherFields	PhSimpleContextBdry	feature-structure	PhSimpleContextBdry.FeatureStr
 OtherFields	PhSimpleContextBdry	name	PhPhonContext.Name	SetAlternative	none	NoOperationKind	-
 OtherFields	PhSimpleContextBdry	name	PhPhonContext.Name	ClearAlternative	none	NoOperationKind	-
 OtherFields	PhSimpleContextNC	feature-structure	PhSimpleContextNC.FeatureStructure	Clear	none	NoOperationKind	-
-OtherFields	PhSimpleContextNC	minus-constr	PhSimpleContextNC.MinusConstr	InsertReference	none	UnsupportedPlacement	-
+OtherFields	PhSimpleContextNC	minus-constr	PhSimpleContextNC.MinusConstr	InsertReference	none	NoOperationKind	-
 OtherFields	PhSimpleContextNC	minus-constr	PhSimpleContextNC.MinusConstr	MoveReference	none	NoOperationKind	-
 OtherFields	PhSimpleContextNC	name	PhPhonContext.Name	SetAlternative	none	NoOperationKind	-
 OtherFields	PhSimpleContextNC	name	PhPhonContext.Name	ClearAlternative	none	NoOperationKind	-
-OtherFields	PhSimpleContextNC	plus-constr	PhSimpleContextNC.PlusConstr	InsertReference	none	UnsupportedPlacement	-
+OtherFields	PhSimpleContextNC	plus-constr	PhSimpleContextNC.PlusConstr	InsertReference	none	NoOperationKind	-
 OtherFields	PhSimpleContextNC	plus-constr	PhSimpleContextNC.PlusConstr	MoveReference	none	NoOperationKind	-
 OtherFields	PhSimpleContextSeg	feature-structure	PhSimpleContextSeg.FeatureStructure	Clear	none	NoOperationKind	-
 OtherFields	PhSimpleContextSeg	name	PhPhonContext.Name	SetAlternative	none	NoOperationKind	-
@@ -1639,6 +1639,7 @@ ComputedFields	LexEntry	head-word	LexEntry.HeadWord	ClearRich	none	ComputedField
 # Handler	grammar/partOfSpeech/createInflectionClasses	PartOfSpeech	InflectionClasses	AddObject	Forbidden	-	MoInflClass	Unspecified	False
 # Handler	grammar/partOfSpeech/createStemNames	PartOfSpeech	StemNames	AddObject	Forbidden	-	MoStemName	Unspecified	False
 # Handler	grammar/partOfSpeech/deleteAffixSlots	PartOfSpeech	AffixSlots	RemoveObject	Forbidden	-	MoInflAffixSlot	Unspecified	False
+# Handler	grammar/partOfSpeech/deleteInflectionClasses	(no direct field edit)
 # Handler	grammar/partOfSpeech/moveAffixTemplates	PartOfSpeech	AffixTemplates	MoveObject	Required	-		Unspecified	False
 # Handler	grammar/partOfSpeech/removeRefInflectableFeats	(no direct field edit)
 # Handler	grammar/partOfSpeech/setDefaultInflectionClass	PartOfSpeech	DefaultInflectionClass	Set	Forbidden	-		Unspecified	False
@@ -1730,6 +1731,7 @@ ComputedFields	LexEntry	head-word	LexEntry.HeadWord	ClearRich	none	ComputedField
 # Handler	lexical/lexEntry/clearRestrictions	LexEntry	Restrictions	ClearRich	Forbidden	-		Unspecified	True
 # Handler	lexical/lexEntry/clearSummaryDefinition	LexEntry	SummaryDefinition	ClearRich	Forbidden	-		Unspecified	True
 # Handler	lexical/lexEntry/createAlternateForms	LexEntry	AlternateForms	AddObject	RequiredWhenNonempty	-	MoAffixAllomorph,MoAffixProcess,MoStemAllomorph	Unspecified	False
+# Handler	lexical/lexEntry/createComplexFormRef	LexEntry	EntryRefs	AddObject	Forbidden	-	LexEntryRef	ComplexFormReference	False
 # Handler	lexical/lexEntry/createLexemeForm	LexEntry	LexemeForm	AddObject	Forbidden	-	MoAffixAllomorph,MoAffixProcess,MoStemAllomorph	Unspecified	False
 # Handler	lexical/lexEntry/createMorphoSyntaxAnalyses	LexEntry	MorphoSyntaxAnalyses	AddObject	Forbidden	-	MoDerivAffMsa,MoInflAffMsa,MoStemMsa,MoUnclassifiedAffixMsa	Unspecified	False
 # Handler	lexical/lexEntry/createSenses	LexEntry	Senses	AddObject	RequiredWhenNonempty	-	LexSense	Unspecified	False

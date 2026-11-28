@@ -116,10 +116,8 @@ public sealed class StoreCoreTests : IDisposable
         Assert.Equal(3, (await store.ReadAsync()).Count);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task GranularImportRollsBackWhenPublicationFailsAndCanBeRetried(bool legacy)
+    [Fact]
+    public async Task GranularImportRollsBackWhenPublicationFailsAndCanBeRetried()
     {
         var path = Database;
         var target = new GenericRecord { Id = Guid.NewGuid() };
@@ -133,19 +131,13 @@ public sealed class StoreCoreTests : IDisposable
         using var connection = new SqliteConnection(RecordSqlite.ConnectionString(path));
         connection.Open();
         using var command = connection.CreateCommand();
-        if (legacy)
-        {
-            command.CommandText = "PRAGMA user_version=4";
-            command.ExecuteNonQuery();
-        }
         command.CommandText = """
             CREATE TRIGGER refuse_index BEFORE INSERT ON IncomingReferences
             BEGIN SELECT RAISE(ABORT, 'refuse publication'); END
             """;
         command.ExecuteNonQuery();
 
-        Task Import(Store store) => legacy ? store.ImportNativeAsync(records, Guid.NewGuid(), coverage)
-            : store.ImportAsync(records, Guid.NewGuid(), coverage);
+        Task Import(Store store) => store.ImportAsync(records, Guid.NewGuid(), coverage);
 
         await using (var store = new Store(path))
         {
@@ -284,6 +276,22 @@ public sealed class StoreCoreTests : IDisposable
         File.WriteAllBytes(Path.Combine(database + ".resources", hash), []);
         Assert.Throws<InvalidDataException>(() => content.Read(hash));
         Assert.Throws<InvalidDataException>(() => content.Read("../escape"));
+    }
+
+    [Fact]
+    public void PutRewritesADamagedExistingBlobInsteadOfFailingEveryRetry()
+    {
+        var content = new ResourceContentStore(Database);
+        var bytes = System.Security.Cryptography.RandomNumberGenerator.GetBytes(64);
+        var hash = content.Put(bytes);
+        var blob = Path.Combine(Database + ".resources", hash);
+        foreach (var damaged in new byte[][] { [], bytes[..10], System.Security.Cryptography.RandomNumberGenerator.GetBytes(64) })
+        {
+            File.WriteAllBytes(blob, damaged);
+            Assert.Equal(hash, content.Put(bytes));
+            Assert.Equal(bytes, content.Read(hash));
+            Assert.Single(Directory.GetFiles(Database + ".resources"));
+        }
     }
 
     private sealed class FixedClock(DateTimeOffset time) : TimeProvider

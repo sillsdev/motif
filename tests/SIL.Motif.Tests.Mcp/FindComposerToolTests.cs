@@ -12,11 +12,11 @@ public sealed class FindComposerToolTests
     private static AgentTool Tool => AgentTools.All.Single(tool => tool.Name == "motif_find_composer");
 
     [Fact]
-    public void TheToolReadsOnlyNeedsNoProjectAndIsOffUnlessAProfileSelectsIt()
+    public void TheToolReadsOnlyNeedsNoProjectAndIsInTheDefaultProfile()
     {
         Assert.True(Tool.ReadOnly);
         Assert.False(Tool.NeedsProject);
-        Assert.DoesNotContain(MotifMcpServer.Expose(ToolProfile.Builtin), exposed => exposed.Name == Tool.Name);
+        Assert.Contains(MotifMcpServer.Expose(ToolProfile.Builtin), exposed => exposed.Name == Tool.Name);
         var selected = new ToolProfile("find", null, null, "concise", [new ToolSelection(Tool.Name, null, null, null)]);
         Assert.Contains(MotifMcpServer.Expose(selected), exposed => exposed.Name == Tool.Name);
     }
@@ -33,7 +33,7 @@ public sealed class FindComposerToolTests
     public async Task ACallRanksComposersAndRefusesAGoalWithASubject()
     {
         var context = new ServerContext("", "1.0", new NoRunnerLauncher(new JobRunnerLaunchOptions("root", null)),
-            new ActivityLog(null), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
+            new ActivityLog(), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
 
         var found = await Tool.Run(context, Args(("goal", "add a missing consonant to the sound inventory")), CancellationToken.None);
         Assert.Null(found.Refusal);
@@ -46,10 +46,8 @@ public sealed class FindComposerToolTests
     [Fact]
     public async Task AGoalSearchAddsNoExtraEntryAndItsOwnEntryRecordsTheOutcome()
     {
-        var path = Path.Combine(Path.GetTempPath(), "find-composer-log-" + Guid.NewGuid().ToString("N") + ".jsonl");
-        try
         {
-            var log = new ActivityLog(path);
+            var log = new ActivityLog();
             var context = new ServerContext("", "1.0", new NoRunnerLauncher(new JobRunnerLaunchOptions("root", null)),
                 log, ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
             var tools = MotifMcpServer.Expose(new ToolProfile("find", null, null, "concise",
@@ -68,9 +66,7 @@ public sealed class FindComposerToolTests
             Assert.Equal(Tool.Name, miss.Tool);
             Assert.False(miss.FindComposer!["matched"]!.GetValue<bool>());
             Assert.False(string.IsNullOrEmpty(miss.FindComposer["nearestSubject"]!.GetValue<string>()));
-            Assert.Contains("\"findComposer\"", File.ReadAllText(path));
         }
-        finally { File.Delete(path); }
     }
 
     private static Dictionary<string, System.Text.Json.JsonElement> Arguments(string goal) =>

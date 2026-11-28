@@ -330,13 +330,22 @@ public static class Trials
 
         var tokenJson = JsonSerializer.Serialize(sourceBaseline, MotifJson.CreateOptions());
         var rootAssessmentId = assessmentIds.GetValueOrDefault(AssessmentKinds.ParseTime);
-        var wordResults = !includeWordResults || rootAssessmentId is null
-            ? []
-            : assessments.GetSelected(rootAssessmentId).Words?.Select(AssessmentWordRows.FromRecorded).ToArray() ?? [];
         var trialAssessment = rootAssessmentId is null ? null : assessments.GetSelected(rootAssessmentId);
         var baselineAssessment = (input.BaselineAssessmentIds ?? []).Select(assessments.GetSelected)
             .FirstOrDefault(record => record.Kind == AssessmentKinds.ParseTime && trialAssessment is not null &&
                 record.Assessor == trialAssessment.Assessor && Assess.BeforeAssessmentReuse.MatchesBaseline(database, record, trialAssessment));
+        // Each word's Baseline-side work rides beside the Proposal's, only when the two Assessments are comparable.
+        var baselineWork = baselineAssessment is not null && trialAssessment is not null &&
+            TrialWorkComparison.AreCompatible(baselineAssessment, trialAssessment, sameBaseline: true)
+            ? (baselineAssessment.Words ?? []).Where(word => word.ParserWork is not null)
+                .GroupBy(word => word.Word, StringComparer.Ordinal)
+                .ToDictionary(group => group.Key, group => group.First().ParserWork, StringComparer.Ordinal)
+            : null;
+        var wordResults = !includeWordResults || trialAssessment is null
+            ? []
+            : trialAssessment.Words?.Select(AssessmentWordRows.FromRecorded)
+                .Select(row => baselineWork is not null && baselineWork.TryGetValue(row.Word, out var before)
+                    ? row with { BaselineWorkUnits = before } : row).ToArray() ?? [];
         var work = trialAssessment is not null
             ? TrialWorkComparison.Compare(baselineAssessment, trialAssessment, baselineAssessment is not null) : null;
         var readingIdentity = completed && trialAssessment is not null && ComposesFeatureRemoval(proposal)

@@ -51,6 +51,10 @@ public static partial class RefusalCodes
     public const string ProposalSuperseded = "proposal.superseded";
     /// <summary>A Trial of the Proposal is running, so it cannot be deleted.</summary>
     public const string ProposalTrialRunning = "proposal.trial-running";
+    /// <summary>The Proposal was asked to show its records but holds no record import.</summary>
+    public const string ProposalNoRecordImport = "proposal.no-record-import";
+    /// <summary>The records of a Proposal were sorted by an order that does not exist.</summary>
+    public const string ProposalRecordSortUnknown = "proposal.record-sort-unknown";
     /// <summary>A Proposal list was filtered by a status that does not exist.</summary>
     public const string ProposalUnknownStatus = "proposal.unknown-status";
     /// <summary>The stored content of a Proposal or Draft does not parse as a Proposal, so it was not used.</summary>

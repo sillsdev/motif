@@ -56,7 +56,6 @@ public sealed class RejectionTests : IDisposable
     }
 
     [Theory]
-    [InlineData(2, "lcm-builtin/other", "Unknown built-in layout table; reimport the store after an LCM upgrade.")]
     [InlineData(2, null, "Unknown field type.")]
     public void LayoutsWithAnUnknownTableOrTypeAreRefusedWhenARecordIsBuilt(int version, string? table, string message)
     {
@@ -67,6 +66,27 @@ public sealed class RejectionTests : IDisposable
         });
         var error = Assert.Throws<InvalidDataException>(() => RecordInitialization.Create(Guid.NewGuid(), "lcm", 1, null, 0, 0, 0, layout, null));
         Assert.Equal(message, error.Message);
+    }
+
+    // Changing this breaks every existing store; the release notes must tell users to export first.
+    private const string PinnedBuiltInLayoutsVersion = "lcm-builtin/69c48830b739b691";
+
+    [Fact]
+    public void BuiltInLayoutsVersionIsPinnedSoStoresBreakOnlyOnPurpose() =>
+        Assert.Equal(PinnedBuiltInLayoutsVersion, BuiltInLayouts.Version);
+
+    [Fact]
+    public void AStoreWithADifferentTableVersionIsRefusedWithExportThenReimportAdvice()
+    {
+        var layout = JsonSerializer.SerializeToElement(new
+        {
+            version = 2, table = "lcm-builtin/other", types = new Dictionary<string, int>(), defaults = new Dictionary<string, int>()
+        });
+        var error = Assert.Throws<InvalidDataException>(() => RecordInitialization.Create(Guid.NewGuid(), "lcm", 1, null, 0, 0, 0, layout, null));
+        Assert.Contains("different FieldWorks data model", error.Message);
+        Assert.Contains("lcm-builtin/other", error.Message);
+        Assert.Contains(BuiltInLayouts.Version, error.Message);
+        Assert.Contains("Export it with the Motif build that wrote it, then re-import", error.Message);
     }
 
     [Fact]

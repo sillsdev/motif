@@ -109,14 +109,10 @@ without a disk file are serialized from the supplied cache.
 
 ## Compact persistence and import provenance
 
-The SQLite development format is version 7. Version 6 added the certificate, version 5 added the complete-record create encoding
-under Harmony model version 1. Version 4 stores open in place and keep model version 0
-for granular imports and edits. Readers refuse history authored under a newer model version.
-For earlier development formats, reimport the external project into a fresh store.
-Harmony remains the stock package.
-Format 6 adds two additive tables, `RecordStoreCertificate` and `RecordContentIdentity`. A version 5 store still
-reads without being changed and is upgraded in place, inside its first write's transaction; an older reader refuses
-version 6 with the usual format refusal. The certificate is written in the same transaction as every publication
+The SQLite development format is version 7, the only one Motif opens. A store of any other format is refused with
+"Unsupported record store format." and is never upgraded in place: reimport the external project into a fresh store.
+Readers refuse history authored under a newer model version. Harmony remains the stock package.
+The store holds two tables beside its history, `RecordStoreCertificate` and `RecordContentIdentity`. The certificate is written in the same transaction as every publication
 and guarded write and holds the revision, the four published digests, the exact replay accumulators of the
 `Commits` and `ChangeEntities` rows, how they were obtained (`full-import`, `full-verify`, `incremental`), the
 store file's identity (a hash of its first commit) and a crash flag. The flag is committed alone before a write
@@ -131,13 +127,11 @@ the table instead of hashing every row; a write that adds content still re-hashe
 Cebuano). History is never pruned: the replay digest still covers every commit and change row.
 A certificate that does not match the state row is untrusted, never refused: the write does the full scan, compares
 the computed digests with the state row, refuses on any mismatch (so tampered history is never re-certified), and
-otherwise re-certifies. The first write on a format 5 store pays a one-time upgrade after its revision and value
-checks pass: it indexes every content value (about 14 s on Cebuano under load) while it holds the write lock, tells
-`RecordStore.Progress` before it starts and sets `UpgradedFormat` when it commits. `VerifyAsync` scans without the writer
+otherwise re-certifies. `VerifyAsync` scans without the writer
 lock and takes it only to re-certify, refusing if the store changed meanwhile or if commits exist that no state row
 publishes (history committed through another path and never published). List operations compare the old history and the
-old snapshots with the stored digests before they republish, so they never absorb damage. Since format 7 a list operation
-is one transaction: the upgrade, the history commits and the publication (state row, certificate, derived tables) commit
+old snapshots with the stored digests before they republish, so they never absorb damage. A list operation
+is one transaction: the history commits and the publication (state row, certificate, derived tables) commit
 together, so a crash or failure at any point before that commit leaves the store exactly as it was and there is no window
 with history ahead of its publication. (Before format 7 the history committed first and a crash left the store refusing every
 read and write; that store needed restoring from a copy.) `VerifyAsync` compares the whole content identity table with the
@@ -186,22 +180,13 @@ The usage schema of a certified point comes from the manifest, the coverage reco
 proof is a publication invariant: import, list operations and bootstrap refuse a native record whose provenance is missing,
 carries another traversal version or disagrees with its class (the refusal names the record); a republication of a store that
 already fails it (rebuild, regenerate) records "Native provenance disagrees with captured repository membership: record
-<id>." as an index limitation and serves no certified point. An older store (format 5 or 6) is checked across every decoded record when it upgrades: `VerifyAsync` leaves one that fails
-the proof un-upgraded, and the first write upgrades it but records the limitation, so both stay on the full path.
+<id>." as an index limitation and serves no certified point.
 A scalar write cannot change provenance or class.
 
 The remaining gap: a format 7 store written by the build that introduced format 7 (before this check) carries no limitation even
 if its records fail the proof, so it is served as certified until a rebuild or regenerate records the limitation; a list
 operation on it refuses and names the record. The FieldWorks adapter is the only writer and always passes the proof, so no
 such store is known to exist.
-
-A format 6 store opens read-only without being changed; a keyed read on it throws `DerivedTablesUnavailableException`
-("tables: absent") and `HasDerivedTables` is false. A format 6 binary refuses format 7 with the usual refusal. Only a read-write
-operation upgrades (first guarded write, list operation, `VerifyAsync`, `RebuildReferenceIndexAsync`, import): the upgrade
-creates and fills the tables inside that operation's own transaction, so it is all or nothing, tells `Progress` before it
-starts, and is recorded in `LastUpgrade` (from, to, elapsed). The upgrade starts only after an operation's own refusals
-(stale revision, unknown record, corrupt history), so a refused operation never starts one. A format 5 store goes to 7 in
-one step. The read-only host never upgrades.
 
 The hand-analysis host (`HandAnalysisHost`) serves pins of a published store read-only and reports what each Stamp
 claims. A store whose certificate matches the state row serves `Certified`; otherwise the host rescans history against

@@ -66,7 +66,8 @@ public static partial class RecordImportCommand
         ValidateOnScratch(cache, [(plan, full)])[0];
 
     /// <summary>One scratch pass over every file's operations, each failure charged to its file.</summary>
-    private static RecordLowering[] ValidateOnScratch(LcmCache cache, IReadOnlyList<(ProjectRecordPlan Plan, RecordLowering Full)> units)
+    private static RecordLowering[] ValidateOnScratch(LcmCache cache, IReadOnlyList<(ProjectRecordPlan Plan, RecordLowering Full)> units,
+        ReviewProbe? review = null)
     {
         var results = units.Select(unit => unit.Full).ToArray();
         var owner = new Dictionary<CanonicalId, (int Unit, int Change)>();
@@ -82,12 +83,17 @@ public static partial class RecordImportCommand
             }
         }
         if (byId.Count == 0) return results;
+        review?.Before(cache);
         var failed = new Dictionary<(int Unit, int Change), string>();
         var failedOperations = new HashSet<CanonicalId>();
-        var contained = byId.Values.Select(operation => new OperationEnvelope(operation.OperationId, operation.Kind,
+        var within = byId.Values.Select(operation => new OperationEnvelope(operation.OperationId, operation.Kind,
             operation.EntityId, operation.Target, operation.After, operation.Placement,
             operation.DependsOn.Where(dependency => owner.TryGetValue(dependency.OperationId, out var own) &&
                 own.Unit == owner[operation.OperationId].Unit).ToArray(),
+            rationale: operation.Rationale)).ToArray();
+        var contained = byId.Values.Select(operation => new OperationEnvelope(operation.OperationId, operation.Kind,
+            operation.EntityId, operation.Target, operation.After, operation.Placement,
+            operation.DependsOn.Where(dependency => owner.ContainsKey(dependency.OperationId)).ToArray(),
             rationale: operation.Rationale)).ToArray();
         var handler = cache.ServiceLocator.GetInstance<IActionHandler>();
         using var unitOfWork = new NonUndoableUnitOfWorkHelper(handler);
@@ -98,7 +104,7 @@ public static partial class RecordImportCommand
         {
             for (var unit = 0; unit < units.Count; unit++)
             {
-                try { OperationExecutionOrder.Sort(contained.Where(operation => owner[operation.OperationId].Unit == unit).ToArray()); }
+                try { OperationExecutionOrder.Sort(within.Where(operation => owner[operation.OperationId].Unit == unit).ToArray()); }
                 catch (Exception exception) when (IsRefusalOfOneChange(exception)) { throw new RecordImportScratchException(exception, unit); }
             }
             order = OperationExecutionOrder.Sort(contained);
@@ -144,6 +150,7 @@ public static partial class RecordImportCommand
             foreach (var change in owner.Values.Distinct().Where(change => !failed.ContainsKey(change)))
                 failed[change] = "The operations together could not be written: " + exception.Message;
         }
+        review?.After(cache);
         for (var unit = 0; unit < units.Count; unit++)
         {
             var mine = failed.Where(pair => pair.Key.Unit == unit).ToDictionary(pair => pair.Key.Change, pair => pair.Value);

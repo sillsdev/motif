@@ -46,7 +46,7 @@ public sealed class QueryV2ParityTests : IDisposable
     public void Dispose() => Directory.Delete(_root, true);
 
     private ServerContext Context() => new(_project, "1.0", new NoRunnerLauncher(new JobRunnerLaunchOptions(_root, null)),
-        new ActivityLog(null), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
+        new ActivityLog(), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
 
     private async Task<ToolOutcome> Mcp(JsonObject args)
     {

@@ -22,10 +22,10 @@ public sealed class ActivityEffectivenessTests
     [Fact]
     public async Task AnAddToolCallRecordsTheComposerVerbItAddressed()
     {
-        var log = new ActivityLog(null);
+        var log = new ActivityLog();
         var context = Context(log);
 
-        await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Builtin), "motif_add_phoneme",
+        await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Load("full")), "motif_add_phoneme",
             Args(("project", context.ProjectPath)), CancellationToken.None);
 
         var composers = Assert.Single(log.Entries).Composers;
@@ -36,7 +36,7 @@ public sealed class ActivityEffectivenessTests
     [Fact]
     public async Task ABatchCallRecordsTheDistinctVerbsOfItsSteps()
     {
-        var log = new ActivityLog(null);
+        var log = new ActivityLog();
         var context = Context(log);
         var intents = new[]
         {
@@ -56,7 +56,7 @@ public sealed class ActivityEffectivenessTests
     [Fact]
     public async Task AToolThatIsNoComposerRecordsNoComposers()
     {
-        var log = new ActivityLog(null);
+        var log = new ActivityLog();
         var context = Context(log);
 
         await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Builtin), "motif_overview",
@@ -68,7 +68,7 @@ public sealed class ActivityEffectivenessTests
     [Fact]
     public async Task ARefusalRecordsItsCodeAndTheFirstCallHasNoFollowedNext()
     {
-        var log = new ActivityLog(null);
+        var log = new ActivityLog();
         var context = Context(log);
         var tools = MotifMcpServer.Expose(ToolProfile.Builtin);
 
@@ -86,7 +86,7 @@ public sealed class ActivityEffectivenessTests
     [Fact]
     public void ACallIsFollowedNextOnlyWhenThePreviousAdviceNamesItsToolExactly()
     {
-        var log = new ActivityLog(null);
+        var log = new ActivityLog();
 
         log.Record(Entry("motif_start_proposal"), "Add changes with motif_add_phoneme, then motif_dry_run.");
         log.Record(Entry("motif_add_phoneme"), "Now call motif_dry_run_extra.");
@@ -97,37 +97,22 @@ public sealed class ActivityEffectivenessTests
     }
 
     [Fact]
-    public void LinesWrittenBeforeTheFieldsExistStillRead()
+    public void TheCallLogLineCarriesComposersAndFollowedPrev()
     {
-        var path = Path.Combine(Path.GetTempPath(), "activity-old-" + Guid.NewGuid().ToString("N") + ".jsonl");
+        var directory = Path.Combine(Path.GetTempPath(), "activity-new-" + Guid.NewGuid().ToString("N"));
         try
         {
-            File.WriteAllText(path, "{\"at\":\"2026-01-01T00:00:00+00:00\",\"tool\":\"motif_overview\",\"args\":{}," +
-                "\"isError\":false,\"code\":null,\"resultBytes\":1,\"durationMs\":1,\"jobId\":null,\"profile\":\"builtin\"}\n");
-
-            var entry = Assert.Single(new ActivityLog(path).Entries);
-
-            Assert.Null(entry.FollowedNext);
-            Assert.True(entry.Composers is null or { Length: 0 });
-        }
-        finally { File.Delete(path); }
-    }
-
-    [Fact]
-    public void TheLogLineCarriesComposersAndFollowedNextInCamelCase()
-    {
-        var path = Path.Combine(Path.GetTempPath(), "activity-new-" + Guid.NewGuid().ToString("N") + ".jsonl");
-        try
-        {
-            var log = new ActivityLog(path);
+            var log = new ActivityLog(new SIL.Motif.Host.CallLog(directory));
             log.Record(Entry("motif_a") with { Composers = ["compose-author-phoneme"] }, "motif_b");
             log.Record(Entry("motif_b"));
 
-            var second = JsonNode.Parse(File.ReadAllLines(path)[1])!;
-            Assert.True(second["followedNext"]!.GetValue<bool>());
-            Assert.Empty(second["composers"]!.AsArray());
-            Assert.Equal("compose-author-phoneme", JsonNode.Parse(File.ReadAllLines(path)[0])!["composers"]![0]!.GetValue<string>());
+            var lines = File.ReadAllLines(Directory.GetFiles(directory).Single());
+            var second = JsonNode.Parse(lines[1])!;
+            Assert.True(second["followedPrev"]!.GetValue<bool>());
+            Assert.Null(second["composers"]);
+            Assert.Equal("motif_b", JsonNode.Parse(lines[0])!["nextNamed"]!.GetValue<string>());
+            Assert.Equal("compose-author-phoneme", JsonNode.Parse(lines[0])!["composers"]![0]!.GetValue<string>());
         }
-        finally { File.Delete(path); }
+        finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }
     }
 }

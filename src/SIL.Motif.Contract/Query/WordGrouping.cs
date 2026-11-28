@@ -184,9 +184,10 @@ public static class WordGrouping
             if (spec.Pattern!.Length > MaxPatternLength)
                 throw new ArgumentException($"The pattern is longer than {MaxPatternLength} characters.");
             Regex regex;
+            var composedPattern = PatternNormalization.Pattern(spec.Pattern);
             try
             {
-                regex = new Regex("^(?:" + spec.Pattern + ")$", RegexOptions.NonBacktracking | RegexOptions.CultureInvariant,
+                regex = new Regex("^(?:" + composedPattern + ")$", RegexOptions.NonBacktracking | RegexOptions.CultureInvariant,
                     PatternTimeout);
             }
             catch (Exception exception) when (exception is ArgumentException or NotSupportedException)

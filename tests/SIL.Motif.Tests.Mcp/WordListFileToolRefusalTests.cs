@@ -46,7 +46,7 @@ public sealed class WordListFileToolRefusalTests : IDisposable
         using (var machine = MachineDatabase.Open(RunnerOptions.ResolveRoot()))
             new KnownProjectRegistry(machine).Record(ProjectWorkspaceKey.Compute(
                 new ProjectLocator(project, "project")), project, DateTimeOffset.UtcNow);
-        var context = new ServerContext(project, "1.0", runner, new ActivityLog(null), ToolProfile.Builtin,
+        var context = new ServerContext(project, "1.0", runner, new ActivityLog(), ToolProfile.Load("full"),
             TextWriter.Null, advancedAiModeEnabled: true);
         var arguments = new Dictionary<string, JsonElement>
         {
@@ -55,7 +55,7 @@ public sealed class WordListFileToolRefusalTests : IDisposable
         };
         if (tool == "motif_trial") arguments["proposal"] = JsonSerializer.SerializeToElement("proposal/unused");
 
-        var result = await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Builtin),
+        var result = await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Load("full")),
             tool, arguments, CancellationToken.None);
 
         Assert.True(result.IsError);

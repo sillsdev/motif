@@ -45,6 +45,8 @@ public static class CliVerbCatalog
             new[] { "guide edit --project <fwdata> <GDR-n> --from-file <file.md | -> [--draft <name>] [--json]" }),
         new CliVerbDescriptor("Project", "guide", "guide add",
             new[] { "guide add --project <fwdata> --title <text> [--parent <GDR-n>] [--after <GDR-n>] [--from-file <file.md | ->] [--ws <tag>] [--draft <name>] [--json]" }),
+        new CliVerbDescriptor("Project", "guide", "guide refresh-tables",
+            new[] { "guide refresh-tables --project <fwdata> [<GDR-n>] [--query <id>] [--draft <name>] [--json]" }),
         new CliVerbDescriptor("Project", "guide", "guide decide",
             new[] { "guide decide --project <fwdata> <GDR-n> --choosing <A> --over <B> --because <reason> [--draft <name>] [--json]" }),
         new CliVerbDescriptor("Project", "guide", "guide check",
@@ -287,14 +289,10 @@ public static class CliVerbCatalog
         new CliVerbDescriptor(
             "Commands", "undefer", "undefer", new[] { "undefer --project <fwdata> <proposalId>" }),
         new CliVerbDescriptor(
-            "Commands", "reject", "reject", new[] { "reject --project <fwdata> <proposalId>" }),
-        new CliVerbDescriptor(
             "Commands", "supersede", "supersede",
             new[] { "supersede --project <fwdata> <proposalId> <supersededByProposalId>" }),
         new CliVerbDescriptor(
-            "Commands", "list", "list", new[] { "list --project <fwdata> [--all | --status <status>] [--limit <1-200>] [--offset <n> | --page <N>] [--json]" }),
-        new CliVerbDescriptor(
-            "Commands", "show", "show", new[] { "show --project <fwdata> <proposalId|draftName> [--current] [--limit <1-200>] [--offset <n> | --page <N> | --all] [--json]" }),
+            "Commands", "show", "show", new[] { "show --project <fwdata> <proposalId|draftName> [--current | --records [--sort path|kind|batch-edges] [--refused]] [--limit <1-200>] [--offset <n> | --page <N> | --all] [--json]" }),
         new CliVerbDescriptor(
             "Commands", "preflight", "preflight",
             new[] { "preflight --project <fwdata> <proposalId> [--json]" }),
@@ -336,6 +334,10 @@ public static class CliVerbCatalog
             new[] { "evidence list --project <fwdata> [--tier <tier>] [--offset <n>] [--limit <n>] [--json]" }),
         new CliVerbDescriptor("Commands", "evidence export", "evidence export",
             new[] { "evidence export --project <fwdata> [--out <path.json>] [--tier <tier>] [--page-size <n>] [--json]" }),
+
+        new CliVerbDescriptor(
+            "Commands", "id", "id convert",
+            new[] { "id convert <id>... [--json]" }),
 
         new CliVerbDescriptor(
             "Configuration", "config", "config show",
@@ -431,7 +433,7 @@ public static class CliVerbCatalog
                 "[--collect <name>[,<name>...]] [--time-limit-ms <ms>] [--parser-work-limit <work|unbounded>] [--max-seconds <seconds>] [--summary [--offset <n>] [--limit <n>]] [--no-background] [--json]",
                 "The default per-word limit is 20,000,000 parser work.",
                 "--collect names the collectors for this run and wins over the project's .motif.toml collect, which wins over the built-in default; ParseTime is always collected.",
-                "Reaching the parser work limit is a stop at the work limit, the same on every computer. --time-limit-ms is only a safety net, in milliseconds on this computer; --max-seconds is the whole run's time budget.",
+                "Reaching the parser work limit is a stop at the work limit, the same on every computer. --time-limit-ms is the per-word limit (per-word-limit-ms in .motif.toml, perWordLimitMs in stored selections), only a safety net, in milliseconds on this computer; --max-seconds is the whole run's time budget.",
             }),
 
         new CliVerbDescriptor(
@@ -607,13 +609,6 @@ public static class CliVerbCatalog
                 "PanGloss recorded and the Proposal operations that overlap the earlier form (not a cause), or that nothing was recorded.",
             }),
         new CliVerbDescriptor(
-            "Trace", "generate", "generate",
-            new[]
-            {
-                "generate <root> --project <fwdata> --trace [--at <baseline|proposal-id>] [--json]",
-                "The forms PanGloss generates from one root alone, with the rules that made each; the same as forms explain <root>.",
-            }),
-        new CliVerbDescriptor(
             "Trace", "forms", "forms explain",
             new[]
             {
@@ -672,9 +667,6 @@ public static class CliVerbCatalog
             new[] { "show-corpus --project <fwdata> <corpusId> [--json]" }),
 
         new CliVerbDescriptor(
-            "Jobs", "baseline-refresh", "baseline-refresh",
-            new[] { "baseline-refresh --project <fwdata>" }),
-        new CliVerbDescriptor(
             "Jobs", "jobs", "jobs wait", new[] { "jobs wait <jobId> --project <fwdata> [--wait-terminal] [--wait-timeout-ms <ms>] [--json]" }),
         new CliVerbDescriptor(
             "Jobs", "jobs", "jobs show", new[] { "jobs show <jobId> --project <fwdata> [--json]" }),
@@ -697,7 +689,7 @@ public static class CliVerbCatalog
             }),
         new CliVerbDescriptor(
             "Commands", "proposals", "proposals",
-            new[] { "proposals --project <fwdata> [--include-set-aside] [--json]" }),
+            new[] { "proposals --project <fwdata> [--include-set-aside | --status <status>] [--json]" }),
         new CliVerbDescriptor("Commands", "delete", "delete --proposal",
             new[] { "delete --proposal <id> --project <fwdata> [--json]" }),
         new CliVerbDescriptor("Commands", "reject", "reject --proposal",

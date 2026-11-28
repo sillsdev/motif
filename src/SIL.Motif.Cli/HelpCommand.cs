@@ -286,7 +286,7 @@ public static class HelpCommand
     {
         output.WriteLine("Start the MCP server");
         output.WriteLine("Starts Motif's MCP server over standard input and output for an assistant connection.");
-        output.WriteLine("Usage: motif mcp [--profile <file | shipped name>] [--activity-log <file.jsonl>]");
+        output.WriteLine("Usage: motif mcp [--profile <file | shipped name>]");
         output.WriteLine("Advanced AI mode is read when the server starts.");
         output.WriteLine("Read the current mode with 'motif settings advanced-ai'; use 'on' or 'off' to change it.");
         output.WriteLine("Expanded help: motif help mcp --full");
@@ -367,6 +367,7 @@ public static class HelpCommand
         output.WriteLine("'guide edit' and 'guide add' need Advanced AI mode ('motif settings advanced-ai on'); 'guide show' is a read and needs none; 'guide decide' needs --autonomous.");
         output.WriteLine("First time on a project: 'guide add --title <text>' (creates the list), apply the pending changes, 'baseline capture --project <fwdata>',");
         output.WriteLine("then 'guide check'. Guide reads show nothing until a Baseline is captured. The id of each new section is in the 'guide add --json' answer.");
+        output.WriteLine("A query block's saved table (a caption and at most ten rows, shown in FieldWorks) is written only by 'guide refresh-tables [<GDR-n>]' (Advanced AI); 'guide edit' keeps it as it is.");
         output.WriteLine("When the Draft already holds an edit of a section, start from 'guide show <GDR-n> --as-of <name> --format fw-md'.");
         output.WriteLine();
         output.WriteLine("Gate rule: Autonomous Apply needs a green Trial gate, except for a Proposal whose every operation edits a Grammar Guide");

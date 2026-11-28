@@ -32,8 +32,7 @@ public static class TrialReviewReads
         if (request.ReportId is not null)
             return CommandOutcome<TrialReviewResult>.Refused(new Refusal(
                 RefusalCodes.DifferenceNoTrial, FailureReason.NotFound,
-                request.ReportId.StartsWith("legacy/", StringComparison.Ordinal)
-                    ? "The legacy Trial was not found for this Proposal." : "The report was not found for this Proposal."));
+                "The report was not found for this Proposal."));
         var missing = new NoTrialResult(request.ProposalId,
             [new ReadTarget(TargetKind.Tool, "Start a Trial", null, "motif_trial",
                 new ReadArguments(Proposal: request.ProposalId, Action: "run"))]);

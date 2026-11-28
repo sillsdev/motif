@@ -34,19 +34,10 @@ internal sealed record DerivedSnapshot(SetDigest[] Chunks, RecordHeader[] Header
     public SetDigest HeadersDigest() => RecordStore.HeadersDigest(Headers);
 }
 
-/// <summary>The derived tables are absent (a store older than format 7) or do not match the published point, so a keyed read cannot be served.</summary>
-public sealed class DerivedTablesUnavailableException(string message) : InvalidOperationException(message);
-
 public sealed partial class RecordStore
 {
-    /// <summary>The first format that keeps headers, chunk digests and the publication binding.</summary>
-    internal const int DerivedFormat = 7;
-
     /// <summary>A chunk is named by the first 12 bits of the record's big-endian GUID.</summary>
     internal const int ChunkCount = 4096;
-
-    /// <summary>False for a store older than format 7: a read-write operation upgrades it, a reader never does.</summary>
-    public bool HasDerivedTables => format >= DerivedFormat;
 
     internal static int ChunkOf(Guid id)
     {
@@ -147,8 +138,6 @@ public sealed partial class RecordStore
     /// <summary>The stored binding must copy the state row; otherwise no derived table may be consumed.</summary>
     private async Task RequireBindingAsync(StoreState state, CancellationToken ct)
     {
-        if (format < DerivedFormat)
-            throw new DerivedTablesUnavailableException("tables: absent. A read-write operation upgrades this store to format 7.");
         var binding = await ReadBindingAsync(ct);
         if (binding is null) throw new InvalidDataException("RecordPublicationBinding: the binding row is missing.");
         var (revision, snapshot, replay, contentDigest, index, _) = binding.Value;
@@ -199,7 +188,6 @@ public sealed partial class RecordStore
     /// <summary>Replaces the chunk, header and binding rows from a full decode, in the open transaction.</summary>
     private void WriteDerived(StoreState state, SetDigest[] chunks, RecordHeader[] headers)
     {
-        var clock = System.Diagnostics.Stopwatch.StartNew();
         using (var command = DerivedCommand("DELETE FROM RecordChunks")) command.ExecuteNonQuery();
         using (var insert = DerivedCommand("INSERT INTO RecordChunks (ChunkId, Count, Digest) VALUES ($chunk, $count, $digest)"))
         {
@@ -217,7 +205,6 @@ public sealed partial class RecordStore
         }
         WriteHeaders(headers);
         UpsertBinding(state, HeadersDigest(headers));
-        if (upgrading) backfillTime = clock.Elapsed;
     }
 
     private void WriteHeaders(RecordHeader[] headers)

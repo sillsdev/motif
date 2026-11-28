@@ -348,7 +348,7 @@ public static partial class ProposalCommands
                 if (!TryLoadDraft(repository, request.DraftName, out var draft, out var loadedJson))
                     return CommandOutcome<SetGlossAddedResponse>.Refused(DraftNotFound(request.DraftName));
 
-                if (!CanonicalId.TryParse(request.Target, out var targetId, out var idError))
+                if (!ObjectId.TryParse(request.Target, out var targetId, out var idError))
                 {
                     return CommandOutcome<SetGlossAddedResponse>.Refused(InvalidTarget(request.Target, idError));
                 }
@@ -386,6 +386,7 @@ public static partial class ProposalCommands
                 {
                     previous.After = authored.After;
                     previous.DependsOn = authored.DependsOn;
+                    DropRecordImportMark(draft, previous.OperationId);
                 }
                 (previous ?? authored).Cite(citation);
                 EnsureContractVersion(draft, LexicalSenseOperationKinds.SetGloss);
@@ -428,7 +429,7 @@ public static partial class ProposalCommands
                 if (!TryLoadDraft(repository, request.DraftName, out var draft, out var loadedJson))
                     return CommandOutcome<DeleteLexemeFormAddedResponse>.Refused(DraftNotFound(request.DraftName));
 
-                if (!CanonicalId.TryParse(request.Target, out var targetId, out var idError))
+                if (!ObjectId.TryParse(request.Target, out var targetId, out var idError))
                 {
                     return CommandOutcome<DeleteLexemeFormAddedResponse>.Refused(
                         InvalidTarget(request.Target, idError));
@@ -544,7 +545,7 @@ public static partial class ProposalCommands
                         Fact(("corpusId", request.CorpusId), ("documentId", request.DocumentId))));
                 }
 
-                if (!CanonicalId.TryParse(request.Target, out var targetId, out var idError))
+                if (!ObjectId.TryParse(request.Target, out var targetId, out var idError))
                 {
                     return CommandOutcome<PromoteGlossAddedResponse>.Refused(
                         InvalidTarget(request.Target, idError));
@@ -1039,7 +1040,7 @@ public static partial class ProposalCommands
                 {
                     throw new KeyNotFoundException(
                         $"The replacement Proposal '{supersededById}' is not in the store, so {id} was left as it was. " +
-                        "Run 'list' to see committed proposals.");
+                        "Run 'proposals --include-set-aside' to see committed proposals.");
                 }
 
                 return repository.Transition(
@@ -1546,6 +1547,8 @@ public static partial class ProposalCommands
                         Requires = envelope.Requires.Select(r => r.Value).ToList(),
                         Label = manifest.Label is null ? null : $"{manifest.Label} (split: {group.DraftName})",
                         Operations = groupOperations,
+                        ComposerProvenance = CarryRecordImportMarks(envelope.Extensions,
+                            groupOperations.Select(o => o.OperationId).ToHashSet(StringComparer.Ordinal)),
                     };
                     repository.CreateDraft(group.DraftName, newProposalId, SerializeDraft(draft));
                     if (manifest.Rationale is not null) repository.SetRationale(newProposalId, manifest.Rationale);
@@ -1641,9 +1644,30 @@ public static partial class ProposalCommands
                     Findings = ProposalTexts.Check(database, project, comment.Markdown).Findings,
                 }).ToArray(),
             };
+            if (request.Records is { } grouping) return GroupByRecord(detail, grouping);
             return CommandOutcome<ProposalDetailProjection>.Success(
                 request.WithCurrent && content is not null ? ProposalCurrentValues.Attach(database, project, detail, content) : detail);
         });
+
+    /// <summary>Swaps a record import's operations for one row per record file.</summary>
+    private static CommandOutcome<ProposalDetailProjection> GroupByRecord(ProposalDetailProjection detail, ShowRecordGrouping grouping)
+    {
+        if (!ProposalRecordRow.Sorts.Contains(grouping.Sort, StringComparer.Ordinal))
+            return CommandOutcome<ProposalDetailProjection>.Refused(new Refusal(RefusalCodes.ProposalRecordSortUnknown,
+                FailureReason.InvalidArgument,
+                $"'{grouping.Sort}' is not a record order. Use one of: {string.Join(", ", ProposalRecordRow.Sorts)}.",
+                Fact(("sort", grouping.Sort))));
+        if (ProposalRecordRow.From(detail.ExtensionsJson) is not { } rows)
+            return CommandOutcome<ProposalDetailProjection>.Refused(new Refusal(RefusalCodes.ProposalNoRecordImport,
+                FailureReason.InvalidArgument,
+                "The Proposal holds no record import, so it has no record files to group by.",
+                Fact(("proposal", detail.ProposalId))));
+        return CommandOutcome<ProposalDetailProjection>.Success(detail with
+        {
+            Records = ProposalRecordRow.Arrange(rows, grouping.Sort, grouping.RefusedOnly),
+            Operations = [], ExtensionsJson = null, OperationTotal = detail.Operations.Count,
+        });
+    }
 
     internal static CommandOutcome<ProposalDetailProjection> BuildProposalDetail(
         IProposalRepository repository, string proposalSelector, MotifDatabase? marksDatabase = null,
@@ -2672,7 +2696,7 @@ public static partial class ProposalCommands
         $"Draft '{draftName}' not found in store. Run 'new --draft {draftName}' first.";
 
     private static string ProposalNotFoundMessage(string id) =>
-        $"Proposal '{id}' not found in store. Run 'list' to see committed proposals.";
+        $"Proposal '{id}' not found in store. Run 'proposals --include-set-aside' to see committed proposals.";
 
     /// Discarding the colliding draft frees a different name than the one this call is trying to use.
     private static string DraftNameCollisionMessage(string draftName, string trailingClause) =>
@@ -2706,7 +2730,7 @@ public static partial class ProposalCommands
 
     private static Refusal InvalidTarget(string target, string? error) =>
         new("operation.invalid-target", FailureReason.InvalidArgument,
-            $"--target '{target}' is not a valid canonical id: {error}", Fact(("target", target)));
+            $"--target '{target}' is not a valid canonical id or guid: {error}", Fact(("target", target)));
 
     private static Refusal InvalidWs(string draftName) =>
         new("operation.invalid-writing-system", FailureReason.InvalidArgument, "--ws must not be empty.",

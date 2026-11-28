@@ -11,11 +11,12 @@ Use it to see what is waiting for review, what needs another try, and which chan
 ```powershell
 motif proposals --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --json
 motif proposals --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --include-set-aside --json
+motif proposals --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --status rejected --json
 ```
 
 ## What it prints
 
-Each Proposal carries its label, status and group: **WaitingForYou** (a complete Trial matches the project and the Proposal as they are now), **NeedsAnotherTry** (the project or the Proposal moved since the Trial, or its latest Trial is running or did not finish), **NotTried** (no Trial exists), **NotAppliedYet** (your own collected changes) or **SetAside** (closed: applied, rejected, superseded or withdrawn). Closed Proposals are counted in `setAsideCount` and listed only with `--include-set-aside`. A deferred Proposal is still open and is grouped by its Trial like a proposed one.
+Each Proposal carries its label, status and group: **WaitingForYou** (a complete Trial matches the project and the Proposal as they are now), **NeedsAnotherTry** (the project or the Proposal moved since the Trial, or its latest Trial is running or did not finish), **NotTried** (no Trial exists), **NotAppliedYet** (your own collected changes) or **SetAside** (closed: applied, rejected, superseded or withdrawn). Closed Proposals are counted in `setAsideCount` and listed only with `--include-set-aside`. `--status <status>` lists only the Proposals in one stored status, open or closed: `draft`, `proposed`, `deferred`, `applied`, `rejected`, `superseded` or `withdrawn`; any other value is refused with `proposal.unknown-status`. A deferred Proposal is still open and is grouped by its Trial like a proposed one.
 
 A stored Proposal or Draft whose content cannot be read is left out of the list and named in `unreadable`, with its id, its label when it has one, its draft name when it is a Draft, and why. Motif does not change or delete it. The window says how many could not be read and names them.
 

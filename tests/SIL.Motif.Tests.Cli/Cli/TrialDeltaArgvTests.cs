@@ -46,6 +46,37 @@ public sealed class TrialDeltaArgvTests
     }
 
     [Fact]
+    public async Task DeltaJsonCarriesTheSenseChangeCountsAndTheReadingChangesTotal()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var proposal = "";
+        var ambiguous = new ReadingSignature([Sig(1).Morphemes[0] with
+        {
+            SenseId = null, SenseCandidates = [Id(900001), Id(900002)], SenseStatus = ReadingSenseStatus.Ambiguous
+        }]);
+        var published = ProjectStoreCommand.Run<string>(fixture.Project, MotifProductVersion.CurrentText, (database, project) =>
+        {
+            proposal = ProposalCompareExports.AddTrial(database, project,
+                [new("become", [], []) { BeforeSignatures = [Sig(1)], AfterSignatures = [ambiguous] }]);
+            return CommandOutcome<string>.Success("");
+        });
+        Assert.True(published.Succeeded, published.Refusal?.Message);
+        var runnerRoot = Directory.CreateDirectory(Path.Combine(fixture.Root, "worker")).FullName;
+
+        var result = await CliProcess.RunAsync(runnerRoot, null, false, "proposal", "trial", "delta", "--project", fixture.Project,
+            "--proposal", proposal, "--json");
+
+        Assert.True(result.ExitCode == 0, result.Error);
+        using var json = JsonDocument.Parse(result.Output);
+        var counts = json.RootElement.GetProperty("counts");
+        Assert.Equal(1, counts.GetProperty("senseChanged").GetInt32());
+        Assert.Equal(1, counts.GetProperty("readingChanges").GetInt32());
+        var row = json.RootElement.GetProperty("classes").EnumerateArray()
+            .Single(item => item.GetProperty("class").GetString() == "changed").GetProperty("rows").EnumerateArray().Single();
+        Assert.Equal(1, row.GetProperty("senseChanged").GetInt32());
+    }
+
+    [Fact]
     public async Task GroupByEntryPrintsOneGroupPerEntryAndRuleIsRefusedWithItsCode()
     {
         using var fixture = new ReviewAcceptanceFixture();

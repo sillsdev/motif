@@ -36,7 +36,7 @@ public static class MotifSchema
                 BaselineDdl + BaselineTextWordsDdl + BaselineTextReadIndexDdl + ProgressDdl + RetainedInvocationDdl + ParsimonyBundleDdl + ParsimonyBundleLifetimeDdl +
                 GrammarCheckDdl + PendingChangeFitDdl + ReviewMarkDdl +
                 ReadOccurrenceDdl + ActiveParseDdl + ParserRefusalDdl + ProposalDifferenceDdl + PhonologyExampleDdl +
-                PhonologyAssessmentDdl + BeforeAssessmentBindingDdl + ReviewReportDdl + RequestDdl + HypothesisDdl + QueryDdl + StoreRelocationDdl + WordTypeDispositionDdl;
+                PhonologyAssessmentDdl + BeforeAssessmentBindingDdl + ReviewReportDdl + RequestDdl + HypothesisDdl + QueryDdl + StoreRelocationDdl + WordTypeDispositionDdl + StoreIdentityDdl;
             command.ExecuteNonQuery();
         }
 
@@ -53,6 +53,73 @@ public static class MotifSchema
         insert.Parameters.AddWithValue("$created",
             (timeProvider?.GetUtcNow() ?? DateTimeOffset.UtcNow).ToString("O", CultureInfo.InvariantCulture));
         insert.ExecuteNonQuery();
+        InsertStoreId(connection, transaction);
+    }
+
+    /// <summary>
+    /// The optional table holding the random id of one store file. It is not part of any schema generation: a store
+    /// made before it existed gains it on its next writable open, so no upgrade (which drops derived data) is needed.
+    /// </summary>
+    internal const string StoreIdentityDdl = """
+        CREATE TABLE IF NOT EXISTS MotifStoreIdentity (
+            Id INTEGER PRIMARY KEY CHECK (Id = 1),
+            StoreId TEXT NOT NULL
+        );
+
+        """;
+
+    private static void InsertStoreId(SqliteConnection connection, SqliteTransaction? transaction)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "INSERT OR IGNORE INTO MotifStoreIdentity (Id, StoreId) VALUES (1, $id);";
+        command.Parameters.AddWithValue("$id", Guid.NewGuid().ToString("N"));
+        command.ExecuteNonQuery();
+    }
+
+    /// <summary>
+    /// Gives a store opened for writing its id if it has none; the id is then never changed. A store that is busy,
+    /// locked or read-only for the moment is left without one and the open continues, as it did before the id existed.
+    /// </summary>
+    internal static void EnsureStoreId(SqliteConnection connection)
+    {
+        try { EnsureStoreIdCore(connection); }
+        catch (SqliteException exception) when (exception.SqliteErrorCode is 5 or 6 or 8) { }
+    }
+
+    private static void EnsureStoreIdCore(SqliteConnection connection)
+    {
+        using (var probe = connection.CreateCommand())
+        {
+            probe.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='MotifStoreIdentity';";
+            if (Convert.ToInt32(probe.ExecuteScalar(), CultureInfo.InvariantCulture) == 1)
+            {
+                probe.CommandText = "SELECT COUNT(*) FROM MotifStoreIdentity;";
+                if (Convert.ToInt32(probe.ExecuteScalar(), CultureInfo.InvariantCulture) == 1) return;
+            }
+        }
+        // A held write lock should cost a second at most, not the connection's usual patience.
+        Run(connection, "BEGIN IMMEDIATE;", timeoutSeconds: 1);
+        try
+        {
+            Run(connection, StoreIdentityDdl);
+            InsertStoreId(connection, null);
+            Run(connection, "COMMIT;");
+        }
+        catch
+        {
+            try { Run(connection, "ROLLBACK;"); }
+            catch (SqliteException) { }
+            throw;
+        }
+    }
+
+    private static void Run(SqliteConnection connection, string sql, int? timeoutSeconds = null)
+    {
+        using var command = connection.CreateCommand();
+        if (timeoutSeconds is { } seconds) command.CommandTimeout = seconds;
+        command.CommandText = sql;
+        command.ExecuteNonQuery();
     }
 
     private sealed record SchemaObject(string Type, string Name, string TableName, string? Sql);
@@ -129,6 +196,7 @@ public static class MotifSchema
             "TR_PhonologyExamples_ImmutableDelete"
         };
 
+        var hasStoreIdentity = false;
         using (var objects = connection.CreateCommand())
         {
             objects.Transaction = transaction;
@@ -139,6 +207,11 @@ public static class MotifSchema
             {
                 var type = reader.GetString(0);
                 var name = reader.GetString(1);
+                if (type == "table" && name == "MotifStoreIdentity")
+                {
+                    hasStoreIdentity = true;
+                    continue;
+                }
                 if ((type == "table" && expectedTables.Contains(name)) ||
                     (type == "index" && expectedIndexes.Contains(name)) ||
                     (type == "trigger" && expectedTriggers.Contains(name)))
@@ -149,6 +222,8 @@ public static class MotifSchema
 
         foreach (var table in expectedTables)
             ValidateTable(connection, transaction, table, ColumnsFor(table), ForeignKeysFor(table));
+        if (hasStoreIdentity)
+            ValidateTable(connection, transaction, "MotifStoreIdentity", ColumnsFor("MotifStoreIdentity"), ForeignKeysFor("MotifStoreIdentity"));
         foreach (var index in expectedIndexes)
             ValidateIndex(connection, transaction, index, IndexColumnsFor(index));
         foreach (var trigger in expectedTriggers)
@@ -255,7 +330,7 @@ public static class MotifSchema
     {
         var requiredSql = table switch
         {
-            "MotifMetadata" or "DefaultSelection" or "ParsimonySelection" or "ActiveParse" => "CHECK (Id = 1)",
+            "MotifMetadata" or "MotifStoreIdentity" or "DefaultSelection" or "ParsimonySelection" or "ActiveParse" => "CHECK (Id = 1)",
             "AssessedWords" => "AUTOINCREMENT",
             "RetainedInvocationMembers" => "UNIQUE (AssessmentId)",
             "ReadOccurrences" => "CHECK (WordIndex >= 0)",
@@ -767,6 +842,7 @@ public static class MotifSchema
             C("Category", "TEXT", true), C("Evidence", "TEXT", true), C("Intended", "TEXT"),
             C("RecordedBy", "TEXT", true), C("RecordedUtc", "TEXT", true), C("EndedUtc", "TEXT"),
             C("EndedKind", "TEXT"), C("EndedBy", "TEXT"), C("EndedNote", "TEXT")],
+        "MotifStoreIdentity" => [C("Id", "INTEGER", false, 1), C("StoreId", "TEXT", true)],
         "StoreRelocations" =>
         [C("RelocationId", "INTEGER", false, 1), C("OldFwDataPath", "TEXT", true), C("NewFwDataPath", "TEXT", true),
             C("RelocatedUtc", "TEXT", true), C("Basis", "TEXT", true)],

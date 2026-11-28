@@ -1,7 +1,9 @@
 using SIL.Motif.App.GuideQueries;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Gdr;
+using SIL.Motif.Contract.Responses;
 using Xunit;
 using static SIL.Motif.Tests.App.GuideQueryTestSupport;
 
@@ -48,6 +50,39 @@ public sealed class GuideEvidenceBlockTests
         Assert.All(block.EvidenceDisplays, display => Assert.StartsWith("at least 2 word types", display.Headline));
         Assert.Equal(["form | tokens", "solo | 10"], block.EvidenceDisplays[0].Lines.Take(2));
         Assert.Empty(block.EvidenceDisplays[1].Lines);
+    }
+
+    [Fact]
+    public async Task SaveTableStagesOnlyWhenPressedAndNeverWhenShown()
+    {
+        var staged = new List<string>();
+        var tables = new GuideQueryTablesViewModel(GuideQueryContext.Baseline, () => "/proj/p.fwdata", (_, _) => Task.FromResult(Answer(BaselineAnswer())), null)
+        {
+            EvidenceRun = (_, _, _) => Task.FromResult(Result(GuideEvidenceStatus.Ready, Table(true), "x")),
+            SaveTable = (queryId, _) =>
+            {
+                staged.Add(queryId);
+                return Task.FromResult(CommandOutcome<GdrRefreshTablesResponse>.Success(new GdrRefreshTablesResponse("d", [new GdrRefreshedSection("GDR-2", "GDR-2",
+                    [new GdrRefreshedTable(queryId, "saved", "", 2, 2)])], 1, [])));
+            },
+        };
+        tables.Show(GuideQueryDocument.From(Lines));
+        await tables.Running;
+        var block = Assert.Single(tables.Blocks);
+        Assert.Empty(staged);
+        Assert.True(block.OffersSaveTable);
+
+        await block.SaveTableCommand.ExecuteAsync(null);
+
+        Assert.Equal(["ev"], staged);
+        Assert.Contains("2 of 2", block.Notice, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ABlockHasNoSaveTableWhenTheWindowCannotStageOne()
+    {
+        var (block, _) = await Shown(() => Result(GuideEvidenceStatus.Ready, Table(true), "x"));
+        Assert.False(block.OffersSaveTable);
     }
 
     [Fact]

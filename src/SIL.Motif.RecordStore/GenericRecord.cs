@@ -24,6 +24,11 @@ public sealed class GenericRecord : IObjectBase<GenericRecord>
     /// <summary>A stored snapshot not yet decoded; only the verified read's parallel decoder ever sees this placeholder.</summary>
     internal byte[]? Encoded { get; init; }
 
+    /// <summary>The imported native member order for a list field, or null once a list operation has committed on it (the vector is then stale) or none was captured.</summary>
+    internal System.Collections.Immutable.ImmutableArray<Guid>? ImportVector(int field) =>
+        Lists.TryGetValue(field, out var history) && history.Ops.Count > 0 ? null
+            : Provenance?.Vectors.TryGetValue(field, out var native) == true ? native : null;
+
     internal ListHistory HistoryFor(int field)
     {
         if (Lists.TryGetValue(field, out var history)) return history;

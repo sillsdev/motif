@@ -37,11 +37,29 @@ namespace SIL.TextEditing.Project
 
         public ProjectPathResolver(LcmCache cache) => _cache = cache ?? throw new ArgumentNullException(nameof(cache));
 
+        /// <summary>The objects other files of the same batch create. A link to one is a link to an object that will exist, so it is never taken for a missing one; it has the <c>/objects</c> path.</summary>
+        public RecordBatch? Batch { get; set; }
+
+        bool InBatch(Guid guid) => Batch != null && Batch.NewObjects.ContainsKey(guid);
+
+        readonly HashSet<Guid> _linkedBatch = new HashSet<Guid>();
+
+        /// <summary>The batch objects links read through this resolver have named since <see cref="ClearLinked"/>.</summary>
+        internal IReadOnlyCollection<Guid> LinkedBatchObjects => _linkedBatch;
+
+        internal void ClearLinked() => _linkedBatch.Clear();
+
         public Guid? Resolve(ProjectPath path, out IReadOnlyList<Guid> candidates)
         {
             if (path == null) throw new ArgumentNullException(nameof(path));
             candidates = Array.Empty<Guid>();
-            if (path.ObjectGuid is Guid known) return Exists(known) ? known : (Guid?)null;
+            if (path.ObjectGuid is Guid known)
+            {
+                if (Exists(known)) return known;
+                if (!InBatch(known)) return null;
+                _linkedBatch.Add(known);
+                return known;
+            }
             var matches = Matches(path);
             if (matches.Count == 1) return matches[0];
             candidates = matches;
@@ -50,7 +68,12 @@ namespace SIL.TextEditing.Project
 
         public ProjectPath? PathOf(Guid guid)
         {
-            if (!_cache.ServiceLocator.ObjectRepository.TryGetObject(guid, out var item)) return null;
+            if (!_cache.ServiceLocator.ObjectRepository.TryGetObject(guid, out var item))
+            {
+                if (!InBatch(guid)) return null;
+                _linkedBatch.Add(guid);
+                return ProjectPath.ForObject(guid);
+            }
             switch (item)
             {
                 case ILexEntry entry:
@@ -82,7 +105,8 @@ namespace SIL.TextEditing.Project
         }
 
         public string? ToolOf(Guid guid) =>
-            _cache.ServiceLocator.ObjectRepository.TryGetObject(guid, out var item) && item is ILexEntry ? "lexiconEdit" : null;
+            _cache.ServiceLocator.ObjectRepository.TryGetObject(guid, out var item) ? item is ILexEntry ? "lexiconEdit" : null
+            : Batch != null && Batch.NewObjects.TryGetValue(guid, out var batchClass) && batchClass == "LexEntry" ? "lexiconEdit" : null;
 
         /// <summary>What the object is, or null when the project has no such object.</summary>
         public ProjectObjectDescription? Describe(Guid guid)

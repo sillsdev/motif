@@ -154,6 +154,12 @@
           "helpTopic": "motif help guide list"
         },
         {
+          "name": "guide refresh-tables",
+          "summary": "Runs each motif query corpus forms block of a Grammar Guide section, or of every section, read-on...",
+          "gate": "Advanced AI",
+          "helpTopic": "motif help guide refresh-tables"
+        },
+        {
           "name": "guide show",
           "summary": "Reads one Grammar Guide section from the current Baseline.",
           "gate": "Released",
@@ -222,6 +228,17 @@
           "summary": "Records a rule-hypothesis-test result for a hypothesis from the JSON that control_test.py prints,...",
           "gate": "Released",
           "helpTopic": "motif help hypothesis test"
+        }
+      ]
+    },
+    {
+      "group": "id",
+      "verbs": [
+        {
+          "name": "id convert",
+          "summary": "Prints each id in both forms: the canonical id a Proposal names and the guid a project file stores.",
+          "gate": "Released",
+          "helpTopic": "motif help id convert"
         }
       ]
     },

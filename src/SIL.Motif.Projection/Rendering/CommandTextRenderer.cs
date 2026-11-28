@@ -86,30 +86,45 @@ public static class CommandTextRenderer
             using var extensions = JsonDocument.Parse(projection.ExtensionsJson);
             sb.AppendLine($"  extensions:          {JsonSerializer.Serialize(extensions.RootElement)}");
         }
-        sb.AppendLine(projection.OperationTotal is { } operationTotal && projection.OperationOffset is { } operationOffset
-            ? (projection.Operations.Count == 0
-                ? $"  operations (none at offset {operationOffset:N0}; {operationTotal:N0} in all):"
-                : $"  operations (showing {operationOffset + 1:N0}-{operationOffset + projection.Operations.Count:N0} of {operationTotal:N0}):")
-            : $"  operations ({projection.Operations.Count}):");
-        foreach (var op in projection.Operations)
+        if (projection.Records is { } records)
         {
-            sb.AppendLine($"    {op.OperationId}  ({op.Kind})");
-            if (op.Target is not null)
-                sb.AppendLine($"      target:    {op.Target}");
-            if (op.EntityId is not null)
-                sb.AppendLine($"      entityId:  {op.EntityId}");
-            if (op.DependsOn.Count > 0)
-                sb.AppendLine($"      dependsOn: {string.Join(", ", op.DependsOn)}");
-            if (op.AfterJson is not null)
-                sb.AppendLine($"      after:     {op.AfterJson}");
-            if (op.Citation is not null)
-                sb.AppendLine($"      cites:     {op.Citation}");
-            foreach (var current in op.Current ?? [])
-                sb.AppendLine($"      current:   {current.Field} {JsonSerializer.Serialize(current.Value)}");
+            var recordOffset = projection.OperationOffset ?? 0;
+            sb.AppendLine(projection.RecordTotal is { } recordTotal && projection.OperationOffset is not null
+                ? $"  records (showing {(records.Count == 0 ? 0 : recordOffset + 1):N0}-{recordOffset + records.Count:N0} of {recordTotal:N0}; {projection.OperationTotal:N0} operations):"
+                : $"  records ({records.Count}; {projection.OperationTotal:N0} operations):");
+            foreach (var row in records)
+                sb.AppendLine($"    {row.Path}  {row.Change}  {row.Kind}  {row.Record}  operations {row.Operations?.ToString() ?? "?"}  batchEdges {row.BatchEdges}" +
+                    (row.Code is null ? "" : "  " + row.Code));
+            if (projection.NextOffset is { } nextRecord)
+                sb.AppendLine("  more records: " + (projection.NextStep ?? $"--offset {nextRecord} --limit {records.Count}") + ", or --all or --json for every record");
+        }
+        else
+        {
+            sb.AppendLine(projection.OperationTotal is { } operationTotal && projection.OperationOffset is { } operationOffset
+                ? (projection.Operations.Count == 0
+                    ? $"  operations (none at offset {operationOffset:N0}; {operationTotal:N0} in all):"
+                    : $"  operations (showing {operationOffset + 1:N0}-{operationOffset + projection.Operations.Count:N0} of {operationTotal:N0}):")
+                : $"  operations ({projection.Operations.Count}):");
+            foreach (var op in projection.Operations)
+            {
+                sb.AppendLine($"    {op.OperationId}  ({op.Kind})");
+                if (op.Target is not null)
+                    sb.AppendLine($"      target:    {op.Target}");
+                if (op.EntityId is not null)
+                    sb.AppendLine($"      entityId:  {op.EntityId}");
+                if (op.DependsOn.Count > 0)
+                    sb.AppendLine($"      dependsOn: {string.Join(", ", op.DependsOn)}");
+                if (op.AfterJson is not null)
+                    sb.AppendLine($"      after:     {op.AfterJson}");
+                if (op.Citation is not null)
+                    sb.AppendLine($"      cites:     {op.Citation}");
+                foreach (var current in op.Current ?? [])
+                    sb.AppendLine($"      current:   {current.Field} {JsonSerializer.Serialize(current.Value)}");
         }
         if (projection.NextOffset is { } nextOperation)
             sb.AppendLine("  more operations: " + (projection.NextStep ?? $"--offset {nextOperation} --limit {projection.Operations.Count}") +
                 ", or --all or --json for every operation");
+        }
         if (projection.CurrentUnavailable is not null)
             sb.AppendLine($"  currentUnavailable:  {projection.CurrentUnavailable}");
         if (projection.AppliedRecord is { } applied)

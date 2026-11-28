@@ -67,7 +67,7 @@ public sealed class DecisionEvidenceToolTests
             foreach (var tier in new[] { "undecided", "ill-formed", "ill-formed", "undecided", "ill-formed" })
                 subjects.Add(Stage(project, tier));
             var context = new ServerContext(project, "1.0", new NoRunnerLauncher(
-                new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(null),
+                new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(),
                 ToolProfile.Load(ShippedProfile()), TextWriter.Null, advancedAiModeEnabled: true);
             var tools = MotifMcpServer.Expose(ToolProfile.Load(ShippedProfile()));
 
@@ -102,7 +102,7 @@ public sealed class DecisionEvidenceToolTests
                 new KnownProjectRegistry(machine).Record(ProjectWorkspaceKey.Compute(
                     new ProjectLocator(project, "project")), project, DateTimeOffset.UtcNow);
             var context = new ServerContext(project, "1.0", new NoRunnerLauncher(
-                new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(null),
+                new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(),
                 ToolProfile.Load(ShippedProfile()), TextWriter.Null, advancedAiModeEnabled: true);
 
             var result = await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Load(ShippedProfile())), Tool,
@@ -133,7 +133,7 @@ public sealed class DecisionEvidenceToolTests
                     new ProjectLocator(project, "project")), project, DateTimeOffset.UtcNow);
             foreach (var tier in new[] { "undecided", "ill-formed", "ill-formed" }) Stage(project, tier);
             var context = new ServerContext(project, "1.0", new NoRunnerLauncher(
-                new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(null),
+                new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(),
                 ToolProfile.Load(ShippedProfile()), TextWriter.Null, advancedAiModeEnabled: true);
             var tools = MotifMcpServer.Expose(ToolProfile.Load(ShippedProfile()));
             const string export = "motif_evidence_export";
@@ -196,7 +196,7 @@ public sealed class DecisionEvidenceToolTests
                     new ProjectLocator(project, "project")), project, DateTimeOffset.UtcNow);
             for (var index = 0; index < 52; index++) Stage(project, "undecided");
             var context = new ServerContext(project, "1.0", new NoRunnerLauncher(
-                new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(null),
+                new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(),
                 ToolProfile.Load(ShippedProfile()), TextWriter.Null, advancedAiModeEnabled: true);
             var tools = MotifMcpServer.Expose(ToolProfile.Load(ShippedProfile()));
 
@@ -227,7 +227,7 @@ public sealed class DecisionEvidenceToolTests
                     new ProjectLocator(project, "project")), project, DateTimeOffset.UtcNow);
             Stage(project, "undecided");
             var context = new ServerContext(project, "1.0", new NoRunnerLauncher(
-                new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(null),
+                new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)), new ActivityLog(),
                 ToolProfile.Load(ShippedProfile()), TextWriter.Null, advancedAiModeEnabled: true);
             var tools = MotifMcpServer.Expose(ToolProfile.Load(ShippedProfile()));
             var limit = (System.Text.Json.Nodes.JsonObject)tools.Single(t => t.Name == Tool).Tool.InputSchema["properties"]!["limit"]!;

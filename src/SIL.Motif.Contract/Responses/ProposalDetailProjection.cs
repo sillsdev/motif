@@ -160,6 +160,17 @@ public sealed record ProposalDetailProjection(
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? RecordImportRefused { get; init; }
 
+    /// <summary>
+    /// The record files of a record import, one row each, when <c>show</c> was asked to group by record; null otherwise.
+    /// Then <see cref="Operations"/> is empty and <see cref="OperationTotal"/> counts the operations the rows stand for.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<ProposalRecordRow>? Records { get; init; }
+
+    /// <summary>Every row of <see cref="Records"/> after the filter, when it is one page of them; null when it is not a grouped read.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? RecordTotal { get; init; }
+
     /// <summary>Every operation the Proposal holds, when <see cref="Operations"/> is one page of them; null when it is all of them.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? OperationTotal { get; init; }
@@ -185,11 +196,21 @@ public sealed record ProposalDetailProjection(
         NextOffset is { } next ? this with { NextStep = step(next) } : this;
 
     /// <summary>Every operation, with <see cref="OperationTotal"/> set so a reader can check the list against the count.</summary>
-    public ProposalDetailProjection WithTotal() => this with { OperationTotal = Operations.Count };
+    public ProposalDetailProjection WithTotal() =>
+        Records is null ? this with { OperationTotal = Operations.Count } : this with { RecordTotal = Records.Count };
 
     /// <summary>One page of the operations, with the total and the offset that starts the next page.</summary>
     public ProposalDetailProjection Window(int offset, int limit)
     {
+        if (Records is not null)
+        {
+            var rows = ResultPaging.Window(Records, offset, limit);
+            return this with
+            {
+                Records = rows, RecordTotal = Records.Count, OperationOffset = offset,
+                NextOffset = ResultPaging.NextOffset(offset, rows.Count, Records.Count),
+            };
+        }
         var page = ResultPaging.Window(Operations, offset, limit);
         return this with
         {

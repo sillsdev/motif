@@ -29,11 +29,9 @@ internal sealed record VerifiedPoint(StoreState State, RecordSource Records, Ref
     SetDigest Snapshot, IndexDigest IndexDigest)
 {
     public ReplayState? Replay { get; init; }
-    /// <summary>Chunk digests and headers from the decode that built this point; kept only when a store older than format 7 needs them to upgrade.</summary>
+    /// <summary>Chunk digests and headers from the decode that built this point; kept for verification, which compares them with the stored tables.</summary>
     internal DerivedSnapshot? Derived { get; init; }
     public bool IndexTrusted { get; init; } = true;
-    /// <summary>The first native record failing the provenance proof, computed only for a store older than format 7.</summary>
-    internal Guid? UnprovenNative { get; init; }
     public Guid? ProjectId { get; init; }
     public GenericRecord[] Anchors { get; init; } = [];
     public GenericRecord[] WritingSystems { get; init; } = [];
@@ -79,7 +77,7 @@ internal sealed record ReferenceProjection(NativeReference[] Edges, ReferenceRec
             else
             {
                 var items = value.EnumerateArray().Select(v => v.GetGuid()).ToArray();
-                if (source.Provenance?.Vectors.TryGetValue(id, out var native) == true)
+                if (source.ImportVector(id) is { } native)
                 {
                     var matches = type is 27 or 28
                         ? items.AsSpan().SequenceEqual(native.AsSpan())

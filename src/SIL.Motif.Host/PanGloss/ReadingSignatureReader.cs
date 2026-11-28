@@ -120,8 +120,9 @@ public sealed class ReadingSignatureReader(LcmCache? cache)
             candidates.Length > 0 ? ReadingSenseStatus.Ambiguous : ReadingSenseStatus.Unresolved;
         var morph = new ReadingMorpheme(Id(entry ?? lexicalEntry), senseId, candidates, status,
             msaId, formId, inflTypeId, msa is IMoStemMsa, derivation, verified ? features.ToImmutable() : []);
+        // Sense ambiguity does not stop a morpheme being lexicon-backed.
         return new Resolved(morph, verified, verified && form is not null && msa is not null &&
-            status == ReadingSenseStatus.Resolved);
+            status != ReadingSenseStatus.Unresolved);
     }
 
     private static bool ReadFeatures(IMoMorphSynAnalysis msa, ImmutableArray<ReadingFeatureValue>.Builder features) =>

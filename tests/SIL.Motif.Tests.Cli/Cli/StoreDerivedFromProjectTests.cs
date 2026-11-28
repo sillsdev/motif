@@ -92,7 +92,7 @@ public sealed class StoreDerivedFromProjectTests : IDisposable
         Assert.Equal(0, finalize.ExitCode);
         var proposalId = ExtractProposalId(finalize.Output);
 
-        var listFromB = RunCli(_cwdB, $"list --project \"{_fwDataPath}\"");
+        var listFromB = RunCli(_cwdB, $"proposals --project \"{_fwDataPath}\" --include-set-aside");
         Assert.Equal(0, listFromB.ExitCode);
         Assert.Contains(proposalId, listFromB.Output);
 

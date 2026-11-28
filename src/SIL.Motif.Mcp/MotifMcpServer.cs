@@ -16,7 +16,6 @@ namespace SIL.Motif.Mcp;
 
 /// <summary>What <c>motif mcp</c> was asked to serve.</summary>
 /// <param name="Profile">A profile file or shipped profile name; <see langword="null"/> uses the built-in profile.</param>
-/// <param name="ActivityLogPath">A JSON Lines file every tool call is appended to, or <see langword="null"/>.</param>
 /// <param name="Runner">
 /// What wakes the job runner after a job is queued, or <see langword="null"/> for the one the environment selects.
 /// </param>
@@ -26,10 +25,11 @@ namespace SIL.Motif.Mcp;
 /// The environment variables the server's settings read (worker root, test timeouts), or <see langword="null"/>
 /// for the process's own. An in-process host gives its server its own without touching the process.
 /// </param>
+/// <param name="Calls">The daily call log each tool call is written to, or <see langword="null"/> for none.</param>
 public sealed record McpLaunchOptions(
-    string? Profile = null, string? ActivityLogPath = null, IJobRunnerLauncher? Runner = null,
+    string? Profile = null, IJobRunnerLauncher? Runner = null,
     bool AdvancedAiModeEnabled = false, string? ParserPath = null,
-    IReadOnlyDictionary<string, string?>? Environment = null);
+    IReadOnlyDictionary<string, string?>? Environment = null, CallLog? Calls = null);
 
 /// <summary>
 /// The MCP server over Motif's command catalog: it lists the tools a profile selects and runs each call
@@ -53,7 +53,7 @@ public static class MotifMcpServer
         using var ambient = options.Environment is null ? null : AmbientEnvironment.Push(options.Environment);
         var profile = options.Profile is null ? ToolProfile.Builtin : ToolProfile.Load(options.Profile);
         var context = new ServerContext(string.Empty, MotifProductVersion.CurrentText,
-            options.Runner ?? ProcessRunnerLauncher.FromEnvironment(), new ActivityLog(options.ActivityLogPath), profile, log, options.AdvancedAiModeEnabled, options.ParserPath);
+            options.Runner ?? ProcessRunnerLauncher.FromEnvironment(), new ActivityLog(options.Calls), profile, log, options.AdvancedAiModeEnabled, options.ParserPath);
         var policy = ExposurePolicy.Create(new ExposureSettings(
             new SIL.Motif.Commands.Catalog.CommandSurfacePolicy(false, options.AdvancedAiModeEnabled), profile), AgentTools.All);
         var exposed = policy.Tools;
@@ -211,7 +211,7 @@ public static class MotifMcpServer
         context.Activity.Record(new ActivityEntry(DateTimeOffset.UtcNow, tool?.Tool.Name ?? name, args,
             result.IsError == true, outcome.Refusal?.Code, ResultBytes(result), clock.ElapsedMilliseconds,
             outcome.JobId, context.Profile.Name, outcome.FindComposer,
-            tool is null ? [] : ComposerVerbs(tool.Tool, args)),
+            tool is null ? [] : ComposerVerbs(tool.Tool, args), Reason: outcome.Refusal?.Reason),
             outcome.Refusal is { } refused ? RefusalMapper.NextFor(refused, tools, args) : outcome.Next);
         return result;
     }

@@ -105,7 +105,7 @@ public sealed class RecordImportToolTests(PristineProjectFixture pristine) : IDi
 
     private static ServerContext Context(string path, ToolProfile profile) =>
         new(path, "0.1.0", new NoRunnerLauncher(new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)),
-            new ActivityLog(null), profile, TextWriter.Null, advancedAiModeEnabled: true);
+            new ActivityLog(), profile, TextWriter.Null, advancedAiModeEnabled: true);
 
     private static Dictionary<string, JsonElement> Args(params (string Name, object Value)[] arguments) =>
         arguments.ToDictionary(item => item.Name, item => JsonSerializer.SerializeToElement(item.Value));
@@ -292,7 +292,7 @@ public sealed class RecordImportToolTests(PristineProjectFixture pristine) : IDi
 
         var profile = new ToolProfile("import-shape", null, null, "concise", [], AllTools: true);
         var context = new ServerContext(path, "0.1.0", new NoRunnerLauncher(new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)),
-            new ActivityLog(null), profile, TextWriter.Null, advancedAiModeEnabled: true);
+            new ActivityLog(), profile, TextWriter.Null, advancedAiModeEnabled: true);
         var called = await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(profile), "motif_import_record",
             new Dictionary<string, JsonElement>
             {

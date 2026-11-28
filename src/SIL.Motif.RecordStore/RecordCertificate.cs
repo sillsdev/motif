@@ -46,34 +46,13 @@ internal sealed class StoreCertificate
     public bool WriteInProgress { get; set; }
 }
 
-/// <summary>One format upgrade: the format the store had, the one it has now, how long the upgrading transaction ran, and how much of that wrote the derived tables.</summary>
-public sealed record StoreUpgrade(int FromFormat, int ToFormat, TimeSpan Elapsed, TimeSpan BackfillElapsed);
-
 /// <summary>Points in a guarded write where a test can stop it; a stop here is what a crash would leave.</summary>
 public enum WriteStage { HistoryWritten, StateWritten, Committed }
 
 public sealed partial class RecordStore
 {
-    private bool upgrading;
-    private bool Certifiable => format >= CertificateFormat || upgrading;
-
     /// <summary>Whether this handle verified history itself, trusted a certificate, or has done neither.</summary>
     public StoreVerification Verification { get; private set; }
-
-    /// <summary>True once a read-write operation by this handle upgraded the store; the same transaction backfilled what the new format adds.</summary>
-    public bool UpgradedFormat { get; private set; }
-
-    /// <summary>What the last upgrade by this handle was and how long it held the transaction; null when it has not upgraded.</summary>
-    public StoreUpgrade? LastUpgrade { get; private set; }
-
-    // Set during an upgrade to format 7: the transaction must write the derived tables before it commits.
-    private bool backfillDerived;
-    private int upgradeFrom;
-    private TimeSpan backfillTime;
-    private System.Diagnostics.Stopwatch? upgradeClock;
-
-    /// <summary>Told before a one-time cost starts, for example the format 5 to 6 upgrade; the write is busy until it returns.</summary>
-    public Action<string>? Progress { get; set; }
 
     /// <summary>Test hook: called as a guarded write passes each stage; throwing from it stops the write there.</summary>
     internal Action<WriteStage>? WriteStageReached { get; set; }
@@ -91,7 +70,7 @@ public sealed partial class RecordStore
     internal int HistoryScans { get; private set; }
 
     internal async Task<StoreCertificate?> CertificateAsync(CancellationToken ct = default) =>
-        Certifiable ? await database.Set<StoreCertificate>().AsNoTracking().SingleOrDefaultAsync(ct) : null;
+        await database.Set<StoreCertificate>().AsNoTracking().SingleOrDefaultAsync(ct);
 
     // The first commit row names the store file: another file's certificate carries another identity.
     private async Task<string?> StoreIdentityAsync(CancellationToken ct = default)
@@ -115,14 +94,13 @@ public sealed partial class RecordStore
 
     private StoreVerification OpenVerification(StoreState state)
     {
-        if (!Certifiable) return StoreVerification.Uncertified;
         var certificate = database.Set<StoreCertificate>().AsNoTracking().SingleOrDefault();
         if (certificate is null) return StoreVerification.Uncertified;
         var first = database.Database.SqlQuery<string>($"SELECT hex(Id) || '/' || Hash AS Value FROM Commits ORDER BY rowid LIMIT 1").ToList();
         var identity = first.Count == 0 ? null
             : Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes("motif-record-store-identity/" + first[0])));
-        // A format 7 store is certified only while its binding row copies the state row.
-        if (format >= DerivedFormat && !BindingMatches(state)) return StoreVerification.Uncertified;
+        // A store is certified only while its binding row copies the state row.
+        if (!BindingMatches(state)) return StoreVerification.Uncertified;
         return Trusted(certificate, state, identity, ownWriteFlag) ? StoreVerification.Certified : StoreVerification.Uncertified;
     }
 
@@ -132,7 +110,6 @@ public sealed partial class RecordStore
     // The flag commits on its own, before the write's transaction, so a crash leaves it set.
     private async Task<WriteStart> BeginWriteAsync()
     {
-        if (!Certifiable) return new(null, null, false);
         var certificate = await CertificateAsync();
         if (certificate is null) return new(null, null, false);
         var identity = await StoreIdentityAsync();
@@ -177,7 +154,6 @@ public sealed partial class RecordStore
     /// <summary>Stages the certificate for the state row's new values; one SaveChanges commits both.</summary>
     private async Task StageCertificateAsync(StoreState state, ReplayState replay, string provenance)
     {
-        if (!Certifiable) return;
         // An empty import has no commit to name the file, so there is nothing a certificate could bind to.
         if (await StoreIdentityAsync() is not { } identity) return;
         var certificate = await database.Set<StoreCertificate>().SingleOrDefaultAsync();
@@ -194,39 +170,9 @@ public sealed partial class RecordStore
         certificate.WriteInProgress = false;
     }
 
-    private const string CertificateTable = """
-        CREATE TABLE IF NOT EXISTS "RecordStoreCertificate" (
-            "Id" INTEGER NOT NULL CONSTRAINT "PK_RecordStoreCertificate" PRIMARY KEY, "Revision" TEXT NOT NULL,
-            "ReplayDigest" TEXT NOT NULL, "SnapshotDigest" TEXT NOT NULL, "ContentDigest" TEXT NOT NULL,
-            "IndexDigest" TEXT NOT NULL, "CommitRows" TEXT NOT NULL, "ChangeRows" TEXT NOT NULL,
-            "Provenance" TEXT NOT NULL, "StoreId" TEXT NOT NULL, "WriteInProgress" INTEGER NOT NULL)
-        """;
-
     internal const string IdentityTable = """
         CREATE TABLE IF NOT EXISTS RecordContentIdentity (Identity BLOB NOT NULL PRIMARY KEY, Id INTEGER NOT NULL) WITHOUT ROWID
         """;
-
-    /// <summary>Upgrades an older store to format 7 in the caller's transaction; a rollback undoes it.</summary>
-    private async Task UpgradeInTransactionAsync()
-    {
-        if (readOnly || format >= StoreFormat || upgrading || format == LegacyStoreFormat) return;
-        upgrading = true;
-        upgradeFrom = format;
-        upgradeClock = System.Diagnostics.Stopwatch.StartNew();
-        if (format == PackedStoreFormat)
-        {
-            await database.Database.ExecuteSqlRawAsync(CertificateTable);
-            await database.Database.ExecuteSqlRawAsync(IdentityTable);
-            Progress?.Invoke("Upgrading the store to format 6: indexing its stored content once.");
-            await WriteIdentityTableAsync(content.AllIdentities());
-            content.PersistIdentities = true;
-            content.PersistedLookup = LookupIdentity;
-        }
-        Progress?.Invoke("Upgrading the store to format 7: writing its record headers, chunk digests and publication binding.");
-        CreateDerivedTables(database);
-        await database.Database.ExecuteSqlRawAsync($"PRAGMA user_version={StoreFormat}");
-        backfillDerived = true;
-    }
 
     // Replaces the identity table inside the current transaction, in multi-row statements.
     private async Task WriteIdentityTableAsync(IEnumerable<KeyValuePair<ContentKey, int>> source)
@@ -289,7 +235,6 @@ public sealed partial class RecordStore
     public async Task RebuildContentIdentitiesAsync(CancellationToken ct = default)
     {
         if (readOnly) throw new InvalidOperationException("This store handle is read-only.");
-        if (!Certifiable) throw new InvalidOperationException("A format 5 store has no identity table; its first write upgrades it.");
         using var writer = AcquireWriter();
         point = null;
         await PublishedStateAsync(ct);
@@ -300,31 +245,9 @@ public sealed partial class RecordStore
         await transaction.CommitAsync(ct);
     }
 
-    private void CompleteUpgrade()
-    {
-        if (!upgrading) return;
-        UpgradedFormat = true;
-        format = StoreFormat;
-        upgrading = false;
-        backfillDerived = false;
-        LastUpgrade = new(upgradeFrom, StoreFormat, upgradeClock?.Elapsed ?? TimeSpan.Zero, backfillTime);
-    }
-
-    private void AbandonUpgrade()
-    {
-        if (!upgrading) return;
-        upgrading = false;
-        backfillDerived = false;
-        if (format < CertificateFormat)
-        {
-            content.PersistIdentities = false;
-            content.PersistedLookup = null;
-        }
-    }
-
     private void UseIdentityTable()
     {
-        if (readOnly || format < CertificateFormat) return;
+        if (readOnly) return;
         content.PersistIdentities = true;
         content.PersistedLookup = LookupIdentity;
     }
@@ -344,21 +267,12 @@ public sealed partial class RecordStore
         finally { database.Database.CloseConnection(); }
     }
 
-    /// <summary>A copy replaced this store's file (regenerate, bootstrap); follow the format it now has.</summary>
-    private void RefreshFormat(string path)
-    {
-        var stored = ReadFormat(RecordSqlite.ConnectionString(path));
-        if (stored < CertificateFormat || stored > StoreFormat || stored <= format) return;
-        format = stored;
-        UseIdentityTable();
-    }
-
     /// <summary>
     /// Full verification: rescans every history row, decodes and digests every snapshot, re-reads the content and checks the
     /// index, then compares each digest with the state row and the certificate. A disagreement throws and names the table
     /// at fault; nothing is changed. When everything agrees a writing handle re-certifies the point (provenance
-    /// <c>full-verify</c>, crash flag cleared; a format 5 store is upgraded by this write) and every handle reports
-    /// <see cref="StoreVerification.Full"/>. It returns the exact state it verified. A reader of an older format that only reads is never upgraded by reading.
+    /// <c>full-verify</c>, crash flag cleared) and every handle reports
+    /// <see cref="StoreVerification.Full"/>. It returns the exact state it verified.
     /// </summary>
     public Task VerifyAsync(CancellationToken ct = default) => VerifyCertifyingAsync(ct);
 
@@ -386,30 +300,19 @@ public sealed partial class RecordStore
                 // A crashed list operation commits history without moving the state row.
                 if (await CommitRevisionAsync(ct) != state.Revision)
                     throw new InvalidOperationException("History changed while the store was being verified and is not published; the store was not re-certified.");
-                // An older store whose records fail the provenance proof is not upgraded: it stays on the full path.
-                var unproven = format < StoreFormat ? acquired.UnprovenNative : null;
-                if (unproven is null)
-                {
-                    await UpgradeInTransactionAsync();
-                    if (backfillDerived) WriteDerived(state, acquired.Derived!.Chunks, acquired.Derived.Headers);
-                }
-                else Progress?.Invoke($"{NativeUsageSchema.ProvenanceLimitation}: record {unproven:D}; the store is not upgraded and is read on the full path.");
-                if (unproven is null || format >= CertificateFormat) await StageCertificateAsync(state, replay, CertificateProvenance.FullVerify);
+                await StageCertificateAsync(state, replay, CertificateProvenance.FullVerify);
                 await database.SaveChangesAsync(ct);
                 database.ChangeTracker.Clear();
                 await transaction.CommitAsync(ct);
-                CompleteUpgrade();
             }
             catch
             {
-                AbandonUpgrade();
                 database.ChangeTracker.Clear();
                 await transaction.RollbackAsync(CancellationToken.None);
                 throw;
             }
         }
-        // A store left un-upgraded keeps its decode tables so the next write can upgrade it from this point.
-        point = acquired with { Replay = replay, Derived = acquired.UnprovenNative is null ? null : acquired.Derived };
+        point = acquired with { Replay = replay, Derived = null };
         Verification = StoreVerification.Full;
         if (AfterVerifyCertified is { } certified) await certified();
         return state;
@@ -445,21 +348,18 @@ public sealed partial class RecordStore
                 contentDigest = fresh.Digest(ct);
             }
             catch (InvalidDataException failure) { findings.Add("RecordContent: " + failure.Message); }
-            if (Certifiable)
+            try
             {
-                try
-                {
-                    var expected = new RecordContent();
-                    expected.Load(await database.Set<ContentRow>().AsNoTracking().ToArrayAsync(ct), ct);
-                    var wanted = expected.AllIdentities().Select(pair => (Bytes: pair.Key.ToBytes(), Id: pair.Value)).ToArray();
-                    Array.Sort(wanted, static (a, b) => a.Bytes.AsSpan().SequenceCompareTo(b.Bytes));
-                    var held = ReadIdentityTable(ct);
-                    if (held.Count != wanted.Length || held.Where((row, i) => row.Id != wanted[i].Id || !row.Bytes.AsSpan().SequenceEqual(wanted[i].Bytes)).Any())
-                        findings.Add($"RecordContentIdentity: it holds {held.Count} identities that do not match the {wanted.Length} stored content values; run RebuildContentIdentitiesAsync");
-                }
-                catch (InvalidDataException) { }
+                var expected = new RecordContent();
+                expected.Load(await database.Set<ContentRow>().AsNoTracking().ToArrayAsync(ct), ct);
+                var wanted = expected.AllIdentities().Select(pair => (Bytes: pair.Key.ToBytes(), Id: pair.Value)).ToArray();
+                Array.Sort(wanted, static (a, b) => a.Bytes.AsSpan().SequenceCompareTo(b.Bytes));
+                var held = ReadIdentityTable(ct);
+                if (held.Count != wanted.Length || held.Where((row, i) => row.Id != wanted[i].Id || !row.Bytes.AsSpan().SequenceEqual(wanted[i].Bytes)).Any())
+                    findings.Add($"RecordContentIdentity: it holds {held.Count} identities that do not match the {wanted.Length} stored content values; run RebuildContentIdentitiesAsync");
             }
-            if (format >= DerivedFormat && verified?.Derived is { } derived) await AddDerivedFindingsAsync(findings, state, derived, ct);
+            catch (InvalidDataException) { }
+            if (verified?.Derived is { } derived) await AddDerivedFindingsAsync(findings, state, derived, ct);
             if (certificate is not null)
             {
                 if (certificate.Revision != state.Revision) findings.Add("RecordStoreCertificate: its revision differs from RecordStoreState");

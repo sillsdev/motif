@@ -23,7 +23,7 @@ public sealed class OpenRequestsNoticeTests(PristineProjectFixture pristine)
         KnownProjectTestSetup.AssignUniqueTag(RunnerOptions.ResolveRoot(), path, "requests-notice");
         var profile = new ToolProfile("requests", null, null, "concise", [], AllTools: true);
         var context = new ServerContext(path, "1.0", new NoRunnerLauncher(new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)),
-            new ActivityLog(null), profile, TextWriter.Null, advancedAiModeEnabled: true);
+            new ActivityLog(), profile, TextWriter.Null, advancedAiModeEnabled: true);
         var tools = MotifMcpServer.Expose(profile);
 
         var quiet = await Call(context, tools, "motif_proposals", path);

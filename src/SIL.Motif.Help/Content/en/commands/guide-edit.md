@@ -20,6 +20,8 @@ Fenced code blocks, including `motif-query` and `motif-show` blocks, cannot be a
 
 An interlinear example is a fenced div, not a code block, so this command stages it: `::: {.interlinear}`, then the lines `word:`, `morphemes:`, `gloss:` and optionally `translation:`, then `:::`. Write the word and morphemes lines as `[text]{.v}` so they are in the vernacular writing system; the gloss and translation are analysis text. The project keeps the lines as plain paragraphs, and `guide show` folds them back into the block. `guide check` reports morphemes the lexicon lacks and lines whose tokens do not pair up.
 
+A query block's saved table (the caption and table right after the block) is not authored text: this command keeps each block's stored table whatever the Markdown holds, warns when you changed it, and removes it only with its block; `guide refresh-tables` writes it.
+
 This command edits a section that exists in the project's Grammar Guide list; a new section or part is added with `guide add`, and an unknown section is refused as `guide.not-found`.
 
 Availability: `guide edit` needs Advanced AI mode (`motif settings advanced-ai on`); `guide show` is a read and needs no mode; `guide decide` needs `--autonomous`. An agent running the whole loop needs both.

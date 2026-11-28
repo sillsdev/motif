@@ -85,6 +85,7 @@ public sealed class RefusalDefaultReasonTests
         ["agent.identity-conflict"] = "reason not determinable statically: an operation failure raised in the runner with the code leading its message, which carries no FailureReason",
         ["agent.version-conflict"] = "reason not determinable statically: an operation failure raised in the runner with the code leading its message, which carries no FailureReason",
         ["record-import.change-refused"] = "reason not determinable statically: it is only the code of a listed row in RecordImportRefusal, never a refused outcome, and always reports Refused",
+        ["id.invalid"] = "reason not determinable statically: it is the code of one id convert item inside a successful report, never a refused outcome, and the command exits with the invalid-argument code",
         ["record-import.create-shape"] = "reason not determinable statically: the code is chosen from a refusal kind or a lowering site and always reports Refused",
         ["record-import.field-uncovered"] = "reason not determinable statically: RecordLoweringRefusal carries the code chosen at each lowering site and always reports Refused",
         ["record-import.not-executable"] = "reason not determinable statically: RecordLoweringRefusal carries the code chosen at each lowering site and always reports Refused",

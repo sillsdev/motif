@@ -1,0 +1,6 @@
+{
+  "name": "full",
+  "description": "Every tool the server can offer under its own name and text, with the default's instructions and detail. Load with motif mcp --profile full.",
+  "defaultDetail": "concise",
+  "allTools": true
+}

@@ -20,18 +20,16 @@ namespace SIL.Motif.Tests.Mcp;
 public sealed class TrialReviewResourceTests
 {
     [Fact]
-    public async Task ReportAndLegacyDifferenceSelectorsAreDisjointAndTraceIsEffectful()
+    public async Task TheDifferenceToolReadsReportsOnlyAndTraceIsEffectful()
     {
         var tool = AgentTools.All.Single(item => item.Name == "motif_difference");
         Assert.False(tool.ReadOnly);
         Assert.False(tool.Idempotent);
         Assert.NotNull(tool.OutputSchema);
-        var args = new ToolArgs(new System.Text.Json.Nodes.JsonObject
-        {
-            ["proposal"] = "proposal/test", ["report"] = "report/test", ["difference"] = "legacy/test"
-        }, tool.ArgumentNames);
-        var result = await tool.Run(null!, args, CancellationToken.None);
-        Assert.Equal("tool.invalid-argument", result.Refusal!.Code);
+        Assert.DoesNotContain("difference", tool.ArgumentNames);
+        Assert.DoesNotContain("category", tool.ArgumentNames);
+        Assert.DoesNotContain("offset", tool.ArgumentNames);
+        await Task.CompletedTask;
     }
 
     [Fact]

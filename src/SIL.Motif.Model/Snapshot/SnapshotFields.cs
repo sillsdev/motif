@@ -111,7 +111,7 @@ public static partial class SnapshotFields
     /// <summary>The compound rules owned by the project's morphology data, in the order they apply; only creation is staged.</summary>
     public const string MoMorphDataCompoundRules = "grammar/moMorphData/compoundRules";
 
-    /// <summary>The variant and complex-form references owned by a lexical entry; only creation of a variant reference is staged.</summary>
+    /// <summary>The variant and complex-form references owned by a lexical entry; only creation of a variant or complex-form reference is staged.</summary>
     public const string LexEntryEntryRefs = "lexical/lexEntry/entryRefs";
 
     /// <summary>

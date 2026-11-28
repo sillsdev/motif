@@ -1,3 +1,4 @@
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.App.GuideQueries;
 using SIL.Motif.Commands.Queries;
@@ -15,6 +16,20 @@ public sealed partial class FakeCommandClient
         GuideQueryRequests.Add(request);
         return GuideQueryHandler?.Invoke(request, cancellationToken) ?? Refused<FormsQueryResponse>(
             new Refusal("guide-query.not-configured", FailureReason.NotFound, "No Guide query configured."));
+    }
+
+    public int GuideSessionReleases { get; private set; }
+
+    public void ReleaseGuideSession() => GuideSessionReleases++;
+
+    public Func<GdrRefreshTablesRequest, CancellationToken, Task<CommandOutcome<GdrRefreshTablesResponse>>>? RefreshGuideTablesHandler { get; set; }
+    public List<GdrRefreshTablesRequest> RefreshGuideTablesRequests { get; } = [];
+
+    public Task<CommandOutcome<GdrRefreshTablesResponse>> RefreshGuideTablesAsync(GdrRefreshTablesRequest request, CancellationToken cancellationToken)
+    {
+        RefreshGuideTablesRequests.Add(request);
+        return RefreshGuideTablesHandler?.Invoke(request, cancellationToken) ?? Refused<GdrRefreshTablesResponse>(
+            new Refusal("guide.not-configured", FailureReason.NotFound, "No table saving configured."));
     }
 
     public Func<string, string, CancellationToken, Task<GuideEvidenceResult>>? GuideEvidenceHandler { get; set; }

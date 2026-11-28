@@ -159,6 +159,13 @@ public sealed record FrozenReviewInputs(
     /// <summary>The gain gate frozen with the Trial; null means the default policy.</summary>
     public GainGatePolicy? GainGate { get; init; }
 
+    /// <summary>
+    /// Whether Motif's own record import wrote every operation of the Proposal, read from the stored Proposal at capture;
+    /// absent in an older capture, which reads as not exempt.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool RecordImport { get; init; }
+
     /// <summary>The Parsimony measures the project opted in to blocking on, frozen with the Trial; null means none.</summary>
     public IReadOnlyList<string>? ParsimonyBlockOn { get; init; }
 

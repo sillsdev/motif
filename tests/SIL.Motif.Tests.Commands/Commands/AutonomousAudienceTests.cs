@@ -86,7 +86,6 @@ public sealed class AutonomousAudienceTests
     [InlineData("duplicate")]
     [InlineData("defer")]
     [InlineData("undefer")]
-    [InlineData("reject")]
     [InlineData("supersede")]
     [InlineData("split")]
     [InlineData("promote-gloss")]

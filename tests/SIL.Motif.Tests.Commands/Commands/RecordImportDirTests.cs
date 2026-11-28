@@ -4,6 +4,7 @@ using SIL.LCModel.DomainServices;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Records;
+using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -27,6 +28,7 @@ public sealed class RecordImportDirTests(PristineProjectFixture pristine) : IDis
     {
         RecordImportCommand.FileReaderOverride = null;
         RecordImportCommand.ScratchProbe = null;
+        RecordImportCommand.CapsOverride = null;
         try { Directory.Delete(_root, recursive: true); }
         catch (IOException) { }
     }
@@ -347,26 +349,6 @@ public sealed class RecordImportDirTests(PristineProjectFixture pristine) : IDis
     }
 
     [Fact]
-    public void AFileThatRefersToAnotherFilesNewRecordIsRefusedWithAClearCode()
-    {
-        var seed = Seeded(2);
-        var main = WriteFile(seed, seed.Entries[0], "main.fw.md", asNew: true);
-        var mainText = File.ReadAllText(main);
-        var newMsa = new Regex("guid: \"([0-9a-f-]{36})\"\\s+class: \"MoStemMsa\"").Match(mainText).Groups[1].Value;
-        // The second file's sense points at an analysis that only the first file creates.
-        var other = WriteFile(seed, seed.Entries[1], "other.fw.md", asNew: true);
-        var otherText = File.ReadAllText(other);
-        var own = new Regex("morpho-syntax-analysis: \"\\[zznoun\\]\\(/objects/([0-9a-f-]{36})\\)").Match(otherText).Groups[1].Value;
-        var lines = otherText.Split('\n').Select(line => line.Contains("morpho-syntax-analysis: \"[") ? line.Replace(own, newMsa, StringComparison.OrdinalIgnoreCase) : line);
-        File.WriteAllText(other, string.Join('\n', lines));
-
-        var rows = AllRows(seed, Dry(seed));
-
-        Assert.Equal("created", rows["main.fw.md"].Status);
-        Assert.Equal(("refused", RefusalCodes.RecordImportReferenceToNewInBatch), (rows["other.fw.md"].Status, rows["other.fw.md"].Code));
-    }
-
-    [Fact]
     public void RowPagesAreBoundedAndARefusedOnlyPageListsJustTheRefusedRows()
     {
         var seed = MixedFolder();
@@ -429,6 +411,49 @@ public sealed class RecordImportDirTests(PristineProjectFixture pristine) : IDis
     }
 
     [Fact]
+    public void ShowGroupsAStagedFolderByRecordWithSortAndRefusedFilter()
+    {
+        var seed = MixedFolder();
+        Assert.True(RecordImportCommand.Run(Dry(seed, "grouped")).Succeeded);
+
+        var plain = ProposalCommands.Show(new(seed.Project, Version, "grouped")).Value!;
+        var grouped = ProposalCommands.Show(new(seed.Project, Version, "grouped", Records: new ShowRecordGrouping())).Value!;
+
+        Assert.Empty(grouped.Operations);
+        Assert.Null(grouped.ExtensionsJson);
+        Assert.Equal(plain.Operations.Count, grouped.OperationTotal);
+        Assert.Equal(9, grouped.Records!.Count);
+        Assert.Equal((3, 2, 1, 3), (grouped.Records.Count(row => row.Change == "create"), grouped.Records.Count(row => row.Change == "update"),
+            grouped.Records.Count(row => row.Change == "unchanged"), grouped.Records.Count(row => row.Change == "refused")));
+        Assert.Equal(plain.Operations.Count, grouped.Records.Sum(row => row.Operations ?? 0));
+        Assert.All(grouped.Records.Where(row => row.Change is "create" or "update"), row => Assert.True(row.Operations > 0));
+        Assert.All(grouped.Records, row => Assert.False(row.HasBatchEdges));
+        Assert.Equal(grouped.Records.Count(row => row.Change == "refused"),
+            ProposalCommands.Show(new(seed.Project, Version, "grouped", Records: new ShowRecordGrouping("path", true))).Value!.Records!.Count);
+        var byKind = ProposalCommands.Show(new(seed.Project, Version, "grouped", Records: new ShowRecordGrouping("kind"))).Value!.Records!;
+        Assert.Equal(byKind.OrderBy(row => row.Kind, StringComparer.Ordinal).Select(row => row.Kind), byKind.Select(row => row.Kind));
+        var page = grouped.Window(0, 4);
+        Assert.Equal((4, 9, 4), (page.Records!.Count, page.RecordTotal, page.NextOffset));
+    }
+
+    [Fact]
+    public void ShowByRecordRefusesAProposalThatIsNotARecordImportAndAnUnknownOrder()
+    {
+        var seed = MixedFolder();
+        Assert.True(RecordImportCommand.Run(Dry(seed, "grouped")).Succeeded);
+        Assert.True(ProposalCommands.New(new(seed.Project, Version, "plain", "Not an import")).Succeeded);
+
+        var plain = ProposalCommands.Show(new(seed.Project, Version, "plain", Records: new ShowRecordGrouping()));
+        var order = ProposalCommands.Show(new(seed.Project, Version, "grouped", Records: new ShowRecordGrouping("headword")));
+
+        Assert.Equal(RefusalCodes.ProposalNoRecordImport, plain.Refusal!.Code);
+        Assert.Equal(RefusalCodes.ProposalRecordSortUnknown, order.Refusal!.Code);
+        var ungrouped = ProposalCommands.Show(new(seed.Project, Version, "plain")).Value!;
+        Assert.Null(ungrouped.Records);
+        Assert.DoesNotContain("\"records\"", ProjectionJson.Serialize(ungrouped), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void AFileAndAFolderTogetherOrNeitherAreRefusedAndEmptyAndMissingFoldersHaveTheirOwnCodes()
     {
         var seed = Seeded(1);
@@ -452,6 +477,45 @@ public sealed class RecordImportDirTests(PristineProjectFixture pristine) : IDis
 
         Assert.Equal(RefusalCodes.RecordImportBatchTooLarge, outcome.Refusal!.Code);
         Assert.Equal((RecordImportPaging.MaxFiles + 1).ToString(), outcome.Refusal.Facts["files"]);
+    }
+
+    [Fact]
+    public void AFolderAtTheFileCapIsPlannedAndOneFileOverIsRefusedWithTheCapNamed()
+    {
+        var seed = Seeded(3);
+        for (var index = 0; index < 3; index++) WriteFile(seed, seed.Entries[index], $"u{index}.fw.md", Regloss);
+
+        RecordImportCommand.CapsOverride = (3, 1000);
+        var atLimit = RecordImportCommand.Run(Dry(seed));
+        RecordImportCommand.CapsOverride = (2, 1000);
+        var over = RecordImportCommand.Run(Dry(seed));
+
+        Assert.True(atLimit.Succeeded, atLimit.Refusal?.Message);
+        Assert.Equal(3, atLimit.Value!.Dir!.Files);
+        Assert.Equal(RefusalCodes.RecordImportBatchTooLarge, over.Refusal!.Code);
+        Assert.Equal(("3", "2", "files"), (over.Refusal.Facts["files"], over.Refusal.Facts["maxFiles"], over.Refusal.Facts["cap"]));
+    }
+
+    [Fact]
+    public void AFolderAtTheOperationCapIsPlannedAndStagedAndOneOperationOverIsRefusedWithoutADraft()
+    {
+        var seed = Seeded(3);
+        for (var index = 0; index < 3; index++) WriteFile(seed, seed.Entries[index], $"u{index}.fw.md", Regloss);
+        var operations = RecordImportCommand.Run(Dry(seed)).Value!.OperationCount;
+        Assert.True(operations > 1);
+
+        RecordImportCommand.CapsOverride = (1000, operations - 1);
+        var over = RecordImportCommand.Run(Dry(seed));
+        var overStaged = RecordImportCommand.Run(Dry(seed, "capped"));
+        RecordImportCommand.CapsOverride = (1000, operations);
+        var atLimit = RecordImportCommand.Run(Dry(seed, "capped"));
+
+        Assert.Equal(RefusalCodes.RecordImportBatchTooLarge, over.Refusal!.Code);
+        Assert.Equal((operations.ToString(), (operations - 1).ToString(), "operations"),
+            (over.Refusal.Facts["operations"], over.Refusal.Facts["maxOperations"], over.Refusal.Facts["cap"]));
+        Assert.Equal(RefusalCodes.RecordImportBatchTooLarge, overStaged.Refusal!.Code);
+        Assert.True(atLimit.Succeeded, atLimit.Refusal?.Message);
+        Assert.Equal(operations, atLimit.Value!.OperationCount);
     }
 
     [Fact]

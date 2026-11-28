@@ -42,6 +42,16 @@
       "draft": "The name of an existing Draft to stage into; omit to stage into the pending changes."
     }
   },
+  "guide refresh-tables": {
+    "title": "Save the tables of a Grammar Guide's query blocks",
+    "description": "Runs each motif query corpus forms block of a Grammar Guide section, or of every section, read-only and stages its saved table in a Draft: a caption and the first ten rows, stored right after the block as an ordinary FieldWorks table, so FieldWorks shows it without Motif. Only this command and the window's Save table write a table; Motif always shows a recomputed result. Nothing reaches the FieldWorks project until a person applies the Draft. Available in Advanced AI mode.",
+    "source": "Hand-written from the Grammar Guide staging path shared with the window.",
+    "fields": {
+      "id": "The section's GDR-n number or canonical id; omit for every section with a query block.",
+      "queryId": "The id of one query block to refresh; omit for every block of the section.",
+      "draft": "The name of an existing Draft to stage into; omit to stage into the pending changes."
+    }
+  },
   "guide decide": {
     "title": "Record a judgement call in a Grammar Guide section",
     "description": "Appends one judgement call, written A or B, I am choosing A, because the reason, under the section's Decisions heading, and stages it in a Draft. The verb records the call a person or the grammar lead made; it does not make it.",
@@ -121,6 +131,11 @@
     "title": "Read an Assessment report",
     "description": "Calculates a named report from an Assessment and project data. Use it to answer a focused question about words, Texts, or grammar without rerunning PanGloss.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
+  },
+  "id convert": {
+    "title": "Convert ids",
+    "description": "Prints each id in both forms: the canonical id a Proposal names and the guid a project file stores. It needs no project, and every command that takes an object id accepts either form.",
+    "source": "Hand-written from the id convert command behavior."
   },
   "report --list-kinds": {
     "title": "List report kinds",
@@ -486,7 +501,7 @@
   },
   "grammar check": {
     "title": "Check a grammar",
-    "description": "Runs the grammar checker against the project's current Baseline and stores its findings; use warnings to read them afterward. The stored-analysis comparison follows the Default proposal checks setting unless the command overrides it. It returns the first 10 findings with the full counts and names the next offset; --limit, --offset, --page and --all read the rest.",
+    "description": "Runs the grammar checker against the project's current Baseline and stores its findings; use warnings to read them afterward. The stored-analysis comparison follows the Default proposal checks setting unless the command overrides it. It returns the first 10 findings with the full counts and names the next offset; --limit, --offset, --page and --all read the rest; whole-grammar advisories (compose.whole-word-environment, compose.one-stem-inflection-class, grammar.orphan-environment) never change the exit code.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
   "timing": {
@@ -496,7 +511,7 @@
   },
   "activity": {
     "title": "Summarize agent activity",
-    "description": "Reads an activity log written by motif mcp --activity-log and reports calls by tool, errors, refusals by code, and how often the agent followed the advice it was given. Nothing is sent anywhere.",
+    "description": "Reads the call log Motif writes by itself and reports calls by tool, errors, refusals by code, and how often the agent followed the advice it was given. Nothing is sent anywhere.",
     "source": "Authored from the agent activity log contract."
   },
   "handoff": {
@@ -517,11 +532,6 @@
   "why-not": {
     "title": "Why a word did not parse",
     "description": "Asks PanGloss whether a word parses as each morph sequence you expected, and for a rejection names the first failing constraint, the morphs and the grammar object it is about. Use it to see why a word did not parse as these morphs.",
-    "source": "Hand-written from command behavior."
-  },
-  "generate": {
-    "title": "Explain a root's forms",
-    "description": "Generates the forms of one root alone and shows the rules that made each, the same as forms explain with a root and nothing else. Use it for a quick look at what a stem becomes.",
     "source": "Hand-written from command behavior."
   },
   "forms explain": {
@@ -559,11 +569,6 @@
     "description": "Reads the provenance, tokeniser, and licence capabilities recorded for one Corpus. Use it to verify what a Corpus allows before using its text as evidence.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
-  "baseline-refresh": {
-    "title": "Queue a Baseline Refresh",
-    "description": "Queues a job to capture the project's saved state as a Baseline. Use it when you want to monitor the capture through the job queue.",
-    "source": "Hand-written from docs/cli-api.md and command behavior."
-  },
   "jobs wait": {
     "title": "Wait for a job",
     "description": "Waits for a job to reach a terminal state and reports its result. A parsing time limit returns exit code 5 with word counts.",
@@ -571,7 +576,7 @@
   },
   "jobs show": {
     "title": "Inspect a job",
-    "description": "Reads the stored status of one durable job. Use it to inspect a Baseline Refresh, Dry Run, Trial, or Parsimony job's current lifecycle state.",
+    "description": "Reads the stored status of one durable job. Use it to inspect a Dry Run, Trial, or Parsimony job's current lifecycle state.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
   "jobs assessments": {
@@ -1278,6 +1283,21 @@
       "Clean up environments left behind by a rule or allomorph change"
     ],
     "redirect": "Use only if no form or rule uses the environment any more; otherwise move its users first with compose-edit-allomorph-condition. If you see many literal environments, replace them with one natural-class environment or a phonological rule."
+  },
+  "compose-delete-inflection-class": {
+    "title": "Delete an inflection class",
+    "description": "Deletes an inflection class that nothing uses: no subclass, no stem or affix MSA, no affix allomorph list, no category default and no derivational from or to slot refers to it. It refuses otherwise and names each user. Motif stages a Draft for a person to review and Apply.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "inflectionClass": "Id of the inflection class to delete.",
+      "expectedName": "The class's current name, in any writing system."
+    },
+    "goals": [
+      "Delete an inflection class left with no stems",
+      "Clean up classes the compose advisories flag"
+    ],
+    "redirect": "Use only if nothing uses the class; otherwise take it off each user first with compose-edit-affix-inflection-classes, compose-edit-stem-inflection-class or compose-edit-part-of-speech-inflection-class-default. Delete subclasses first."
   },
   "compose-delete-natural-class": {
     "title": "Delete a natural class",
@@ -2044,7 +2064,7 @@
   },
   "proposal trial delta": {
     "title": "Read a Trial's Reading changes",
-    "description": "Lists the words a Trial lost, gained, changed or doubled by Reading signature, or groups the retired and added Readings by entry or slot, from the evidence the Trial already retained, and writes the expected-retired and expected-added manifests. It measures nothing.",
+    "description": "Lists the words a Trial lost, gained, changed or doubled by Reading signature, or groups the retired and added Readings by entry or slot, from the evidence the Trial already retained, and writes the expected-retired and expected-added manifests. A retired and an added Reading that differ only in sense resolution count as one change (counts.senseChanged, counts.readingChanges). It measures nothing.",
     "source": "Authored from the typed command contract."
   },
   "proposal trial export": {
@@ -2119,7 +2139,7 @@
   },
   "motif_difference": {
     "title": "Read Trial Difference",
-    "description": "Pages through a stored Trial Difference by category. Unfinished parser cases are separate from words that no longer parse.",
+    "description": "Reads a Trial report for a Proposal by exact report id, at summary, failures or full detail, and pages its retained cases. Unfinished parser cases are separate from words that no longer parse.",
     "source": "Authored from the agent read contract."
   },
   "import": {
@@ -2203,14 +2223,9 @@
     ],
     "redirect": "Use only if an entry needs its main form written; otherwise add a form with compose-author-alternate-form. Keep one entry per morpheme, and leave a regular sound change to a phonological rule (guide conditioned-allomorphs)."
   },
-  "list": {
-    "title": "List Proposals",
-    "description": "Lists open Proposals and Drafts, including each identity, label and status. Add --all to include closed ones, or --status to list one status. It returns the first 25 and names the next offset; --limit, --offset and --page read the rest.",
-    "source": "The shared command catalog and typed request contract."
-  },
   "proposals": {
     "title": "List Proposals",
-    "description": "Lists every Proposal with what it changes and the numbers its latest Trial measured beside today's. Proposals are grouped by what to do next; applied and set-aside ones are counted unless asked for.",
+    "description": "Lists every Proposal with what it changes and the numbers its latest Trial measured beside today's. Proposals are grouped by what to do next; applied and set-aside ones are counted unless asked for. Add --include-set-aside to list closed ones too, or --status to list one status.",
     "source": "Hand-written from command behavior."
   },
   "delete --proposal": {

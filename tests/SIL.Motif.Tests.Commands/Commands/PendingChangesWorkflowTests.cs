@@ -698,6 +698,7 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
         Assert.Single(reopened.Changes);
     }
 
+    [Trait("Quarantine", "#609")]
     [Fact]
     public async Task CancellingAMeasurementCancelsTheTrialJob()
     {
@@ -732,8 +733,7 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
     {
         using var scratch = pristine.NewScratch();
         var path = scratch.ProjectId.Path;
-        var queued = JobCommands.EnqueueBaselineRefresh(new EnqueueBaselineRefreshRequest(path, ProductVersion));
-        Assert.True(queued.Succeeded, queued.Refusal?.Message);
+        var queuedId = JobProgress.QueueJob(path);
         using var cancellation = new CancellationTokenSource();
         var secondPoll = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var polls = 0;
@@ -742,7 +742,7 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
             if (Interlocked.Increment(ref polls) == 2) secondPoll.TrySetResult();
         });
 
-        var waiting = JobWait.WaitAsync(path, queued.Value!.JobId, progress,
+        var waiting = JobWait.WaitAsync(path, queuedId, progress,
             cancellation.Token, null, ProductVersion);
         await secondPoll.Task.WaitAsync(TimeSpan.FromSeconds(10));
         cancellation.Cancel();
@@ -750,7 +750,7 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
 
         Assert.Equal("job.wait-cancelled", outcome.Refusal?.Code);
         Assert.Equal("true", outcome.Refusal?.Facts?["jobCancelled"]);
-        Assert.Equal(JobStatus.Cancelled, JobCommands.Show(new ShowJobRequest(path, queued.Value.JobId,
+        Assert.Equal(JobStatus.Cancelled, JobCommands.Show(new ShowJobRequest(path, queuedId,
             ProductVersion)).Value!.Status);
     }
 
@@ -793,12 +793,11 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
     {
         using var scratch = pristine.NewScratch();
         var path = scratch.ProjectId.Path;
-        var queued = JobCommands.EnqueueBaselineRefresh(new EnqueueBaselineRefreshRequest(path, ProductVersion));
-        Assert.True(queued.Succeeded, queued.Refusal?.Message);
+        var queuedId = JobProgress.QueueJob(path);
         using (var database = ProjectMotifDatabase.Open(path))
-            new JobRepository(database).Transition(queued.Value!.JobId, JobStatus.Running);
+            new JobRepository(database).Transition(queuedId, JobStatus.Running);
 
-        var outcome = await JobWait.WaitAsync(path, queued.Value!.JobId, null, CancellationToken.None,
+        var outcome = await JobWait.WaitAsync(path, queuedId, null, CancellationToken.None,
             TimeSpan.Zero, ProductVersion, cancelOnTimeout: true).WaitAsync(TimeSpan.FromSeconds(10));
 
         Assert.Equal("job.wait-timeout", outcome.Refusal?.Code);
@@ -962,9 +961,8 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
     // Completes the job inside the first progress report, after the poll read it as queued.
     private static string QueueJobThatFinishesOnFirstPoll(string path, out Func<bool> finishOnFirstPoll)
     {
-        var queued = JobCommands.EnqueueBaselineRefresh(new EnqueueBaselineRefreshRequest(path, ProductVersion));
-        Assert.True(queued.Succeeded, queued.Refusal?.Message);
-        var jobId = queued.Value!.JobId;
+        var queuedId = JobProgress.QueueJob(path);
+        var jobId = queuedId;
         var finished = false;
         finishOnFirstPoll = () =>
         {

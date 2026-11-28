@@ -128,4 +128,14 @@ public sealed class PairsAnalysisTests(ITestOutputHelper output)
         Assert.Equal(affixes.Order().ToArray(), result.Xs.Take(10).Select(x => x.X).Intersect(affixes).Order().ToArray());
         Assert.True(watch.Elapsed < TimeSpan.FromSeconds(10), $"took {watch.Elapsed}");
     }
+
+    [Fact]
+    public void ADecomposedXPatternFindsTheSameXsAsTheComposedOne()
+    {
+        var tsv = Tsv(("\u0B95\u0BCB", 1), ("\u0B95\u0BCB\u0BA9", 1), ("\u0B95", 1));
+        var composed = PairsAnalysis.Run(Corpus(tsv), new PairsOptions(PairsDiffer.Suffix, XPattern: "\u0BCB.*"));
+        Assert.NotEmpty(composed.Xs);
+        var decomposed = PairsAnalysis.Run(Corpus(tsv), new PairsOptions(PairsDiffer.Suffix, XPattern: "\u0BC7\u0BBE.*"));
+        Assert.Equal(composed.Xs.Select(x => x.X), decomposed.Xs.Select(x => x.X));
+    }
 }

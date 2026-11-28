@@ -50,7 +50,7 @@ public sealed class ReadToolStorePreservationTests(PristineProjectFixture pristi
                 DateTimeOffset.UtcNow);
 
         var context = new ServerContext(projectPath, "1.0", new NoRunnerLauncher(
-            new JobRunnerLaunchOptions(managedRoot, null)), new ActivityLog(null), ToolProfile.Builtin,
+            new JobRunnerLaunchOptions(managedRoot, null)), new ActivityLog(), ToolProfile.Builtin,
             TextWriter.Null, advancedAiModeEnabled: true);
         var arguments = Arguments(tool, projectPath, branch);
         var validation = JsonSchema.FromText(tool.InputSchema.ToJsonString())
@@ -167,7 +167,7 @@ public sealed class ReadToolStorePreservationTests(PristineProjectFixture pristi
         "motif_sources" => ["default", "source", "chapter"],
         "motif_current" => ["default", "source"],
         "motif_decision_evidence" => ["default", "subject"],
-        "motif_difference" => ["legacy", "report", "trace"],
+        "motif_difference" => ["report", "trace"],
         "motif_proposal_difference" => ["proposal", "difference"],
         "motif_report" => ["coverage", "correctness", "difference", "parsimony"],
         "motif_find_composer" => ["goal", "subject"],

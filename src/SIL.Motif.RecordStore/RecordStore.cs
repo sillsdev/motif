@@ -19,14 +19,10 @@ public sealed record RecordCommit(Guid Id, DateTimeOffset UtcTime, long Counter,
 public sealed partial class RecordStore : IAsyncDisposable
 {
     public const int MaximumChangesPerCommit = 500;
-    // Format 6 adds the certificate, format 7 the derived tables; a first read-write operation upgrades.
+    // The only format: a store of any other format is refused, never upgraded.
     private const int StoreFormat = 7;
-    private const int CertificateFormat = 6;
-    private const int PackedStoreFormat = 5;
-    private const int LegacyStoreFormat = 4;
     internal const int CompleteRecordModelVersion = 1;
-    private int format;
-    private int ModelVersion => format == LegacyStoreFormat ? 0 : CompleteRecordModelVersion;
+    private const int ModelVersion = CompleteRecordModelVersion;
     private readonly ServiceProvider provider;
     private readonly AsyncServiceScope scope;
     private readonly DataModel model;
@@ -39,24 +35,19 @@ public sealed partial class RecordStore : IAsyncDisposable
 
     public RecordStore(string path, TimeProvider? timeProvider = null) : this(ResolvePath(path), timeProvider, false) { }
 
-    /// <summary>Opens as a reader that predates a format would: anything newer than <paramref name="highestFormat"/> is refused.</summary>
-    internal static RecordStore OpenWithFormatCeiling(string path, int highestFormat) =>
-        new(ResolvePath(path), null, false, highestFormat);
-
     internal static RecordStore OpenPublishedReader(string resolvedPath) => new(resolvedPath, null, true);
 
-    private RecordStore(string path, TimeProvider? timeProvider, bool readOnly, int highestFormat = StoreFormat)
+    private RecordStore(string path, TimeProvider? timeProvider, bool readOnly, bool building = false)
     {
         this.readOnly = readOnly;
         writeLockPath = path + ".write.lock";
         using var writer = readOnly ? null : AcquireWriter();
+        if (!readOnly && !building && !File.Exists(path)) CreateAtomically(path, timeProvider);
         var services = new ServiceCollection();
         var connection = RecordSqlite.ConnectionString(path, readOnly ? SqliteOpenMode.ReadOnly : SqliteOpenMode.ReadWriteCreate);
         var storedFormat = File.Exists(path) ? ReadFormat(connection) : 0;
-        if (storedFormat is not (0 or LegacyStoreFormat or PackedStoreFormat or CertificateFormat or StoreFormat) || storedFormat > highestFormat)
+        if (storedFormat is not (0 or StoreFormat))
             throw new InvalidDataException("Unsupported record store format.");
-        // A new file is created in the current format; an existing one keeps its own until its first write upgrades it.
-        format = storedFormat == 0 ? StoreFormat : storedFormat;
         services.AddSingleton<RecordContent>();
         // Converters close over this store's immutable content cache; their EF model must have the same lifetime.
         services.AddDbContext<RecordDatabase>(options => options.UseSqlite(connection).EnableServiceProviderCaching(false));
@@ -69,12 +60,9 @@ public sealed partial class RecordStore : IAsyncDisposable
             config.ModelVersionBuilder.Add(0, "Motif generic records", version => version
                 .Change<CreateRecord>().Change<SetRecordValue>().Change<SetRecordAlternative>()
                 .Change<InsertRecordItem>().Change<ListRecordOp>());
-            if (ModelVersion >= CompleteRecordModelVersion)
-            {
-                config.ChangeTypeListBuilder.Add<CreateImportedRecord>();
-                config.ModelVersionBuilder.Add(CompleteRecordModelVersion, "Motif complete-record import",
-                    version => version.Change<CreateImportedRecord>());
-            }
+            config.ChangeTypeListBuilder.Add<CreateImportedRecord>();
+            config.ModelVersionBuilder.Add(CompleteRecordModelVersion, "Motif complete-record import",
+                version => version.Change<CreateImportedRecord>());
         });
         services.AddSingleton<TimeProvider>(new MicrosecondTimeProvider(timeProvider ?? TimeProvider.System));
         provider = services.BuildServiceProvider();
@@ -91,7 +79,7 @@ public sealed partial class RecordStore : IAsyncDisposable
             {
                 using var command = database.Database.GetDbConnection().CreateCommand();
                 database.Database.OpenConnection();
-                command.CommandText = $"PRAGMA user_version={format}";
+                command.CommandText = $"PRAGMA user_version={StoreFormat}";
                 command.ExecuteNonQuery();
                 database.Database.CloseConnection();
             }
@@ -119,7 +107,7 @@ public sealed partial class RecordStore : IAsyncDisposable
             if (!readOnly && state.Published && state.ContentDigest != content.Digest())
                 throw new InvalidDataException("Corrupt immutable record content.");
             UseIdentityTable();
-            if (readOnly && format >= DerivedFormat) UseDemandedContent();
+            if (readOnly) UseDemandedContent();
             Verification = OpenVerification(state);
             database.ChangeTracker.Clear();
             model = scope.ServiceProvider.GetRequiredService<DataModel>();
@@ -130,6 +118,36 @@ public sealed partial class RecordStore : IAsyncDisposable
             provider.Dispose();
             throw;
         }
+    }
+
+    /// <summary>Test seam: runs after a new store is complete, before it takes its name.</summary>
+    [ThreadStatic] internal static Action<string>? BeforeCreationPublished;
+
+    // Built beside its name and renamed once complete; the next create discards a crash's leftover.
+    private static void CreateAtomically(string path, TimeProvider? timeProvider)
+    {
+        var building = path + ".creating";
+        // Sidecars beside a missing store are a crash's leftovers and must not meet the new database.
+        foreach (var leftover in new[] { building, building + "-wal", building + "-shm", building + "-journal", building + ".write.lock",
+            path + "-wal", path + "-shm", path + "-journal" })
+            File.Delete(leftover);
+        try
+        {
+            var created = new RecordStore(building, timeProvider, false, building: true);
+            created.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            BeforeCreationPublished?.Invoke(building);
+            // The sidecars of the persistent WAL keep the same names as the file they belong to.
+            foreach (var sidecar in new[] { "-wal", "-shm" })
+                if (File.Exists(building + sidecar)) File.Move(building + sidecar, path + sidecar, overwrite: true);
+            File.Move(building, path);
+        }
+        catch
+        {
+            foreach (var partial in new[] { building, building + "-wal", building + "-shm", building + "-journal" })
+                try { File.Delete(partial); } catch (IOException) { }
+            throw;
+        }
+        finally { try { File.Delete(building + ".write.lock"); } catch (IOException) { } }
     }
 
     internal static bool IsPublishedPoint(string path, StoreState point)
@@ -176,7 +194,7 @@ public sealed partial class RecordStore : IAsyncDisposable
         ImportAsync(records, clientId, nativeCoverage, packed: false);
 
     internal Task ImportNativeAsync(IEnumerable<RecordImport> records, Guid clientId, NativeImportCoverage coverage) =>
-        ImportAsync(records, clientId, coverage, packed: format >= PackedStoreFormat);
+        ImportAsync(records, clientId, coverage, packed: true);
 
     private async Task ImportAsync(IEnumerable<RecordImport> records, Guid clientId, NativeImportCoverage? nativeCoverage, bool packed)
     {
@@ -203,7 +221,6 @@ public sealed partial class RecordStore : IAsyncDisposable
         PublishedWork? work = null;
         try
         {
-            await UpgradeInTransactionAsync();
             if (baseline is not null)
             {
                 work = PublishedWork.Start(baseline);
@@ -220,12 +237,10 @@ public sealed partial class RecordStore : IAsyncDisposable
             await PublishIndexAsync(baseline ?? await ReadRecordsAsync(), await CommitRevisionAsync(), work, CertificateProvenance.FullImport,
                 refuseUnprovenNative: true);
             await transaction.CommitAsync();
-            CompleteUpgrade();
         }
         catch
         {
             requiresReopen = true;
-            AbandonUpgrade();
             // The overlapped work only reads the records; let it finish so nothing outlives a failed import.
             if (work is not null) await Task.WhenAll(work.Snapshot, work.Projection).ContinueWith(_ => { });
             throw;
@@ -382,14 +397,14 @@ public sealed partial class RecordStore : IAsyncDisposable
         point = null;
         // A verification (observe) always decodes and digests everything; so does any point that cannot be certified.
         var downgraded = false; // derived tables disagreed with a trusted certificate: vouch only after a history scan
-        if (observe is null && CertifiedAcquisitionAllowed && format >= DerivedFormat && OpenVerification(state) == StoreVerification.Certified &&
+        if (observe is null && CertifiedAcquisitionAllowed && OpenVerification(state) == StoreVerification.Certified &&
             !state.IndexLimitations.Contains(NativeUsageSchema.ProvenanceLimitation, StringComparison.Ordinal))
         {
             if (await DerivedFindingAsync(state, ct) is null && await AcquireCertifiedAsync(state, ct) is { } certified) return certified;
             downgraded = true;
         }
         await EnsureContentAsync(state, ct);
-        var decoded = await DecodeLatestAsync(digest: true, ct, derived: observe is not null || !readOnly && format < DerivedFormat);
+        var decoded = await DecodeLatestAsync(digest: true, ct, derived: observe is not null);
         var records = decoded.Records;
         // A verification reports the digests it computed instead of refusing at the first mismatch.
         observe?.Invoke("snapshot", decoded.Digest.Final("snapshot"));
@@ -430,8 +445,7 @@ public sealed partial class RecordStore : IAsyncDisposable
             WritingSystems = systems.ToArray(),
             ProjectId = projects.Length == 1 ? projects[0].Id : null,
             IndexTrusted = trusted,
-            Derived = decoded.Derived,
-            UnprovenNative = decoded.Derived is null ? null : NativeUsageSchema.ProvenanceFailure(records)
+            Derived = decoded.Derived
         };
         ct.ThrowIfCancellationRequested();
         PointAcquisitions++;
@@ -508,10 +522,7 @@ public sealed partial class RecordStore : IAsyncDisposable
             if (refuseUnprovenNative && !LegacyProvenanceForTests && !state.IndexLimitations.Contains(NativeUsageSchema.ProvenanceLimitation, StringComparison.Ordinal) &&
                 projection.Limitations.FirstOrDefault(l => l.StartsWith(NativeUsageSchema.ProvenanceLimitation, StringComparison.Ordinal)) is { } unproven)
                 throw new InvalidDataException(unproven);
-            await UpgradeInTransactionAsync();
-            // Tombstone headers are read only when derived tables are written.
-            var writeDerived = format >= DerivedFormat || backfillDerived;
-            if (writeDerived) tombstones ??= await ReadTombstonesAsync();
+            tombstones ??= await ReadTombstonesAsync();
             await ReferencePersistence.ReplaceAsync(database, projection.Edges);
             state.Revision = revision;
             state.IndexDigest = projection.Digest();
@@ -524,18 +535,22 @@ public sealed partial class RecordStore : IAsyncDisposable
             state.Published = true;
             await StageCertificateAsync(state, replay, provenance);
             // Every full publication rewrites the derived tables; they are bound to this state row's digests.
-            if (writeDerived)
-                WriteDerived(state, chunks, records.Select(RecordHeader.From).Concat(tombstones!).ToArray());
+            WriteDerived(state, chunks, records.Select(RecordHeader.From).Concat(tombstones).ToArray());
             await database.SaveChangesAsync();
             if (transaction is not null)
             {
+                WriteStageReached?.Invoke(WriteStage.StateWritten);
                 await transaction.CommitAsync();
-                CompleteUpgrade();
             }
         }
         catch
         {
-            if (transaction is not null) AbandonUpgrade();
+            if (transaction is not null)
+            {
+                // The rolled-back state and certificate rows stay tracked as modified; the next write would flush them.
+                database.ChangeTracker.Clear();
+                requiresReopen = true;
+            }
             throw;
         }
         database.ChangeTracker.Clear();
@@ -570,7 +585,7 @@ public sealed partial class RecordStore : IAsyncDisposable
         if (readOnly && state.ContentDigest != content.Digest(ct)) await ReloadContentAsync(state, ct);
     }
 
-    // A format 7 reader may fetch a content row by id, checked against the identity table.
+    // A reader may fetch a content row by id, checked against the identity table.
     private void UseDemandedContent()
     {
         content.PersistedLookup = LookupIdentity;
@@ -671,7 +686,6 @@ public sealed partial class RecordStore : IAsyncDisposable
                     throw new InvalidDataException("Replay changed immutable content; the original store has been preserved.");
             }
             await CopyDatabaseAsync(stagedPath, originalPath);
-            RefreshFormat(originalPath);
             database.ChangeTracker.Clear();
         }
         finally { temporary.Delete(true); }

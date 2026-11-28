@@ -1,3 +1,4 @@
+using System.Text.Json;
 using SIL.LCModel;
 using SIL.LCModel.Core.KernelInterfaces;
 using SIL.Motif.Contract.Commands;
@@ -15,6 +16,7 @@ public sealed partial class RecordChangeSetLowerer
     {
         private const int ContextLimit = 8;
         private readonly HashSet<int> _ruleDone = [];
+        private ConstraintBook? _book;
 
         private sealed record RuleItem(int Index, RecordChange Change, RuleField Field, ICmObject Owner, RuleText Text);
 
@@ -75,8 +77,46 @@ public sealed partial class RecordChangeSetLowerer
                     throw Refuse(RefusalCodes.RecordImportValueStale, change, "The project's value is no longer the one the file started from.");
                 items.Add(new(i, change, field, owner, ParseRule(change, field)));
             }
+            CheckAlphaAcrossRule(rule, items);
             var tree = RuleTree(rule);
             var classes = new ClassResolver(this, rule.Name.BestAnalysisAlternative?.Text ?? "");
+            _book = new ConstraintBook(this, rule);
+            try
+            {
+                LowerRuleItems(rule, items, tree, classes);
+                _book.Collect(items.Min(entry => entry.Index));
+            }
+            finally
+            {
+                _book = null;
+            }
+        }
+
+        /// <summary>Checks alpha letters over the rule as it will stand.</summary>
+        private void CheckAlphaAcrossRule(IPhRegularRule rule, List<RuleItem> items)
+        {
+            var texts = items.Select(item => item.Text).ToList();
+            var changed = items.Select(item => (item.Owner.Guid, item.Field)).ToHashSet();
+            void Other(ICmObject owner, RuleField field)
+            {
+                if (changed.Contains((owner.Guid, field)))
+                    return;
+                try { texts.Add(RuleNotation.Parse(RuleNotation.Render(owner, field, cache), field, cache)); }
+                catch (Exception exception) when (exception is RuleNotationException or FeatureStructureNotationException) { }
+            }
+            Other(rule, RuleField.StrucDesc);
+            foreach (var rhs in rule.RightHandSidesOS)
+            {
+                Other(rhs, RuleField.StrucChange);
+                Other(rhs, RuleField.LeftContext);
+                Other(rhs, RuleField.RightContext);
+            }
+            try { RuleNotation.CheckAlpha(texts); }
+            catch (RuleNotationException exception) { throw Refuse(exception.Code, items[0].Change, exception.Message); }
+        }
+
+        private void LowerRuleItems(IPhRegularRule rule, List<RuleItem> items, HashSet<Guid> tree, ClassResolver classes)
+        {
             foreach (var item in items.OrderBy(entry => entry.Field))
             {
                 var pair = (item.Index, item.Change);
@@ -117,36 +157,8 @@ public sealed partial class RecordChangeSetLowerer
                     throw Refuse(RefusalCodes.RuleNotationContextNotAllowed, change, "The word boundary # is only at the outer edge of a left or right context.");
                 if (node is RuleRepeat { Member: RuleUnit { Unit: IPhBdryMarker } })
                     throw Refuse(RefusalCodes.RuleNotationContextNotAllowed, change, "A boundary cannot be repeated or made optional.");
-                if (RuleParserClasses(node).Any(bracket => bracket.Alphas.Count > 0))
-                    throw Refuse(RefusalCodes.RuleNotationReadOnly, change,
-                        "Alpha variables are not written by a record file yet; change them in the project.");
             }
-            if (change.Old is not null && HeldContexts(change).Any(HasConstraints))
-                throw Refuse(RefusalCodes.RuleNotationReadOnly, change,
-                    "The field holds an alpha variable, which a record file does not change yet; change it in the project.");
             return parsed;
-        }
-
-        private static IEnumerable<RuleClass> RuleParserClasses(RuleNode node) => node switch
-        {
-            RuleClass bracket => [bracket],
-            RuleRepeat { Member: RuleClass bracket } => [bracket],
-            _ => [],
-        };
-
-        private List<IPhPhonContext> HeldContexts(RecordChange change)
-        {
-            var owner = cache.ServiceLocator.GetObject(change.ObjectGuid!.Value);
-            var binding = schema.FieldBinding(change.ObjectType!, change.Field)!.Value;
-            RuleNotation.TryFieldOf(binding.DeclaringClass, binding.Field, out var field);
-            var roots = field switch
-            {
-                RuleField.StrucDesc => ((IPhSegmentRule)owner).StrucDescOS.Cast<IPhPhonContext>().ToList(),
-                RuleField.StrucChange => ((IPhSegRuleRHS)owner).StrucChangeOS.Cast<IPhPhonContext>().ToList(),
-                RuleField.LeftContext => new[] { ((IPhSegRuleRHS)owner).LeftContextOA }.OfType<IPhPhonContext>().ToList(),
-                _ => new[] { ((IPhSegRuleRHS)owner).RightContextOA }.OfType<IPhPhonContext>().ToList(),
-            };
-            return roots.SelectMany(Descendants).ToList();
         }
 
         private static IEnumerable<IPhPhonContext> Descendants(IPhPhonContext context)
@@ -161,9 +173,6 @@ public sealed partial class RecordChangeSetLowerer
             foreach (var member in below.SelectMany(Descendants))
                 yield return member;
         }
-
-        private static bool HasConstraints(IPhPhonContext context) =>
-            context is IPhSimpleContextNC { PlusConstrRS.Count: > 0 } or IPhSimpleContextNC { MinusConstrRS.Count: > 0 };
 
         private static HashSet<Guid> RuleTree(IPhRegularRule rule)
         {
@@ -226,10 +235,14 @@ public sealed partial class RecordChangeSetLowerer
 
         private static string Ctx(ICmObject context) => context.Guid.ToString("N");
 
-        private void Delete((int Index, RecordChange Change) item, string role, ICmObject context, bool owned) =>
+        private void Delete((int Index, RecordChange Change) item, string role, ICmObject context, bool owned)
+        {
+            if (context is IPhPhonContext phonContext)
+                _book?.Retire(phonContext);
             Add(Operation(Id($"{role}:delete:{Ctx(context)}"),
                 owned ? PhonologicalRuleDeleteOperationKinds.DeleteContexts : AffixProcessMemberDeleteOperationKinds.DeleteContext,
                 CanonicalId.FromGuid(context.Guid), new { }), item.Index);
+        }
 
         /// <summary>Deletes a pooled context nothing else refers to; its repeated context goes with it.</summary>
         private void DeletePooled((int Index, RecordChange Change) item, string role, IPhPhonContext context, ICmObject referrer)
@@ -418,6 +431,99 @@ public sealed partial class RecordChangeSetLowerer
                 final[k] = member.ToGuid();
                 Add(Operation(Id($"{role}:m:{k}:add"), PhSequenceContextMembersOperationKinds.AddRefMembers, sequenceId,
                     new { member = member.Value }, Placed(simulated, k == 0 ? null : final[k - 1], member.ToGuid())), item.Index);
+            }
+        }
+
+        // Editor shape: PhonologicalFeatureChooserDlg.UpdateFeatureConstraints.
+        private sealed class ConstraintBook
+        {
+            private readonly Run _run;
+            private readonly IPhRegularRule _rule;
+            private readonly Dictionary<Guid, IPhFeatureConstraint> _held = [];
+            private readonly Dictionary<Guid, CanonicalId> _made = [];
+            private readonly HashSet<Guid> _retired = [];
+            private readonly List<Guid> _retiredOrder = [];
+
+            internal ConstraintBook(Run run, IPhRegularRule rule)
+            {
+                _run = run;
+                _rule = rule;
+                foreach (var constraint in rule.FeatureConstraints)
+                    if (constraint.FeatureRA is { } feature)
+                        _held.TryAdd(feature.Guid, constraint);
+            }
+
+            internal void Retire(IPhPhonContext context)
+            {
+                foreach (var part in Descendants(context).OfType<IPhSimpleContextNC>())
+                    foreach (var constraint in part.PlusConstrRS.Concat(part.MinusConstrRS))
+                        Note(constraint);
+            }
+
+            private void Note(IPhFeatureConstraint constraint)
+            {
+                if (_retired.Add(constraint.Guid))
+                    _retiredOrder.Add(constraint.Guid);
+            }
+
+            private CanonicalId Resolve((int Index, RecordChange Change) item, IFsClosedFeature feature)
+            {
+                if (_held.TryGetValue(feature.Guid, out var held))
+                    return CanonicalId.FromGuid(held.Guid);
+                if (_made.TryGetValue(feature.Guid, out var made))
+                    return made;
+                var entity = _run.Id($"alpha:{_rule.Guid:N}:{feature.Guid:N}");
+                var data = CanonicalId.FromGuid(_run.Cache.LangProject.PhonologicalDataOA.Guid);
+                _run.Add(Operation(_run.Id($"alpha:{_rule.Guid:N}:{feature.Guid:N}:create"), PhPhonDataFeatConstraintsOperationKinds.Create, data,
+                    new { }, entity: entity), item.Index);
+                _run.Add(Operation(_run.Id($"alpha:{_rule.Guid:N}:{feature.Guid:N}:feature"), PhFeatureConstraintFeatureOperationKinds.SetFeature, entity,
+                    new { @ref = CanonicalId.FromGuid(feature.Guid).Value }), item.Index);
+                _made[feature.Guid] = entity;
+                return entity;
+            }
+
+            /// <summary>Makes a class context's constraints the bracket's alpha variables; a null <paramref name="held"/> is a context just created.</summary>
+            internal void Reconcile((int Index, RecordChange Change) item, string role, IPhSimpleContextNC? held, CanonicalId context, RuleClass bracket)
+            {
+                var desired = bracket.Alphas.ToDictionary(alpha => alpha.Feature.Guid, alpha => alpha);
+                var plus = held?.PlusConstrRS.ToList() ?? [];
+                var minus = held?.MinusConstrRS.ToList() ?? [];
+                foreach (var alpha in bracket.Alphas)
+                {
+                    var current = alpha.Disagree ? minus : plus;
+                    if (current.Any(constraint => constraint.FeatureRA?.Guid == alpha.Feature.Guid))
+                        continue;
+                    _run.Add(Operation(_run.Id($"{role}:alpha:{alpha.Feature.Guid:N}:add"),
+                        alpha.Disagree ? PhSimpleContextNCMinusConstrOperationKinds.AddRefMinusConstr : PhSimpleContextNCPlusConstrOperationKinds.AddRefPlusConstr,
+                        context, new { member = Resolve(item, alpha.Feature).Value }), item.Index);
+                }
+                foreach (var constraint in plus.Where(constraint => !Wanted(desired, constraint, disagree: false)))
+                {
+                    Note(constraint);
+                    _run.Add(Operation(_run.Id($"{role}:alpha:{constraint.Guid:N}:remove"), PhSimpleContextNCPlusConstrOperationKinds.RemoveRefPlusConstr,
+                        context, new { member = CanonicalId.FromGuid(constraint.Guid).Value }), item.Index);
+                }
+                foreach (var constraint in minus.Where(constraint => !Wanted(desired, constraint, disagree: true)))
+                {
+                    Note(constraint);
+                    _run.Add(Operation(_run.Id($"{role}:alpha:{constraint.Guid:N}:remove"), PhSimpleContextNCMinusConstrOperationKinds.RemoveRefMinusConstr,
+                        context, new { member = CanonicalId.FromGuid(constraint.Guid).Value }), item.Index);
+                }
+            }
+
+            private static bool Wanted(Dictionary<Guid, RuleAlpha> desired, IPhFeatureConstraint constraint, bool disagree) =>
+                constraint.FeatureRA is { } feature && desired.TryGetValue(feature.Guid, out var alpha) && alpha.Disagree == disagree;
+
+            /// <summary>Offers every constraint the group stopped using for collection, after every other operation of the group.</summary>
+            internal void Collect(int changeIndex)
+            {
+                if (_retiredOrder.Count == 0)
+                    return;
+                var before = _run._pending.Select(operation => new OperationDependency(operation.OperationId)).ToArray();
+                var id = _run.Id($"alpha:{_rule.Guid:N}:collect");
+                _run.Add(new OperationEnvelope(id, PhonologicalRuleDeleteOperationKinds.CollectUnusedFeatConstraints, target: CanonicalId.FromGuid(_rule.Guid),
+                    after: JsonSerializer.SerializeToElement(new { constraints = _retiredOrder.Select(guid => CanonicalId.FromGuid(guid).Value).ToArray() }),
+                    dependsOn: before), changeIndex);
             }
         }
     }

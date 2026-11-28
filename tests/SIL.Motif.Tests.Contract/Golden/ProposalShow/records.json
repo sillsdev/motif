@@ -1,0 +1,43 @@
+{
+  "proposalId": "p1",
+  "status": "draft",
+  "operations": [],
+  "commentsChanged": false,
+  "records": [
+    {
+      "path": "b/two.fw.md",
+      "record": "r2",
+      "kind": "lexicon.entry",
+      "change": "update",
+      "operations": 3,
+      "batchEdges": 0,
+      "hasBatchEdges": false
+    },
+    {
+      "path": "a/one.fw.md",
+      "record": "r1",
+      "kind": "lexicon.entry",
+      "change": "create",
+      "operations": 5,
+      "batchEdges": 1,
+      "hasBatchEdges": true
+    },
+    {
+      "path": "c/three.fw.md",
+      "kind": "phonology.rule",
+      "change": "refused",
+      "batchEdges": 0,
+      "hasBatchEdges": false,
+      "code": "record-import.plan-refused"
+    },
+    {
+      "path": "d/four.fw.md",
+      "record": "r4",
+      "kind": "lexicon.entry",
+      "change": "unchanged",
+      "batchEdges": 0,
+      "hasBatchEdges": false
+    }
+  ],
+  "recordTotal": 4
+}

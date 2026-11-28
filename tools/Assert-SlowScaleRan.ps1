@@ -14,23 +14,13 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $slowTests = @(
-    'SIL.Motif.Tests.App.ProgressiveDisplayTests.ExpandedDerivationTreeNavigatesSixtyChildrenInEachDirection',
-    'SIL.Motif.Tests.App.ProgressiveDisplayTests.RecentProjectMenuReachesTheLastOfTwoThousandProjects',
-    'SIL.Motif.Tests.App.Walkthrough.BaselineTextWordsDeserializeScaleTests.TwentyOneThousandSixHundredFourRowSelectionReportsFullDeserializeCost',
-    'SIL.Motif.Tests.App.Walkthrough.LargeProjectScaleTests.LargeProjectCompletesTheFakeParserWorkflowWithinTimeAndMemoryBudgets',
-    'SIL.Motif.Tests.App.Walkthrough.SelectionViewportScaleTests.RepresentativeSequentialRangesKeepActualDisplayModelsAndReaderReadsBounded',
-    'SIL.Motif.Tests.App.Walkthrough.UnparsedLargeProjectScaleTests.LargeSelectionOpensScrollsAndReopensWithinMemoryBudgetsWithoutParsing',
-    'SIL.Motif.Tests.App.TextsProposalChangesMemoryTests.ASixHundredEightyEightThousandWordProposalFindsItsMovesAsPositionsAndLetsAllOfThemGo',
-    'SIL.Motif.Tests.App.TextsProposalMemoryTests.AStoredTrialIndexLooksUpASixHundredEightyEightThousandWordSelection',
-    'SIL.Motif.Tests.App.LayoutInvariantSystemTests.EveryPageAndApplicableStateSatisfiesTheFullLightGrid',
     'SIL.Motif.Tests.Commands.SourcePassageQueryTests.CebSizedIndexReportsWarmPageAndPendingPublicationCosts',
     'SIL.Motif.Tests.Commands.SourceApprovalTests.TenThousandApprovalsInOneApplyTakeSeconds',
     'SIL.Motif.Tests.Worker.Worker.QuerySnapshotStoreTests.OpensReadsAndQueriesThirtyOneThousandFormsWithinOneSecond',
     'SIL.Motif.Tests.Contract.Parsimony.FormQueryTests.ThirtyOneThousandFormsGroupWithinOneSecond'
 )
 
-# The layout test runs in the gate; every other listed test must exist and carry the SlowScale trait.
-$gateTests = @('SIL.Motif.Tests.App.LayoutInvariantSystemTests.EveryPageAndApplicableStateSatisfiesTheFullLightGrid')
+# Every listed test must exist and carry the SlowScale trait.
 if (-not (Test-Path -LiteralPath $TestsRoot -PathType Container)) { throw "Test source directory does not exist: $TestsRoot" }
 $sources = @(Get-ChildItem -LiteralPath $TestsRoot -Filter '*.cs' -File -Recurse | ForEach-Object { [pscustomobject]@{ Lines = [IO.File]::ReadAllLines($_.FullName) } })
 $stale = @(
@@ -50,7 +40,7 @@ $stale = @(
             }
         }
         if (-not $found) { "$testName (no such test)" }
-        elseif (-not $slow -and $gateTests -notcontains $testName) { "$testName (not marked Category=SlowScale)" }
+        elseif (-not $slow) { "$testName (not marked Category=SlowScale)" }
     }
 )
 if ($stale.Count -gt 0) { throw "The slow-scale list names tests that are gone or no longer slow: $($stale -join '; ')" }

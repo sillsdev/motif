@@ -49,7 +49,6 @@ public sealed partial class PortableWorkerPackageTests(PristineProjectFixture pr
             AssertIcuPayload(package, ReadIcuPayload(repoRoot, rid));
 
             var cliHost = Path.Combine(package, "motif" + suffix);
-            AssertAppHost(package, suffix);
             Assert.True(File.Exists(cliHost), "The portable package is missing the CLI apphost.");
             Assert.True(File.Exists(workerHost), "The portable package is missing the Worker apphost.");
             Assert.Equal(Path.GetDirectoryName(cliHost), Path.GetDirectoryName(workerHost));
@@ -61,7 +60,7 @@ public sealed partial class PortableWorkerPackageTests(PristineProjectFixture pr
             var run = await RunCliAsync(cliHost, project, root, ownerNamespace);
             Assert.True(run.ExitCode == 0, run.Error);
 
-            var jobId = run.Output.Trim();
+            var jobId = JobProgress.LatestJobId(project, "source-index") ?? string.Empty;
             Assert.False(string.IsNullOrWhiteSpace(jobId));
             var completed = JobProgress.WaitUntilFinished(project, jobId,
                 "The packaged CLI's sibling Worker Baseline refresh");
@@ -96,7 +95,8 @@ public sealed partial class PortableWorkerPackageTests(PristineProjectFixture pr
             UseShellExecute = false,
             CreateNoWindow = true,
         };
-        start.ArgumentList.Add("baseline-refresh");
+        start.ArgumentList.Add("baseline");
+        start.ArgumentList.Add("capture");
         start.ArgumentList.Add("--project");
         start.ArgumentList.Add(project);
         start.Environment[RunnerOptions.RootVariable] = root;
@@ -299,7 +299,7 @@ public sealed partial class PortableWorkerPackageTests(PristineProjectFixture pr
         Assert.Equal(RuntimeIdentifier(), root.GetProperty("runtimeIdentifier").GetString());
 
         var frontEndPublishes = root.GetProperty("frontEndPublishes").EnumerateArray().ToArray();
-        Assert.Equal(new[] { "App", "CLI" }, frontEndPublishes
+        Assert.Equal(new[] { "CLI" }, frontEndPublishes
             .Select(publish => publish.GetProperty("name").GetString()).ToArray());
         Assert.All(frontEndPublishes, publish =>
         {

@@ -45,7 +45,7 @@ public sealed class AuthorTextStageTests(PristineProjectFixture pristine)
         Assert.True(cli.ExitCode == 0, cli.Error + cli.Output);
         var profile = new ToolProfile("text-stage", null, null, "concise", [], AllTools: true);
         var context = new ServerContext(path, "0.1.0", new NoRunnerLauncher(new JobRunnerLaunchOptions(RunnerOptions.ResolveRoot(), null)),
-            new ActivityLog(null), profile, TextWriter.Null, advancedAiModeEnabled: true);
+            new ActivityLog(), profile, TextWriter.Null, advancedAiModeEnabled: true);
         var tools = MotifMcpServer.Expose(profile);
         var args = intent.DeepClone().AsObject();
         args["draft"] = "text-mcp";

@@ -1387,6 +1387,55 @@ public sealed class TrialJobHandlerTests : IDisposable
     }
 
     [Fact]
+    public void ASecondSenseOnTheOnlyMsaKeepsTheReadingMeasuredWithAStableAmbiguousIdentity()
+    {
+        var source = _baselines.GetCurrent(ProjectWorkspaceKey.Compute(_project))!.FwDataPath;
+        using var project = BaselineReadCache.Open(source);
+        var cache = project.Cache;
+        var services = cache.ServiceLocator;
+        var entry = services.GetInstance<ILexEntryRepository>().GetObject(_seed.FirstEntryId);
+        var sense = services.GetInstance<ILexSenseRepository>().GetObject(_seed.FirstSenseId);
+        var stem = Assert.IsAssignableFrom<IMoStemMsa>(sense.MorphoSyntaxAnalysisRA);
+        var reading = new ParseAnalysis([new(_seed.FirstLexemeFormId.ToString("D"), stem.Guid.ToString("D"), null, null)]);
+        var baseSide = new ReadingSignatureReader(cache).Capture(reading);
+        Assert.Equal(ReadingAcceptance.LexiconBacked, Assert.Single(baseSide.MorphemeAcceptance!));
+
+        ILexSense added = null!;
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            added = services.GetInstance<ILexSenseFactory>().Create();
+            entry.SensesOS.Add(added);
+            added.MorphoSyntaxAnalysisRA = stem;
+        });
+        var draft = new ReadingSignatureReader(cache).Capture(reading);
+        var again = new ReadingSignatureReader(cache).Capture(reading);
+        Assert.Equal(ReadingAcceptance.LexiconBacked, Assert.Single(draft.MorphemeAcceptance!));
+        Assert.True(ReadingManifestFormat.IsComplete(draft.Signature!));
+        var morph = Assert.Single(draft.Signature!.Morphemes);
+        Assert.Equal(ReadingSenseStatus.Ambiguous, morph.SenseStatus);
+        Assert.Null(morph.SenseId);
+        Assert.Equal(new[] { CanonicalId.FromGuid(sense.Guid).Value, CanonicalId.FromGuid(added.Guid).Value }
+            .Order(StringComparer.Ordinal), morph.SenseCandidates);
+        Assert.Equal(draft.Signature, again.Signature);
+        Assert.Equal(draft.Signature.Id, again.Signature!.Id);
+        Assert.Equal(CanonicalId.FromGuid(entry.Guid).Value, morph.EntryId);
+        Assert.Equal(baseSide.Signature!.Morphemes[0].MsaId, morph.MsaId);
+        Assert.Equal(baseSide.Signature.Morphemes[0].AllomorphId, morph.AllomorphId);
+    }
+
+    [Fact]
+    public void AMorphemeWhoseMsaIsNotInTheLexiconStaysUnresolvedAndIsNotMeasured()
+    {
+        var source = _baselines.GetCurrent(ProjectWorkspaceKey.Compute(_project))!.FwDataPath;
+        using var project = BaselineReadCache.Open(source);
+        var reading = new ParseAnalysis([new(_seed.FirstLexemeFormId.ToString("D"), Guid.NewGuid().ToString("D"), null, null)]);
+        var captured = new ReadingSignatureReader(project.Cache).Capture(reading);
+        Assert.Equal(ReadingAcceptance.Unresolved, Assert.Single(captured.MorphemeAcceptance!));
+        Assert.Equal(ReadingSenseStatus.Unresolved, Assert.Single(captured.Signature!.Morphemes).SenseStatus);
+        Assert.False(ReadingManifestFormat.IsComplete(captured.Signature));
+    }
+
+    [Fact]
     public void ReadingIdentityPreservesAuthoredFeatureNestingAndDerivationalDirection()
     {
         var source = _baselines.GetCurrent(ProjectWorkspaceKey.Compute(_project))!.FwDataPath;
