@@ -10,7 +10,15 @@ namespace SIL.Motif.RecordStore;
 /// </summary>
 internal sealed partial class RecordContent
 {
+    // Keyed by document identity: a fresh parse never hits, so the cache is bounded.
+    private const int LayoutCacheLimit = 1024;
     private static readonly ConcurrentDictionary<JsonElement, byte[]> LayoutBytes = new();
+
+    /// <summary>Entries in the layout cache; it never exceeds its limit by more than the writers racing at once.</summary>
+    internal static int LayoutCacheCount => Volatile.Read(ref layoutCount);
+
+    // Counted here because ConcurrentDictionary.Count takes every lock.
+    private static int layoutCount;
 
     // Property names in canonical (ordinal) order, each with its precomputed token or text prefix.
     private static readonly string[] ItemNames = ["ClassId", "DeletedAt", "Id", "IdentityFields", "Kind", "Layout", "OwnOrdinal",
@@ -64,12 +72,20 @@ internal sealed partial class RecordContent
         }
     }
 
-    private static byte[] LayoutValue(JsonElement layout) => LayoutBytes.GetOrAdd(layout, static element =>
+    private static byte[] LayoutValue(JsonElement layout)
     {
+        if (LayoutBytes.TryGetValue(layout, out var known)) return known;
         using var output = new BinaryOutput();
-        Write(output, element, 1);
-        return output.Finish();
-    });
+        Write(output, layout, 1);
+        var bytes = output.Finish();
+        if (Volatile.Read(ref layoutCount) >= LayoutCacheLimit)
+        {
+            LayoutBytes.Clear();
+            Volatile.Write(ref layoutCount, 0);
+        }
+        if (LayoutBytes.TryAdd(layout, bytes)) Interlocked.Increment(ref layoutCount);
+        return bytes;
+    }
 
     private static void WriteValues(BinaryOutput output, Dictionary<string, JsonElement> values)
     {

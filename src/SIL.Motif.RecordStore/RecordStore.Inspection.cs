@@ -136,9 +136,10 @@ public sealed partial class RecordStore
     internal Task<RescannedDigests> RescanDigestsAsync(CancellationToken ct = default) => ReadPublishedAsync(async state =>
     {
         string? snapshot = null, index = null;
-        await AcquireAsync(state, ct, (kind, digest) => { if (kind == "snapshot") snapshot = digest; });
-        // The index digest is rebuilt from the decoded snapshots, not read back from the stored rows.
-        index = ReferenceProjection.Build((await DecodeLatestAsync(digest: false, ct)).Records).Digest();
+        IReadOnlyList<GenericRecord>? decoded = null;
+        await AcquireAsync(state, ct, (kind, digest) => { if (kind == "snapshot") snapshot = digest; }, records => decoded = records);
+        // The index digest is rebuilt from the snapshots that acquisition decoded, not read back from the stored rows.
+        index = ReferenceProjection.Build(decoded!).Digest();
         var fresh = new RecordContent();
         fresh.Load(await database.Set<ContentRow>().AsNoTracking().ToArrayAsync(ct), ct);
         return new RescannedDigests(snapshot!, index!, fresh.Digest(ct));

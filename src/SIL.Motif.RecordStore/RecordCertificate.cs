@@ -328,6 +328,9 @@ public sealed partial class RecordStore
         return "RecordStoreState or Commits: the stored revision does not match the commit history.";
     }
 
+    /// <summary>Times a verification loaded the whole content table; one per verification.</summary>
+    internal int VerifyContentReads { get; private set; }
+
     private Task<(StoreState, ReplayState, VerifiedPoint)> VerifyReadAsync(CancellationToken ct) =>
         ReadPublishedAsync(async state =>
         {
@@ -341,18 +344,19 @@ public sealed partial class RecordStore
             catch (InvalidDataException failure) { findings.Add("Snapshots: " + failure.Message); }
             try { scanned = await ReplayIntegrity.ScanAsync(database, Workers, ct: ct, batchStarted: VerifyScanBatchStarted); }
             catch (InvalidDataException failure) { findings.Add("Commits or ChangeEntities: " + failure.Message); }
+            RecordContent? fresh = null;
             try
             {
-                var fresh = new RecordContent();
-                fresh.Load(await database.Set<ContentRow>().AsNoTracking().ToArrayAsync(ct), ct);
-                contentDigest = fresh.Digest(ct);
+                var loaded = new RecordContent();
+                VerifyContentReads++;
+                loaded.Load(await database.Set<ContentRow>().AsNoTracking().ToArrayAsync(ct), ct);
+                fresh = loaded;
+                contentDigest = loaded.Digest(ct);
             }
             catch (InvalidDataException failure) { findings.Add("RecordContent: " + failure.Message); }
-            try
+            if (fresh is not null) try
             {
-                var expected = new RecordContent();
-                expected.Load(await database.Set<ContentRow>().AsNoTracking().ToArrayAsync(ct), ct);
-                var wanted = expected.AllIdentities().Select(pair => (Bytes: pair.Key.ToBytes(), Id: pair.Value)).ToArray();
+                var wanted = fresh.AllIdentities().Select(pair => (Bytes: pair.Key.ToBytes(), Id: pair.Value)).ToArray();
                 Array.Sort(wanted, static (a, b) => a.Bytes.AsSpan().SequenceCompareTo(b.Bytes));
                 var held = ReadIdentityTable(ct);
                 if (held.Count != wanted.Length || held.Where((row, i) => row.Id != wanted[i].Id || !row.Bytes.AsSpan().SequenceEqual(wanted[i].Bytes)).Any())
