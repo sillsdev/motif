@@ -36,6 +36,5 @@ It refuses, each with its own code and a sentence: a request it cannot send; a m
 
 ## Related commands
 
-- [Explain a root's forms](cmd:generate) is the same question for a root alone.
 - [Trace a word](cmd:trace) returns the full diagnostic tree for one word.
 - [Why a word did not parse](cmd:why-not) names the first failing constraint for a morph sequence you expected.

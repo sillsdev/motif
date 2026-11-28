@@ -141,14 +141,6 @@ public static class FormsExplainQuery
         });
     }
 
-    /// <summary>
-    /// Replaces the refusing <c>generate --trace</c>: explains the forms of one entry, the root alone, against the
-    /// located parser.
-    /// </summary>
-    public static CommandOutcome<FormsExplainResponse> Generate(
-        GenerateTraceRequest request, CancellationToken cancellationToken = default) =>
-        Explain(new FormsExplainRequest(request.ProjectPath, request.Entry, [], null, request.At), cancellationToken);
-
     /// <summary>The analyses of a parsed word that name every morph by FieldWorks identity.</summary>
     internal sealed record WordAnalysis(string Reading, IReadOnlyList<(string? EntryId, string? MsaId, string? Form)> Morphs);
 

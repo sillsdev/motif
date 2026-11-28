@@ -196,7 +196,6 @@ public sealed class ToolSurfaceTests
             "compose-retire-boundary-marker",
             "compose-set-stem-part-of-speech",
             "compose-tag-stems-by-query",
-            "generate",
             "hand-analysis check",
             "hypothesis neighbours",
             "hypothesis report",
@@ -250,7 +249,7 @@ public sealed class ToolSurfaceTests
         Assert.All(CommandCatalog.All.Except(numeralEditors).Where(command =>
             command.Name != "activity" && command.Name != "hand-analysis check" && command.Name != "query pairs" && command.Name != "query corpus forms" && command.Name != "query values" &&
             command.Name is not ("store backup" or "store restore") &&
-            command.Name != "project tag" && command.Name != "proposal trial" && command.Name != "generate" &&
+            command.Name != "project tag" && command.Name != "proposal trial" &&
             command.Name != "store artifacts" && command.Name != "store prune" && command.Name != "store relocate" && command.Name != "store upgrade" &&
             command.Name is not ("wordform dispose" or "wordform dispose --from-file" or "wordform undispose" or "worker stop") &&
             command.Name is not ("hypothesis neighbours" or "hypothesis report" or "lexicon find" or "list hypotheses")), command =>

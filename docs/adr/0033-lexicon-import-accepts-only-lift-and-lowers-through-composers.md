@@ -91,6 +91,16 @@ readings lost, and the project's gate (D16 there). Adding stems can cost words t
 readings, so the first chunks are the cost probe, and attested stems may be imported first as a separate measured
 step from the rest. A hand-written Proposal cannot claim the exemption.
 
+Status: record-file imports built. The exemption applies to a record-file lexicon import as to LIFT, that is an
+import whose written files are all lexicon entries (`lexicon/entry`); an import of notebook records or grammar records
+never gets it. Motif's import path alone records it, in the composer provenance of the Proposal it stages, and the
+gain gate reads it only when that provenance lists every operation of the Proposal. A Proposal that mixes an import
+with hand-authored operations is not exempt, and an edit that rewrites an imported operation in place (such as
+`add-set-gloss` on an imported gloss) removes that operation from the import's list. Splitting a Proposal carries the
+import's list into each part, so a chunked import stays exempt. Trial capture freezes the result with the review
+inputs, an older capture without it reads as not exempt, and the report names the exemption as the gate outcome
+`record-import`. LIFT import is not built.
+
 ### D6. Re-import creates or skips; updates are named
 
 A record is keyed by the entry's `guid`, else its `id`. A re-import creates a missing entry and skips an existing

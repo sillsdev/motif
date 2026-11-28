@@ -308,7 +308,7 @@ public sealed class TrialReviewArgvTests
     private static (string Project, string Proposal, string Job, string Root) SeedTrial(
         Func<string, (TrialReviewObservation[] Before, TrialReviewObservation[] After)> observe, string[] words,
         ReviewAssertion[]? assertions = null, string[]? expectedLosses = null, bool declaredGate = false,
-        GainGatePolicy? gainGate = null, string[]? blockOn = null, bool addsObject = false)
+        GainGatePolicy? gainGate = null, string[]? blockOn = null, bool addsObject = false, bool recordImport = false)
     {
         var root = Path.Combine(Path.GetTempPath(), "motif-cli-review-job-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
@@ -324,7 +324,7 @@ public sealed class TrialReviewArgvTests
                 words.Select(word => new ReviewPlannedCase("case-" + word, "key-" + word, word, "ws", null,
                     declaredGate ? [new ReviewMembership("gold", "case-" + word, "regression", 1, null, null, [])] : [], assertions ?? [])).ToArray())
             {
-                GainGate = gainGate, ParsimonyBlockOn = blockOn,
+                GainGate = gainGate, ParsimonyBlockOn = blockOn, RecordImport = recordImport,
                 DeclaredGate = declaredGate ? new TrialGateDeclaration("policy", "scope",
                     [new TrialGateSet("gold", "source", "members", "expectations")]) : null,
             };
@@ -619,6 +619,27 @@ public sealed class TrialReviewArgvTests
             var result = Assert.IsType<AvailableTrialResult>(read.Value);
             Assert.Equal(expected, result.Gate!.State);
             Assert.Equal(mode == GainGateMode.Hold, result.Report.Summary.Gains!.Gate.Hold);
+        }
+        finally { Directory.Delete(seed.Root, recursive: true); }
+    }
+
+    [Theory]
+    [InlineData(false, GainOutcome.UnderThreshold, true)]
+    [InlineData(true, GainOutcome.RecordImport, false)]
+    public void ARecordImportIsExemptFromTheGainHoldButNotFromALostWord(bool recordImport, GainOutcome outcome, bool hold)
+    {
+        var seed = SeedTrial(_ => ([new("case-word", "word", "analysed", Analysed("word"))],
+            [new("case-word", "word", "no-analysis", NoAnalysis("word"))]), ["word"],
+            gainGate: new GainGatePolicy(GainGateMode.Hold, 1.5), addsObject: true, recordImport: recordImport);
+        try
+        {
+            var read = TrialReviewReads.ReadJob(seed.Project, MotifProductVersion.CurrentText, seed.Proposal, seed.Job);
+            Assert.True(read.Succeeded, read.Refusal?.Message);
+            var result = Assert.IsType<AvailableTrialResult>(read.Value);
+            Assert.Equal(outcome, result.Report.Summary.Gains!.Gate.Outcome);
+            Assert.Equal(hold, result.Report.Summary.Gains.Gate.Hold);
+            Assert.Equal(TrialGateState.Loss, result.Gate!.State);
+            Assert.Equal(1, result.Gate.LostWords);
         }
         finally { Directory.Delete(seed.Root, recursive: true); }
     }

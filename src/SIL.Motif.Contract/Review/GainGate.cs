@@ -19,6 +19,7 @@ public enum GainOutcome
     [JsonStringEnumMemberName("within-threshold")] WithinThreshold,
     [JsonStringEnumMemberName("under-threshold")] UnderThreshold,
     [JsonStringEnumMemberName("rule-added")] RuleAdded,
+    [JsonStringEnumMemberName("record-import")] RecordImport,
     [JsonStringEnumMemberName("no-objects-added")] NoObjectsAdded,
     [JsonStringEnumMemberName("incomplete")] Incomplete,
     [JsonStringEnumMemberName("not-evaluated")] NotEvaluated,

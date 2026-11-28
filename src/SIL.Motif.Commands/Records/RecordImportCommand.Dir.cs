@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using SIL.LCModel;
+using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Requests;
@@ -232,6 +233,8 @@ public static partial class RecordImportCommand
         var created = ProposalCommands.New(new(request.ProjectPath, MotifProductVersion.CurrentText, draftName, "Record import"));
         if (!created.Succeeded) return CommandOutcome<RecordImportResponse>.Refused(created.Refusal!);
         BeforeStage?.Invoke();
+        var written = found.Files.Where(file => file.Status is CreatedStatus or UpdatedStatus).ToList();
+        var lexicon = written.Count > 0 && written.All(file => file.Kind == RecordImportProvenance.LexiconKind);
         var summary = ManifestJson(request, found);
         var authored = JsonSerializer.SerializeToElement(new JsonObject { ["recordImport"] = JsonNode.Parse(summary.GetRawText()) });
         var outcome = ProposalCommands.StageRecordImport(request.ProjectPath, draftName, authored, cache =>
@@ -243,6 +246,7 @@ public static partial class RecordImportCommand
         {
             ["recordImport"] = JsonNode.Parse(summary.GetRawText()),
             ["refusedChanges"] = found.RefusedChanges + found.Count(RefusedStatus),
+            ["lexicon"] = lexicon,
         }));
         if (!outcome.Succeeded)
         {
