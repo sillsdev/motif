@@ -109,6 +109,33 @@ public sealed class StoreBackupArgvTests : IDisposable
     }
 
     [Fact]
+    public void AnExistingEmptyFolderIsAcceptedAsTheBackupDestination()
+    {
+        var folder = Path.Combine(_root, "empty-dest");
+        Directory.CreateDirectory(folder);
+
+        var backup = Run($"store backup --project \"{Project}\" --to \"{folder}\" --json");
+
+        Assert.True(backup.ExitCode == 0, backup.Error);
+        Assert.True(File.Exists(Path.Combine(folder, StoreBackupCommand.ReceiptName)));
+    }
+
+    [Fact]
+    public void ABackupIntoAFolderHoldingOtherFilesRefusesWithItsCodeAndExitCode()
+    {
+        var folder = Path.Combine(_root, "busy-dest");
+        Directory.CreateDirectory(folder);
+        File.WriteAllText(Path.Combine(folder, "notes.txt"), "x");
+
+        var backup = Run($"store backup --project \"{Project}\" --to \"{folder}\" --json");
+
+        Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument), backup.ExitCode);
+        Assert.Contains(RefusalCodes.StoreBackupDestinationExists, backup.Error, StringComparison.Ordinal);
+        Assert.Contains("notes.txt", backup.Error, StringComparison.Ordinal);
+        Assert.Equal("x", File.ReadAllText(Path.Combine(folder, "notes.txt")));
+    }
+
+    [Fact]
     public void ARestoreOfAFolderWithNoReceiptRefusesWithItsCode()
     {
         var result = Run($"store restore \"{_root}\" --project \"{Project}\" --json");

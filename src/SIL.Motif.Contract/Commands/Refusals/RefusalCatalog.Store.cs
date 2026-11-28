@@ -8,6 +8,8 @@ public static partial class RefusalCatalog
     [
         Spec(RefusalCodes.StoreBackupNoStore, FailureReason.NotFound),
         Spec(RefusalCodes.StoreBackupDestinationExists, FailureReason.InvalidArgument),
+        Spec(RefusalCodes.StoreBackupDestinationHoldsBackup, FailureReason.InvalidArgument),
+        Spec(RefusalCodes.StoreBackupDestinationIsFile, FailureReason.InvalidArgument),
         Spec(RefusalCodes.StoreRestoreInvalid, FailureReason.InvalidArgument),
         Spec(RefusalCodes.StoreBackupDestinationOwned, FailureReason.InvalidArgument),
         Spec(RefusalCodes.StoreRestoreNewerSchema, FailureReason.Refused,
