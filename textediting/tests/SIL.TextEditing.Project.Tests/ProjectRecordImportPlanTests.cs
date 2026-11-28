@@ -1206,6 +1206,23 @@ namespace SIL.TextEditing.Project.Tests
         }
 
         [Fact]
+        public void AReferenceToAnObjectAnotherFileOfTheBatchRemovesIsRefusedAsDangling()
+        {
+            using var fixture = new ProjectFixture();
+            var w = Build(fixture);
+            var exporter = LexiconExporter(fixture);
+            var text = CreateFile(exporter, w, null, d =>
+                Obj(d.Data["lexeme-form"])["morph-type"] = new RecordScalar(Link(w.OtherMorphType, "type")));
+            var alone = Plan(exporter, text);
+            Assert.DoesNotContain(alone.ChangeSet.Refusals, r => r.Kind == RecordRefusalKind.ReferenceToDeleted);
+
+            var removed = new Dictionary<Guid, string> { [w.OtherMorphType.Guid] = "other.md" };
+            var importer = new ProjectRecordImporter(exporter) { Batch = new RecordBatch(new Dictionary<Guid, string>(), removed) };
+            var refusal = Assert.Single(importer.Plan(text).ChangeSet.Refusals, r => r.Kind == RecordRefusalKind.ReferenceToDeleted);
+            Assert.Contains("other.md", refusal.Reason, StringComparison.Ordinal);
+        }
+
+        [Fact]
         public void AListItemOrAPhonologicalRuleCannotBeCreatedFromAFile()
         {
             using var fixture = new ProjectFixture();

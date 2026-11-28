@@ -449,6 +449,86 @@
         },
         "licence": {
           "type": "string"
+        },
+        "review": {
+          "$ref": "#/$defs/Review"
+        }
+      }
+    },
+    "Review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "homographsRenumbered",
+        "backReferenced",
+        "batchEdges",
+        "firstHomographs",
+        "firstBackReferences"
+      ],
+      "properties": {
+        "homographsRenumbered": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "backReferenced": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "batchEdges": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "firstHomographs": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "entry",
+              "before",
+              "after"
+            ],
+            "properties": {
+              "entry": {
+                "type": "string"
+              },
+              "before": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "after": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        },
+        "firstBackReferences": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "entry",
+              "variants",
+              "complexForms"
+            ],
+            "properties": {
+              "entry": {
+                "type": "string"
+              },
+              "variants": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "complexForms": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
         }
       }
     }

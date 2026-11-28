@@ -41,6 +41,30 @@ public sealed record RecordImportRefusal(string Code, string? Class, string Fiel
 public sealed record RecordImportFileRow(string Path, string? Kind, string? Record, string Status, string BaseVerdict,
     int Changes, int Operations, int Refused, string? Code = null, string? Reason = null);
 
+/// <summary>An existing entry whose homograph number a new entry of the folder changes.</summary>
+/// <param name="Entry">The canonical id of the existing entry.</param>
+/// <param name="Before">Its homograph number now; 0 when it has none.</param>
+/// <param name="After">Its number once the new entries are in; 0 when it has none.</param>
+public sealed record RecordImportHomographRow(string Entry, int Before, int After);
+
+/// <summary>An existing entry that gains back-references from new entries of the folder.</summary>
+/// <param name="Entry">The canonical id of the existing entry.</param>
+/// <param name="Variants">The new variant links that name it as their main entry or sense.</param>
+/// <param name="ComplexForms">The new complex-form links that name it as a component.</param>
+public sealed record RecordImportBackReferenceRow(string Entry, int Variants, int ComplexForms);
+
+/// <summary>
+/// What a reviewer of a folder of new entries must see besides the files: existing entries renumbered or pointed at, found by
+/// trying the operations on a scratch copy of the project. The rows are the first few, in canonical id order.
+/// </summary>
+/// <param name="HomographsRenumbered">The existing entries whose homograph number changes.</param>
+/// <param name="BackReferenced">The existing entries that gain a variant or complex-form back-reference.</param>
+/// <param name="BatchEdges">The links from a file of the folder to a new record of another file.</param>
+/// <param name="FirstHomographs">At most <see cref="Requests.RecordImportPaging.SummaryReviewRows"/> renumbered entries.</param>
+/// <param name="FirstBackReferences">At most <see cref="Requests.RecordImportPaging.SummaryReviewRows"/> back-referenced entries.</param>
+public sealed record RecordImportReview(int HomographsRenumbered, int BackReferenced, int BatchEdges,
+    IReadOnlyList<RecordImportHomographRow> FirstHomographs, IReadOnlyList<RecordImportBackReferenceRow> FirstBackReferences);
+
 /// <summary>What a folder import found, in counts. The rows are listed by page.</summary>
 /// <param name="Files">The <c>*.fw.md</c> files read.</param>
 /// <param name="Created">Files that create a record.</param>
@@ -53,9 +77,10 @@ public sealed record RecordImportFileRow(string Path, string? Kind, string? Reco
 /// <param name="Source">The source the options named.</param>
 /// <param name="Revision">The revision the options named.</param>
 /// <param name="Licence">The licence the options named.</param>
+/// <param name="Review">The renumbered and back-referenced existing entries; null when the folder creates no entry.</param>
 public sealed record RecordImportDirSummary(int Files, int Created, int Updated, int Unchanged, int Refused, int Ignored,
     string Manifest, IReadOnlyList<RecordImportFileRow> FirstRefused, string? Source = null, string? Revision = null,
-    string? Licence = null);
+    string? Licence = null, RecordImportReview? Review = null);
 
 /// <summary>
 /// What a record-file import found. The CLI <c>import --file --json</c> and the MCP tool return exactly this. Nothing is

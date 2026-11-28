@@ -58,14 +58,27 @@ public static class AuthorVariantEntryComposer
 
     /// <summary>Composes the variant with the entry, form and reference ids in <paramref name="ids"/>; <paramref name="mintId"/> makes only operation ids.</summary>
     public static IReadOnlyList<OperationEnvelope> Build(
-        LcmCache cache, AuthorVariantEntryIntent intent, Func<CanonicalId>? mintId, NewEntryIds? ids)
+        LcmCache cache, AuthorVariantEntryIntent intent, Func<CanonicalId>? mintId, NewEntryIds? ids) =>
+        Build(cache, intent, mintId, ids, null);
+
+    /// <summary>
+    /// As above, for a component that an earlier operation of the same batch creates (an entry or sense the project does not
+    /// hold yet): <paramref name="newComponents"/> names it, the caller has checked its class, and the reference operation waits
+    /// for the operation that creates it.
+    /// </summary>
+    public static IReadOnlyList<OperationEnvelope> Build(
+        LcmCache cache, AuthorVariantEntryIntent intent, Func<CanonicalId>? mintId, NewEntryIds? ids,
+        IReadOnlySet<CanonicalId>? newComponents)
     {
         ArgumentNullException.ThrowIfNull(cache);
         ArgumentNullException.ThrowIfNull(intent);
-        var component = VariantLinkSafety.ResolveObject<ICmObject>(cache, intent.Component,
-            RefusalCodes.VariantInvalidComponent, "The component must be an entry or sense.");
-        if (component is not (ILexEntry or ILexSense))
-            throw VariantLinkSafety.Refuse(RefusalCodes.VariantInvalidComponent, "The component must be an entry or sense.");
+        if (newComponents is null || !newComponents.Contains(intent.Component))
+        {
+            var component = VariantLinkSafety.ResolveObject<ICmObject>(cache, intent.Component,
+                RefusalCodes.VariantInvalidComponent, "The component must be an entry or sense.");
+            if (component is not (ILexEntry or ILexSense))
+                throw VariantLinkSafety.Refuse(RefusalCodes.VariantInvalidComponent, "The component must be an entry or sense.");
+        }
         VariantLinkSafety.ResolveObject<ILexEntryType>(cache, intent.VariantType, RefusalCodes.VariantInvalidType,
             "The type must belong to the variant types list.");
         var source = mintId ?? (() => CanonicalId.Mint());

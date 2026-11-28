@@ -21,12 +21,13 @@ public sealed partial class RecordChangeSetLowerer
     private const string RecordClass = "RnGenericRec";
     private const string MainEntryPath = "InsertEntryDlg.CreateNewEntryInternal, ILexEntryFactory.Create";
     private const string VariantPath = "LinkVariantToEntryOrSense, ILexEntry.CreateVariantEntryAndBackRef";
+    private const string ComplexFormPath = "InsertEntryDlg.CreateNewEntryInternal (m_fComplexForm), EntrySequenceReferenceLauncher.AddNewObjectsToProperty";
 
     /// <summary>Lowers a new entry as InsertEntryDlg and CreateVariantEntryAndBackRef do.</summary>
     private RecordLowering LowerCreatedEntry(LcmCache cache, ProjectRecordPlan plan)
     {
         var run = new Run(schema, catalog, cache, plan.RecordGuid!.Value.ToString("D"),
-            new ProjectRecordExporter(cache, schema).CreateReadOptions().Markdown) { Changes = plan.ChangeSet.Changes };
+            ReadOptions(cache)) { Changes = plan.ChangeSet.Changes, BatchClasses = BatchClasses };
         return run.LowerEntry(plan);
     }
 
@@ -130,11 +131,10 @@ public sealed partial class RecordChangeSetLowerer
 
             if (formIndex < 0 || Target(Changes[formIndex].Subtree!, "morph-type") is null)
                 return Whole(plan, "a lexeme form with a morph type", MainEntryPath);
-            if (refIndexes.Count > variantRefs.Count)
-                return complexRefs.Count > 0
-                    ? new([], [], plan.ChangeSet.Refusals, [], null, new RecordLoweringRefusal(RefusalCodes.RecordImportCreateKindNotCreatable,
-                        "LexEntry", "entry-refs", record, "A complex form cannot be created from a record file yet: no operation creates a complex-form link."))
-                    : Whole(plan, "a variant or complex-form link of a known type", VariantPath);
+            if (refIndexes.Count > variantRefs.Count + complexRefs.Count)
+                return Whole(plan, "a variant or complex-form link of a known type", VariantPath);
+            if (variantRefs.Count > 0 && complexRefs.Count > 0)
+                return Whole(plan, "either a variant link or complex-form links, not both", VariantPath);
             var variant = variantRefs.Count > 0;
             if (variant && (senseIndexes.Count > 0 || msaIndexes.Count > 0))
                 return Whole(plan, "no sense or grammatical info (a variant has none)", VariantPath,
@@ -193,11 +193,14 @@ public sealed partial class RecordChangeSetLowerer
                         return Whole(plan, "one component entry or sense for the variant", VariantPath);
                     if (components[0] == record || All("senses").Any(index => Changes[index].Subtree!.Guid == components[0]))
                         return Whole(plan, "a component that is not the entry itself or one of its own senses", VariantPath);
+                    if (NotEntryOrSense(components[0]) is { } badComponent)
+                        return Whole(plan, "a component that is an entry or sense", VariantPath, badComponent);
                     var refId = reference.Guid is { } refGuid ? CanonicalId.FromGuid(refGuid) : Id("create:ref");
                     var hide = (reference["hide-minor-entry"] as RecordScalar)?.AsBoolean() ?? false;
                     var intent = new AuthorVariantEntryIntent(CanonicalId.FromGuid(components[0]), CanonicalId.FromGuid(types[0]), formText, formWs,
                         CanonicalId.FromGuid(morph), environments.Count == 0 ? null : environments, hide);
-                    created.AddRange(AuthorVariantEntryComposer.Build(cache, intent, Mint, new NewEntryIds(entryId, formId, VariantRef: refId)));
+                    created.AddRange(AuthorVariantEntryComposer.Build(cache, intent, Mint, new NewEntryIds(entryId, formId, VariantRef: refId),
+                        InBatch(components) is { Count: > 0 } batchComponents ? batchComponents : null));
                     required.Add(refIndex);
                     var first = types[0];
                     consumed[refIndex] = (refId, (key, item) => key is "ref-type" or "hide-minor-entry" or "component-lexemes" ||
@@ -231,11 +234,40 @@ public sealed partial class RecordChangeSetLowerer
                     consumed[msaIndex] = (ids.Msa!.Value, writtenByMsa!);
                     skeletonClasses[ids.Sense!.Value.ToGuid()] = "LexSense";
                     skeletonClasses[ids.Msa!.Value.ToGuid()] = msa.Class ?? "";
+                    var entryCreate = created.First(operation => operation.Kind == LexDbEntriesOperationKinds.Create).OperationId;
+                    var senseGuids = All("senses").Select(index => Changes[index].Subtree!.Guid).OfType<Guid>().ToHashSet();
+                    foreach (var refIndex in complexRefs)
+                    {
+                        var reference = Changes[refIndex].Subtree!;
+                        var components = Targets(reference, "component-lexemes");
+                        var primary = reference["primary-lexemes"] is null ? null : Targets(reference, "primary-lexemes");
+                        var shown = reference["show-complex-forms-in"] is null ? null : Targets(reference, "show-complex-forms-in");
+                        if (components.Count == 0)
+                            return Whole(plan, "at least one component entry or sense for the complex form", ComplexFormPath);
+                        if (components.Any(item => item == record || senseGuids.Contains(item)))
+                            return Whole(plan, "components that are not the entry itself or one of its own senses", ComplexFormPath);
+                        if (components.Select(NotEntryOrSense).FirstOrDefault(item => item is not null) is { } notComponent)
+                            return Whole(plan, "components that are entries or senses", ComplexFormPath, notComponent);
+                        if (primary?.Except(components).Any() == true || shown?.Except(components).Any() == true)
+                            return Whole(plan, "primary lexemes and ShowComplexFormsIn that are components", ComplexFormPath);
+                        var refId = reference.Guid is { } refGuid ? CanonicalId.FromGuid(refGuid) : Id("create:ref:" + refIndex);
+                        var types = Targets(reference, "complex-entry-types");
+                        var hide = (reference["hide-minor-entry"] as RecordScalar)?.AsBoolean() ?? false;
+                        var intentRef = new ComplexFormRefIntent(entryId, components.Select(item => CanonicalId.FromGuid(item)).ToList(),
+                            types.Select(item => CanonicalId.FromGuid(item)).ToList(), primary?.Select(item => CanonicalId.FromGuid(item)).ToList(),
+                            shown?.Select(item => CanonicalId.FromGuid(item)).ToList(), hide);
+                        created.Add(ComplexFormRefComposer.Build(cache, intentRef, Mint(), refId, entryCreate,
+                            InBatch(components) is { Count: > 0 } batchComponents ? batchComponents : null));
+                        required.Add(refIndex);
+                        consumed[refIndex] = (refId, (key, _) => key is "ref-type" or "hide-minor-entry" or "component-lexemes" or "complex-entry-types" or
+                            "primary-lexemes" or "show-complex-forms-in");
+                        skeletonClasses[refId.ToGuid()] = "LexEntryRef";
+                    }
                 }
             }
             catch (Exception exception) when (exception is InvalidOperationException or ContractParseException or ArgumentException or KeyNotFoundException)
             {
-                return Whole(plan, "a record FieldWorks can make", variant ? VariantPath : MainEntryPath, exception.Message);
+                return Whole(plan, "a record FieldWorks can make", variant ? VariantPath : complexRefs.Count > 0 ? ComplexFormPath : MainEntryPath, exception.Message);
             }
 
             skeletonClasses[formId.ToGuid()] = formClass;
@@ -260,6 +292,16 @@ public sealed partial class RecordChangeSetLowerer
             Depend();
             return new(Operations, Refusals, plan.ChangeSet.Refusals, OperationChanges, RefusedCodes, null, required);
         }
+
+        // Components an earlier file of the batch creates; the composer cannot read them from the project.
+        private HashSet<CanonicalId> InBatch(IEnumerable<Guid> components) => components.Where(IsNewInBatch).Select(item => CanonicalId.FromGuid(item)).ToHashSet();
+
+        private bool IsNewInBatch(Guid item) => BatchClasses?.ContainsKey(item) == true &&
+            !cache.ServiceLocator.ObjectRepository.TryGetObject(item, out _);
+
+        // Only a component new in the batch is judged here; the composer checks the others.
+        private string? NotEntryOrSense(Guid item) => IsNewInBatch(item) && BatchClasses![item] is not ("LexEntry" or "LexSense")
+            ? $"The object {item:D} is a {BatchClasses[item]}, and a component must be an entry or sense." : null;
 
         private static int? RefTypeOf(RecordObject reference) =>
             (reference["ref-type"] as RecordScalar)?.AsInteger() is { } value ? (int)value : null;
@@ -328,26 +370,49 @@ public sealed partial class RecordChangeSetLowerer
         /// <summary>Makes each operation wait for the creates of objects it writes or names.</summary>
         private void Depend()
         {
-            var creators = new Dictionary<CanonicalId, CanonicalId>();
-            foreach (var operation in Operations.Where(item => item.EntityId is not null))
-                creators[operation.EntityId!.Value] = operation.OperationId;
-            for (var index = 0; index < Operations.Count; index++)
-            {
-                var operation = Operations[index];
-                var needed = new List<CanonicalId>();
-                if (operation.Target is { } target) needed.Add(target);
-                if (operation.After is { ValueKind: JsonValueKind.Object } after)
-                    foreach (var name in new[] { "ref", "member" })
-                        if (after.TryGetProperty(name, out var named) && named.ValueKind == JsonValueKind.String &&
-                            CanonicalId.TryParse(named.GetString(), out var id))
-                            needed.Add(id);
-                var have = operation.DependsOn.Select(item => item.OperationId).ToHashSet();
-                var added = needed.Where(item => creators.TryGetValue(item, out var creator) && creator != operation.OperationId && have.Add(creator))
-                    .Select(item => new OperationDependency(creators[item])).ToList();
-                if (added.Count == 0) continue;
-                Operations[index] = new OperationEnvelope(operation.OperationId, operation.Kind, operation.EntityId, operation.Target,
-                    operation.After, operation.Placement, operation.DependsOn.Concat(added).ToArray(), rationale: operation.Rationale);
-            }
+            var rewritten = AddDependencies(Operations, Creators(Operations));
+            for (var index = 0; index < rewritten.Count; index++) Operations[index] = rewritten[index];
         }
+    }
+
+    /// <summary>The operation that creates each object the operations create.</summary>
+    internal static Dictionary<CanonicalId, CanonicalId> Creators(IEnumerable<OperationEnvelope> operations)
+    {
+        var creators = new Dictionary<CanonicalId, CanonicalId>();
+        foreach (var operation in operations.Where(item => item.EntityId is not null))
+            creators[operation.EntityId!.Value] = operation.OperationId;
+        return creators;
+    }
+
+    /// <summary>
+    /// Makes each operation wait for the creates of the objects it writes or names, whichever file's operations hold the create.
+    /// An operation that names an object only by id (a reference, a link's component) waits for that object's create.
+    /// </summary>
+    internal static List<OperationEnvelope> AddDependencies(IReadOnlyList<OperationEnvelope> operations, IReadOnlyDictionary<CanonicalId, CanonicalId> creators)
+    {
+        var result = new List<OperationEnvelope>(operations.Count);
+        foreach (var operation in operations)
+        {
+            var needed = new List<CanonicalId>();
+            if (operation.Target is { } target) needed.Add(target);
+            if (operation.After is { ValueKind: JsonValueKind.Object } after)
+            {
+                foreach (var name in new[] { "ref", "member", "component" })
+                    if (after.TryGetProperty(name, out var named) && named.ValueKind == JsonValueKind.String &&
+                        CanonicalId.TryParse(named.GetString(), out var id))
+                        needed.Add(id);
+                foreach (var name in new[] { "components", "primaryLexemes", "showComplexFormsIn" })
+                    if (after.TryGetProperty(name, out var list) && list.ValueKind == JsonValueKind.Array)
+                        foreach (var item in list.EnumerateArray())
+                            if (item.ValueKind == JsonValueKind.String && CanonicalId.TryParse(item.GetString(), out var id))
+                                needed.Add(id);
+            }
+            var have = operation.DependsOn.Select(item => item.OperationId).ToHashSet();
+            var added = needed.Where(item => creators.TryGetValue(item, out var creator) && creator != operation.OperationId && have.Add(creator))
+                .Select(item => new OperationDependency(creators[item])).ToList();
+            result.Add(added.Count == 0 ? operation : new OperationEnvelope(operation.OperationId, operation.Kind, operation.EntityId, operation.Target,
+                operation.After, operation.Placement, operation.DependsOn.Concat(added).ToArray(), rationale: operation.Rationale));
+        }
+        return result;
     }
 }

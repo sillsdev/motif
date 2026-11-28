@@ -1680,6 +1680,14 @@ public static class CommandTextRenderer
         text.AppendLine($"  manifest: {d.Manifest}; row pages: {r.PageCount}");
         if (d.Source is not null || d.Revision is not null || d.Licence is not null)
             text.AppendLine($"  source: {d.Source}; revision: {d.Revision}; licence: {d.Licence}");
+        if (d.Review is { } review)
+        {
+            text.AppendLine($"  review: {review.HomographsRenumbered:N0} existing entr(ies) renumbered; {review.BackReferenced:N0} existing entr(ies) gain back-references; {review.BatchEdges:N0} link(s) between files");
+            foreach (var row in review.FirstHomographs)
+                text.AppendLine($"  homograph {row.Entry}: {row.Before} -> {row.After}");
+            foreach (var row in review.FirstBackReferences)
+                text.AppendLine($"  back-reference {row.Entry}: {row.Variants} variant(s), {row.ComplexForms} complex form(s)");
+        }
         foreach (var row in d.FirstRefused)
             text.AppendLine($"  refused {row.Path}  {row.Code}: {row.Reason}");
         if (r.Files is { } rows)

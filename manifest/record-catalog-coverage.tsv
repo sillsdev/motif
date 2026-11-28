@@ -146,7 +146,6 @@ Covered	LexEntry	do-not-show-main-entry-in	LexEntry.DoNotShowMainEntryIn	AddRefe
 Covered	LexEntry	do-not-show-main-entry-in	LexEntry.DoNotShowMainEntryIn	RemoveReference	lexical/lexEntry/removeRefDoNotShowMainEntryIn	-	-
 Covered	LexEntry	do-not-use-for-parsing	LexEntry.DoNotUseForParsing	Set	lexical/lexEntry/setDoNotUseForParsing	-	-
 Covered	LexEntry	do-not-use-for-parsing	LexEntry.DoNotUseForParsing	Clear	lexical/lexEntry/clearDoNotUseForParsing	-	-
-Covered	LexEntry	entry-refs	LexEntry.EntryRefs	AddObject	lexical/lexEntry/createVariantRef	-	-
 Covered	LexEntry	lexeme-form	LexEntry.LexemeForm	AddObject	lexical/lexEntry/createLexemeForm	-	-
 Covered	LexEntry	literal-meaning	LexEntry.LiteralMeaning	SetPlainRich	lexical/lexEntry/setLiteralMeaning	-	-
 Covered	LexEntry	literal-meaning	LexEntry.LiteralMeaning	SetRich	text/setRichString	-	-
@@ -910,6 +909,7 @@ OtherFields	FsOpenValue	value	FsOpenValue.Value	SetAlternative	none	NoOperationK
 OtherFields	FsOpenValue	value	FsOpenValue.Value	ClearAlternative	none	NoOperationKind	-
 OtherFields	FsSharedValue	value	FsSharedValue.Value	Set	none	NoOperationKind	-
 OtherFields	FsSharedValue	value	FsSharedValue.Value	Clear	none	NoOperationKind	-
+OtherFields	LexEntry	entry-refs	LexEntry.EntryRefs	AddObject	none	AmbiguousOperationKind	-
 OtherFields	LexEntry	entry-refs	LexEntry.EntryRefs	RemoveObject	none	NoOperationKind	-
 OtherFields	LexEntry	entry-refs	LexEntry.EntryRefs	MoveObject	none	NoOperationKind	-
 OtherFields	LexEntry	etymology	LexEntry.Etymology	AddObject	none	NoOperationKind	-
@@ -1731,6 +1731,7 @@ ComputedFields	LexEntry	head-word	LexEntry.HeadWord	ClearRich	none	ComputedField
 # Handler	lexical/lexEntry/clearRestrictions	LexEntry	Restrictions	ClearRich	Forbidden	-		Unspecified	True
 # Handler	lexical/lexEntry/clearSummaryDefinition	LexEntry	SummaryDefinition	ClearRich	Forbidden	-		Unspecified	True
 # Handler	lexical/lexEntry/createAlternateForms	LexEntry	AlternateForms	AddObject	RequiredWhenNonempty	-	MoAffixAllomorph,MoAffixProcess,MoStemAllomorph	Unspecified	False
+# Handler	lexical/lexEntry/createComplexFormRef	LexEntry	EntryRefs	AddObject	Forbidden	-	LexEntryRef	ComplexFormReference	False
 # Handler	lexical/lexEntry/createLexemeForm	LexEntry	LexemeForm	AddObject	Forbidden	-	MoAffixAllomorph,MoAffixProcess,MoStemAllomorph	Unspecified	False
 # Handler	lexical/lexEntry/createMorphoSyntaxAnalyses	LexEntry	MorphoSyntaxAnalyses	AddObject	Forbidden	-	MoDerivAffMsa,MoInflAffMsa,MoStemMsa,MoUnclassifiedAffixMsa	Unspecified	False
 # Handler	lexical/lexEntry/createSenses	LexEntry	Senses	AddObject	RequiredWhenNonempty	-	LexSense	Unspecified	False

@@ -35,6 +35,8 @@ public static partial class RefusalCatalog
         Spec(RefusalCodes.RecordImportBatchTooLarge, FailureReason.Refused),
         Spec(RefusalCodes.RecordImportRecordTwice, FailureReason.Refused),
         Spec(RefusalCodes.RecordImportGuidDuplicateInBatch, FailureReason.Refused),
-        Spec(RefusalCodes.RecordImportReferenceToNewInBatch, FailureReason.Refused),
+        Spec(RefusalCodes.RecordImportBatchCycle, FailureReason.Refused),
+        Spec(RefusalCodes.RecordImportReferenceToRefused, FailureReason.Refused),
+        Spec(RefusalCodes.RecordImportReferenceToDeleted, FailureReason.Refused),
     ];
 }
