@@ -84,7 +84,7 @@ internal static class ArtifactInventoryCli
     {
         var exitCode = FailureEnvelope.ExitCodeFor(reason);
         if (asJson)
-            error.WriteLine(ProjectionJson.Serialize(new FailureEnvelope(reason, message, code: code)));
+            error.WriteLine(ProjectionJson.Serialize(CliNext.Envelope(reason, message, code: code)));
         else
         {
             error.WriteLine(message);

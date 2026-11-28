@@ -6,7 +6,7 @@
   "description": "Removes explicit operations from a Draft while respecting declared dependencies. Revise and measure the content again before Finalize. Only a person can Apply.",
   "helpPage": "# Remove Draft operations\n\nRemoves explicit operations from a Draft while respecting declared dependencies. Revise and measure the content again before Finalize. Only a person can Apply.\n",
   "usage": [
-    "Usage: motif remove-operations --project \u003Cfwdata\u003E --draft \u003Cname\u003E \u003CoperationId\u003E [\u003CoperationId\u003E...] [--force]"
+    "Usage: motif remove-operations --project \u003Cfwdata\u003E --draft \u003Cname\u003E \u003CoperationId\u003E [\u003CoperationId\u003E...] [--force] [--json]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/remove-operations/"

@@ -979,7 +979,7 @@ public static class CommandTextRenderer
     {
         if (asJson)
         {
-            var envelope = new FailureEnvelope(
+            var envelope = CliNext.Envelope(
                 refusal.Reason, RefusalText.Bound(refusal.Message),
                 refusal.Facts.Count > 0 ? RefusalText.Bound(refusal.Facts) : null, refusal.Code, refusal.ParserDiagnostic);
             return new CommandResult(

@@ -3716,7 +3716,7 @@ try
     if (pickRefused) return result.ExitCode;
     // A caller that asked for JSON gets JSON when it goes wrong too; a Proposal verb already did this itself.
     error.Write(!alreadyRendered && asJson && result.Reason is { } reason
-        ? ProjectionJson.Serialize(new FailureEnvelope(reason, result.Output.Trim())) + Environment.NewLine
+        ? ProjectionJson.Serialize(CliNext.Envelope(reason, result.Output.Trim())) + Environment.NewLine
         : result.Output);
     return result.ExitCode;
 }
@@ -3727,7 +3727,7 @@ catch (ProjectWritingSystemsUnavailableException ex)
     var refusal = ProjectStoreCommand.WritingSystemRefusal(ex, namedProject);
     if (asJson)
         error.WriteLine(ProjectionJson.Serialize(
-            new FailureEnvelope(refusal.Reason, refusal.Message, refusal.Facts, refusal.Code)));
+            CliNext.Envelope(refusal.Reason, refusal.Message, refusal.Facts, refusal.Code)));
     else
         error.WriteLine($"{refusal.Code}: {refusal.Message}");
     return FailureEnvelope.ExitCodeFor(refusal.Reason);
@@ -3738,7 +3738,7 @@ catch (OperationCanceledException ex)
     var message = string.IsNullOrWhiteSpace(ex.Message) ? "The CLI operation was cancelled." : ex.Message;
     if (asJson)
         error.WriteLine(ProjectionJson.Serialize(
-            new FailureEnvelope(FailureReason.Cancelled, message, code: "cli.cancelled")));
+            CliNext.Envelope(FailureReason.Cancelled, message, code: "cli.cancelled")));
     else
         error.WriteLine($"cli.cancelled: {message}");
     return FailureEnvelope.ExitCodeFor(FailureReason.Cancelled);
@@ -3750,7 +3750,7 @@ catch (OutOfMemoryException ex)
     var message = string.IsNullOrWhiteSpace(ex.Message) ? "The CLI ran out of memory." : ex.Message;
     if (asJson)
         error.WriteLine(ProjectionJson.Serialize(
-            new FailureEnvelope(FailureReason.Refused, message, code: HostRefusalCodes.CliOutOfMemory)));
+            CliNext.Envelope(FailureReason.Refused, message, code: HostRefusalCodes.CliOutOfMemory)));
     else
         error.WriteLine($"{HostRefusalCodes.CliOutOfMemory}: {message}");
     return FailureEnvelope.ExitCodeFor(FailureReason.Refused);
@@ -3762,7 +3762,7 @@ catch (Exception ex) when (SqliteConnections.IsBusyInChain(ex))
     const string message = "Motif's store is locked by another process. Wait a few seconds and repeat the same call.";
     if (asJson)
         error.WriteLine(ProjectionJson.Serialize(
-            new FailureEnvelope(FailureReason.Busy, message, code: HostRefusalCodes.CliStoreBusy)));
+            CliNext.Envelope(FailureReason.Busy, message, code: HostRefusalCodes.CliStoreBusy)));
     else
         error.WriteLine($"{HostRefusalCodes.CliStoreBusy}: {message}");
     return FailureEnvelope.ExitCodeFor(FailureReason.Busy);
@@ -3774,7 +3774,7 @@ catch (Exception ex)
     var message = string.IsNullOrWhiteSpace(ex.Message) ? "An unexpected CLI failure occurred." : ex.Message;
     if (asJson)
         error.WriteLine(ProjectionJson.Serialize(
-            new FailureEnvelope(FailureReason.StoreInconsistent, message, code: "cli.unexpected")));
+            CliNext.Envelope(FailureReason.StoreInconsistent, message, code: "cli.unexpected")));
     else
         error.WriteLine($"error: {message}");
     return FailureEnvelope.ExitCodeFor(FailureReason.StoreInconsistent);
@@ -3828,7 +3828,7 @@ int Usage(string message, bool asJson = false, bool withUsageBanner = false)
     if (asJson)
     {
         error.WriteLine(ProjectionJson.Serialize(
-            new FailureEnvelope(FailureReason.InvalidArgument, message)));
+            CliNext.Envelope(FailureReason.InvalidArgument, message)));
         return FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument);
     }
     error.WriteLine(message);
@@ -4061,7 +4061,7 @@ static int RefuseUnavailableCommand(
     if (asJson)
     {
         error.WriteLine(ProjectionJson.Serialize(
-            new FailureEnvelope(FailureReason.Refused, message, facts.RefusalFacts(), facts.RefusalCode)));
+            CliNext.Envelope(FailureReason.Refused, message, facts.RefusalFacts(), facts.RefusalCode)));
     }
     else
     {
@@ -4342,7 +4342,7 @@ static int RefuseProjectTag(ProjectTagException failure, bool asJson, TextWriter
     if (failure.CollidingProjectPath is not null) facts["collidingProject"] = failure.CollidingProjectPath;
     var message = failure.Message + " Nothing was queued.";
     if (asJson)
-        error.WriteLine(ProjectionJson.Serialize(new FailureEnvelope(FailureReason.Refused, message, facts, code)));
+        error.WriteLine(ProjectionJson.Serialize(CliNext.Envelope(FailureReason.Refused, message, facts, code)));
     else
         error.WriteLine("error: " + message);
     return FailureEnvelope.ExitCodeFor(FailureReason.Refused);

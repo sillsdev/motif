@@ -48,6 +48,21 @@ public static partial class RefusalCatalog
         return refusal.Facts.GetValueOrDefault("terminal") == "true" ? "job-wait-ended" : null;
     }
 
+    private static readonly IReadOnlyDictionary<FailureReason, string> ReasonHints = new Dictionary<FailureReason, string>
+    {
+        [FailureReason.InvalidArgument] = "Fix the argument the message names and try again.",
+        [FailureReason.NotFound] = "Check the id or name against what the read commands return, then try again.",
+        [FailureReason.Refused] = "Do not repeat this request unchanged. Read the message and change what it names.",
+        [FailureReason.Cancelled] = "The work was cancelled. Try again if it is still wanted.",
+        [FailureReason.StoppedByBudget] = "The run reached its time limit. Narrow the selection or raise the limit, then try again.",
+        [FailureReason.Busy] = "Motif is busy. Wait a few seconds and repeat the same request.",
+        [FailureReason.StoreInconsistent] = "Motif's stored data for this project is damaged. Stop and tell the linguist.",
+    };
+
+    /// <summary>The steering sentence a failure of this reason gets when its code has no Help of its own; shared by every surface.</summary>
+    public static string ReasonHint(FailureReason reason) =>
+        ReasonHints.GetValueOrDefault(reason) ?? ReasonHints[FailureReason.StoreInconsistent];
+
     private static RefusalSpec Spec(string code, FailureReason reason, NextStep? next = null) =>
         new(code, reason, next);
 

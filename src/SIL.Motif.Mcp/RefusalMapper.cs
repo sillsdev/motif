@@ -23,16 +23,6 @@ internal static class RefusalMapper
     private static readonly Lazy<ExposurePolicy> FullPolicy = new(() => ExposurePolicy.ForExposed(
         MotifMcpServer.Expose(ToolProfile.Load("full"))));
 
-    private static readonly IReadOnlyDictionary<FailureReason, string> ReasonHints = new Dictionary<FailureReason, string>
-    {
-        [FailureReason.InvalidArgument] = "Fix the argument the message names and call again.",
-        [FailureReason.NotFound] = "Check the id or name against what the read tools return, then call again.",
-        [FailureReason.Refused] = "Do not repeat this call unchanged. Read the message and change what it names.",
-        [FailureReason.Cancelled] = "The work was cancelled. Call again if it is still wanted.",
-        [FailureReason.Busy] = "Motif is busy. Wait a few seconds and repeat the same call.",
-        [FailureReason.StoreInconsistent] = "Motif's stored data for this project is damaged. Stop and tell the linguist.",
-    };
-
     /// <summary>
     /// The <c>Next:</c> advice for a refusal: the registry's Help sentence naming what is missing, then the next
     /// step rendered for <paramref name="exposed"/>, with <c>{fact}</c> placeholders filled from the refusal's facts.
@@ -44,11 +34,11 @@ internal static class RefusalMapper
     {
         var policy = exposed is null ? DefaultPolicy.Value : ExposurePolicy.ForExposed(exposed);
         var outcomeHelp = RefusalCatalog.WaitOutcomeHelp(refusal);
-        var hint = outcomeHelp is not null ? Help.RefusalWhy(outcomeHelp) ?? ReasonHints[refusal.Reason] :
+        var hint = outcomeHelp is not null ? Help.RefusalWhy(outcomeHelp) ?? RefusalCatalog.ReasonHint(refusal.Reason) :
             RefusalCatalog.Specs.GetValueOrDefault(refusal.Code)?.Next is { } step
             && Help.RefusalWhy(refusal.Code) is { } why
                 ? why + RenderStep(step, refusal, policy, callerArgs)
-                : ReasonHints[refusal.Reason];
+                : RefusalCatalog.ReasonHint(refusal.Reason);
         foreach (var (key, value) in refusal.Facts) hint = hint.Replace("{" + key + "}", value, StringComparison.Ordinal);
         return hint;
     }

@@ -180,70 +180,70 @@ public static class CliVerbCatalog
             new[]
             {
                 "add-set-gloss --project <fwdata> --draft <name> --target <canonicalId> --ws <wsTag> " +
-                "--text <text> [--depends-on <opId>[,<opId>...]] [--cite-source <text> [--cite-locator <text>]]",
+                "--text <text> [--depends-on <opId>[,<opId>...]] [--cite-source <text> [--cite-locator <text>]] [--json]",
             }),
         new CliVerbDescriptor(
             "Commands", "add-delete-lexeme-form", "add-delete-lexeme-form",
-            new[] { "add-delete-lexeme-form --project <fwdata> --draft <name> --target <canonicalId>" }),
+            new[] { "add-delete-lexeme-form --project <fwdata> --draft <name> --target <canonicalId> [--json]" }),
         new CliVerbDescriptor(
             "Commands", "compose-author-lexeme-form", "compose-author-lexeme-form",
             new[]
             {
                 "compose-author-lexeme-form --draft <name> --project <fwdata> --intent " +
-                "'{\"entry\":...,\"morphType\":...,\"ws\":...,\"text\":...}'",
+                "'{\"entry\":...,\"morphType\":...,\"ws\":...,\"text\":...}' [--json]",
             }),
         new CliVerbDescriptor(
             "Commands", "compose-author-feature-structure", "compose-author-feature-structure",
             new[]
             {
-                "compose-author-feature-structure --draft <name> --project <fwdata> --intent '{\"msa\":...}'",
+                "compose-author-feature-structure --draft <name> --project <fwdata> --intent '{\"msa\":...}' [--json]",
             }),
         new CliVerbDescriptor("Commands", "compose-author-phoneme", "compose-author-phoneme",
-            new[] { "compose-author-phoneme --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+            new[] { "compose-author-phoneme --draft <name> --project <fwdata> --intent '<closed intent JSON>' [--json]" }),
         new CliVerbDescriptor("Commands", "compose-author-natural-class", "compose-author-natural-class",
-            new[] { "compose-author-natural-class --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+            new[] { "compose-author-natural-class --draft <name> --project <fwdata> --intent '<closed intent JSON>' [--json]" }),
         new CliVerbDescriptor("Commands", "compose-author-environment", "compose-author-environment",
-            new[] { "compose-author-environment --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+            new[] { "compose-author-environment --draft <name> --project <fwdata> --intent '<closed intent JSON>' [--json]" }),
         new CliVerbDescriptor("Commands", "compose-author-phonological-rule", "compose-author-phonological-rule",
-            new[] { "compose-author-phonological-rule --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+            new[] { "compose-author-phonological-rule --draft <name> --project <fwdata> --intent '<closed intent JSON>' [--json]" }),
         new CliVerbDescriptor("Commands", "compose-author-metathesis-rule", "compose-author-metathesis-rule",
-            new[] { "compose-author-metathesis-rule --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+            new[] { "compose-author-metathesis-rule --draft <name> --project <fwdata> --intent '<closed intent JSON>' [--json]" }),
         new CliVerbDescriptor("Commands", "compose-author-part-of-speech", "compose-author-part-of-speech",
-            new[] { "compose-author-part-of-speech --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+            new[] { "compose-author-part-of-speech --draft <name> --project <fwdata> --intent '<closed intent JSON>' [--json]" }),
         new CliVerbDescriptor("Commands", "compose-author-inflection-feature", "compose-author-inflection-feature",
-            new[] { "compose-author-inflection-feature --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+            new[] { "compose-author-inflection-feature --draft <name> --project <fwdata> --intent '<closed intent JSON>' [--json]" }),
         new CliVerbDescriptor("Commands", "compose-author-inflection-class", "compose-author-inflection-class",
-            new[] { "compose-author-inflection-class --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+            new[] { "compose-author-inflection-class --draft <name> --project <fwdata> --intent '<closed intent JSON>' [--json]" }),
         new CliVerbDescriptor("Commands", "compose-author-stem-name", "compose-author-stem-name",
-            new[] { "compose-author-stem-name --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+            new[] { "compose-author-stem-name --draft <name> --project <fwdata> --intent '<closed intent JSON>' [--json]" }),
         new CliVerbDescriptor("Commands", "compose-author-lexical-entry", "compose-author-lexical-entry",
-            new[] { "compose-author-lexical-entry --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+            new[] { "compose-author-lexical-entry --draft <name> --project <fwdata> --intent '<closed intent JSON>' [--json]" }),
         new CliVerbDescriptor("Commands", "compose-author-alternate-form", "compose-author-alternate-form",
-            new[] { "compose-author-alternate-form --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+            new[] { "compose-author-alternate-form --draft <name> --project <fwdata> --intent '<closed intent JSON>' [--json]" }),
         new CliVerbDescriptor("Commands", "compose-author-affix-slot", "compose-author-affix-slot",
-            new[] { "compose-author-affix-slot --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+            new[] { "compose-author-affix-slot --draft <name> --project <fwdata> --intent '<closed intent JSON>' [--json]" }),
         new CliVerbDescriptor("Commands", "compose-author-affix-template", "compose-author-affix-template",
-            new[] { "compose-author-affix-template --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+            new[] { "compose-author-affix-template --draft <name> --project <fwdata> --intent '<closed intent JSON>' [--json]" }),
         new CliVerbDescriptor("Commands", "compose-edit-adhoc-prohibition", "compose-edit-adhoc-prohibition",
-            new[] { "compose-edit-adhoc-prohibition --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+            new[] { "compose-edit-adhoc-prohibition --draft <name> --project <fwdata> --intent '<closed intent JSON>' [--json]" }),
         new CliVerbDescriptor("Commands", "compose-edit-affix-slot", "compose-edit-affix-slot",
-            new[] { "compose-edit-affix-slot --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+            new[] { "compose-edit-affix-slot --draft <name> --project <fwdata> --intent '<closed intent JSON>' [--json]" }),
         new CliVerbDescriptor("Commands", "compose-edit-affix-template", "compose-edit-affix-template",
-            new[] { "compose-edit-affix-template --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+            new[] { "compose-edit-affix-template --draft <name> --project <fwdata> --intent '<closed intent JSON>' [--json]" }),
         new CliVerbDescriptor("Commands", "compose-edit-inflectional-affix", "compose-edit-inflectional-affix",
-            new[] { "compose-edit-inflectional-affix --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+            new[] { "compose-edit-inflectional-affix --draft <name> --project <fwdata> --intent '<closed intent JSON>' [--json]" }),
         new CliVerbDescriptor("Commands", "compose-edit-allomorph-condition", "compose-edit-allomorph-condition",
-            new[] { "compose-edit-allomorph-condition --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+            new[] { "compose-edit-allomorph-condition --draft <name> --project <fwdata> --intent '<closed intent JSON>' [--json]" }),
         new CliVerbDescriptor("Commands", "compose-edit-natural-class", "compose-edit-natural-class",
-            new[] { "compose-edit-natural-class --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+            new[] { "compose-edit-natural-class --draft <name> --project <fwdata> --intent '<closed intent JSON>' [--json]" }),
         new CliVerbDescriptor("Commands", "compose-relink-natural-class", "compose-relink-natural-class",
-            new[] { "compose-relink-natural-class --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+            new[] { "compose-relink-natural-class --draft <name> --project <fwdata> --intent '<closed intent JSON>' [--json]" }),
         new CliVerbDescriptor("Commands", "compose-author-text", "compose-author-text",
-            new[] { "compose-author-text --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+            new[] { "compose-author-text --draft <name> --project <fwdata> --intent '<closed intent JSON>' [--json]" }),
         new CliVerbDescriptor("Commands", "compose-edit-analysis-decision", "compose-edit-analysis-decision",
-            new[] { "compose-edit-analysis-decision --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+            new[] { "compose-edit-analysis-decision --draft <name> --project <fwdata> --intent '<closed intent JSON>' [--json]" }),
         new CliVerbDescriptor("Commands", "order-allomorphs", "order-allomorphs",
-            new[] { "order-allomorphs --draft <name> --project <fwdata> --intent '<closed intent JSON>'" }),
+            new[] { "order-allomorphs --draft <name> --project <fwdata> --intent '<closed intent JSON>' [--json]" }),
         new CliVerbDescriptor("Commands", "compose-batch", "compose-batch",
             new[] { "compose-batch --draft <name> --project <fwdata> --intents <file.json> [--json]" }),
         new CliVerbDescriptor("Commands", "compose", "compose",
@@ -253,44 +253,44 @@ public static class CliVerbCatalog
             new[]
             {
                 "promote-gloss --project <fwdata> --draft <name> --target <canonicalId> --ws <wsTag> " +
-                "--text <text> --corpus <corpusId> [--document <docId>]",
+                "--text <text> --corpus <corpusId> [--document <docId>] [--json]",
             }),
         new CliVerbDescriptor(
-            "Commands", "label", "label", new[] { "label --project <fwdata> --draft <name> <text>" }),
+            "Commands", "label", "label", new[] { "label --project <fwdata> --draft <name> <text> [--json]" }),
         new CliVerbDescriptor(
-            "Commands", "finalize", "finalize", new[] { "finalize --project <fwdata> --draft <name>" }),
+            "Commands", "finalize", "finalize", new[] { "finalize --project <fwdata> --draft <name> [--json]" }),
         new CliVerbDescriptor(
             "Commands", "discard-draft", "discard-draft",
-            new[] { "discard-draft --project <fwdata> --draft <name> [--revision <r>]" }),
+            new[] { "discard-draft --project <fwdata> --draft <name> [--revision <r>] [--json]" }),
         new CliVerbDescriptor(
             "Commands", "discard-empty-drafts", "discard-empty-drafts",
-            new[] { "discard-empty-drafts --project <fwdata> [--prefix <text>]" }),
+            new[] { "discard-empty-drafts --project <fwdata> [--prefix <text>] [--json]" }),
         new CliVerbDescriptor(
-            "Commands", "reopen", "reopen", new[] { "reopen --project <fwdata> --draft <name> <proposalId>" }),
+            "Commands", "reopen", "reopen", new[] { "reopen --project <fwdata> --draft <name> <proposalId> [--json]" }),
         new CliVerbDescriptor(
             "Commands", "duplicate", "duplicate",
-            new[] { "duplicate --project <fwdata> --draft <newName> <proposalId>" }),
+            new[] { "duplicate --project <fwdata> --draft <newName> <proposalId> [--json]" }),
         new CliVerbDescriptor(
             "Commands", "remove-operations", "remove-operations",
             new[]
             {
                 "remove-operations --project <fwdata> --draft <name> <operationId> [<operationId>...] " +
-                "[--force]",
+                "[--force] [--json]",
             }),
         new CliVerbDescriptor(
             "Commands", "split", "split",
             new[]
             {
                 "split --project <fwdata> <proposalId> <draftName>=<opId>[,<opId>...] " +
-                "[<draftName>=<opId>[,<opId>...] ...] [--force]",
+                "[<draftName>=<opId>[,<opId>...] ...] [--force] [--json]",
             }),
         new CliVerbDescriptor(
-            "Commands", "defer", "defer", new[] { "defer --project <fwdata> <proposalId>" }),
+            "Commands", "defer", "defer", new[] { "defer --project <fwdata> <proposalId> [--json]" }),
         new CliVerbDescriptor(
-            "Commands", "undefer", "undefer", new[] { "undefer --project <fwdata> <proposalId>" }),
+            "Commands", "undefer", "undefer", new[] { "undefer --project <fwdata> <proposalId> [--json]" }),
         new CliVerbDescriptor(
             "Commands", "supersede", "supersede",
-            new[] { "supersede --project <fwdata> <proposalId> <supersededByProposalId>" }),
+            new[] { "supersede --project <fwdata> <proposalId> <supersededByProposalId> [--json]" }),
         new CliVerbDescriptor(
             "Commands", "show", "show", new[] { "show --project <fwdata> <proposalId|draftName> [--current | --records [--sort path|kind|batch-edges] [--refused]] [--limit <1-200>] [--offset <n> | --page <N> | --all] [--json]" }),
         new CliVerbDescriptor(
@@ -637,20 +637,20 @@ public static class CliVerbCatalog
                 "--tokeniser-version <v> [--uri <url>] [--licence <text>] [--tokeniser-notes <text>] " +
                 "[--may-derive true|false] [--may-redistribute true|false] " +
                 "[--may-use-commercially true|false] [--requires-attribution true|false] " +
-                "[--licence-basis <text>]",
+                "[--licence-basis <text>] [--json]",
             }),
         new CliVerbDescriptor(
             "Corpus", "add-document", "add-document",
             new[]
             {
                 "add-document --project <fwdata> --corpus <id> --doc <id> --source <file-or-url> " +
-                "[--title <text>] [--licence <text>] [--may-derive true|false] [--licence-basis <text>]",
+                "[--title <text>] [--licence <text>] [--may-derive true|false] [--licence-basis <text>] [--json]",
             }),
         new CliVerbDescriptor(
             "Corpus", "add-corpus-bundle", "add-corpus-bundle",
             new[]
             {
-                "add-corpus-bundle --project <fwdata> --bundle <path>   (the handoff a fetching tool writes)",
+                "add-corpus-bundle --project <fwdata> --bundle <path> [--json]   (the handoff a fetching tool writes)",
             }),
         new CliVerbDescriptor("Corpus", "corpus-paste", "corpus-paste",
             new[] { "corpus-paste --project <fwdata> --corpus <id> --doc <id> --title <title> --text <text> [--licence <text>] [--json]" }),
@@ -789,10 +789,10 @@ public static class CliVerbCatalog
 
     /// <summary>The usage text every typed composer verb shares, before the citation options.</summary>
     internal static string ComposerUsage(string verb) => verb == "compose-set-entry-attribution"
-        ? verb + " --draft <name> --project <fwdata> --intent '<closed intent JSON>', or --entries-file <file> --tag '<source>@<revision> <licence>' [--analysis-ws <tag>] in place of --intent"
+        ? verb + " --draft <name> --project <fwdata> --intent '<closed intent JSON>', or --entries-file <file> --tag '<source>@<revision> <licence>' [--analysis-ws <tag>] in place of --intent [--json]"
         : verb == "compose-edit-text-notes"
-        ? verb + " --draft <name> --project <fwdata> --intent '<closed intent JSON>', or --notes-tsv <file> [--analysis-ws <tag>] in place of --intent"
-        : verb + " --draft <name> --project <fwdata> --intent '<closed intent JSON>'";
+        ? verb + " --draft <name> --project <fwdata> --intent '<closed intent JSON>', or --notes-tsv <file> [--analysis-ws <tag>] in place of --intent [--json]"
+        : verb + " --draft <name> --project <fwdata> --intent '<closed intent JSON>' [--json]";
 
     private static IReadOnlyList<CliVerbDescriptor> AddCitationOptions(
         IReadOnlyList<CliVerbDescriptor> descriptors) => descriptors.Select(descriptor =>

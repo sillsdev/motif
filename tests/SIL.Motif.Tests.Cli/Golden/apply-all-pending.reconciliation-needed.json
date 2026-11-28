@@ -9,6 +9,7 @@
       "proposalId": "\u003Cstring\u003E"
     },
     "message": "\u003Cstring\u003E",
+    "next": "\u003Cstring\u003E",
     "ok": false,
     "reason": "StoreInconsistent"
   }
