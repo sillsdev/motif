@@ -47,12 +47,19 @@ public static class GdrEditCommands
             return CommandOutcome<GdrEditResponse>.Refused(new Refusal(RefusalCodes.GdrDecisionInvalid, FailureReason.InvalidArgument,
                 block.Message + EscapeHint + " Nothing was staged.", block.Facts()));
         var named = string.IsNullOrWhiteSpace(request.Draft) ? null : request.Draft.Trim();
-        var current = GdrQuery.Show(new GdrShowRequest(request.ProjectPath, request.Id, AsOf: named ?? PendingChanges.DraftName));
+        var current = GdrQuery.ShowWithOperations(new GdrShowRequest(request.ProjectPath, request.Id, AsOf: named ?? PendingChanges.DraftName));
         if (!current.Succeeded && (named is not null || current.Refusal!.Code != "draft.not-found"))
             return CommandOutcome<GdrEditResponse>.Refused(current.Refusal!);
-        var body = new GdrMarkdownView(current.Succeeded ? current.Value! : shown.Value!, Path.GetFileNameWithoutExtension(request.ProjectPath)).Fields
+        var section = current.Succeeded ? current.Value!.Section : shown.Value!;
+        var body = new GdrMarkdownView(section, Path.GetFileNameWithoutExtension(request.ProjectPath)).Fields
             .Single(field => field.Name == "discussion").Body;
-        return Stage(request.ProjectPath, shown.Value!, WithDecision(body, entry), request.Draft, null);
+        var staged = Stage(request.ProjectPath, shown.Value!, WithDecision(body, entry), request.Draft, null);
+        if (!staged.Succeeded) return staged;
+        var unlinked = GdrDecisionLinks.Unlinked(section, current.Succeeded ? current.Value!.Operations : []);
+        return CommandOutcome<GdrEditResponse>.Success(staged.Value! with
+        {
+            UnlinkedProposalObjects = unlinked.Take(GdrUnlinkedObjects.Shown).ToArray(), UnlinkedProposalObjectCount = unlinked.Count,
+        });
     }
 
     private static readonly string[] RowKeys = ["section", "choosing", "over", "because", "rung", "tried"];
@@ -119,6 +126,7 @@ public static class GdrEditCommands
         var project = Path.GetFileNameWithoutExtension(request.ProjectPath);
         var named = string.IsNullOrWhiteSpace(request.Draft) ? null : request.Draft.Trim();
         var sections = new Dictionary<string, (GdrShowResponse Shown, string Body, List<(int Row, string Entry)> Added)>(StringComparer.Ordinal);
+        var unlinkedBySection = new Dictionary<string, IReadOnlyList<GdrUnlinkedObject>>(StringComparer.Ordinal);
         var byGiven = new Dictionary<string, string>(StringComparer.Ordinal);
         var decided = new List<GdrDecidedRow>();
         foreach (var row in request.Rows)
@@ -135,19 +143,24 @@ public static class GdrEditCommands
                 byGiven[row.Section] = id;
                 if (!sections.ContainsKey(id))
                 {
-                    var current = GdrQuery.Show(new GdrShowRequest(request.ProjectPath, row.Section, AsOf: named ?? PendingChanges.DraftName));
+                    var current = GdrQuery.ShowWithOperations(new GdrShowRequest(request.ProjectPath, row.Section, AsOf: named ?? PendingChanges.DraftName));
                     if (!current.Succeeded && (named is not null || current.Refusal!.Code != "draft.not-found"))
                         return CommandOutcome<GdrDecideBatchResponse>.Refused(WithRow(current.Refusal!, row.Row));
-                    var body = new GdrMarkdownView(current.Succeeded ? current.Value! : shown.Value!, project).Fields
-                        .Single(field => field.Name == "discussion").Body;
+                    var section = current.Succeeded ? current.Value!.Section : shown.Value!;
+                    var body = new GdrMarkdownView(section, project).Fields.Single(field => field.Name == "discussion").Body;
                     sections[id] = (shown.Value!, body, []);
+                    unlinkedBySection[id] = GdrDecisionLinks.Unlinked(section, current.Succeeded ? current.Value!.Operations : []);
                 }
             }
             var (baseline, _, added) = sections[id];
             if (BlockPart(one, baseline, project) is { } block)
                 return CommandOutcome<GdrDecideBatchResponse>.Refused(RowRefusal(row.Row, $"Line {row.Row}: {block.Message}{EscapeHint}", block.Facts()));
             added.Add((row.Row, entry));
-            decided.Add(new GdrDecidedRow(row.Row, baseline.Record.Abbreviation, entry));
+            var unlinked = unlinkedBySection[id];
+            decided.Add(new GdrDecidedRow(row.Row, baseline.Record.Abbreviation, entry)
+            {
+                UnlinkedProposalObjects = unlinked.Take(GdrUnlinkedObjects.Shown).ToArray(), UnlinkedProposalObjectCount = unlinked.Count,
+            });
         }
         // One read per section; a failure is halved to the first row that breaks it.
         var edits = new List<GdrMarkdownEdits>();

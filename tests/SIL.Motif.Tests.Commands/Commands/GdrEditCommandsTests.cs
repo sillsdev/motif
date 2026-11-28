@@ -769,6 +769,98 @@ public sealed class GdrEditCommandsTests(PristineProjectFixture pristine)
         Assert.Contains("lacks the key \"over\"", GdrEditCommands.ParseDecisions("{\"section\":\"GDR-2\",\"choosing\":\"a\",\"because\":\"r\"}").Refusal!.Message, StringComparison.Ordinal);
     }
 
+    private static readonly Guid ProposalWordform = Guid.NewGuid();
+
+    // GDR-W links the wordform the Proposal changes; GDR-2 links nothing.
+    private string ProjectWithAWordformChange()
+    {
+        var wordform = Guid.Empty;
+        var path = ProjectWithGdrs(cache =>
+        {
+            HeadingStyles(cache);
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                wordform = cache.ServiceLocator.GetInstance<IWfiWordformFactory>().Create(TsStringUtils.MakeString("proposal-word", cache.DefaultVernWs)).Guid);
+            SeededGdrs.SeedLinkedRecord(cache, "GDR-W", wordform);
+        });
+        var initial = PendingChanges.Load(new PendingChangesRequest(path, MotifProductVersion.CurrentText));
+        var staged = PendingChanges.Put(new PutPendingChangeRequest(path, MotifProductVersion.CurrentText, initial.Value!.Revision,
+            new ChangeIntent(CanonicalId.Mint().Value, "incorrect-spelling", CanonicalId.FromGuid(wordform).Value, "proposal-word")));
+        Assert.True(staged.Succeeded, staged.Refusal?.Message);
+        _wordform = CanonicalId.FromGuid(wordform).Value;
+        return path;
+    }
+
+    private string _wordform = "";
+
+    [Fact]
+    public void ADecisionUnderASectionThatLinksNoneOfTheProposalsObjectsNamesThemInTypedFields()
+    {
+        var path = ProjectWithAWordformChange();
+
+        var decided = GdrEditCommands.Decide(new GdrDecideRequest(path, "GDR-2", "a", "b", "it fits"));
+
+        Assert.True(decided.Succeeded, decided.Refusal?.Message);
+        Assert.Equal(1, decided.Value!.UnlinkedProposalObjectCount);
+        var named = Assert.Single(decided.Value.UnlinkedProposalObjects);
+        Assert.Equal(_wordform, named.Id);
+        Assert.NotEmpty(named.OperationKinds);
+        Assert.Contains("\"unlinkedProposalObjectCount\":1", System.Text.Json.JsonSerializer.Serialize(decided.Value, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ADecisionUnderASectionThatLinksAProposalObjectGivesNoWarning()
+    {
+        var path = ProjectWithAWordformChange();
+
+        var decided = GdrEditCommands.Decide(new GdrDecideRequest(path, "GDR-W", "a", "b", "it fits"));
+
+        Assert.True(decided.Succeeded, decided.Refusal?.Message);
+        Assert.Equal(0, decided.Value!.UnlinkedProposalObjectCount);
+        Assert.Empty(decided.Value.UnlinkedProposalObjects);
+    }
+
+    [Fact]
+    public void ADecisionWhenTheProposalChangesNoObjectGivesNoWarning()
+    {
+        var path = ProjectWithGdrs(HeadingStyles);
+        Assert.True(GdrEditCommands.Decide(new GdrDecideRequest(path, "GDR-1", "a", "b", "it fits")).Succeeded);
+
+        var decided = GdrEditCommands.Decide(new GdrDecideRequest(path, "GDR-2", "c", "d", "it fits"));
+
+        Assert.True(decided.Succeeded, decided.Refusal?.Message);
+        Assert.Equal(0, decided.Value!.UnlinkedProposalObjectCount);
+    }
+
+    [Fact]
+    public void AWarningDoesNotRefuseAndABatchWarnsPerRowBySection()
+    {
+        var path = ProjectWithAWordformChange();
+        var rows = GdrEditCommands.ParseDecisions(
+            "{\"section\":\"GDR-2\",\"choosing\":\"a\",\"over\":\"b\",\"because\":\"one\"}\n" +
+            "{\"section\":\"GDR-W\",\"choosing\":\"c\",\"over\":\"d\",\"because\":\"two\"}\n").Value!;
+
+        var dry = GdrEditCommands.DecideBatch(new GdrDecideBatchRequest(path, rows, DryRun: true));
+
+        Assert.True(dry.Succeeded, dry.Refusal?.Message);
+        Assert.Equal([1, 0], dry.Value!.Rows.Select(row => row.UnlinkedProposalObjectCount).ToArray());
+        Assert.Equal(_wordform, Assert.Single(dry.Value.Rows[0].UnlinkedProposalObjects).Id);
+        Assert.True(GdrEditCommands.DecideBatch(new GdrDecideBatchRequest(path, rows)).Succeeded);
+    }
+
+    [Fact]
+    public void OtherGuideSectionEditsAreNotObjectsTheProposalChanges()
+    {
+        var section = Show(ProjectWithGdrs(), "GDR-2");
+        var other = CanonicalId.Mint();
+        var operations = new[]
+        {
+            new OperationEnvelope(CanonicalId.Mint(), CmPossibilityNameOperationKinds.SetName, target: CanonicalId.Parse(section.Record.Id)),
+            new OperationEnvelope(CanonicalId.Mint(), CmPossibilityNameOperationKinds.SetName, target: other),
+        };
+
+        Assert.Equal([], GdrDecisionLinks.Unlinked(section, operations));
+    }
+
     private string ProjectWithGdrs(Action<LcmCache>? alsoSeed = null)
     {
         using var cache = pristine.NewScratch();

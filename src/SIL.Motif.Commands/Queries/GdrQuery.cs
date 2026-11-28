@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -104,18 +105,31 @@ public static class GdrQuery
         return CommandOutcome<GdrCheckResponse>.Success(response with { Findings = findings, InSync = findings.Length == 0, QueryBlocks = blocks.Runs });
     }
 
+    /// <summary>A section with the operations of the Draft it was laid over.</summary>
+    internal sealed record GdrShownWithOperations(GdrShowResponse Section, IReadOnlyList<OperationEnvelope> Operations);
+
     /// <summary>Reads one record's Discussion with the project's styles and writing systems and any others it uses.</summary>
     public static CommandOutcome<GdrShowResponse> Show(GdrShowRequest request)
     {
+        var shown = ShowWithOperations(request);
+        return shown.Succeeded ? CommandOutcome<GdrShowResponse>.Success(shown.Value!.Section) : CommandOutcome<GdrShowResponse>.Refused(shown.Refusal!);
+    }
+
+    /// <summary>A section as <see cref="Show(GdrShowRequest)"/> reads it, with the operations of the as-of Draft it was laid over (none without one).</summary>
+    internal static CommandOutcome<GdrShownWithOperations> ShowWithOperations(GdrShowRequest request)
+    {
         var shown = Show(request, StyleCatalogs);
-        if (!shown.Succeeded || string.IsNullOrWhiteSpace(request.AsOf)) return shown;
+        if (!shown.Succeeded) return CommandOutcome<GdrShownWithOperations>.Refused(shown.Refusal!);
+        if (string.IsNullOrWhiteSpace(request.AsOf))
+            return CommandOutcome<GdrShownWithOperations>.Success(new GdrShownWithOperations(shown.Value!, []));
         var asOf = request.AsOf.Trim();
-        return ProjectStoreCommand.ReadExisting(request.ProjectPath, NoBaseline<GdrShowResponse>(), (database, _) =>
+        return ProjectStoreCommand.ReadExisting(request.ProjectPath,
+            CommandOutcome<GdrShownWithOperations>.Refused(NoBaseline<GdrShowResponse>().Refusal!), (database, _) =>
         {
             var operations = ProposalCommands.OperationsOf(database, asOf);
             return operations.Succeeded
-                ? CommandOutcome<GdrShowResponse>.Success(GdrAsOf.Apply(shown.Value!, operations.Value!))
-                : CommandOutcome<GdrShowResponse>.Refused(operations.Refusal!);
+                ? CommandOutcome<GdrShownWithOperations>.Success(new GdrShownWithOperations(GdrAsOf.Apply(shown.Value!, operations.Value!), operations.Value!))
+                : CommandOutcome<GdrShownWithOperations>.Refused(operations.Refusal!);
         });
     }
 

@@ -125,6 +125,11 @@ public sealed record GdrShowResponse(GdrSummary Record, IReadOnlyList<GdrParagra
     public int Position { get; init; }
 }
 
+/// <summary>An object the Draft changes that a Grammar Guide section does not link.</summary>
+/// <param name="Id">The object's canonical id.</param>
+/// <param name="OperationKinds">The kinds of the Draft's operations on it, such as <c>lexicon/entry/set-lexeme-form</c>.</param>
+public sealed record GdrUnlinkedObject(string Id, IReadOnlyList<string> OperationKinds);
+
 /// <summary>What staging a Grammar Guide edit added to a Draft.</summary>
 /// <param name="DraftName">The Draft the edit is staged in.</param>
 /// <param name="Id">The section's canonical id.</param>
@@ -138,13 +143,35 @@ public sealed record GdrEditResponse(
 {
     /// <summary>The standard styles the Draft also creates; empty when the project had them all.</summary>
     public IReadOnlyList<string> StylesCreated { get; init; } = [];
+    /// <summary>
+    /// Set by <c>guide decide</c> only: the first objects the Draft changes when the section links none of them, so the
+    /// decision may be under the wrong heading; empty when the section links one, or the Draft changes no object. Capped at
+    /// <see cref="GdrUnlinkedObjects.Shown"/>; <see cref="UnlinkedProposalObjectCount"/> is the whole count.
+    /// </summary>
+    public IReadOnlyList<GdrUnlinkedObject> UnlinkedProposalObjects { get; init; } = [];
+    /// <summary>How many objects the Draft changes that the section does not link; zero unless it links none of them.</summary>
+    public int UnlinkedProposalObjectCount { get; init; }
+}
+
+/// <summary>The cap on the objects a <c>guide decide</c> response names.</summary>
+public static class GdrUnlinkedObjects
+{
+    public const int Shown = 10;
 }
 
 /// <summary>One decision of a batch as it is or would be written.</summary>
 /// <param name="Row">The line of the file it came from.</param>
 /// <param name="Abbreviation">The section's permanent <c>GDR-n</c> number.</param>
 /// <param name="Entry">The list item written under the section's Decisions heading.</param>
-public sealed record GdrDecidedRow(int Row, string Abbreviation, string Entry);
+/// <remarks>
+/// <see cref="UnlinkedProposalObjects"/> and <see cref="UnlinkedProposalObjectCount"/> are as on <see cref="GdrEditResponse"/>,
+/// for this row's section.
+/// </remarks>
+public sealed record GdrDecidedRow(int Row, string Abbreviation, string Entry)
+{
+    public IReadOnlyList<GdrUnlinkedObject> UnlinkedProposalObjects { get; init; } = [];
+    public int UnlinkedProposalObjectCount { get; init; }
+}
 
 /// <summary>What a batch of judgement calls staged, or, on a dry run, would stage.</summary>
 /// <param name="DraftName">The Draft they are staged in, or would be.</param>
