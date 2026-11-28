@@ -64,9 +64,17 @@ public static class LcmRecordBridge
             imports.Add(new RecordImport(record, new Dictionary<int, int>()));
         }
         var content = new ResourceContentStore(storePath);
-        foreach (var path in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories).Where(path => IsResource(path, directory, wsDirectory) && !IsStoreArtifact(path, storePath)).ToArray())
+        var resourceFiles = Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories).Where(path => IsResource(path, directory, wsDirectory) && !IsStoreArtifact(path, storePath))
+            .Select(path => (Path: path, Relative: Path.GetRelativePath(directory, path).Replace(Path.DirectorySeparatorChar, '/'))).ToArray();
+        // Two paths differing only by case cannot coexist on every file system, so refuse them here.
+        var claimed = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var record in imports.Where(r => r.Record.Kind == "writing-system"))
+            claimed[record.Record.Values["path"].GetString()!] = record.Record.Values["path"].GetString()!;
+        foreach (var (_, relative) in resourceFiles)
+            if (!claimed.TryAdd(relative, relative))
+                throw new InvalidDataException($"Project resource paths differ only by case: '{claimed[relative]}' and '{relative}'. Rename one so the project can move between systems.");
+        foreach (var (path, relative) in resourceFiles)
         {
-            var relative = Path.GetRelativePath(directory, path).Replace(Path.DirectorySeparatorChar, '/');
             var record = Auxiliary("resource", relative);
             record.Values["path"] = JsonSerializer.SerializeToElement(relative);
             record.Values["hash"] = JsonSerializer.SerializeToElement(content.Put(File.ReadAllBytes(path)));

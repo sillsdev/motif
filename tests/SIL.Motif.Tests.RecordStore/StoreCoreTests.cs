@@ -278,6 +278,22 @@ public sealed class StoreCoreTests : IDisposable
         Assert.Throws<InvalidDataException>(() => content.Read("../escape"));
     }
 
+    [Fact]
+    public void PutRewritesADamagedExistingBlobInsteadOfFailingEveryRetry()
+    {
+        var content = new ResourceContentStore(Database);
+        var bytes = System.Security.Cryptography.RandomNumberGenerator.GetBytes(64);
+        var hash = content.Put(bytes);
+        var blob = Path.Combine(Database + ".resources", hash);
+        foreach (var damaged in new byte[][] { [], bytes[..10], System.Security.Cryptography.RandomNumberGenerator.GetBytes(64) })
+        {
+            File.WriteAllBytes(blob, damaged);
+            Assert.Equal(hash, content.Put(bytes));
+            Assert.Equal(bytes, content.Read(hash));
+            Assert.Single(Directory.GetFiles(Database + ".resources"));
+        }
+    }
+
     private sealed class FixedClock(DateTimeOffset time) : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => time;

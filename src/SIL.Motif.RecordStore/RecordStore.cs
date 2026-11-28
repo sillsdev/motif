@@ -44,11 +44,12 @@ public sealed partial class RecordStore : IAsyncDisposable
 
     internal static RecordStore OpenPublishedReader(string resolvedPath) => new(resolvedPath, null, true);
 
-    private RecordStore(string path, TimeProvider? timeProvider, bool readOnly, int highestFormat = StoreFormat)
+    private RecordStore(string path, TimeProvider? timeProvider, bool readOnly, int highestFormat = StoreFormat, bool building = false)
     {
         this.readOnly = readOnly;
         writeLockPath = path + ".write.lock";
         using var writer = readOnly ? null : AcquireWriter();
+        if (!readOnly && !building && !File.Exists(path)) CreateAtomically(path, timeProvider);
         var services = new ServiceCollection();
         var connection = RecordSqlite.ConnectionString(path, readOnly ? SqliteOpenMode.ReadOnly : SqliteOpenMode.ReadWriteCreate);
         var storedFormat = File.Exists(path) ? ReadFormat(connection) : 0;
@@ -126,6 +127,36 @@ public sealed partial class RecordStore : IAsyncDisposable
             provider.Dispose();
             throw;
         }
+    }
+
+    /// <summary>Test seam: runs after a new store is complete, before it takes its name.</summary>
+    [ThreadStatic] internal static Action<string>? BeforeCreationPublished;
+
+    // Built beside its name and renamed once complete; the next create discards a crash's leftover.
+    private static void CreateAtomically(string path, TimeProvider? timeProvider)
+    {
+        var building = path + ".creating";
+        // Sidecars beside a missing store are a crash's leftovers and must not meet the new database.
+        foreach (var leftover in new[] { building, building + "-wal", building + "-shm", building + "-journal", building + ".write.lock",
+            path + "-wal", path + "-shm", path + "-journal" })
+            File.Delete(leftover);
+        try
+        {
+            var created = new RecordStore(building, timeProvider, false, StoreFormat, building: true);
+            created.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            BeforeCreationPublished?.Invoke(building);
+            // The sidecars of the persistent WAL keep the same names as the file they belong to.
+            foreach (var sidecar in new[] { "-wal", "-shm" })
+                if (File.Exists(building + sidecar)) File.Move(building + sidecar, path + sidecar, overwrite: true);
+            File.Move(building, path);
+        }
+        catch
+        {
+            foreach (var partial in new[] { building, building + "-wal", building + "-shm", building + "-journal" })
+                try { File.Delete(partial); } catch (IOException) { }
+            throw;
+        }
+        finally { try { File.Delete(building + ".write.lock"); } catch (IOException) { } }
     }
 
     internal static bool IsPublishedPoint(string path, StoreState point)
@@ -525,13 +556,20 @@ public sealed partial class RecordStore : IAsyncDisposable
             await database.SaveChangesAsync();
             if (transaction is not null)
             {
+                WriteStageReached?.Invoke(WriteStage.StateWritten);
                 await transaction.CommitAsync();
                 CompleteUpgrade();
             }
         }
         catch
         {
-            if (transaction is not null) AbandonUpgrade();
+            if (transaction is not null)
+            {
+                AbandonUpgrade();
+                // The rolled-back state and certificate rows stay tracked as modified; the next write would flush them.
+                database.ChangeTracker.Clear();
+                requiresReopen = true;
+            }
             throw;
         }
         database.ChangeTracker.Clear();
