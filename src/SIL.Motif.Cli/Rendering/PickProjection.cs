@@ -117,7 +117,7 @@ public static class PickProjection
 
     private static CommandResult Refuse(string message) => new(
         FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument),
-        ProjectionJson.Serialize(new FailureEnvelope(FailureReason.InvalidArgument, message,
+        ProjectionJson.Serialize(CliNext.Envelope(FailureReason.InvalidArgument, message,
             code: HostRefusalCodes.CliPickPath)) + Environment.NewLine,
         FailureReason.InvalidArgument);
 }

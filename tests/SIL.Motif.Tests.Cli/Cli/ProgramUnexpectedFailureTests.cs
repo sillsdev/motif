@@ -30,6 +30,7 @@ public sealed class ProgramUnexpectedFailureTests(PristineProjectFixture pristin
         Assert.Equal("cli.unexpected", envelope.Code);
         Assert.Equal(FailureReason.StoreInconsistent, envelope.Reason);
         Assert.Contains("injected runner failure", envelope.Message, StringComparison.Ordinal);
+        Assert.Contains("tell the linguist", envelope.Next, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -52,6 +53,7 @@ public sealed class ProgramUnexpectedFailureTests(PristineProjectFixture pristin
             Assert.Equal("cli.store-busy", envelope.Code);
             Assert.Equal(FailureReason.Busy, envelope.Reason);
             Assert.Contains("repeat", envelope.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("repeat the same request", envelope.Next, StringComparison.OrdinalIgnoreCase);
         }
         else
         {

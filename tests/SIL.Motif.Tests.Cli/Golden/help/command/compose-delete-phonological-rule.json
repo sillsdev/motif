@@ -6,7 +6,7 @@
   "description": "Removes one phonological rule and the contexts only it uses, after checking its name. Motif stages a Draft for a person to review and Apply.",
   "helpPage": "# Delete a sound rule\n\nUse this command to remove a phonological rule and the contexts only it uses.\n\n\u0060\u0060\u0060sh\nmotif compose-delete-phonological-rule --project language.fwdata --draft drop-rule \\\n  --intent \u0027{\u0022target\u0022:\u0022\u003Crule-id\u003E\u0022,\u0022expectedName\u0022:\u0022\u003Ccurrent rule name\u003E\u0022}\u0027\n\u0060\u0060\u0060\n\n\u0060expectedName\u0060 must match the rule\u0027s name, so a wrong or stale target is refused and nothing is staged. To keep a rule but stop it applying, disable it instead (\u0060compose-set-phonological-rule-disabled\u0060).\n",
   "usage": [
-    "Usage: motif compose-delete-phonological-rule --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-delete-phonological-rule --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-delete-phonological-rule/"

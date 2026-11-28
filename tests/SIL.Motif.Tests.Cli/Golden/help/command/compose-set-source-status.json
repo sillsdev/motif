@@ -6,7 +6,7 @@
   "description": "Stages a Source as Removed or Active again. A removed Source stays in the list, so its id is never reused.",
   "helpPage": "# Remove or restore a Source\n\nStage a Source as Removed, or as Active again. A removed Source stays in the list and keeps its id.\n\n\u0060\u0060\u0060sh\nmotif compose-set-source-status --project language.fwdata --draft pending --intent \u0027{\u0022source\u0022:\u0022WEB\u0022,\u0022status\u0022:\u0022Removed\u0022}\u0027\n\u0060\u0060\u0060\n",
   "usage": [
-    "Usage: motif compose-set-source-status --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+    "Usage: motif compose-set-source-status --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--json] [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
   ],
   "surface": "AdvancedAi",
   "url": "https://motif-docs.pages.dev/reference/commands/compose-set-source-status/"
