@@ -39,22 +39,18 @@ public sealed class ReadonlyAuxiliaryStoreTests(PristineProjectFixture pristine)
         AssertUnchanged(fixture.Project, files);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task StoredAssessmentAndLegacyDifferencePagesDoNotRecreateAMissingUseLease(bool difference)
+    [Fact]
+    public async Task StoredAssessmentPagesDoNotRecreateAMissingUseLease()
     {
         var projectPath = pristine.CopyProjectFile();
         SeedAssessments(projectPath);
-        var tool = AgentTools.All.Single(item => item.Name == (difference ? "motif_difference" : "motif_assess"));
-        var arguments = difference
-            ? new JsonObject { ["difference"] = "difference", ["category"] = "positives-lost", ["limit"] = 1 }
-            : new JsonObject { ["assessment"] = "before", ["limit"] = 1 };
+        var tool = AgentTools.All.Single(item => item.Name == "motif_assess");
+        var arguments = new JsonObject { ["assessment"] = "before", ["limit"] = 1 };
         var args = new ToolArgs(arguments, tool.ArgumentNames);
         var context = Context(projectPath, Path.GetDirectoryName(projectPath)!);
         var before = await tool.Run(context, args, CancellationToken.None);
         Assert.Null(before.Refusal);
-        Assert.Single(before.Value![difference ? "items" : "words"]!.AsArray());
+        Assert.Single(before.Value!["words"]!.AsArray());
         var files = RemoveLeaseAndSnapshot(projectPath);
 
         var result = await tool.Run(context, args, CancellationToken.None);
@@ -99,8 +95,6 @@ public sealed class ReadonlyAuxiliaryStoreTests(PristineProjectFixture pristine)
         AssessedWord[] before = [new("first", "analysed",
             [new ParsedAnalysis(null, ["old-morph"], 0, "old-identity")])];
         AssessedWord[] after = [new("first", "no-analysis", [])];
-        var scope = ScopeCodec.Write(new StoredScope.Difference("before", "after", 1, 1, 1,
-            "old-grammar", "new-grammar", false, null));
         var stored = ProjectStoreCommand.Run(projectPath, "1.0", (database, _) =>
         {
             NewAssessmentRecord Record(string id, string kind, string scopeJson, IReadOnlyList<AssessedWord> rows) =>
@@ -109,8 +103,7 @@ public sealed class ReadonlyAuxiliaryStoreTests(PristineProjectFixture pristine)
                     "{}", "outcome", "semantic", "grammar", "model", "trial-difference/v1", 0,
                     new AssessmentRecordMaterial.Words(rows, null, null, []));
             new AssessmentRepository(database).RecordBatch([Record("before", "Correctness", "{}", before),
-                Record("after", "Correctness", "{}", after),
-                Record("difference", "Difference", scope, TrialResults.Classify(before, after, []))]);
+                Record("after", "Correctness", "{}", after)]);
             return CommandOutcome<JsonObject>.Success(new JsonObject());
         });
         Assert.True(stored.Succeeded, stored.Refusal?.Message);

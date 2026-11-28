@@ -25,8 +25,6 @@ public static partial class RefusalCatalog
         Spec(HostRefusalCodes.ToolFailed, FailureReason.Busy,
             NextStep.Repeat()),
         Spec(HostRefusalCodes.ToolInvalidArgument, FailureReason.InvalidArgument),
-        Spec(HostRefusalCodes.ToolInvalidCategory, FailureReason.InvalidArgument),
-        Spec(HostRefusalCodes.ToolInvalidPage, FailureReason.InvalidArgument),
         Spec(HostRefusalCodes.ToolMissingArgument, FailureReason.InvalidArgument,
             NextStep.Repeat()),
         Spec(HostRefusalCodes.ToolNotFound, FailureReason.NotFound),

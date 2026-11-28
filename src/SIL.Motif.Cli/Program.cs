@@ -876,14 +876,6 @@ try
                 successAsJson: false);
             break;
 
-        case "reject":
-            if (!flags.TryGetValue("project", out var rejectProject) || positionals.Count != 1)
-                return Usage("Usage: motif reject --project <fwdata> <proposalId>", asJson);
-            result = RenderProposal(
-                ProposalLifecycleCommand.Decline(new DeclineProposalRequest(rejectProject, positionals[0])),
-                successAsJson: false);
-            break;
-
         case "supersede":
             if (!flags.TryGetValue("project", out var supersedeProject) || positionals.Count != 2)
                 return Usage("Usage: motif supersede --project <fwdata> <proposalId> <supersededByProposalId>", asJson);
@@ -915,21 +907,7 @@ try
                     CliProductVersion(), flags.GetValueOrDefault("status"), requestsOffset, requestsLimit)));
                 break;
             }
-            if (!flags.TryGetValue("project", out var listProject) ||
-                flags.TryGetValue("status", out var listStatus) && string.IsNullOrWhiteSpace(listStatus))
-                return Usage("Usage: motif " + UsageLineFor("list"), asJson);
-            var (listWindow, listPagingRefusal) = PagingFlags.Read(flags, ResultPaging.DefaultLimit, allowAll: false);
-            if (listPagingRefusal is not null)
-            {
-                result = RenderProposal(CommandOutcome<ProposalListProjection>.Refused(listPagingRefusal));
-                break;
-            }
-            result = RenderProposal(
-                ProposalCommands.List(new ListProposalsRequest(listProject, CliProductVersion(),
-                    flags.ContainsKey("all"), flags.GetValueOrDefault("status"))).Map(
-                    list => list.Window(listWindow.Offset, listWindow.Limit).WithNextStep(
-                        next => PagingFlags.NextCommand("list", [], flags, next, listWindow.Limit, keepAll: true))));
-            break;
+            return Usage(UsageLineFor("list requests") + " OR " + UsageLineFor("list hypotheses"), asJson);
 
         case "show":
             if (!flags.TryGetValue("project", out var showProject) || positionals.Count != 1)
@@ -2766,8 +2744,10 @@ try
         case "proposals":
             if (!flags.TryGetValue("project", out var proposalsProject))
                 return Usage(UsageLineFor("proposals"), asJson);
+            if (flags.TryGetValue("status", out var proposalsStatus) && string.IsNullOrWhiteSpace(proposalsStatus))
+                return Usage(UsageLineFor("proposals"), asJson);
             result = RenderCommand(ProposalStandingsCommand.Read(new ProposalStandingsRequest(
-                proposalsProject, flags.ContainsKey("include-set-aside"))));
+                proposalsProject, flags.ContainsKey("include-set-aside"), proposalsStatus)));
             break;
 
         case "request":

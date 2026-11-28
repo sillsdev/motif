@@ -11114,7 +11114,7 @@
   },
   {
     "name": "motif_proposals",
-    "description": "Show a Proposal. Reads one saved Proposal or Draft by id, with its status, label, Rationale, Comments and operations; --current adds the value each change\u0027s field holds now, and an Applied Proposal carries its appliedRecord: the effects and evidence counts Apply saved. In JSON Comments, missing findings means unchecked, [] means checked and clean, and a non-empty array lists findings. It returns the first 10 operations and names the next offset; --limit, --offset, --page and --all read the rest. It does not change the FieldWorks project.\nCommand: show. Agent class: Read.\nProposalId: A Draft name or the exact canonical identity of a Draft or finalized Proposal.\nWithCurrent: Also reads, from the saved project, the value each change\u0027s field holds now, with no Trial.\nRecords: Lists a record import\u0027s files, one row each, instead of its operations.\nList Proposals. Lists every Proposal with what it changes and the numbers its latest Trial measured beside today\u0027s. Proposals are grouped by what to do next; applied and set-aside ones are counted unless asked for.\nCommand: proposals. Agent class: Read.\nIncludeSetAside: Whether closed (applied, rejected, superseded, withdrawn) Proposals are listed too.",
+    "description": "Show a Proposal. Reads one saved Proposal or Draft by id, with its status, label, Rationale, Comments and operations; --current adds the value each change\u0027s field holds now, and an Applied Proposal carries its appliedRecord: the effects and evidence counts Apply saved. In JSON Comments, missing findings means unchecked, [] means checked and clean, and a non-empty array lists findings. It returns the first 10 operations and names the next offset; --limit, --offset, --page and --all read the rest. It does not change the FieldWorks project.\nCommand: show. Agent class: Read.\nProposalId: A Draft name or the exact canonical identity of a Draft or finalized Proposal.\nWithCurrent: Also reads, from the saved project, the value each change\u0027s field holds now, with no Trial.\nRecords: Lists a record import\u0027s files, one row each, instead of its operations.\nList Proposals. Lists every Proposal with what it changes and the numbers its latest Trial measured beside today\u0027s. Proposals are grouped by what to do next; applied and set-aside ones are counted unless asked for. Add --include-set-aside to list closed ones too, or --status to list one status.\nCommand: proposals. Agent class: Read.\nIncludeSetAside: Whether closed (applied, rejected, superseded, withdrawn) Proposals are listed too.\nStatus: Lists only Proposals in this stored status (draft, proposed, deferred, applied, rejected, superseded or withdrawn), open or closed.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -11125,6 +11125,19 @@
         "include_set_aside": {
           "type": "boolean",
           "description": "Also list applied, rejected, superseded and deferred."
+        },
+        "status": {
+          "type": "string",
+          "description": "List only Proposals in this status, open or closed.",
+          "enum": [
+            "draft",
+            "proposed",
+            "deferred",
+            "applied",
+            "rejected",
+            "superseded",
+            "withdrawn"
+          ]
         },
         "current": {
           "type": "boolean",
@@ -11273,30 +11286,10 @@
   },
   {
     "name": "motif_difference",
-    "description": "Read Trial Difference. Pages through a stored Trial Difference by category. Unfinished parser cases are separate from words that no longer parse.",
+    "description": "Read Trial Difference. Reads a Trial report for a Proposal by exact report id, at summary, failures or full detail, and pages its retained cases. Unfinished parser cases are separate from words that no longer parse.",
     "inputSchema": {
       "type": "object",
       "properties": {
-        "difference": {
-          "type": "string",
-          "description": "Stored legacy Difference id."
-        },
-        "category": {
-          "type": "string",
-          "description": "Legacy Difference category.",
-          "enum": [
-            "negatives-now-parsing",
-            "positives-lost",
-            "unfinished",
-            "other-changes"
-          ]
-        },
-        "offset": {
-          "type": "integer",
-          "description": "Legacy rows to skip.",
-          "minimum": 0,
-          "maximum": 1000000
-        },
         "proposal": {
           "type": "string",
           "description": "Proposal for the report."

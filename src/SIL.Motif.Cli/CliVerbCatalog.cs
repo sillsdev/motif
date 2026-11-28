@@ -289,12 +289,8 @@ public static class CliVerbCatalog
         new CliVerbDescriptor(
             "Commands", "undefer", "undefer", new[] { "undefer --project <fwdata> <proposalId>" }),
         new CliVerbDescriptor(
-            "Commands", "reject", "reject", new[] { "reject --project <fwdata> <proposalId>" }),
-        new CliVerbDescriptor(
             "Commands", "supersede", "supersede",
             new[] { "supersede --project <fwdata> <proposalId> <supersededByProposalId>" }),
-        new CliVerbDescriptor(
-            "Commands", "list", "list", new[] { "list --project <fwdata> [--all | --status <status>] [--limit <1-200>] [--offset <n> | --page <N>] [--json]" }),
         new CliVerbDescriptor(
             "Commands", "show", "show", new[] { "show --project <fwdata> <proposalId|draftName> [--current | --records [--sort path|kind|batch-edges] [--refused]] [--limit <1-200>] [--offset <n> | --page <N> | --all] [--json]" }),
         new CliVerbDescriptor(
@@ -693,7 +689,7 @@ public static class CliVerbCatalog
             }),
         new CliVerbDescriptor(
             "Commands", "proposals", "proposals",
-            new[] { "proposals --project <fwdata> [--include-set-aside] [--json]" }),
+            new[] { "proposals --project <fwdata> [--include-set-aside | --status <status>] [--json]" }),
         new CliVerbDescriptor("Commands", "delete", "delete --proposal",
             new[] { "delete --proposal <id> --project <fwdata> [--json]" }),
         new CliVerbDescriptor("Commands", "reject", "reject --proposal",

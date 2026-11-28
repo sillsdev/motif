@@ -1040,7 +1040,7 @@ public static partial class ProposalCommands
                 {
                     throw new KeyNotFoundException(
                         $"The replacement Proposal '{supersededById}' is not in the store, so {id} was left as it was. " +
-                        "Run 'list' to see committed proposals.");
+                        "Run 'proposals --include-set-aside' to see committed proposals.");
                 }
 
                 return repository.Transition(
@@ -2696,7 +2696,7 @@ public static partial class ProposalCommands
         $"Draft '{draftName}' not found in store. Run 'new --draft {draftName}' first.";
 
     private static string ProposalNotFoundMessage(string id) =>
-        $"Proposal '{id}' not found in store. Run 'list' to see committed proposals.";
+        $"Proposal '{id}' not found in store. Run 'proposals --include-set-aside' to see committed proposals.";
 
     /// Discarding the colliding draft frees a different name than the one this call is trying to use.
     private static string DraftNameCollisionMessage(string draftName, string trailingClause) =>

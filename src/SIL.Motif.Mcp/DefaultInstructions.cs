@@ -13,7 +13,7 @@ internal static class DefaultInstructions
         Check one word cheaply with motif_try_word. When no named composer fits a change, ask motif_find_composer with a
         goal in the linguist's words.
         Make one small Proposal with motif_start_proposal and the matching semantic composer. Dry Run and Trial
-        the Draft before Finalize. Read the ordered Trial summary and page motif_difference by category; unfinished
+        the Draft before Finalize. Read the ordered Trial summary and page motif_difference through the report; unfinished
         cases prove no absence. Revise and repeat, then use motif_finalize_proposal for a person to review and Apply.
 
         Before drafting a Proposal, call motif_list_requests. If a relevant Request is open, tell the linguist and ask

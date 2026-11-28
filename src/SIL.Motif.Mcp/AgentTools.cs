@@ -825,34 +825,6 @@ internal static class AgentTools
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeEditAnalysisDecision(new(
                 c.ProjectPath, c.ProductVersion, a.Required("draft"), a.IntentJson("decision", "analysis", "wordform", "morphs", "intendedForm", "note"))),
                 r => $"Draft now has {r.OperationCount} changes. Run motif_dry_run, revise, then Finalize; only a person can Apply."))) { Requests = [typeof(ComposeEditAnalysisDecisionRequest)] },
-        new("motif_record_parsimony_disposition",
-            ComposerTools.Describe("compose-record-parsimony-disposition"),
-            AgentClass.Draft,
-            Schema.Object([
-                ("draft", Schema.String("The draft name from motif_start_proposal."), true),
-                ("recordTypeId", Schema.String("Id of an existing possibility in the Notebook record type list."), true),
-                ("measureId", Schema.String("The registered Parsimony measure id."), true),
-                ("subject", JudgmentSubject(), true),
-                ("disposition", Schema.String("The proposed decision.", "fix", "keep", "ask", "defer"), true),
-                ("evidenceDigest", Schema.String("Canonical sha256 digest from the exact finding."), true),
-                ("evidenceContract", Schema.String("Versioned evidence contract for the finding."), true),
-                ("subjectCaption", Schema.String("Readable name for the exact finding subject."), true),
-                ("measureCaption", Schema.String("Readable name for the Parsimony measure."), true),
-                ("reason", Schema.String("Optional explanation, stored with the readable record."), false),
-                ("question", Schema.String("Required only when disposition is ask."), false),
-                ("reportId", Schema.String("Optional source Parsimony Report id."), false),
-            ]),
-            false,
-            false,
-            false,
-            true,
-            (c, a, ct) => Task.FromResult(ToolOutcome.From(
-                ProposalCommands.ComposeIntent(new(c.ProjectPath, c.ProductVersion,
-                    a.Required("draft"), "compose-record-parsimony-disposition", a.IntentJson("recordTypeId", "measureId",
-                        "subject", "disposition", "evidenceDigest", "evidenceContract", "subjectCaption", "measureCaption",
-                        "reason", "question", "reportId"))),
-                r => $"Draft now has {r.OperationCount} changes. A pending keep does not suppress findings; only a person can Apply."))),
-
         new("motif_parsimony_record_types",
             string.Empty,
             AgentClass.Read,
@@ -1137,6 +1109,7 @@ internal static class AgentTools
             AgentClass.Read,
             Schema.Object([("proposal", Schema.String("A Draft name or Proposal id to show in full. Omit to list."), false),
                 ("include_set_aside", Schema.Boolean("Also list applied, rejected, superseded and deferred."), false),
+                ("status", Schema.String("List only Proposals in this status, open or closed.", ProposalStandingsCommand.Statuses.ToArray()), false),
                 ("current", Schema.Boolean("With proposal: also read the value each change's field holds in the saved project now, before any Trial."), false),
                 ("records", Schema.Boolean("With proposal: list a record import's files, one row each (path, record, kind, create or update, operations, batch edges), instead of its operations."), false),
                 ("sort", Schema.String("With records: order the rows by path (the default), kind or batch-edges."), false),
@@ -1152,7 +1125,7 @@ internal static class AgentTools
                         ? new ShowRecordGrouping(a.Optional("sort") ?? "path", a.Flag("refused")) : null))
                     .Map(detail => a.HasPaging ? a.Page(detail, detail.Window) : detail.WithTotal()))
                 : ToolOutcome.From(ProposalStandingsCommand.Read(
-                    new ProposalStandingsRequest(c.ProjectPath, a.Flag("include_set_aside")), c.JobParserPath)
+                    new ProposalStandingsRequest(c.ProjectPath, a.Flag("include_set_aside"), a.Optional("status")), c.JobParserPath)
                     .Map(standings => a.Page(standings, standings.Window, SIL.Motif.Contract.Responses.ResultPaging.DefaultLimit))))) { Requests = [typeof(ProposalStandingsRequest), typeof(ShowProposalRequest)] },
 
         new("motif_activity",
@@ -1190,10 +1163,7 @@ internal static class AgentTools
                     ["Collect"] = null, ["NoBackground"] = "no_background",
                 } },
         new("motif_difference", string.Empty, AgentClass.Read,
-            Schema.Object(("difference", Schema.String("Stored legacy Difference id."), false),
-                ("category", Schema.String("Legacy Difference category.", TrialResults.Categories), false),
-                ("offset", Schema.Integer("Legacy rows to skip.", 0, 1000000), false),
-                ("proposal", Schema.String("Proposal for the report."), false),
+            Schema.Object(("proposal", Schema.String("Proposal for the report."), false),
                 ("report", Schema.String("Exact Trial report id."), false),
                 ("detail", Schema.String("Report disclosure level.", "summary", "failures", "full"), false),
                 ("section", Schema.String("Report section."), false),
@@ -1207,7 +1177,7 @@ internal static class AgentTools
                 ("trace", Schema.Boolean("Explicitly run or read a report-bound trace."), false),
                 ("cursor", Schema.String("Report page continuation."), false),
                 ("limit", Schema.Integer("Page size, maximum 200.", 1, 200), false)), false, false, false, true,
-            (c, a, ct) => Task.FromResult(TrialReviewTools.Difference(c, a))) { OutputSchema = TrialReviewTools.DifferenceSchema },
+            (c, a, ct) => Task.FromResult(TrialReviewTools.Difference(c, a))) { OutputSchema = TrialReviewTools.OutputSchema },
         new("motif_proposal_difference", string.Empty, AgentClass.Read,
             Schema.Object(("proposal", Schema.String("Proposal whose newest saved Difference to read; the response lists every " +
                     "Difference the Proposal has saved with its Text and reference."), false),

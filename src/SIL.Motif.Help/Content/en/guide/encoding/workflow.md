@@ -36,7 +36,7 @@ An id is a GUID, and an object a Proposal creates gets a new one every time that
 
 - Run `motif_dry_run`, then `motif_trial` with attested positive forms, contrasting forms and words that should not parse.
 - Read the Trial summary in order: negatives now parsing, positives lost, unfinished cases, other changes, counts.
-- Use `motif_difference` with the stored Difference id and category to page through exact before and after analyses. Unfinished cases prove no absence.
+- Use `motif_difference` with the Proposal and report id to page through exact before and after analyses. Unfinished cases prove no absence.
 - If evidence leaves competing analyses that change the Proposal, ask one question using attested forms. Defer when the linguist cannot yet answer it.
 - Revise and repeat the Trial after a meaningful change. Do not describe an unmeasured change as a parser improvement.
 

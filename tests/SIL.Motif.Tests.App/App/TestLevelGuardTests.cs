@@ -71,7 +71,6 @@ public sealed class TestLevelGuardTests
         new("SIL.Motif.Tests.LibLcm", "JudgmentLineageResolverTests", TestBoundary.FakeOnly, "Unit"),
         new("SIL.Motif.Tests.Mcp", "AgentPluginSkillTests", TestBoundary.FakeOnly, "Unit"),
         new("SIL.Motif.Tests.Mcp", "CatalogExecutionTests", TestBoundary.FakeOnly, "Unit"),
-        new("SIL.Motif.Tests.Mcp", "DifferencePagingTests", TestBoundary.FakeOnly, "Unit"),
         new("SIL.Motif.Tests.Mcp", "EncodingGuidesTests", TestBoundary.FakeOnly, "Unit"),
         new("SIL.Motif.Tests.Mcp", "ParsimonyRunCancellationTests", TestBoundary.FakeOnly, "Unit"),
         new("SIL.Motif.Tests.Mcp", "ParsimonyToolSurfaceTests", TestBoundary.FakeOnly, "Unit"),
@@ -80,7 +79,6 @@ public sealed class TestLevelGuardTests
         new("SIL.Motif.Tests.Mcp", "RefusalMappingTests", TestBoundary.FakeOnly, "Unit"),
         new("SIL.Motif.Tests.Mcp", "ResultShaperTests", TestBoundary.FakeOnly, "Unit"),
         new("SIL.Motif.Tests.Mcp", "ToolSurfaceTests", TestBoundary.FakeOnly, "Unit"),
-        new("SIL.Motif.Tests.Mcp", "TrialSummaryTests", TestBoundary.FakeOnly, "Unit"),
         new("SIL.Motif.Tests.Worker", "TrialGrammarCheckTests", TestBoundary.FakeOnly, "Unit"),
     ];
 

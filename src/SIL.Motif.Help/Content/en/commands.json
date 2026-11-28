@@ -2139,7 +2139,7 @@
   },
   "motif_difference": {
     "title": "Read Trial Difference",
-    "description": "Pages through a stored Trial Difference by category. Unfinished parser cases are separate from words that no longer parse.",
+    "description": "Reads a Trial report for a Proposal by exact report id, at summary, failures or full detail, and pages its retained cases. Unfinished parser cases are separate from words that no longer parse.",
     "source": "Authored from the agent read contract."
   },
   "import": {
@@ -2223,14 +2223,9 @@
     ],
     "redirect": "Use only if an entry needs its main form written; otherwise add a form with compose-author-alternate-form. Keep one entry per morpheme, and leave a regular sound change to a phonological rule (guide conditioned-allomorphs)."
   },
-  "list": {
-    "title": "List Proposals",
-    "description": "Lists open Proposals and Drafts, including each identity, label and status. Add --all to include closed ones, or --status to list one status. It returns the first 25 and names the next offset; --limit, --offset and --page read the rest.",
-    "source": "The shared command catalog and typed request contract."
-  },
   "proposals": {
     "title": "List Proposals",
-    "description": "Lists every Proposal with what it changes and the numbers its latest Trial measured beside today's. Proposals are grouped by what to do next; applied and set-aside ones are counted unless asked for.",
+    "description": "Lists every Proposal with what it changes and the numbers its latest Trial measured beside today's. Proposals are grouped by what to do next; applied and set-aside ones are counted unless asked for. Add --include-set-aside to list closed ones too, or --status to list one status.",
     "source": "Hand-written from command behavior."
   },
   "delete --proposal": {

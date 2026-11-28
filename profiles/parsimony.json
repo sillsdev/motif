@@ -7,7 +7,6 @@
     { "tool": "motif_start_proposal" },
     { "tool": "motif_parsimony_record_types" },
     { "tool": "motif_dispose_parsimony_finding" },
-    { "tool": "motif_record_parsimony_disposition" },
     { "tool": "motif_dry_run" },
     { "tool": "motif_finalize_proposal" },
     { "tool": "motif_proposals" }

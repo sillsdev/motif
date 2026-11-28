@@ -35,13 +35,25 @@ public static class ProposalStandingsCommand
     public static CommandOutcome<ProposalStandings> Read(ProposalStandingsRequest request, string? parserPath)
     {
         ArgumentNullException.ThrowIfNull(request);
+        if (request.Status is not null && !Statuses.Contains(request.Status, StringComparer.Ordinal))
+            return CommandOutcome<ProposalStandings>.Refused(new Refusal("proposal.unknown-status",
+                FailureReason.InvalidArgument,
+                $"'{request.Status}' is not a Proposal status. Use one of: {string.Join(", ", Statuses)}.",
+                new Dictionary<string, string> { ["status"] = request.Status }));
         return ProjectStoreCommand.ReadExisting(request.ProjectPath, CommandOutcome<ProposalStandings>.Success(new([], 0)),
-            (database, project) => Read(database, project, request.IncludeSetAside, parserPath));
+            (database, project) => Read(database, project, request.IncludeSetAside, parserPath, request.Status));
     }
+
+    /// <summary>The statuses a <see cref="ProposalStandingsRequest.Status"/> filter accepts.</summary>
+    public static readonly IReadOnlyList<string> Statuses =
+    [
+        "draft", ManifestStatus.Proposed, ManifestStatus.Deferred, ManifestStatus.Applied, ManifestStatus.Rejected,
+        ManifestStatus.Superseded, ManifestStatus.Withdrawn,
+    ];
 
     /// <summary>Reads the standings from an open store.</summary>
     public static CommandOutcome<ProposalStandings> Read(MotifDatabase database, ProjectLocator project,
-        bool includeSetAside, string? parserPath = null)
+        bool includeSetAside, string? parserPath = null, string? status = null)
     {
         ArgumentNullException.ThrowIfNull(database);
         ArgumentNullException.ThrowIfNull(project);
@@ -77,7 +89,7 @@ public static class ProposalStandingsCommand
         foreach (var candidate in candidates)
         {
             var group = GroupOf(candidate);
-            if (group == ProposalGroup.SetAside && !includeSetAside) continue;
+            if (status is null ? group == ProposalGroup.SetAside && !includeSetAside : !HasStatus(candidate, status)) continue;
             var id = candidate.Record.ProposalId.Value;
             var mine = changedWords[id];
             var alsoChangedBy = mine.Count == 0 ? [] : candidates
@@ -112,6 +124,10 @@ public static class ProposalStandingsCommand
             cards.OrderBy(card => card.Group).ThenBy(card => card.Label, StringComparer.CurrentCultureIgnoreCase)
                 .ToArray(), setAside) { Unreadable = unreadable });
     }
+
+    private static bool HasStatus(Candidate candidate, string status) => status == "draft"
+        ? candidate.Record.DraftName is not null
+        : candidate.Record.DraftName is null && candidate.Record.Status == status;
 
     private static string? Metadata(ContractProposal proposal, string name) =>
         proposal.Extensions is { ValueKind: JsonValueKind.Object } extension &&

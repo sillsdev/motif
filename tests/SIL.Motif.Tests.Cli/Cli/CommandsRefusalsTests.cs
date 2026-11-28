@@ -526,7 +526,7 @@ public sealed class CommandsRefusalsTests : IDisposable
         Assert.Equal("proposal.not-found", refusal.Code);
         Assert.Equal(FailureReason.NotFound, refusal.Reason);
         Assert.Contains("not found in store", refusal.Message);
-        Assert.Contains("Run 'list' to see committed proposals.", refusal.Message);
+        Assert.Contains("Run 'proposals --include-set-aside' to see committed proposals.", refusal.Message);
     }
 
     [Fact]

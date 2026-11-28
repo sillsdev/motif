@@ -85,7 +85,8 @@ internal sealed class RecordParsimonyDispositionDefinition : ComposerDefinition<
 
     /// <inheritdoc />
     public override ComposerExposure Exposure { get; } = new(CommandSurface.AdvancedAi, AgentClass.Draft,
-        InBatch: false, ToolName: "motif_record_parsimony_disposition", HandWrittenTool: true);
+        // The descriptor needs a name; AgentTool is false, so no MCP tool has this name.
+        InBatch: false, ToolName: "motif_record_parsimony_disposition", AgentTool: false);
 
     /// <inheritdoc />
     public override ReplacementRule? Replaces { get; } = ReplacementRule.SameIdentity(FindingIdentity,
