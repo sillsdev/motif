@@ -166,14 +166,14 @@ public sealed class HandAnalysisIndonesianTests(ImportedProject project) : IClas
         var first = await pin.Inventory(new(1));
         Assert.Equal(whole.Count, first.Total);
         Assert.NotNull(first.NextCursor);
-        Assert.Equal(RefusalCodes.HandAnalysisInvalidCursor, (await pin.WordsAsync(
+        Assert.Equal(RefusalCodes.PagingInvalid, (await pin.WordsAsync(
             new WordQuery.Identity(TestWord.Key("x", "y")), new(1, first.NextCursor))).Refusal?.Code);
-        Assert.Equal(RefusalCodes.HandAnalysisInvalidCursor, (await pin.InventoryAsync(new(1, "not a cursor"))).Refusal?.Code);
+        Assert.Equal(RefusalCodes.PagingInvalid, (await pin.InventoryAsync(new(1, "not a cursor"))).Refusal?.Code);
         await using var other = await host.PinAsync(Basis with { ParserRevision = "parser-2" }, null);
         Assert.NotEqual(pin.Stamp.SnapshotId, other.Stamp.SnapshotId);
-        Assert.Equal(RefusalCodes.HandAnalysisInvalidCursor, (await other.InventoryAsync(new(1, first.NextCursor))).Refusal?.Code);
+        Assert.Equal(RefusalCodes.PagingInvalid, (await other.InventoryAsync(new(1, first.NextCursor))).Refusal?.Code);
         foreach (var limit in new[] { 0, 201 })
-            Assert.Equal(RefusalCodes.HandAnalysisInvalidPageLimit,
+            Assert.Equal(RefusalCodes.PagingInvalid,
                 (await pin.WordsAsync(new WordQuery.Identity(new WordIdentity.Native(whole[0].Id)), new(limit))).Refusal?.Code);
     }
 

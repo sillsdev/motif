@@ -122,7 +122,7 @@ public sealed class TrialReviewCommands(MotifDatabase database, string? parserPa
                     FailureReason.Refused, (exception.Explanation ?? "Report detail is no longer retained.") +
                     " Rerun the Trial to get it back.", facts));
             }
-            catch (ReviewCursorInvalidException) { return Refused(RefusalCodes.ReviewCursorInvalid, FailureReason.InvalidArgument, "The continuation does not match this report selection."); }
+            catch (ReviewCursorInvalidException) { return Refused(RefusalCodes.PagingInvalid, FailureReason.InvalidArgument, "The continuation does not match this report selection."); }
             catch (ArgumentException exception) { return Invalid(exception.Message); }
         }
         var links = new List<ReadTarget> { Resource(request.ProjectKey, reportId, "summary", null) };
@@ -447,7 +447,7 @@ public sealed class TrialReviewCommands(MotifDatabase database, string? parserPa
                 "The latest Trial identity exceeds 2 KiB. Use the stored report read for this Proposal.");
 
     private static CommandOutcome<TrialReviewResult> Invalid(string message) =>
-        Refused(RefusalCodes.DifferenceInvalidPage, FailureReason.InvalidArgument, message);
+        Refused(RefusalCodes.PagingInvalid, FailureReason.InvalidArgument, message);
     private static NoTrialResult NoTrial(string proposal) => new(proposal,
         [new ReadTarget(TargetKind.Tool, "Start a Trial", null, "motif_trial", new ReadArguments(Proposal: proposal, Action: "run"))]);
     private static CommandOutcome<TrialReviewResult> Refused(string code, FailureReason reason, string message) =>

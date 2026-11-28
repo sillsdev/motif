@@ -18,9 +18,10 @@ public static class SourceProgressQuery
     public static CommandOutcome<SourceProgressResponse> Query(string projectPath, string sourceId,
         string detail = "summary", int limit = 50, string? cursor = null)
     {
-        if (string.IsNullOrWhiteSpace(sourceId) || detail is not ("summary" or "passages") ||
-            limit is < 1 or > 200 || detail == "summary" && cursor is not null)
-            return Refuse(RefusalCodes.ProgressInvalidRequest, FailureReason.InvalidArgument, "Choose a Source and a valid detail and limit.");
+        if (string.IsNullOrWhiteSpace(sourceId) || detail is not ("summary" or "passages") || detail == "summary" && cursor is not null)
+            return Refuse(RefusalCodes.ProgressInvalidRequest, FailureReason.InvalidArgument, "Choose a Source and a valid detail; a summary has no cursor.");
+        if (limit is < 1 or > 200)
+            return Refuse(RefusalCodes.PagingInvalid, FailureReason.InvalidArgument, "The limit must be from 1 to 200.");
         var source = sourceId.Trim().ToUpperInvariant();
         Cursor? continuation = null;
         if (cursor is not null)
@@ -28,7 +29,7 @@ public static class SourceProgressQuery
             try { continuation = JsonSerializer.Deserialize<Cursor>(Convert.FromBase64String(cursor)); }
             catch (Exception e) when (e is FormatException or JsonException) { }
             if (continuation is null || continuation.Source != source || string.IsNullOrEmpty(continuation.Last))
-                return Refuse(RefusalCodes.ProgressInvalidCursor, FailureReason.InvalidArgument, "Invalid Source Progress cursor.");
+                return Refuse(RefusalCodes.PagingInvalid, FailureReason.InvalidArgument, "Invalid Source Progress cursor.");
         }
         return ProjectStoreCommand.ReadExisting(projectPath,
             Refuse(RefusalCodes.SourceIndexMissing, FailureReason.NotFound, "The Source index is missing. Capture the saved project to queue it."),
@@ -36,7 +37,7 @@ public static class SourceProgressQuery
             {
                 var key = ProjectWorkspaceKey.Compute(project);
                 if (continuation is not null && continuation.Project != key)
-                    return Refuse(RefusalCodes.ProgressInvalidCursor, FailureReason.InvalidArgument, "The cursor belongs to another project.");
+                    return Refuse(RefusalCodes.PagingInvalid, FailureReason.InvalidArgument, "The cursor belongs to another project.");
                 var state = SourceIndexRepository.ReadState(connection, transaction, source);
                 if (state is null)
                     return Refuse(RefusalCodes.SourceIndexMissing, FailureReason.NotFound, "The Source index is missing.");

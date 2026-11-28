@@ -40,31 +40,13 @@ public sealed class PhonologyVerbArgvTests(PristineProjectFixture pristine)
     }
 
     [Fact]
-    public void CursorJsonRejectsRepeatedAndUnknownFieldsBeforeOpeningAProject()
-    {
-        var duplicate = Run("phonology-examples", "list", "--project", "/missing/project.fwdata",
-            "--continuation", "{\"projectIdentity\":\"one\",\"projectIdentity\":\"two\",\"afterSetId\":\"set\"}", "--json");
-        var unknown = Run("phonology-examples", "show", "--project", "/missing/project.fwdata",
-            "example-revision/id", "--continuation", "{\"ownerId\":\"id\",\"afterOrdinal\":0,\"other\":true}", "--json");
-
-        Assert.NotEqual(0, duplicate.ExitCode);
-        Assert.NotEqual(0, unknown.ExitCode);
-        using var duplicateEnvelope = JsonDocument.Parse(duplicate.Error);
-        using var unknownEnvelope = JsonDocument.Parse(unknown.Error);
-        var duplicateMessage = duplicateEnvelope.RootElement.GetProperty("message").GetString()!;
-        var unknownMessage = unknownEnvelope.RootElement.GetProperty("message").GetString()!;
-        Assert.Contains("repeats 'projectIdentity'", duplicateMessage, StringComparison.Ordinal);
-        Assert.Contains("'other'", unknownMessage, StringComparison.Ordinal);
-    }
-
-    [Fact]
     public void ResultsRefusesAnUnknownCheckAndAConflictingExampleSelection()
     {
         var project = pristine.CopyProjectFile();
 
         var missing = Run("phonology-examples", "results", "--project", project, "assessment/none", "--json");
         var conflict = Run("phonology-examples", "results", "--project", project, "assessment/none",
-            "--example", "front", "--page-size", "5", "--json");
+            "--example", "front", "--limit", "5", "--json");
 
         Assert.NotEqual(0, missing.ExitCode);
         using var missingEnvelope = JsonDocument.Parse(missing.Error);

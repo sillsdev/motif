@@ -93,14 +93,8 @@ public static class PhonologyExampleCommands
     public static CommandOutcome<PhonologyExamplesListResponse> List(ListPhonologyExamplesRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        try
-        {
-            PhonologyExampleValidation.ValidatePageSize(request.PageSize);
-        }
-        catch (ArgumentException exception)
-        {
-            return Invalid<PhonologyExamplesListResponse>(exception.Message);
-        }
+        if (PagingRefusal<PhonologySetListCursor>(request.Limit, request.Cursor, out var listCursor) is { } listRefusal)
+            return CommandOutcome<PhonologyExamplesListResponse>.Refused(listRefusal);
 
         return ProjectStoreCommand.ReadExisting(request.ProjectPath,
             CommandOutcome<PhonologyExamplesListResponse>.Success(new([], null)),
@@ -109,7 +103,7 @@ public static class PhonologyExampleCommands
             try
             {
                 return CommandOutcome<PhonologyExamplesListResponse>.Success(
-                    new PhonologyExampleSetRepository(database).List(request.PageSize, request.Continuation));
+                    new PhonologyExampleSetRepository(database).List(request.Limit, listCursor));
             }
             catch (ArgumentException exception)
             {
@@ -126,13 +120,13 @@ public static class PhonologyExampleCommands
         try
         {
             PhonologyExampleValidation.ValidateRevisionId(request.RevisionId);
-            PhonologyExampleValidation.ValidatePageSize(request.PageSize);
-            PhonologyExampleValidation.ValidatePageCursor(request.Continuation, request.RevisionId);
         }
         catch (ArgumentException exception)
         {
             return Invalid<PhonologyExamplesPageResponse>(exception.Message);
         }
+        if (PagingRefusal<PhonologyPageCursor>(request.Limit, request.Cursor, out var showCursor, request.RevisionId) is { } showRefusal)
+            return CommandOutcome<PhonologyExamplesPageResponse>.Refused(showRefusal);
 
         return ProjectStoreCommand.ReadExisting(request.ProjectPath,
             CommandOutcome<PhonologyExamplesPageResponse>.Refused(new Refusal("phonology-examples.revision-not-found", FailureReason.NotFound, $"Example Set revision '{request.RevisionId}' was not found.")),
@@ -141,7 +135,7 @@ public static class PhonologyExampleCommands
             try
             {
                 var page = new PhonologyExampleSetRepository(database).Read(request.RevisionId,
-                    request.PageSize, request.Continuation);
+                    request.Limit, showCursor);
                 return CommandOutcome<PhonologyExamplesPageResponse>.Success(page);
             }
             catch (KeyNotFoundException exception)
@@ -206,6 +200,26 @@ public static class PhonologyExampleCommands
         });
     }
 
+    private static Refusal? PagingRefusal<T>(int limit, string? text, out T? cursor, string? ownerId = null) where T : class
+    {
+        cursor = null;
+        if (limit is < 1 or > PhonologyExampleValidation.MaxPageSize)
+            return new Refusal(RefusalCodes.PagingInvalid, FailureReason.InvalidArgument,
+                $"The limit must be from 1 to {PhonologyExampleValidation.MaxPageSize}.");
+        if (!PhonologyCursorCodec.TryDecode(text, out cursor))
+            return new Refusal(RefusalCodes.PagingInvalid, FailureReason.InvalidArgument,
+                "The cursor must be the nextCursor a previous page returned.");
+        try
+        {
+            if (cursor is PhonologyPageCursor page && ownerId is not null) PhonologyExampleValidation.ValidatePageCursor(page, ownerId);
+        }
+        catch (ArgumentException exception)
+        {
+            return new Refusal(RefusalCodes.PagingInvalid, FailureReason.InvalidArgument, exception.Message);
+        }
+        return null;
+    }
+
     /// <summary>Reads the stored result of one phonology check as a summary page or one complete example.</summary>
     /// <param name="request">The project, the check's Assessment id, and the closed page or example selection.</param>
     public static CommandOutcome<PhonologyResultsResponse> Results(PhonologyResultsRequest request)
@@ -213,18 +227,10 @@ public static class PhonologyExampleCommands
         ArgumentNullException.ThrowIfNull(request);
         if (request.Read is null)
             return Invalid<PhonologyResultsResponse>("A results request names a page or an example to read.");
-        if (request.Read is PhonologyResultsRead.Page { PageSize: var pageSize, Continuation: var continuation })
-        {
-            try
-            {
-                PhonologyExampleValidation.ValidatePageSize(pageSize);
-                PhonologyExampleValidation.ValidatePageCursor(continuation, request.AssessmentId);
-            }
-            catch (ArgumentException exception)
-            {
-                return Invalid<PhonologyResultsResponse>(exception.Message);
-            }
-        }
+        PhonologyPageCursor? resultsCursor = null;
+        if (request.Read is PhonologyResultsRead.Page { Limit: var pageLimit, Cursor: var pageCursor } &&
+            PagingRefusal(pageLimit, pageCursor, out resultsCursor, request.AssessmentId) is { } resultsRefusal)
+            return CommandOutcome<PhonologyResultsResponse>.Refused(resultsRefusal);
 
         return ProjectStoreCommand.ReadExisting(request.ProjectPath,
             CommandOutcome<PhonologyResultsResponse>.Refused(new Refusal("phonology-examples.assessment-not-found", FailureReason.NotFound, $"Assessment '{request.AssessmentId}' was not found.")),
@@ -236,7 +242,7 @@ public static class PhonologyExampleCommands
                 PhonologyResultsResponse response = request.Read switch
                 {
                     PhonologyResultsRead.Page page =>
-                        results.ReadPage(request.AssessmentId, page.PageSize, page.Continuation),
+                        results.ReadPage(request.AssessmentId, page.Limit, resultsCursor),
                     PhonologyResultsRead.Example example =>
                         results.ReadExample(request.AssessmentId, example.ExampleId),
                     _ => throw new ArgumentException("Unknown results selection."),

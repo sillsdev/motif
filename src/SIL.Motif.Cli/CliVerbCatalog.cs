@@ -116,17 +116,17 @@ public static class CliVerbCatalog
         new CliVerbDescriptor("Project", "phonology-examples", "phonology-examples save",
             new[] { "phonology-examples save --project <fwdata> --file <examples.json> [--json]" }),
         new CliVerbDescriptor("Project", "phonology-examples", "phonology-examples list",
-            new[] { "phonology-examples list --project <fwdata> [--page-size <n>] " +
-                "[--continuation <cursor-json>] [--json]" }),
+            new[] { "phonology-examples list --project <fwdata> [--limit <1-100>] " +
+                "[--cursor <c>] [--json]" }),
         new CliVerbDescriptor("Project", "phonology-examples", "phonology-examples show",
-            new[] { "phonology-examples show --project <fwdata> <revisionId> [--page-size <n>] " +
-                "[--continuation <cursor-json>] [--json]" }),
+            new[] { "phonology-examples show --project <fwdata> <revisionId> [--limit <1-100>] " +
+                "[--cursor <c>] [--json]" }),
         new CliVerbDescriptor("Project", "phonology-examples", "phonology-examples check",
             new[] { "phonology-examples check --project <fwdata> <revisionId> [--work-cap <n>] " +
                 "[--timeout-ms <ms>] [--wait] [--wait-timeout-ms <ms>] [--json]" }),
         new CliVerbDescriptor("Project", "phonology-examples", "phonology-examples results",
-            new[] { "phonology-examples results --project <fwdata> <assessmentId> [--page-size <n>] " +
-                "[--continuation <cursor-json>] [--json]",
+            new[] { "phonology-examples results --project <fwdata> <assessmentId> [--limit <1-100>] " +
+                "[--cursor <c>] [--json]",
                 "phonology-examples results --project <fwdata> <assessmentId> --example <exampleId> " +
                 "[--out <path.json>] [--json]" }),
         new CliVerbDescriptor(
@@ -336,7 +336,7 @@ public static class CliVerbCatalog
         new CliVerbDescriptor("Commands", "evidence list", "evidence list",
             new[] { "evidence list --project <fwdata> [--tier <tier>] [--cursor <c>] [--limit <n>] [--json]" }),
         new CliVerbDescriptor("Commands", "evidence export", "evidence export",
-            new[] { "evidence export --project <fwdata> [--out <path.json>] [--tier <tier>] [--page-size <n>] [--json]" }),
+            new[] { "evidence export --project <fwdata> [--out <path.json>] [--tier <tier>] [--limit <1-500>] [--json]" }),
 
         new CliVerbDescriptor(
             "Commands", "id", "id convert",
@@ -525,7 +525,7 @@ public static class CliVerbCatalog
                 "difference show --project <fwdata> (--proposal <id> [--text <guid>] [--reference human|source-validated] | " +
                 "--difference <id>) [--could-be-bad] " +
                 "[--bucket <code>] [--limitation <code>] [--before <state>] [--after <state>] [--cursor <c>] [--limit <n>] " +
-                "[--word <word> [--occurrence-offset <n>] [--occurrence-limit <n>]] [--json]",
+                "[--word <word>] [--json]",
             }),
         new CliVerbDescriptor(
             "Project", "grammar", "grammar check",

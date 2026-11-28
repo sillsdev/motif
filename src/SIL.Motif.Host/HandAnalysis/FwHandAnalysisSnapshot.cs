@@ -44,7 +44,7 @@ public sealed class FwHandAnalysisSnapshot : IHandAnalysisSnapshot, IApprovedRea
         ObjectDisposedException.ThrowIf(_disposed, this);
         ct.ThrowIfCancellationRequested();
         if (page.Limit is < 1 or > PageRequest.MaxLimit)
-            return Refused(RefusalCodes.HandAnalysisInvalidPageLimit);
+            return Refused(RefusalCodes.PagingInvalid);
         ImmutableArray<ApprovedAnalysisFact> rows;
         switch (query)
         {
@@ -63,7 +63,7 @@ public sealed class FwHandAnalysisSnapshot : IHandAnalysisSnapshot, IApprovedRea
         var start = 0;
         if (page.Cursor is not null)
         {
-            if (!TryReadCursor(page.Cursor, queryKey, out var last)) return Refused(RefusalCodes.HandAnalysisInvalidCursor);
+            if (!TryReadCursor(page.Cursor, queryKey, out var last)) return Refused(RefusalCodes.PagingInvalid);
             int low = 0, high = ordered.Length;
             while (low < high)
             {

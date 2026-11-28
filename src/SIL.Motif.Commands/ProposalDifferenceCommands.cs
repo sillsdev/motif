@@ -211,7 +211,7 @@ public static class ProposalDifferenceCommands
     {
         ArgumentNullException.ThrowIfNull(request);
         if (request.CursorOffset() < 0 || request.Limit is < 1 or > 200)
-            return Refuse("difference.invalid-page", FailureReason.InvalidArgument,
+            return Refuse(RefusalCodes.PagingInvalid, FailureReason.InvalidArgument,
                 "The cursor must be the nextCursor a previous page returned and the limit between 1 and 200.");
         ProposalDifferenceBucket? bucket = null;
         if (request.Bucket is not null)
@@ -229,12 +229,6 @@ public static class ProposalDifferenceCommands
                     "Choose a limitation code such as capped, timed-out, projection-unavailable or parser-refused.");
             limitation = parsedLimitation;
         }
-        if (request.OccurrenceOffset is < 0 || request.OccurrenceLimit is < 1 or > 200)
-            return Refuse(RefusalCodes.DifferenceInvalidPage, FailureReason.InvalidArgument,
-                "Occurrence offset must be zero or more and occurrence limit between 1 and 200.");
-        if (request.Word is null && (request.OccurrenceOffset is not null || request.OccurrenceLimit is not null))
-            return Refuse("difference.occurrence-needs-word", FailureReason.InvalidArgument,
-                "Occurrence offset and occurrence limit page one word's places, so give the word as well.");
         string? word = null;
         if (request.Word is not null)
         {
@@ -286,9 +280,9 @@ public static class ProposalDifferenceCommands
                     .Where(item => (textFilter is null || item.TextId == textFilter) &&
                         (request.Reference is null || item.Reference == request.Reference)).ToArray());
             return Show(database, id, new ProposalDifferenceFilter(request.CouldBeBad, bucket,
-                request.BeforeState, request.AfterState, limitation, word), request.CursorOffset(), request.Limit,
-                word is null ? null : new ProposalDifferenceOccurrenceRequest(word,
-                    request.OccurrenceOffset ?? 0, request.OccurrenceLimit ?? 25), cancellationToken);
+                request.BeforeState, request.AfterState, limitation, word), word is null ? request.CursorOffset() : 0, word is null ? request.Limit : 1,
+                word is null ? null : new ProposalDifferenceOccurrenceRequest(word, request.CursorOffset(), request.Limit),
+                cancellationToken);
         });
     }
 

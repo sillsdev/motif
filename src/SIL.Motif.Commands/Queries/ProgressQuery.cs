@@ -23,10 +23,12 @@ public static class ProgressQuery
     {
         ArgumentNullException.ThrowIfNull(request);
         if (request.Scope is null || request.Scope.Kind != "texts" || request.Scope.Source is not null || request.Scope.Texts?.Count > 200 ||
-            request.Detail is not ("summary" or "passages") || request.Limit is < 1 or > 200 ||
+            request.Detail is not ("summary" or "passages") ||
             request.Detail == "summary" && request.Cursor is not null)
             return Refused(RefusalCodes.ProgressInvalidRequest, FailureReason.InvalidArgument,
-                "Choose Texts and summary or passages, with a limit from 1 to 200.");
+                "Choose Texts and summary or passages; a summary has no cursor.");
+        if (request.Limit is < 1 or > 200)
+            return Refused(RefusalCodes.PagingInvalid, FailureReason.InvalidArgument, "The limit must be from 1 to 200.");
         var ids = request.Scope.Texts?.Distinct().OrderBy(id => id.ToString("D"), StringComparer.Ordinal).ToArray() ?? [];
         if (ids.Any(id => id == Guid.Empty))
             return Refused(RefusalCodes.ProgressInvalidRequest, FailureReason.InvalidArgument, "Text GUIDs must be nonempty.");
@@ -35,7 +37,7 @@ public static class ProgressQuery
         Cursor? cursor = null;
         if (request.Cursor is not null && (!TryCursor(request.Cursor, out cursor) || cursor!.ScopeDigest != digest ||
             cursor.SinceRevision != request.SinceRevision))
-            return Refused(RefusalCodes.ProgressInvalidCursor, FailureReason.InvalidArgument,
+            return Refused(RefusalCodes.PagingInvalid, FailureReason.InvalidArgument,
                 "The cursor is invalid or belongs to another Text scope.");
 
         var absent = Refused(RefusalCodes.ProgressIndexNotReady, FailureReason.Refused,

@@ -229,10 +229,11 @@ public sealed class RecordImportPreviewTests(PristineProjectFixture pristine) : 
         var (project, file, _) = Fixture(senses: 8, editEvery: true);
 
         var first = RecordImportCommand.Run(new(project, file)).Value!;
-        var second = RecordImportCommand.Run(new(project, file, null, 2)).Value!;
+        var second = RecordImportCommand.Run(new(project, file, null, first.NextCursor)).Value!;
 
         Assert.Equal(8, first.ChangeCount);
-        Assert.Equal(2, first.PageCount);
+        Assert.NotNull(first.NextCursor);
+        Assert.Null(second.NextCursor);
         Assert.Equal(4, first.Changes!.Count);
         Assert.Equal(4, second.Changes!.Count);
         var shown = first.Changes.Concat(second.Changes).ToList();

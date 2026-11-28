@@ -48,7 +48,7 @@ public sealed class HandAnalysisIndexTests
         {
             Assert.False(result.Succeeded);
             Assert.Null(result.Value);
-            Assert.Equal(RefusalCodes.HandAnalysisInvalidCursor, result.Refusal?.Code);
+            Assert.Equal(RefusalCodes.PagingInvalid, result.Refusal?.Code);
         }
 
         var newest = (await latest.WordsAsync(Alternatives, new(), CancellationToken.None)).Value!;
@@ -199,7 +199,7 @@ public sealed class HandAnalysisIndexTests
         Assert.Equal(RefusalCodes.HandAnalysisTypeMismatch, wrongFirstPage.Refusal?.Code);
         Assert.Null(wrongFirstPage.Value);
         var wrongContinuation = await pin.ReferencesAsync(wrongKind, new(2, cursor), CancellationToken.None);
-        Assert.Equal(RefusalCodes.HandAnalysisInvalidCursor, wrongContinuation.Refusal?.Code);
+        Assert.Equal(RefusalCodes.PagingInvalid, wrongContinuation.Refusal?.Code);
         var otherTarget = new ReferenceQuery.DeleteClosure(new(DeletionKind.Entry, Guid.NewGuid()));
         var missing = await pin.ReferencesAsync(otherTarget, new(1), CancellationToken.None);
         Assert.Equal(RefusalCodes.HandAnalysisIncompleteReferences, missing.Refusal?.Code);
@@ -255,7 +255,7 @@ public sealed class HandAnalysisIndexTests
         await using var snapshot = (await index.PinAsync(ProjectId, null, CancellationToken.None)).Value!;
         var result = await snapshot.WordsAsync(Alternatives, new(limit), CancellationToken.None);
         Assert.Null(result.Value);
-        Assert.Equal(RefusalCodes.HandAnalysisInvalidPageLimit, result.Refusal?.Code);
+        Assert.Equal(RefusalCodes.PagingInvalid, result.Refusal?.Code);
     }
 
     [Fact]

@@ -462,7 +462,7 @@ public sealed class HandAnalysisLexiconSeededTests : IDisposable
         var page = await a.Lexicon(query, new(2));
         Assert.NotNull(page.NextCursor);
         Assert.Equal(2, (await a.Lexicon(query, new(2, page.NextCursor))).Items.Length);
-        Assert.Equal(RefusalCodes.HandAnalysisInvalidCursor, (await b.LexiconAsync(query, new(2, page.NextCursor), default)).Refusal?.Code);
+        Assert.Equal(RefusalCodes.PagingInvalid, (await b.LexiconAsync(query, new(2, page.NextCursor), default)).Refusal?.Code);
         Assert.Equal(RefusalCodes.HandAnalysisSnapshotExpired,
             (await hostB.PinAsync(a.Stamp.ProjectId, a.Stamp.SnapshotId, default)).Refusal?.Code);
         // The real ICU comparer names the library, algorithm and definitions in the Stamp.

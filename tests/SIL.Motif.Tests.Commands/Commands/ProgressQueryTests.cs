@@ -73,7 +73,7 @@ public sealed class ProgressQueryTests(PristineProjectFixture pristine) : IDispo
         Assert.Contains(next.Value.Rows[0].Id, new[] { first, second });
         var wrongFilter = ProgressQuery.Query(new ProgressRequest(path, all, "passages", 1,
             page.Value.NextCursor, "progress/other"));
-        Assert.Equal("progress.invalid-cursor", wrongFilter.Refusal?.Code);
+        Assert.Equal("paging.invalid", wrongFilter.Refusal?.Code);
         Assert.Equal(before, SHA256.HashData(File.ReadAllBytes(path)));
 
         Capture(path);

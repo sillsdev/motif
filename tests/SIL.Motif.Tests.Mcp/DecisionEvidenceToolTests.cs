@@ -151,12 +151,12 @@ public sealed class DecisionEvidenceToolTests
             Assert.Equal((1, 500, 50), (schema["minimum"]!.GetValue<int>(), schema["maximum"]!.GetValue<int>(),
                 schema["default"]!.GetValue<int>()));
             var first = await Page(("limit", 2));
-            var second = await Page(("limit", 2), ("after", first.GetProperty("next").GetString()!));
+            var second = await Page(("limit", 2), ("cursor", first.GetProperty("nextCursor").GetString()!));
 
             AssertSameJson(ProposalCommands.EvidenceExport(new EvidenceExportRequest(project, "1.0", null, null, 2)).Value!, first);
             Assert.Equal(2, first.GetProperty("rows").GetArrayLength());
             Assert.Equal(1, second.GetProperty("rows").GetArrayLength());
-            Assert.False(second.TryGetProperty("next", out _));
+            Assert.False(second.TryGetProperty("nextCursor", out _));
             Assert.Equal("motif-decision-evidence/1", first.GetProperty("format").GetString());
             Assert.Equal("source-validated", first.GetProperty("rows")[0].GetProperty("label").GetString());
 
@@ -173,10 +173,10 @@ public sealed class DecisionEvidenceToolTests
             var refused = await MotifMcpServer.CallAsync(context, tools, export, new Dictionary<string, JsonElement>
             {
                 ["project"] = JsonSerializer.SerializeToElement(project),
-                ["after"] = JsonSerializer.SerializeToElement("nonsense"),
+                ["cursor"] = JsonSerializer.SerializeToElement("nonsense"),
             }, CancellationToken.None);
             Assert.True(refused.IsError);
-            Assert.Equal("evidence.invalid-cursor", refused.StructuredContent!.Value.GetProperty("code").GetString());
+            Assert.Equal("paging.invalid", refused.StructuredContent!.Value.GetProperty("code").GetString());
         }
         finally { Directory.Delete(directory, true); }
     }
@@ -207,7 +207,7 @@ public sealed class DecisionEvidenceToolTests
             Assert.NotEqual(true, result.IsError);
             var page = result.StructuredContent!.Value.GetProperty("result");
             Assert.Equal(50, page.GetProperty("rows").GetArrayLength());
-            Assert.True(page.TryGetProperty("next", out _));
+            Assert.True(page.TryGetProperty("nextCursor", out _));
         }
         finally { Directory.Delete(directory, true); }
     }

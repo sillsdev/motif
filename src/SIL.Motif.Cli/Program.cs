@@ -239,6 +239,13 @@ try
         return ProposalCommandRenderer.Render(outcome, asJson, successAsJson, includeEffects);
     }
 
+    int PagingUsage(string message)
+    {
+        var refused = RenderCommand(CommandOutcome<object>.Refused(PagingWindow.Invalid(message)));
+        error.Write(refused.Output);
+        return refused.ExitCode;
+    }
+
     CommandResult RenderCommand<T>(CommandOutcome<T> outcome, bool successAsJson = true,
         bool includeEffects = false) where T : class?
     {
@@ -900,9 +907,9 @@ try
         case "list":
             if (positionals is ["hypotheses"])
             {
-                if (!flags.TryGetValue("project", out var listHypothesesProject) ||
-                    !int.TryParse(flags.GetValueOrDefault("limit") ?? "50", out var hypothesesLimit))
+                if (!flags.TryGetValue("project", out var listHypothesesProject))
                     return Usage(UsageLineFor("list hypotheses"), asJson);
+                if (!PagingFlags.TryLimit(flags, 50, out var hypothesesLimit)) return PagingUsage(PagingFlags.LimitMessage);
                 result = RenderCommand(HypothesisCommands.List(new ListHypothesesRequest(listHypothesesProject,
                     CliProductVersion(), flags.GetValueOrDefault("status"), flags.GetValueOrDefault("id"),
                     flags.GetValueOrDefault("cursor"), hypothesesLimit)));
@@ -910,9 +917,9 @@ try
             }
             if (positionals is ["requests"])
             {
-                if (!flags.TryGetValue("project", out var listRequestsProject) ||
-                    !int.TryParse(flags.GetValueOrDefault("limit") ?? "25", out var requestsLimit))
+                if (!flags.TryGetValue("project", out var listRequestsProject))
                     return Usage(UsageLineFor("list requests"), asJson);
+                if (!PagingFlags.TryLimit(flags, 25, out var requestsLimit)) return PagingUsage(PagingFlags.LimitMessage);
                 result = RenderCommand(RequestCommands.List(new ListRequestsRequest(listRequestsProject,
                     CliProductVersion(), flags.GetValueOrDefault("status"), flags.GetValueOrDefault("cursor"), requestsLimit)));
                 break;
@@ -1372,11 +1379,9 @@ try
             }
             if (positionals.Count == 1 && positionals[0] == "list")
             {
-                var evidenceLimit = 50;
-                if (!flags.TryGetValue("project", out var evidenceListProject) ||
-                    flags.TryGetValue("limit", out var evidenceLimitText) &&
-                    !int.TryParse(evidenceLimitText, NumberStyles.None, CultureInfo.InvariantCulture, out evidenceLimit))
+                if (!flags.TryGetValue("project", out var evidenceListProject))
                     return Usage(UsageLineFor("evidence list"), asJson);
+                if (!PagingFlags.TryLimit(flags, 50, out var evidenceLimit)) return PagingUsage(PagingFlags.LimitMessage);
                 result = RenderProposal(ProposalCommands.EvidenceList(new EvidenceListRequest(
                     evidenceListProject, CliProductVersion(), flags.GetValueOrDefault("tier"), flags.GetValueOrDefault("cursor"),
                     evidenceLimit)));
@@ -1384,13 +1389,11 @@ try
             }
             if (positionals.Count == 1 && positionals[0] == "export")
             {
-                var exportPageSize = EvidenceExportCli.DefaultPageSize;
                 if (!flags.TryGetValue("project", out var evidenceExportProject) ||
-                    flags.TryGetValue("out", out var exportOutText) && (exportOutText == "true" || exportOutText.Length == 0) ||
-                    flags.TryGetValue("page-size", out var exportPageSizeText) &&
-                    (!int.TryParse(exportPageSizeText, NumberStyles.None, CultureInfo.InvariantCulture, out exportPageSize) ||
-                     exportPageSize is < 1 or > 500))
+                    flags.TryGetValue("out", out var exportOutText) && (exportOutText == "true" || exportOutText.Length == 0))
                     return Usage(UsageLineFor("evidence export"), asJson);
+                if (!PagingFlags.TryLimit(flags, EvidenceExportCli.DefaultPageSize, out var exportPageSize) || exportPageSize is < 1 or > 500)
+                    return PagingUsage("The limit must be a whole number from 1 to 500.");
                 alreadyRendered = true;
                 result = EvidenceExportCli.Run(evidenceExportProject, CliProductVersion(), flags.GetValueOrDefault("tier"),
                     exportPageSize, flags.GetValueOrDefault("out"), output, asJson);
@@ -1739,11 +1742,8 @@ try
                         "[--object-id <guid> | --category-id <guid> | --statement-kind environment|natural-class] " +
                         "[--scope project-approved|default-selection] [--case-key <key>] [--cursor <cursor>] " +
                         "[--limit <n>] [--json]", asJson);
-                var viewLimit = 50;
-                if (flags.TryGetValue("limit", out var limitText) &&
-                    (!int.TryParse(limitText, NumberStyles.None, CultureInfo.InvariantCulture, out viewLimit) ||
-                     viewLimit is < 1 or > 200))
-                    return Usage("--limit must be an integer from 1 to 200.", asJson);
+                if (!PagingFlags.TryLimit(flags, 50, out var viewLimit) || viewLimit is < 1 or > ResultPaging.MaxLimit)
+                    return PagingUsage(PagingFlags.LimitMessage);
                 var viewFilters = new ParsimonyViewFilters(
                     ObjectGuid: flags.GetValueOrDefault("object-id"),
                     CategoryGuid: flags.GetValueOrDefault("category-id"),
@@ -1913,13 +1913,13 @@ try
             if (flags.TryGetValue("limit", out var groupLimitText))
             {
                 if (!int.TryParse(groupLimitText, NumberStyles.None, CultureInfo.InvariantCulture, out var limitNumber) || limitNumber < 1)
-                    return Usage("--limit must be a positive integer.", asJson);
+                    return PagingUsage(PagingFlags.LimitMessage);
                 groupLimit = limitNumber;
             }
             if (flags.TryGetValue("cursor", out var groupCursorText))
             {
                 if (groupCursorText == "true" || !ResultPaging.TryOffset(groupCursorText, out _))
-                    return Usage("--cursor must be the nextCursor a previous page returned.", asJson);
+                    return PagingUsage(PagingFlags.CursorMessage);
                 groupCursor = groupCursorText;
             }
             int? groupMinStem = null;
@@ -2172,7 +2172,7 @@ try
             if (flags.TryGetValue("limit", out var reviewLimitText))
             {
                 if (!int.TryParse(reviewLimitText, NumberStyles.None, CultureInfo.InvariantCulture, out var parsedLimit))
-                    return Usage("Invalid Trial review limit.", asJson);
+                    return PagingUsage(PagingFlags.LimitMessage);
                 reviewLimit = parsedLimit;
             }
             var reviewRequest = new ReviewReadRequest("project", positionals[1], flags.GetValueOrDefault("job"),
@@ -2387,11 +2387,11 @@ try
                     break;
                 case "passage" when positionals.Count == 1 && flags.TryGetValue("source", out var passageSource) &&
                     flags.TryGetValue("ref", out var passageRef):
-                    if (flags.Keys.Any(key => key is not ("project" or "source" or "ref" or "limit" or "cursor" or "json")) ||
-                        flags.TryGetValue("limit", out var passageLimitText) && !int.TryParse(passageLimitText, out _))
+                    if (flags.Keys.Any(key => key is not ("project" or "source" or "ref" or "limit" or "cursor" or "json")))
                         return Usage(UsageLineFor("source passage"), asJson);
+                    if (!PagingFlags.TryLimit(flags, 100, out var passageLimit)) return PagingUsage(PagingFlags.LimitMessage);
                     result = RenderCommand(SourcePassageQuery.Query(new SourcePassageRequest(sourceProject, passageSource,
-                        passageRef, flags.TryGetValue("limit", out var passageLimit) ? int.Parse(passageLimit) : 100,
+                        passageRef, passageLimit,
                         flags.GetValueOrDefault("cursor"))));
                     break;
                 case "where" when positionals.Count == 2:
@@ -2631,12 +2631,8 @@ try
                     UsageLineFor("phonology-examples show") + " OR " +
                     UsageLineFor("phonology-examples check") + " OR " +
                     UsageLineFor("phonology-examples results"), asJson);
-            var phonologyPageSize = 20;
-            if (flags.TryGetValue("page-size", out var phonologyPageSizeText) &&
-                (!int.TryParse(phonologyPageSizeText, NumberStyles.None, CultureInfo.InvariantCulture,
-                    out phonologyPageSize) || phonologyPageSize is < 1 or > PhonologyExampleValidation.MaxPageSize))
-                return Usage("--page-size must be between 1 and " +
-                    PhonologyExampleValidation.MaxPageSize.ToString(CultureInfo.InvariantCulture) + ".", asJson);
+            if (!PagingFlags.TryLimit(flags, 20, out var phonologyLimit)) return PagingUsage(PagingFlags.LimitMessage);
+            var phonologyCursor = flags.GetValueOrDefault("cursor");
             switch (positionals[0])
             {
                 case "save":
@@ -2659,40 +2655,14 @@ try
                 case "list":
                     if (positionals.Count != 1)
                         return Usage(UsageLineFor("phonology-examples list"), asJson);
-                    PhonologySetListCursor? listCursor;
-                    try
-                    {
-                        listCursor = flags.TryGetValue("continuation", out var listCursorJson)
-                            ? DeserializePhonologyCursor<PhonologySetListCursor>(listCursorJson)
-                            : null;
-                        if (flags.ContainsKey("continuation") && listCursor is null)
-                            return Usage("--continuation must contain a list cursor JSON object.", asJson);
-                    }
-                    catch (JsonException exception)
-                    {
-                        return Usage("--continuation is not a valid list cursor: " + exception.Message, asJson);
-                    }
                     result = RenderCommand(PhonologyExampleCommands.List(new ListPhonologyExamplesRequest(
-                        phonologyProject, phonologyPageSize, listCursor)));
+                        phonologyProject, phonologyLimit, phonologyCursor)));
                     break;
                 case "show":
                     if (positionals.Count != 2)
                         return Usage(UsageLineFor("phonology-examples show"), asJson);
-                    PhonologyPageCursor? pageCursor;
-                    try
-                    {
-                        pageCursor = flags.TryGetValue("continuation", out var pageCursorJson)
-                            ? DeserializePhonologyCursor<PhonologyPageCursor>(pageCursorJson)
-                            : null;
-                        if (flags.ContainsKey("continuation") && pageCursor is null)
-                            return Usage("--continuation must contain a revision page cursor JSON object.", asJson);
-                    }
-                    catch (JsonException exception)
-                    {
-                        return Usage("--continuation is not a valid revision page cursor: " + exception.Message, asJson);
-                    }
                     result = RenderCommand(PhonologyExampleCommands.Show(new ShowPhonologyExamplesRequest(
-                        phonologyProject, positionals[1], phonologyPageSize, pageCursor)));
+                        phonologyProject, positionals[1], phonologyLimit, phonologyCursor)));
                     break;
                 case "check":
                     if (positionals.Count != 2)
@@ -2725,28 +2695,15 @@ try
                     PhonologyResultsRead resultsRead;
                     if (flags.TryGetValue("example", out var resultsExample))
                     {
-                        if (flags.ContainsKey("page-size") || flags.ContainsKey("continuation") ||
+                        if (flags.ContainsKey("limit") || flags.ContainsKey("cursor") ||
                             string.IsNullOrWhiteSpace(resultsExample))
                             return Usage("--example reads one complete example and cannot be combined with " +
-                                "--page-size or --continuation.", asJson);
+                                "--limit or --cursor.", asJson);
                         resultsRead = new PhonologyResultsRead.Example(resultsExample);
                     }
                     else
                     {
-                        PhonologyPageCursor? resultsCursor;
-                        try
-                        {
-                            resultsCursor = flags.TryGetValue("continuation", out var resultsCursorJson)
-                                ? DeserializePhonologyCursor<PhonologyPageCursor>(resultsCursorJson)
-                                : null;
-                            if (flags.ContainsKey("continuation") && resultsCursor is null)
-                                return Usage("--continuation must contain a results page cursor JSON object.", asJson);
-                        }
-                        catch (JsonException exception)
-                        {
-                            return Usage("--continuation is not a valid results page cursor: " + exception.Message, asJson);
-                        }
-                        resultsRead = new PhonologyResultsRead.Page(phonologyPageSize, resultsCursor);
+                        resultsRead = new PhonologyResultsRead.Page(phonologyLimit, phonologyCursor);
                     }
                     var resultsOutcome = PhonologyExampleCommands.Results(new PhonologyResultsRequest(
                         phonologyProject, positionals[1], resultsRead));
@@ -2987,15 +2944,13 @@ try
                 if (dispositionFormat is not ("table" or "json")) return Usage("--format must be table or json.", asJson);
                 if (dispositionFormat == "json") asJson = true;
             }
-            var dispositionLimit = WordTypeDispositionCommands.DefaultLimit;
-            if (flags.TryGetValue("limit", out var dispositionLimitText) &&
-                !int.TryParse(dispositionLimitText, NumberStyles.None, CultureInfo.InvariantCulture, out dispositionLimit))
-                return Usage("--limit must be a positive integer.", asJson);
+            if (!PagingFlags.TryLimit(flags, WordTypeDispositionCommands.DefaultLimit, out var dispositionLimit))
+                return PagingUsage(PagingFlags.LimitMessage);
             string? dispositionCursor = null;
             if (flags.TryGetValue("cursor", out var dispositionCursorText))
             {
                 if (dispositionCursorText == "true" || !ResultPaging.TryOffset(dispositionCursorText, out _))
-                    return Usage("--cursor must be the nextCursor a previous page returned.", asJson);
+                    return PagingUsage(PagingFlags.CursorMessage);
                 dispositionCursor = dispositionCursorText;
             }
             result = RenderCommand(WordTypeDispositionCommands.List(new ListDispositionsRequest(dispositionProject,
@@ -3033,24 +2988,16 @@ try
             }
             if (positionals.Count == 1 && positionals[0] == "show")
             {
-                var differenceLimit = 25;
-                int? occurrenceOffset = null;
-                int? occurrenceLimit = null;
                 if (!flags.TryGetValue("project", out var deltaShowProject) ||
-                    !(flags.ContainsKey("proposal") || flags.ContainsKey("difference")) ||
-                    flags.TryGetValue("limit", out var differenceLimitText) &&
-                    !int.TryParse(differenceLimitText, NumberStyles.None, CultureInfo.InvariantCulture, out differenceLimit) ||
-                    flags.TryGetValue("occurrence-offset", out var occurrenceOffsetText) &&
-                    !TryParseCount(occurrenceOffsetText, out occurrenceOffset) ||
-                    flags.TryGetValue("occurrence-limit", out var occurrenceLimitText) &&
-                    !TryParseCount(occurrenceLimitText, out occurrenceLimit))
+                    !(flags.ContainsKey("proposal") || flags.ContainsKey("difference")))
                     return Usage(UsageLineFor("difference show"), asJson);
+                if (!PagingFlags.TryLimit(flags, 25, out var differenceLimit)) return PagingUsage(PagingFlags.LimitMessage);
                 result = RenderCommand(ProposalDifferenceCommands.Show(new ProposalDifferenceShowRequest(deltaShowProject,
                     flags.GetValueOrDefault("proposal"), flags.GetValueOrDefault("difference"),
                     flags.ContainsKey("could-be-bad"), flags.GetValueOrDefault("bucket"),
                     flags.GetValueOrDefault("before"), flags.GetValueOrDefault("after"), flags.GetValueOrDefault("cursor"),
                     differenceLimit, flags.GetValueOrDefault("limitation"), flags.GetValueOrDefault("word"),
-                    occurrenceOffset, occurrenceLimit, flags.GetValueOrDefault("text"),
+                    flags.GetValueOrDefault("text"),
                     flags.GetValueOrDefault("reference"))), asJson);
                 break;
             }
@@ -3074,10 +3021,7 @@ try
                         ignoreCase: false, out var grammarReadKind) ||
                     !Enum.IsDefined(grammarReadKind))
                     return Usage(UsageLineFor("grammar read"), asJson);
-                var grammarReadLimit = 25;
-                if (flags.TryGetValue("limit", out var grammarReadLimitText) &&
-                    !int.TryParse(grammarReadLimitText, NumberStyles.None, CultureInfo.InvariantCulture, out grammarReadLimit))
-                    return Usage(UsageLineFor("grammar read"), asJson);
+                if (!PagingFlags.TryLimit(flags, 25, out var grammarReadLimit)) return PagingUsage(PagingFlags.LimitMessage);
                 var grammarRead = GrammarReadQuery.Query(new GrammarReadRequest(
                     grammarReadProject,
                     grammarReadKind,
@@ -3386,9 +3330,7 @@ try
                     if (!TryObjectGuid(value, out var parsedText)) return Usage(UsageLineFor("progress"), asJson);
                     progressIds.Add(parsedText);
                 }
-            var progressLimit = 50;
-            if (flags.TryGetValue("limit", out var progressLimitText) && !int.TryParse(progressLimitText, out progressLimit))
-                return Usage(UsageLineFor("progress"), asJson);
+            if (!PagingFlags.TryLimit(flags, 50, out var progressLimit)) return PagingUsage(PagingFlags.LimitMessage);
             if (flags.TryGetValue("source", out var progressSource))
             {
                 if (flags.ContainsKey("texts") || flags.ContainsKey("since-revision")) return Usage(UsageLineFor("progress"), asJson);
@@ -3543,13 +3485,14 @@ try
             var assessWords = assessWordList.Value!;
             var assessSummary = flags.ContainsKey("summary");
             var assessPageOffset = 0;
-            var assessPageLimit = 25;
-            if (flags.TryGetValue("cursor", out var assessCursorRaw) &&
-                    (assessCursorRaw == "true" || !ResultPaging.TryOffset(assessCursorRaw, out assessPageOffset)) ||
-                flags.TryGetValue("limit", out var assessLimitRaw) &&
-                    (!int.TryParse(assessLimitRaw, out assessPageLimit) || assessPageLimit < 1) ||
-                (flags.ContainsKey("cursor") || flags.ContainsKey("limit")) && !assessSummary)
+            int assessPageLimit;
+            if ((flags.ContainsKey("cursor") || flags.ContainsKey("limit")) && !assessSummary)
                 return Usage(AssessUsage(), asJson);
+            if (flags.TryGetValue("cursor", out var assessCursorRaw) &&
+                    (assessCursorRaw == "true" || !ResultPaging.TryOffset(assessCursorRaw, out assessPageOffset)))
+                return PagingUsage(PagingFlags.CursorMessage);
+            if (!PagingFlags.TryLimit(flags, 25, out assessPageLimit) || assessPageLimit < 1)
+                return PagingUsage(PagingFlags.LimitMessage);
             long? assessRetryWorkOver = null;
             if (hasAssessRetryWorkOver)
             {
@@ -3928,15 +3871,6 @@ static string StatsUsage() => "Usage: motif " + UsageLineFor("stats");
 
 static string HandoffUsage() => "Usage: motif " + UsageLineFor("handoff");
 
-/// <summary>Parses a comma-separated GUID list; an absent flag is an empty list, not a failure.</summary>
-static bool TryParseCount(string? text, out int? count)
-{
-    count = null;
-    if (!int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out var parsed)) return false;
-    count = parsed;
-    return true;
-}
-
 // Guid or canonical id (ObjectId); a prefixed id such as an operation id is never a text id.
 static bool TryObjectGuid(string? text, out Guid guid)
 {
@@ -4299,31 +4233,6 @@ static string ReadBoundedUtf8File(string path, int maximumBytes)
     if (total > maximumBytes)
         throw new InvalidDataException($"The file exceeds the {maximumBytes} byte limit.");
     return new UTF8Encoding(false, true).GetString(buffer, 0, total);
-}
-
-static T? DeserializePhonologyCursor<T>(string json) where T : class
-{
-    using var document = JsonDocument.Parse(json);
-    EnsureUniqueJsonProperties(document.RootElement);
-    return JsonSerializer.Deserialize<T>(json, PhonologyJson.CreateOptions());
-}
-
-static void EnsureUniqueJsonProperties(JsonElement element)
-{
-    if (element.ValueKind == JsonValueKind.Object)
-    {
-        var names = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var property in element.EnumerateObject())
-        {
-            if (!names.Add(property.Name))
-                throw new JsonException($"The cursor JSON repeats '{property.Name}'.");
-            EnsureUniqueJsonProperties(property.Value);
-        }
-    }
-    else if (element.ValueKind == JsonValueKind.Array)
-    {
-        foreach (var item in element.EnumerateArray()) EnsureUniqueJsonProperties(item);
-    }
 }
 
 // Autonomous is declared by --autonomous or MOTIF_AUTONOMOUS=1 (or true); with neither, the mode is person.

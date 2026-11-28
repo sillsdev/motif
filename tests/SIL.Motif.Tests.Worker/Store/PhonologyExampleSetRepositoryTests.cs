@@ -84,7 +84,7 @@ public sealed class PhonologyExampleSetRepositoryTests : IDisposable
         {
             var page = repository.Read(saved.Revision.RevisionId, 73, cursor);
             recovered.AddRange(page.Items);
-            cursor = page.Continuation;
+            PhonologyCursorCodec.TryDecode(page.NextCursor, out cursor);
         } while (cursor is not null);
 
         Assert.Equal(JsonSerializer.Serialize(examples, PhonologyJson.CreateOptions()),
@@ -108,7 +108,7 @@ public sealed class PhonologyExampleSetRepositoryTests : IDisposable
         {
             var page = repository.List(2, cursor);
             actual.AddRange(page.Items.Select(header => header.Revision.SetId));
-            cursor = page.Continuation;
+            PhonologyCursorCodec.TryDecode(page.NextCursor, out cursor);
         } while (cursor is not null);
 
         Assert.Equal(expected, actual);

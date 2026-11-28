@@ -138,9 +138,9 @@ public sealed class EvidenceCommandsTests : IDisposable
 
     [Theory]
     [InlineData("gold", 0, 10, "evidence.unknown-tier")]
-    [InlineData(null, -1, 10, "evidence.invalid-page")]
-    [InlineData(null, 0, 0, "evidence.invalid-page")]
-    [InlineData(null, 0, 501, "evidence.invalid-page")]
+    [InlineData(null, -1, 10, "paging.invalid")]
+    [InlineData(null, 0, 0, "paging.invalid")]
+    [InlineData(null, 0, 501, "paging.invalid")]
     public void ListRefusesABadTierOrPage(string? tier, int offset, int limit, string code) =>
         Assert.Equal(code, ProposalCommands.EvidenceList(
             new EvidenceListRequest(_fwDataPath, Version, tier, SIL.Motif.Contract.Responses.ResultPaging.Cursor(offset), limit)).Refusal?.Code);

@@ -43,9 +43,11 @@ public static class GrammarReadQuery
         if (ValidateAt(request.At, out var proposalId) is { } badAt)
             return CommandOutcome<GrammarReadResponse>.Refused(badAt);
         if (request.CursorOffset() is < 0 or > MaximumOffset)
-            return Invalid("The cursor must be the nextCursor a previous page returned.");
+            return Refused(RefusalCodes.PagingInvalid, FailureReason.InvalidArgument,
+                "The cursor must be the nextCursor a previous page returned.");
         if (request.Limit is < 1 or > MaximumPageSize)
-            return Invalid($"The limit must be between 1 and {MaximumPageSize}.");
+            return Refused(RefusalCodes.PagingInvalid, FailureReason.InvalidArgument,
+                $"The limit must be between 1 and {MaximumPageSize}.");
 
         return ProjectStoreCommand.ReadExisting(request.ProjectPath,
             CommandOutcome<GrammarReadResponse>.Refused(new Refusal("grammar-read.baseline-missing", FailureReason.NotFound, "Capture a Baseline before reading project grammar objects.")),

@@ -6,7 +6,7 @@ using SIL.Motif.Contract.Review;
 namespace SIL.Motif.Worker.Store;
 
 /// <summary>A continuation does not belong to the requested report, section, or filters.</summary>
-public sealed class ReviewCursorInvalidException() : ArgumentException("review.cursor-invalid");
+public sealed class ReviewCursorInvalidException() : ArgumentException("paging.invalid");
 
 /// <summary>A report remains readable but its indexed detail is unavailable.</summary>
 public sealed class ReviewDetailUnavailableException : InvalidOperationException

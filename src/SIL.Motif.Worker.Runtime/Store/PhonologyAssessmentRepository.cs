@@ -55,7 +55,7 @@ public sealed class PhonologyAssessmentRepository(MotifDatabase database)
         while (true)
         {
             var cursor = hasMore && items.Count > 0 ? new PhonologyPageCursor(assessmentId, items[^1].Ordinal) : null;
-            var page = new PhonologyResultsPageResponse(header, items.ToArray(), cursor);
+            var page = new PhonologyResultsPageResponse(header, items.ToArray(), PhonologyCursorCodec.Encode(cursor));
             if (Size(page) <= PhonologyExampleValidation.MaxSerializedPageUtf8Bytes) return page;
             if (items.Count <= 1) throw new InvalidDataException("One result summary exceeds the page bound.");
             items.RemoveAt(items.Count - 1);
@@ -182,7 +182,7 @@ public sealed class PhonologyAssessmentRepository(MotifDatabase database)
             var detail = new PhonologyExampleDetail(ordinal, authored, evidence);
             var shortRow = new PhonologyExampleSummary(ordinal, authored, summary);
             if (Size(new PhonologyExampleResultResponse(header, detail)) > MaxDetailUtf8Bytes ||
-                Size(new PhonologyResultsPageResponse(header, [shortRow], new PhonologyPageCursor(record.AssessmentId, ordinal))) >
+                Size(new PhonologyResultsPageResponse(header, [shortRow], PhonologyCursorCodec.Encode(new PhonologyPageCursor(record.AssessmentId, ordinal)))) >
                     PhonologyExampleValidation.MaxSerializedPageUtf8Bytes)
                 throw new ArgumentException("The retained phonology evidence exceeds a serialized response bound.");
             using var insert = Command(connection, transaction,

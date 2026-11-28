@@ -285,7 +285,7 @@ public static class CommandTextRenderer
     {
         var text = new StringBuilder();
         text.AppendLine($"Decision evidence page: {response.Rows.Count:N0} record(s)." +
-            (response.Next is null ? " This is the last page." : " More records are available."));
+            (response.NextCursor is null ? " This is the last page." : " More records are available."));
         foreach (var row in response.Rows)
             text.AppendLine($"  Proposal {row.ProposalId}, {row.Kind} on {row.Subject} ({row.Tier}).");
         return text.ToString();
@@ -1078,7 +1078,7 @@ public static class CommandTextRenderer
         var builder = new StringBuilder();
         foreach (var set in response.Items)
             builder.AppendLine($"{set.Name}  {set.Revision.RevisionId}  {set.Revision.ExampleCount} examples");
-        AppendContinuation(builder, response.Continuation);
+        AppendNextCursor(builder, response.NextCursor);
         return builder.ToString();
     }
 
@@ -1099,7 +1099,7 @@ public static class CommandTextRenderer
                 builder.AppendLine("  Citation: " + citation.Source +
                     (citation.Locator is null ? "" : ", " + citation.Locator));
         }
-        AppendContinuation(builder, response.Continuation);
+        AppendNextCursor(builder, response.NextCursor);
         return builder.ToString();
     }
 
@@ -1122,7 +1122,7 @@ public static class CommandTextRenderer
                 _ => $"{item.Example.Id}: unknown",
             });
         }
-        AppendContinuation(builder, response.Continuation);
+        AppendNextCursor(builder, response.NextCursor);
         return builder.ToString();
     }
 
@@ -1162,11 +1162,11 @@ public static class CommandTextRenderer
         });
     }
 
-    private static void AppendContinuation<T>(StringBuilder builder, T? continuation) where T : class
+    private static void AppendNextCursor(StringBuilder builder, string? cursor)
     {
-        if (continuation is null) return;
-        builder.Append("Next page cursor: ");
-        builder.AppendLine(ProjectionJson.Serialize(continuation));
+        if (cursor is null) return;
+        builder.Append("Next page: --cursor ");
+        builder.AppendLine(cursor);
     }
 
     private static string RenderProjectWordForming(ProjectWordFormingResponse r)
@@ -2017,7 +2017,7 @@ public static class CommandTextRenderer
                 : $"  Places of {places.Word}: showing {places.Places.Count} of {places.Total:N0}");
             foreach (var place in places.Places)
                 text.AppendLine($"    line {place.LineNumber}, word {place.OccurrenceIndex + 1} (segment {place.SegmentId})");
-            if (places.NextOffset is { } nextPlace) text.AppendLine($"  More places: --occurrence-offset {nextPlace}");
+            if (places.NextCursor is { } nextPlace) text.AppendLine($"  More places: --cursor {nextPlace}");
         }
         return text.ToString();
     }

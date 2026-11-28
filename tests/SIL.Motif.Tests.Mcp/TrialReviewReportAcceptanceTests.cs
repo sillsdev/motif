@@ -171,7 +171,7 @@ public sealed class TrialReviewReportAcceptanceTests
             args["side"] = JsonSerializer.SerializeToElement("after");
             var invalid = await MotifMcpServer.CallAsync(context, MotifMcpServer.Expose(ToolProfile.Load("full")), "motif_difference", args, CancellationToken.None);
             Assert.True(invalid.IsError);
-            Assert.Equal("review.cursor-invalid", invalid.StructuredContent!.Value.GetProperty("code").GetString());
+            Assert.Equal("paging.invalid", invalid.StructuredContent!.Value.GetProperty("code").GetString());
         }
         finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
     }

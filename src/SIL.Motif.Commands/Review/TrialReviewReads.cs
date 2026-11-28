@@ -30,7 +30,7 @@ public static class TrialReviewReads
         ArgumentNullException.ThrowIfNull(request);
         if (request.Validate() is { } invalid)
             return CommandOutcome<TrialReviewResult>.Refused(new Refusal(
-                RefusalCodes.DifferenceInvalidPage, FailureReason.InvalidArgument, invalid));
+                RefusalCodes.PagingInvalid, FailureReason.InvalidArgument, invalid));
         if (request.ReportId is not null)
             return CommandOutcome<TrialReviewResult>.Refused(new Refusal(
                 RefusalCodes.DifferenceNoTrial, FailureReason.NotFound,

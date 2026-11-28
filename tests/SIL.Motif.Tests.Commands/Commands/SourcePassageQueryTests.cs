@@ -61,15 +61,15 @@ public sealed class SourcePassageQueryTests(ITestOutputHelper output) : IDisposa
             Assert.Single(last.Value!.Places);
             Assert.Null(last.Value.NextCursor);
             Assert.Equal([101, 201, 201, 1], counts);
-            Assert.Equal(RefusalCodes.SourcePassageCursorInvalid,
+            Assert.Equal(RefusalCodes.PagingInvalid,
                 SourcePassageQuery.Query(new(project.FullFwDataPath, "other", "MAT 1", Cursor: first.Value.NextCursor)).Refusal?.Code);
-            Assert.Equal(RefusalCodes.SourcePassageCursorInvalid,
+            Assert.Equal(RefusalCodes.PagingInvalid,
                 SourcePassageQuery.Query(new(project.FullFwDataPath, "WEB", "MAT 2", Cursor: first.Value.NextCursor)).Refusal?.Code);
             ProgressSourceIdentity.BeforeHash.Value = null;
             var other = Project("other");
             using var otherDb = Open(other);
             Publish(otherDb, 501);
-            Assert.Equal(RefusalCodes.SourcePassageCursorInvalid,
+            Assert.Equal(RefusalCodes.PagingInvalid,
                 SourcePassageQuery.Query(new(other.FullFwDataPath, "WEB", "MAT 1", Cursor: first.Value.NextCursor)).Refusal?.Code);
             Publish(database, 501);
             Assert.Equal(RefusalCodes.SourceGenerationChanged,
@@ -114,7 +114,7 @@ public sealed class SourcePassageQueryTests(ITestOutputHelper output) : IDisposa
             Assert.Equal(5, Assert.Single(next.Value!.Passages).EligiblePlaces);
             Assert.Null(next.Value.NextCursor);
             Assert.Equal([(1, 0), (2, 2), (2, 1)], work);
-            Assert.Equal(RefusalCodes.ProgressInvalidCursor,
+            Assert.Equal(RefusalCodes.PagingInvalid,
                 SourceProgressQuery.Query(project.FullFwDataPath, "OTHER", "passages", 1, page.Value.NextCursor).Refusal?.Code);
             new SourceIndexRepository(database).MarkPending("WEB");
             Assert.Equal(RefusalCodes.SourceIndexStale, SourceProgressQuery.Query(project.FullFwDataPath, "WEB").Refusal?.Code);
@@ -294,14 +294,14 @@ public sealed class SourcePassageQueryTests(ITestOutputHelper output) : IDisposa
     [InlineData(0)]
     [InlineData(201)]
     [InlineData(-1)]
-    public void InvalidLimitsAreRefusedBeforeStorage(int limit) => Assert.Equal(RefusalCodes.SourcePassageLimitInvalid,
+    public void InvalidLimitsAreRefusedBeforeStorage(int limit) => Assert.Equal(RefusalCodes.PagingInvalid,
         SourcePassageQuery.Query(new("unused", "WEB", "MAT 1", limit)).Refusal?.Code);
 
     [Theory]
     [InlineData("")]
     [InlineData("garbage")]
     [InlineData("e30=")]
-    public void InvalidCursorsAreRefusedBeforeStorage(string cursor) => Assert.Equal(RefusalCodes.SourcePassageCursorInvalid,
+    public void InvalidCursorsAreRefusedBeforeStorage(string cursor) => Assert.Equal(RefusalCodes.PagingInvalid,
         SourcePassageQuery.Query(new("unused", "WEB", "MAT 1", Cursor: cursor)).Refusal?.Code);
 
     [Fact]

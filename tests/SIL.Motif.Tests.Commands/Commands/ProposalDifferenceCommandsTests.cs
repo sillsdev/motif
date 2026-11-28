@@ -154,7 +154,7 @@ public sealed partial class ProposalDifferenceCommandsTests : IDisposable
     {
         using var fixture = new Fixture(_root);
 
-        Assert.Equal("difference.invalid-page", ProposalDifferenceCommands.Show(new ProposalDifferenceShowRequest(
+        Assert.Equal("paging.invalid", ProposalDifferenceCommands.Show(new ProposalDifferenceShowRequest(
             fixture.ProjectPath, ProposalId: fixture.ProposalId, Limit: 0)).Refusal!.Code);
         Assert.Equal("difference.invalid-state", ProposalDifferenceCommands.Show(new ProposalDifferenceShowRequest(
             fixture.ProjectPath, ProposalId: fixture.ProposalId, BeforeState: "nonsense")).Refusal!.Code);

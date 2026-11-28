@@ -116,8 +116,8 @@ internal sealed partial class StoreSnapshot : IHandAnalysisSnapshot
     private PagePosition ReadPage<TQuery>(TQuery query, PageRequest request)
     {
         if (request.Limit is < 1 or > PageRequest.MaxLimit)
-            throw new QueryRefused(new(RefusalCodes.HandAnalysisInvalidPageLimit, FailureReason.InvalidArgument,
-                $"Page size must be 1 to {PageRequest.MaxLimit}."));
+            throw new QueryRefused(new(RefusalCodes.PagingInvalid, FailureReason.InvalidArgument,
+                $"The limit must be 1 to {PageRequest.MaxLimit}."));
         var bound = Convert.ToHexStringLower(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(query, ReadJson)));
         if (request.Cursor is null) return new(request.Limit, bound, null);
         CursorBinding? binding;
@@ -136,7 +136,7 @@ internal sealed partial class StoreSnapshot : IHandAnalysisSnapshot
     }
 
     private static QueryRefused InvalidCursor(string message) =>
-        new(new(RefusalCodes.HandAnalysisInvalidCursor, FailureReason.InvalidArgument, message));
+        new(new(RefusalCodes.PagingInvalid, FailureReason.InvalidArgument, message));
 
     private ValueTask<CommandOutcome<T>> Read<TQuery, T>(TQuery query, PageRequest page, CancellationToken ct,
         Func<PinnedPoint, PagePosition, T> read) where T : class

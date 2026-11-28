@@ -29,15 +29,15 @@ public sealed class PhonologyResultsCommandTests(PristineProjectFixture pristine
         var (projectPath, assessmentId) = StoreCheck(["front", "back"]);
 
         var page = PhonologyExampleCommands.Results(new PhonologyResultsRequest(projectPath, assessmentId,
-            new PhonologyResultsRead.Page(PageSize: 1)));
+            new PhonologyResultsRead.Page(Limit: 1)));
 
         Assert.True(page.Succeeded, page.Refusal?.Message);
         var first = Assert.IsType<PhonologyResultsPageResponse>(page.Value);
         Assert.Equal("front", Assert.Single(first.Items).Example.Id);
-        Assert.NotNull(first.Continuation);
+        Assert.NotNull(first.NextCursor);
 
         var next = PhonologyExampleCommands.Results(new PhonologyResultsRequest(projectPath, assessmentId,
-            new PhonologyResultsRead.Page(1, first.Continuation)));
+            new PhonologyResultsRead.Page(1, first.NextCursor)));
         Assert.Equal("back", Assert.Single(Assert.IsType<PhonologyResultsPageResponse>(next.Value).Items).Example.Id);
 
         var detail = PhonologyExampleCommands.Results(new PhonologyResultsRequest(projectPath, assessmentId,
@@ -59,25 +59,25 @@ public sealed class PhonologyResultsCommandTests(PristineProjectFixture pristine
         Assert.Equal("phonology-examples.example-not-found", PhonologyExampleCommands.Results(
             new PhonologyResultsRequest(projectPath, assessmentId,
                 new PhonologyResultsRead.Example("nope"))).Refusal?.Code);
-        Assert.Equal("phonology-examples.invalid", PhonologyExampleCommands.Results(
+        Assert.Equal("paging.invalid", PhonologyExampleCommands.Results(
             new PhonologyResultsRequest(projectPath, assessmentId,
                 new PhonologyResultsRead.Page(0))).Refusal?.Code);
-        Assert.Equal("phonology-examples.invalid", PhonologyExampleCommands.Results(
+        Assert.Equal("paging.invalid", PhonologyExampleCommands.Results(
             new PhonologyResultsRequest(projectPath, assessmentId,
-                new PhonologyResultsRead.Page(5, new PhonologyPageCursor("other", 0)))).Refusal?.Code);
+                new PhonologyResultsRead.Page(5, PhonologyCursorCodec.Encode(new PhonologyPageCursor("other", 0))))).Refusal?.Code);
     }
 
     [Fact]
     public void TheReadSelectorIsClosedOnTheWire()
     {
         var options = MotifJson.CreateOptions();
-        var page = JsonSerializer.Deserialize<PhonologyResultsRead>("""{"kind":"page","pageSize":5}""", options);
+        var page = JsonSerializer.Deserialize<PhonologyResultsRead>("""{"kind":"page","limit":5}""", options);
         var example = JsonSerializer.Deserialize<PhonologyResultsRead>("""{"kind":"example","exampleId":"x"}""", options);
 
         Assert.Equal(new PhonologyResultsRead.Page(5), page);
         Assert.Equal(new PhonologyResultsRead.Example("x"), example);
         Assert.ThrowsAny<JsonException>(() => JsonSerializer.Deserialize<PhonologyResultsRead>(
-            """{"kind":"example","exampleId":"x","pageSize":3}""", options));
+            """{"kind":"example","exampleId":"x","limit":3}""", options));
         Assert.ThrowsAny<JsonException>(() => JsonSerializer.Deserialize<PhonologyResultsRead>(
             """{"kind":"everything"}""", options));
         Assert.Throws<NotSupportedException>(() => JsonSerializer.Deserialize<PhonologyResultsRead>("""{}""", options));

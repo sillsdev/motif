@@ -467,7 +467,7 @@ public sealed class ProposalDifferenceRepository
                 places.Add(new ProposalDifferenceOccurrencePlace(reader.GetString(0), reader.GetString(1),
                     reader.GetInt32(2), reader.GetInt32(3)));
         }
-        var next = request.Offset + places.Count < stored ? request.Offset + places.Count : (int?)null;
+        var next = request.Offset + places.Count < stored ? SIL.Motif.Contract.Responses.ResultPaging.Cursor(request.Offset + places.Count) : null;
         return new ProposalDifferenceOccurrencePage(request.Word, places, total, next, stored < total ? stored : null);
     }
 

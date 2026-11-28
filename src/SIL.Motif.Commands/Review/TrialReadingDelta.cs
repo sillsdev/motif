@@ -67,7 +67,8 @@ public static class TrialReadingDelta
         if (classes.Any(name => !ReadingDeltaClasses.All.Contains(name)))
             return Invalid("A class is one of " + string.Join(", ", ReadingDeltaClasses.All) + ".");
         if (request.CursorOffset() < 0 || request.Limit is < 1 or > ResultPaging.MaxLimit)
-            return Invalid($"Use an offset of zero or more and a limit from 1 to {ResultPaging.MaxLimit}.");
+            return CommandOutcome<ReadingDelta>.Refused(new Refusal(RefusalCodes.PagingInvalid, FailureReason.InvalidArgument,
+                $"The cursor must be the nextCursor a previous page returned and the limit from 1 to {ResultPaging.MaxLimit}."));
         if (request.ProposalId is not null && !CanonicalId.TryParse(request.ProposalId, out _))
             return Invalid("Name the Proposal by its Proposal ID.");
 

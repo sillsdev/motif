@@ -11,7 +11,7 @@ public static partial class RefusalCodes
     public const string TrialReviewBaselineChanged = "trial.review-baseline-changed";
     /// <summary>The exact Trial has no readable retained evidence export.</summary>
     public const string TrialExportUnavailable = "trial.export-unavailable";
-    /// <summary>A Reading delta request names no Trial, two Trials, an unknown class or a bad page.</summary>
+    /// <summary>A Reading delta request names no Trial, two Trials or an unknown class.</summary>
     public const string TrialDeltaRequestInvalid = "trial.delta-request-invalid";
     /// <summary>A grouping the Reading identity cannot support (rule), or one the Baseline cannot name (slot without a readable project).</summary>
     public const string TrialDeltaGroupUnsupported = "trial.delta-group-unsupported";

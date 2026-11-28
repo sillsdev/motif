@@ -8,8 +8,6 @@ public static partial class RefusalCatalog
     [
         Spec(RefusalCodes.SourceIndexMissing, FailureReason.NotFound),
         Spec(RefusalCodes.SourceIndexStale, FailureReason.Refused),
-        Spec(RefusalCodes.SourcePassageLimitInvalid, FailureReason.InvalidArgument),
-        Spec(RefusalCodes.SourcePassageCursorInvalid, FailureReason.InvalidArgument),
         Spec(RefusalCodes.SourceGenerationChanged, FailureReason.Refused),
         Spec(RefusalCodes.SourceIdInvalid, FailureReason.InvalidArgument),
         Spec(RefusalCodes.SourceListAmbiguous, FailureReason.Refused),
