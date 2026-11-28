@@ -681,12 +681,6 @@
           "summary": "Puts a Motif backup back beside the project after checking every file against its receipt.",
           "gate": "Released",
           "helpTopic": "motif help store restore"
-        },
-        {
-          "name": "store upgrade",
-          "summary": "Carries authored work into the current store and keeps a backup of the old store.",
-          "gate": "Released",
-          "helpTopic": "motif help store upgrade"
         }
       ]
     },

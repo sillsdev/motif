@@ -207,7 +207,6 @@ public sealed class ToolSurfaceTests
             "store prune",
             "store relocate",
             "store restore",
-            "store upgrade",
             "wordform dispose",
             "wordform dispose --from-file",
             "wordform undispose",
@@ -248,7 +247,7 @@ public sealed class ToolSurfaceTests
             command.Name != "activity" && command.Name != "hand-analysis check" && command.Name != "query pairs" && command.Name != "query corpus forms" && command.Name != "query values" &&
             command.Name is not ("store backup" or "store restore") &&
             command.Name != "project tag" && command.Name != "proposal trial" &&
-            command.Name != "store artifacts" && command.Name != "store prune" && command.Name != "store relocate" && command.Name != "store upgrade" &&
+            command.Name != "store artifacts" && command.Name != "store prune" && command.Name != "store relocate" &&
             command.Name is not ("wordform dispose" or "wordform dispose --from-file" or "wordform undispose" or "worker stop") &&
             command.Name is not ("hypothesis neighbours" or "hypothesis report" or "lexicon find" or "list hypotheses")), command =>
             Assert.True(command.ExposeAsAgentTool));

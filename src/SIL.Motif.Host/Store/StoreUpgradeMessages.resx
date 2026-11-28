@@ -14,14 +14,14 @@
   <data name="RecoveryFailed" xml:space="preserve"><value>The interrupted store upgrade cannot be recovered.</value></data>
   <data name="ReportInvalid" xml:space="preserve"><value>The upgrade report is invalid.</value></data>
   <data name="BackupMissing" xml:space="preserve"><value>The interrupted upgrade backup is missing.</value></data>
-  <data name="Suppressed" xml:space="preserve"><value>Open this project in Motif to upgrade its store.</value></data>
+  <data name="Suppressed" xml:space="preserve"><value>This store's format is not supported by this build here.</value></data>
   <data name="MissingIdentity" xml:space="preserve"><value>The source is missing the required identity column {0}.</value></data>
   <data name="NewerWorker" xml:space="preserve"><value>The source store requires a newer version of Motif.</value></data>
   <data name="UnknownTable" xml:space="preserve"><value>The source store contains unclassified tables: {0}.</value></data>
   <data name="IntegrityFailed" xml:space="preserve"><value>The upgraded store failed its integrity check.</value></data>
   <data name="MissingMetadata" xml:space="preserve"><value>The source store is missing its project identity.</value></data>
   <data name="UnsupportedSchema" xml:space="preserve"><value>The {0} at '{1}' is schema {2}, but this build requires exactly schema {3}. This store cannot be upgraded by this build. Copy '{1}' somewhere safe first; only then delete it and let Motif recreate it.</value></data>
-  <data name="OlderStore" xml:space="preserve"><value>The {0} at '{1}' is schema {2}, and this build uses schema {3}. Motif upgrades it on a normal open, after backing it up first, not in this read-only view. Open the project in Motif, or run `motif store upgrade --project &lt;project&gt;`, or upgrade a copy with `motif store upgrade --source &lt;old.db&gt; --out &lt;new.db&gt;`. Do not delete the store.</value></data>
+  <data name="OlderStore" xml:space="preserve"><value>The {0} at '{1}' is schema {2}, but this build supports only schema {3}. This store's format is not supported by this build.</value></data>
   <data name="ResetBackupFailed" xml:space="preserve"><value>Motif could not back up the project store '{0}' before resetting it, so it deleted nothing. {1}</value></data>
   <data name="UpgradeFailedNoBackup" xml:space="preserve"><value>Motif could not back up the project store '{0}' before upgrading it from schema {1} to {2}, so it did not upgrade it and changed nothing. {3}</value></data>
   <data name="UpgradeFailedBuild" xml:space="preserve"><value>Motif could not upgrade the project store '{0}' from schema {1} to {2}. The store was not changed. A backup taken first is at '{3}'; `motif store restore` puts it back. {4}</value></data>

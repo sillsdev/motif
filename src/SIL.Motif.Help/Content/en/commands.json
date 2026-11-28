@@ -87,11 +87,6 @@
     "description": "Reads the project's Assessment scopes and settings, including declared gate word sets. Use it to see the limits and policies Motif will use for later Trials and Autonomous Apply.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
-  "store upgrade": {
-    "title": "Upgrade project store",
-    "description": "Carries authored work into the current store and keeps a backup of the old store. Computed results are discarded and can be recreated. --dry-run reports what an upgrade would carry and drop without changing the store.",
-    "source": "Hand-written from the project store upgrade behavior."
-  },
   "store relocate": {
     "title": "Relocate a copied store",
     "description": "After a project and its Motif store are copied or moved together, points the store at the project's new path so commands stop refusing it as another project's. It checks the new path holds the same project, needs confirmation, and records the old path, new path, time and basis in the store.",
@@ -591,7 +586,7 @@
   },
   "worker stop": {
     "title": "Stop the background runner",
-    "description": "Ends the background runner that holds a project's store open, or the one for the current worker root, so a store upgrade or a stuck queue can proceed. Jobs it was running are taken back by the next runner.",
+    "description": "Ends the background runner that holds a project's store open, or the one for the current worker root, so a stuck queue can proceed. Jobs it was running are taken back by the next runner.",
     "source": "Hand-written from the runner holder and stop behavior."
   },
   "jobs cancel": {
