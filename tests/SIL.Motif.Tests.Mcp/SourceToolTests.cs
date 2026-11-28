@@ -34,7 +34,7 @@ public sealed class SourceToolTests(PristineProjectFixture pristine) : IDisposab
 
     private static ServerContext Context(string project) => new(project, "1.0",
         new NoRunnerLauncher(new JobRunnerLaunchOptions(SIL.Motif.Worker.RunnerOptions.ResolveRoot(), null)),
-        new ActivityLog(), ToolProfile.Builtin, TextWriter.Null, advancedAiModeEnabled: true);
+        new ActivityLog(), ToolProfile.Load("full"), TextWriter.Null, advancedAiModeEnabled: true);
 
     [Fact]
     public void TheTwoReadToolsHaveHelpDescriptionsAndFieldLinesAndAreInTheDefaultAndPhonologyProfiles()
@@ -54,7 +54,7 @@ public sealed class SourceToolTests(PristineProjectFixture pristine) : IDisposab
         Assert.Contains("\nall: ", sources.Description);
         Assert.DoesNotContain("ExpectedBaseline", sources.Description);
         Assert.Contains("\nsource: ", current.Description);
-        foreach (var profile in new[] { ToolProfile.Builtin, ToolProfile.Load(Path.Combine(AppContext.BaseDirectory, "profiles", "phonology.json")) })
+        foreach (var profile in new[] { ToolProfile.Load("full"), ToolProfile.Load(Path.Combine(AppContext.BaseDirectory, "profiles", "phonology.json")) })
         {
             var names = MotifMcpServer.Expose(profile).Select(exposed => exposed.Name).ToArray();
             Assert.Contains("motif_sources", names);
@@ -172,7 +172,7 @@ public sealed class SourceToolTests(PristineProjectFixture pristine) : IDisposab
         Assert.True(tool.Idempotent);
         Assert.Equal(100, tool.InputSchema["properties"]!["limit"]!["default"]!.GetValue<int>());
         Assert.Equal(200, tool.InputSchema["properties"]!["limit"]!["maximum"]!.GetValue<int>());
-        Assert.Contains(MotifMcpServer.Expose(ToolProfile.Builtin), exposed => exposed.Name == tool.Name);
+        Assert.Contains(MotifMcpServer.Expose(ToolProfile.Load("full")), exposed => exposed.Name == tool.Name);
         var path = ProjectWithSources();
         using var tiny = TinyProject.Create();
         using (var database = ProjectMotifDatabase.Open(path))

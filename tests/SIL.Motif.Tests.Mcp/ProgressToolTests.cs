@@ -13,9 +13,9 @@ namespace SIL.Motif.Tests.Mcp;
 public sealed class ProgressToolTests
 {
     [Fact]
-    public void DefaultProfileExposesReadOnlyProgressWithClosedSchemas()
+    public void FullProfileExposesReadOnlyProgressWithClosedSchemas()
     {
-        var exposed = MotifMcpServer.Expose(ToolProfile.Builtin).Single(item => item.Tool.Name == "motif_progress");
+        var exposed = MotifMcpServer.Expose(ToolProfile.Load("full")).Single(item => item.Tool.Name == "motif_progress");
         Assert.True(exposed.Tool.ReadOnly);
         Assert.True(exposed.Tool.Idempotent);
         Assert.Equal("summary", exposed.DefaultDetail);
@@ -49,9 +49,9 @@ public sealed class ProgressToolTests
     }
 
     [Fact]
-    public void DefaultProfileOutputSchemaMatchesGolden()
+    public void FullProfileOutputSchemaMatchesGolden()
     {
-        var tool = MotifMcpServer.Expose(ToolProfile.Load("default"))
+        var tool = MotifMcpServer.Expose(ToolProfile.Load("full"))
             .Single(item => item.Tool.Name == "motif_progress").Describe();
         var actual = JsonNode.Parse(tool.OutputSchema!.Value.GetRawText())!
             .ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n";
