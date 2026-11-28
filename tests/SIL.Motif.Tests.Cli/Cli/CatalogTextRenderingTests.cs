@@ -707,6 +707,27 @@ public sealed class CatalogTextRenderingTests
     }
 
     [Fact]
+    public void GrammarCheckTextAndJsonCountTheWordTypesThatReadMoreThanOneWay()
+    {
+        var response = new GrammarCheckResponse([], HasBaseline: true)
+        {
+            MultiReadingTypes = new MultiReadingTypes(1200, 3,
+                [new MultiReadingGroup("stem+APPL+CAUS | stem+CAUS+APPL", 2, ["pikisha", "pigisha"]),
+                 new MultiReadingGroup("stem | stem+CAUS", 1, ["lisha"])]),
+        };
+
+        var text = CommandTextRenderer.Render(CommandOutcome<GrammarCheckResponse>.Success(response), asJson: false);
+        var json = CommandTextRenderer.Render(CommandOutcome<GrammarCheckResponse>.Success(response), asJson: true);
+
+        Assert.Contains("Word types with more than one reading: 3 of 1,200", text.Output);
+        Assert.Contains("stem+APPL+CAUS | stem+CAUS+APPL: 2 (pikisha, pigisha)", text.Output);
+        Assert.Contains("\"multiReadingTypes\"", json.Output);
+        Assert.Contains("\"measuredTypes\": 1200", json.Output);
+        Assert.Equal("stem | stem+CAUS", System.Text.Json.JsonDocument.Parse(json.Output).RootElement
+            .GetProperty("multiReadingTypes").GetProperty("groups")[1].GetProperty("pattern").GetString());
+    }
+
+    [Fact]
     public void WarningsTextAndJsonIdentifyErrorCountsSeparately()
     {
         var finding = new GrammarWarning(GrammarDiagnosticLevel.Error, "Feature system", [], [],

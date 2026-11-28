@@ -57,6 +57,31 @@ public sealed class GrammarCheckArgvTests(PristineProjectFixture pristine) : IDi
     }
 
     [Fact]
+    public void GrammarCheckCountsTheAssessedWordTypesWithMoreThanOneReadingOnlyOnceAWordListWasAssessed()
+    {
+        var project = pristine.CopyProjectFile();
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project), _managedRoot).Succeeded);
+        var before = ProjectionJson.Deserialize<GrammarCheckResponse>(
+            Run("grammar", "check", "--project", project, "--json").Output)!;
+        var assessed = Run("selection", "set-default", "--project", project, "--name", "Default",
+            "--add-words", SeededProject.FirstForm, "--json");
+        Assert.True(assessed.ExitCode == 0, assessed.Error);
+        var assess = Run("assess", project, "--json");
+        Assert.True(assess.ExitCode == 0, assess.Error);
+
+        var json = Run("grammar", "check", "--project", project, "--json");
+        var human = Run("grammar", "check", "--project", project);
+
+        Assert.Null(before.MultiReadingTypes);
+        Assert.Equal(0, json.ExitCode);
+        var after = ProjectionJson.Deserialize<GrammarCheckResponse>(json.Output)!;
+        Assert.Equal(1, after.MultiReadingTypes!.MeasuredTypes);
+        Assert.Equal(0, after.MultiReadingTypes.Types);
+        Assert.Contains("\"multiReadingTypes\"", json.Output, StringComparison.Ordinal);
+        Assert.Contains("Word types with more than one reading: 0 of 1", human.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void AnOrphanEnvironmentAdvisoryChangesNeitherTheFindingsNorTheExitCode()
     {
         Directory.CreateDirectory(_managedRoot);
