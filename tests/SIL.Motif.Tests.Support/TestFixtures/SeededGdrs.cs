@@ -146,6 +146,22 @@ public static class SeededGdrs
         cache.DomainDataByFlid.DeleteObj(doomed.Hvo);
     });
 
+    /// <summary>Adds the record <paramref name="number"/> with one paragraph that links the object <paramref name="target"/>.</summary>
+    public static void SeedLinkedRecord(LcmCache cache, string number, Guid target) => NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+    {
+        var systems = new ProjectWritingSystems(cache);
+        var options = new MarkdownOptions
+        {
+            WritingSystems = systems, Paths = new ProjectPathResolver(cache), LinkBase = "/lists/GDR/GDR-47.fw.md",
+            ProjectName = "Sena3", StyleNames = MotifMarkdownStyles.Names(),
+        };
+        AddRecord(cache, Records(cache).PossibilitiesOS, number, "title-" + number, "", stText =>
+        {
+            var parsed = MarkdownConverter.ParseInline($"[the object](/objects/{target:D}){{.name}}", options);
+            AddParagraph(cache, stText, TsStringConversion.ToTsString(parsed.Runs, systems, systems.DefaultAnalysis), "Normal", rightToLeft: false);
+        });
+    });
+
     /// <summary>Adds a second record that repeats GDR-2's abbreviation.</summary>
     public static void SeedDuplicateAbbreviation(LcmCache cache) => NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
         AddRecord(cache, Records(cache).PossibilitiesOS, "gdr-2", "title-4", "abstract-4", discussion: null));

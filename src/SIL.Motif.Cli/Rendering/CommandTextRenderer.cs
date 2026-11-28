@@ -1748,12 +1748,23 @@ public static class CommandTextRenderer
         text.AppendLine(response.Staged
             ? $"Staged {response.Rows.Count} decision(s) in {response.DraftName} ({response.OperationCount} operation(s))."
             : $"Dry run: {response.Rows.Count} decision(s) read cleanly and nothing was staged.");
-        foreach (var row in response.Rows) text.AppendLine($"line {row.Row} {row.Abbreviation}: {row.Entry}");
+        foreach (var row in response.Rows)
+        {
+            text.AppendLine($"line {row.Row} {row.Abbreviation}: {row.Entry}");
+            if (row.UnlinkedProposalObjectCount > 0)
+                text.AppendLine(UnlinkedProposalObjectsWarning(row.Abbreviation, row.UnlinkedProposalObjects, row.UnlinkedProposalObjectCount));
+        }
         if (response.StylesCreated.Count > 0)
             text.AppendLine($"Also creates the FieldWorks standard style(s) the project lacks: {string.Join(", ", response.StylesCreated)}.");
         if (response.Staged) text.AppendLine($"Apply it with the rest of {response.DraftName}.");
         return text.ToString();
     }
+
+    private static string UnlinkedProposalObjectsWarning(string abbreviation, IReadOnlyList<GdrUnlinkedObject> objects, int count) =>
+        $"warning: {abbreviation} links none of the {count:N0} object(s) this Proposal changes, so the decision may be under the wrong section: " +
+        string.Join("; ", objects.Select(item => $"{item.Id} ({string.Join(", ", item.OperationKinds)})")) +
+        (count > objects.Count ? $"; and {count - objects.Count:N0} more" : "") +
+        ". Link them from the section with guide edit, or file the decision under a section that links them.";
 
     private static string RenderGdrEdit(GdrEditResponse response)
     {
@@ -1764,6 +1775,8 @@ public static class CommandTextRenderer
         if (response.StylesCreated.Count > 0)
             text.AppendLine($"Also creates the FieldWorks standard style(s) the project lacks: {string.Join(", ", response.StylesCreated)}.");
         foreach (var warning in response.Warnings) text.AppendLine("warning: " + warning);
+        if (response.UnlinkedProposalObjectCount > 0)
+            text.AppendLine(UnlinkedProposalObjectsWarning(response.Abbreviation, response.UnlinkedProposalObjects, response.UnlinkedProposalObjectCount));
         if (response.Fields.Count > 0)
             text.AppendLine($"Preview it with 'guide show {response.Abbreviation} --as-of {response.DraftName}'; Apply it with the rest of {response.DraftName}.");
         return text.ToString();
