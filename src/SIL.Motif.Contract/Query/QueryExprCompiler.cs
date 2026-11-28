@@ -111,17 +111,17 @@ internal static class QueryExprCompiler
         switch (field.Op)
         {
             case QueryOps.Eq:
-                var eq = Scalar(field);
-                return row => row.Get(column).Contains(eq, StringComparer.Ordinal);
+                var eq = Composed(Scalar(field), numeric);
+                return row => row.Get(column).Any(item => string.Equals(Composed(item, numeric), eq, StringComparison.Ordinal));
             case QueryOps.Ne:
-                var ne = Scalar(field);
-                return row => !row.Get(column).Contains(ne, StringComparer.Ordinal);
+                var ne = Composed(Scalar(field), numeric);
+                return row => !row.Get(column).Any(item => string.Equals(Composed(item, numeric), ne, StringComparison.Ordinal));
             case QueryOps.In or QueryOps.Has:
-                var wanted = List(field).ToHashSet(StringComparer.Ordinal);
-                return row => row.Get(column).Any(wanted.Contains);
+                var wanted = List(field).Select(x => Composed(x, numeric)).ToHashSet(StringComparer.Ordinal);
+                return row => row.Get(column).Any(item => wanted.Contains(Composed(item, numeric)));
             case QueryOps.Nin:
-                var unwanted = List(field).ToHashSet(StringComparer.Ordinal);
-                return row => !row.Get(column).Any(unwanted.Contains);
+                var unwanted = List(field).Select(x => Composed(x, numeric)).ToHashSet(StringComparer.Ordinal);
+                return row => !row.Get(column).Any(item => unwanted.Contains(Composed(item, numeric)));
             case QueryOps.Lt or QueryOps.Gt:
                 if (!long.TryParse(Scalar(field), NumberStyles.Integer, CultureInfo.InvariantCulture, out var limit))
                     throw new ArgumentException("Expected an integer.");
@@ -150,6 +150,9 @@ internal static class QueryExprCompiler
                 throw new ArgumentException("Unknown query operator.");
         }
     }
+
+    // Text is matched in NFC, as a pattern is.
+    private static string Composed(string text, bool numeric) => numeric ? text : PatternNormalization.Value(text);
 
     private static string Scalar(QueryField field) => field.Value switch
     {

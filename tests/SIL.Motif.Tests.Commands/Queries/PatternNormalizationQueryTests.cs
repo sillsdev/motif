@@ -82,4 +82,41 @@ public sealed class PatternNormalizationQueryTests : IDisposable
         Assert.Equal(1, Count(Where("^plain$")));
         Assert.Equal(0, Count(Where("^plaın$")));
     }
+
+    [Fact]
+    public void EscapedDecomposedMarksCountTheSameAsTheComposedLetter()
+    {
+        var composed = Count(Where("\u0B95\u0BCB"));
+        Assert.True(composed >= 2);
+        Assert.Equal(composed, Count(Where("\u0B95\\u0BC7\\u0BBE")));
+        Assert.Equal(composed, Count(Where("\u0B95\\x{BC7}\\x{BBE}")));
+        Assert.Equal("\u0B95\u0BCB", PatternNormalization.Pattern("\u0B95\\u0BC7\\u0BBE"));
+    }
+
+    [Fact]
+    public void AQuantifierAfterAnAstralMarkThatWouldComposeIsRefused()
+    {
+        // Kaithi letter JA (U+11099) + sign nukta (U+110BA) compose to U+1109A; both are outside the BMP.
+        Assert.Equal(RefusalCodes.QueryPatternNotNormalizable,
+            Assert.Throws<QueryRefusalException>(() => PatternNormalization.Pattern("\U00011099\U000110BA?")).Refusal.Code);
+    }
+
+    [Fact]
+    public void AMarkSplitFromItsBaseByAGroupIsRefused()
+    {
+        Assert.Equal(RefusalCodes.QueryPatternNotNormalizable,
+            Assert.Throws<QueryRefusalException>(() => PatternNormalization.Pattern("\u0BC6(\u0BBE)")).Refusal.Code);
+    }
+
+    [Fact]
+    public void EqualityAndMembershipOnAFormCountTheSameInBothForms()
+    {
+        var nfc = "கோ";
+        var nfd = nfc.Normalize(NormalizationForm.FormD);
+        var composed = Count("form is \"" + nfc + "\"");
+        Assert.True(composed >= 1);
+        Assert.Equal(composed, Count("form is \"" + nfd + "\""));
+        Assert.Equal(composed + 1, Count("form in " + nfd + ",plain"));
+        Assert.Equal(composed, Count("form is \"" + nfc + "\"", [.. Words.Select(word => word.Normalize(NormalizationForm.FormD))]));
+    }
 }
